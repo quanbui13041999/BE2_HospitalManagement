@@ -49,11 +49,12 @@ class AppointmentController extends Controller
                 'status' => 'Chờ xác nhận' 
             ]);
 
-            return redirect('/booking')->with('success', '🎉 Đặt lịch khám thành công! Vui lòng chờ xác nhận.');
+            return redirect('/my-bookings')->with('success', '🎉 Đặt lịch khám thành công! Vui lòng chờ xác nhận.');
 
         } catch (\Exception $e) {
             return back()->withErrors(['Lỗi: ' . $e->getMessage()]);
         }
+         return redirect('/my-bookings')->with('success', 'Đăng ký thành công!');
     }
  // 3. Xem danh sách lịch đã đặt của người dùng
 public function index()
