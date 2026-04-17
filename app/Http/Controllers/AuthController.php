@@ -50,7 +50,7 @@ class AuthController extends Controller
         // Đăng nhập luôn sau khi đăng ký thành công
         Auth::login($user);
 
-        return redirect('/')->with('success', 'Đăng ký thành công!');
+        return redirect('/login')->with('success', 'Đăng ký thành công!');
     }
 
     // XỬ LÝ ĐĂNG NHẬP
@@ -63,12 +63,14 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            return redirect()->intended('/')->with('success', 'Đăng nhập thành công!');
+            return redirect()->intended('/my-bookings')->with('success', 'Đăng nhập thành công!');
         }
 
         return back()->withErrors([
             'email' => 'Thông tin đăng nhập không chính xác.',
         ]);
+        
+         return redirect('/my-bookings')->with('success', 'Đăng ký thành công!');
     }
 
     // XỬ LÝ ĐĂNG XUẤT
