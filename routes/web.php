@@ -38,6 +38,9 @@ Route::get('/booking/edit/{id}', [AppointmentController::class, 'edit'])
 
 Route::put('/booking/update/{id}', [AppointmentController::class, 'update'])
     ->name('booking.update');
+Route::post('/booking/update/{id}', [AppointmentController::class, 'update'])
+    ->name('booking.update');
+      
 
 // Hủy lịch
 Route::post('/booking/cancel/{id}', [AppointmentController::class, 'cancel'])
