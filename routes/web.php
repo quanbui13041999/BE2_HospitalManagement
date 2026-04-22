@@ -1,47 +1,34 @@
 <?php
+// routes/web.php — thêm vào file routes hiện có
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
-
-// Trang chủ
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
-
-// ======================
-// AUTH ROUTES
-// ======================
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Route;
+// ── AUTH ──────────────────────────────────────────────
+Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
+Route::post('/login',   [AuthController::class, 'login']);
+Route::post('/logout',  [AuthController::class, 'logout'])->name('logout');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+Route::post('/register',[AuthController::class, 'register']);
 
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-Route::post('/register', [AuthController::class, 'register'])->name('register.post');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+// ── BOOKING (yêu cầu đăng nhập) ───────────────────────
+Route::middleware('auth')->group(function () {
 
-// ======================
-// BOOKING (Đặt lịch khám)
-// ======================
-Route::get('/booking', [AppointmentController::class, 'create'])
-    ->name('booking.create');
+    // Đặt lịch hẹn
+    Route::get('/dat-lich',  [AppointmentController::class, 'create'])->name('booking.create');
+    Route::post('/dat-lich', [AppointmentController::class, 'store'])->name('booking.store');
 
-Route::post('/booking', [AppointmentController::class, 'store'])
-    ->name('booking.store');
+    // Danh sách lịch hẹn
+    Route::get('/lich-hen',  [AppointmentController::class, 'index'])->name('booking.index');
 
-// Danh sách lịch đã đặt của tôi
-Route::get('/my-bookings', [AppointmentController::class, 'index'])
-    ->name('booking.index');
+    // Dời lịch hẹn
+    Route::get('/lich-hen/{id}/doi',  [AppointmentController::class, 'edit'])->name('booking.edit');
+    Route::put('/lich-hen/{id}/doi',  [AppointmentController::class, 'update'])->name('booking.update');
 
-// Dời lịch (Edit)
-Route::get('/booking/edit/{id}', [AppointmentController::class, 'edit'])
-    ->name('booking.edit');
+    // Hủy lịch hẹn
+    Route::post('/lich-hen/{id}/huy', [AppointmentController::class, 'cancel'])->name('booking.cancel');
+});
 
-Route::put('/booking/update/{id}', [AppointmentController::class, 'update'])
-    ->name('booking.update');
-Route::post('/booking/update/{id}', [AppointmentController::class, 'update'])
-    ->name('booking.update');
-      
-
-// Hủy lịch
-Route::post('/booking/cancel/{id}', [AppointmentController::class, 'cancel'])
-    ->name('booking.cancel');
+// ── API (AJAX — không cần auth middleware riêng nếu dùng Sanctum)
+Route::middleware('auth')->get('/api/schedules', [AppointmentController::class, 'getSchedules'])
+     ->name('api.schedules');
