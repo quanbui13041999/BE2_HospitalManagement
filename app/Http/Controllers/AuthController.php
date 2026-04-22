@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use App\Mail\WelcomeMail;
 
 class AuthController extends Controller
 {
@@ -25,7 +28,7 @@ class AuthController extends Controller
         $request->validate([
             'full_name'     => 'required|string|max:100',
             'email'         => 'required|email|unique:users,email',
-            'password'      => 'required|min:6|confirmed',   // thêm confirmed để check password_confirmation
+            'password'      => 'required|min:6',
             'phone'         => 'nullable|string|max:15',
             'address'       => 'nullable|string|max:255',
             'date_of_birth' => 'nullable|date|before:today',
@@ -33,7 +36,7 @@ class AuthController extends Controller
         ], [
             'email.unique'      => 'Email này đã được sử dụng!',
             'password.min'      => 'Mật khẩu phải từ 6 ký tự trở lên.',
-            'password.confirmed'=> 'Xác nhận mật khẩu không khớp.',
+            'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
         ]);
 
         $user = User::create([
@@ -49,9 +52,13 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        // Gửi mail nhưng KHÔNG để lỗi mail chặn đăng ký
+    
+            Mail::to($user->email)->send(new WelcomeMail($user));
+        
 
         // BUG CŨ: redirect về /login sau khi đã login → sửa về trang đặt lịch
-        return redirect()->route('booking.create')
+        return redirect()->route('appointments.create')
             ->with('success', 'Đăng ký thành công! Chào mừng ' . $user->full_name);
     }
 
@@ -65,7 +72,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $request->session()->regenerate();
-            return redirect()->intended(route('booking.create'))
+            return redirect()->intended(route('appointments.index'))
                 ->with('success', 'Đăng nhập thành công!');
         }
 

@@ -433,7 +433,7 @@
                     <td>
                         @if($item->status != 'Đã hủy' && $item->status != 'Hoàn thành')
                             <div class="actions">
-                                <a href="{{ route('booking.edit', $item->appointment_id) }}" class="btn-edit">
+                                <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                     Dời lịch
                                 </a>
