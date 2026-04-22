@@ -1,15 +1,23 @@
 <?php
-// routes/web.php — thêm vào file routes hiện có
 
-use App\Http\Controllers\AppointmentController;
-use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
-// ── AUTH ──────────────────────────────────────────────
-Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login',   [AuthController::class, 'login']);
-Route::post('/logout',  [AuthController::class, 'logout'])->name('logout');
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AppointmentController;
+
+// Trang chủ
+Route::get('/', function () {
+    return view('welcome');
+})->name('home');
+
+// ======================
+// AUTH ROUTES
+// ======================
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register',[AuthController::class, 'register']);
+
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/register', [AuthController::class, 'register'])->name('register.post');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // ── BOOKING (yêu cầu đăng nhập) ───────────────────────
 Route::middleware('auth')->group(function () {
