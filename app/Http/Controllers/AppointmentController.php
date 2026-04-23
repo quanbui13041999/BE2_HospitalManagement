@@ -67,6 +67,7 @@ class AppointmentController extends Controller
             )
             ->get()
             ->groupBy('department_id')
+            ->mapWithKeys(fn($group, $key) => [(string)$key => $group])
             ->toArray();
 
         $scheduleData = DB::table('doctorschedules')
@@ -142,15 +143,15 @@ class AppointmentController extends Controller
         }
 
         $request->validate([
-            'schedule_id'      => 'required|integer|exists:doctorschedules,schedule_id',
-            'service_id'       => 'nullable|integer|exists:services,service_id',
-            'work_date'        => 'required|date|after_or_equal:today',
+            'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
+            'service_id' => 'nullable|integer|exists:services,service_id',
+            'work_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|string|max:10',
-            'note'             => 'nullable|string|max:255',
+            'note' => 'nullable|string|max:255',
         ], [
-            'schedule_id.required'      => 'Vui lòng chọn khung giờ khám.',
-            'schedule_id.exists'        => 'Khung giờ không hợp lệ.',
-            'work_date.after_or_equal'  => 'Ngày khám phải từ hôm nay trở đi.',
+            'schedule_id.required' => 'Vui lòng chọn khung giờ khám.',
+            'schedule_id.exists' => 'Khung giờ không hợp lệ.',
+            'work_date.after_or_equal' => 'Ngày khám phải từ hôm nay trở đi.',
             'appointment_time.required' => 'Vui lòng chọn giờ khám.',
         ]);
 
@@ -196,9 +197,9 @@ class AppointmentController extends Controller
                 ->withInput();
         }
 
-        $queueNumber         = $booked + 1;
+        $queueNumber = $booked + 1;
         $appointmentDatetime = $request->work_date . ' ' . $request->appointment_time . ':00';
-        $appointmentId       = null;
+        $appointmentId = null;
 
         // ── Transaction: chỉ DB, KHÔNG có mail bên trong ──
         DB::beginTransaction();
@@ -213,45 +214,45 @@ class AppointmentController extends Controller
                 DB::table('appointments')
                     ->where('appointment_id', $existing->appointment_id)
                     ->update([
-                        'service_id'       => $request->service_id ?: null,
+                        'service_id' => $request->service_id ?: null,
                         'appointment_time' => $appointmentDatetime,
-                        'queue_number'     => $queueNumber,
-                        'status'           => 'Chờ xác nhận',
-                        'note'             => $request->note,
-                        'cancel_reason'    => null,
+                        'queue_number' => $queueNumber,
+                        'status' => 'Chờ xác nhận',
+                        'note' => $request->note,
+                        'cancel_reason' => null,
                         'slot_hold_expire' => null,
                         'rescheduled_from' => null,
                     ]);
                 $appointmentId = $existing->appointment_id;
             } else {
                 $appointmentId = DB::table('appointments')->insertGetId([
-                    'user_id'          => $userId,
-                    'schedule_id'      => $request->schedule_id,
-                    'service_id'       => $request->service_id ?: null,
+                    'user_id' => $userId,
+                    'schedule_id' => $request->schedule_id,
+                    'service_id' => $request->service_id ?: null,
                     'appointment_time' => $appointmentDatetime,
-                    'queue_number'     => $queueNumber,
-                    'status'           => 'Chờ xác nhận',
-                    'note'             => $request->note,
-                    'created_at'       => now(),
+                    'queue_number' => $queueNumber,
+                    'status' => 'Chờ xác nhận',
+                    'note' => $request->note,
+                    'created_at' => now(),
                 ]);
             }
 
             DB::table('notifications')->insert([
-                'user_id'    => $userId,
+                'user_id' => $userId,
                 'notif_type' => 'Lịch hẹn',
-                'title'      => 'Đặt lịch hẹn thành công',
-                'content'    => 'Lịch khám lúc ' . $request->appointment_time
+                'title' => 'Đặt lịch hẹn thành công',
+                'content' => 'Lịch khám lúc ' . $request->appointment_time
                     . ' ngày ' . Carbon::parse($request->work_date)->format('d/m/Y')
                     . '. Số thứ tự: #' . $queueNumber,
-                'ref_id'     => $appointmentId,
-                'ref_type'   => 'appointment',
-                'is_read'    => false,
+                'ref_id' => $appointmentId,
+                'ref_type' => 'appointment',
+                'is_read' => false,
                 'created_at' => now(),
             ]);
 
             DB::table('activitylogs')->insert([
-                'user_id'    => $userId,
-                'action'     => 'Đặt lịch hẹn #' . $appointmentId,
+                'user_id' => $userId,
+                'action' => 'Đặt lịch hẹn #' . $appointmentId,
                 'ip_address' => $request->ip(),
                 'created_at' => now(),
             ]);
@@ -287,7 +288,7 @@ class AppointmentController extends Controller
             } catch (\Exception $mailError) {
                 Log::warning('Failed to send appointment confirmation email', [
                     'appointment_id' => $appointmentId,
-                    'error'          => $mailError->getMessage(),
+                    'error' => $mailError->getMessage(),
                 ]);
             }
         }
@@ -429,12 +430,12 @@ class AppointmentController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'new_schedule_id'      => 'required|integer|exists:doctorschedules,schedule_id',
+            'new_schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
             'new_appointment_time' => 'required|string|max:10',
-            'reschedule_reason'    => 'nullable|string|max:255',
+            'reschedule_reason' => 'nullable|string|max:255',
         ], [
             'new_schedule_id.required' => 'Vui lòng chọn khung giờ mới.',
-            'new_schedule_id.exists'   => 'Khung giờ không hợp lệ.',
+            'new_schedule_id.exists' => 'Khung giờ không hợp lệ.',
         ]);
 
         $appointment = DB::table('appointments')
@@ -452,7 +453,7 @@ class AppointmentController extends Controller
                 ->withErrors(['msg' => 'Lịch hẹn này không thể dời.']);
         }
 
-        if ((int)$request->new_schedule_id === (int)$appointment->schedule_id) {
+        if ((int) $request->new_schedule_id === (int) $appointment->schedule_id) {
             return back()->withErrors(['msg' => 'Vui lòng chọn lịch khác với lịch hiện tại.']);
         }
 
@@ -485,31 +486,31 @@ class AppointmentController extends Controller
             DB::table('appointments')
                 ->where('appointment_id', $id)
                 ->update([
-                    'schedule_id'      => $request->new_schedule_id,
+                    'schedule_id' => $request->new_schedule_id,
                     'appointment_time' => $newDatetime,
-                    'queue_number'     => $bookedInNew + 1,
-                    'status'           => 'Chờ xác nhận',
-                    'cancel_reason'    => $request->reschedule_reason
+                    'queue_number' => $bookedInNew + 1,
+                    'status' => 'Chờ xác nhận',
+                    'cancel_reason' => $request->reschedule_reason
                         ? 'Dời lịch: ' . $request->reschedule_reason
                         : 'Dời sang lịch mới',
                     'rescheduled_from' => $appointment->schedule_id,
                 ]);
 
             DB::table('notifications')->insert([
-                'user_id'    => Auth::id(),
+                'user_id' => Auth::id(),
                 'notif_type' => 'Lịch hẹn',
-                'title'      => 'Dời lịch hẹn thành công',
-                'content'    => 'Lịch hẹn #' . $id . ' đã được dời sang '
+                'title' => 'Dời lịch hẹn thành công',
+                'content' => 'Lịch hẹn #' . $id . ' đã được dời sang '
                     . Carbon::parse($newDatetime)->format('H:i d/m/Y'),
-                'ref_id'     => $id,
-                'ref_type'   => 'appointment',
-                'is_read'    => false,
+                'ref_id' => $id,
+                'ref_type' => 'appointment',
+                'is_read' => false,
                 'created_at' => now(),
             ]);
 
             DB::table('activitylogs')->insert([
-                'user_id'    => Auth::id(),
-                'action'     => 'Dời lịch hẹn #' . $id . ' sang schedule #' . $request->new_schedule_id,
+                'user_id' => Auth::id(),
+                'action' => 'Dời lịch hẹn #' . $id . ' sang schedule #' . $request->new_schedule_id,
                 'ip_address' => $request->ip(),
                 'created_at' => now(),
             ]);
@@ -543,7 +544,7 @@ class AppointmentController extends Controller
             } catch (\Exception $mailError) {
                 Log::warning('Failed to send appointment rescheduled email', [
                     'appointment_id' => $id,
-                    'error'          => $mailError->getMessage(),
+                    'error' => $mailError->getMessage(),
                 ]);
             }
         }
@@ -591,25 +592,25 @@ class AppointmentController extends Controller
             DB::table('appointments')
                 ->where('appointment_id', $id)
                 ->update([
-                    'status'        => 'Đã hủy',
+                    'status' => 'Đã hủy',
                     'cancel_reason' => $request->cancel_reason ?: 'Bệnh nhân tự hủy',
                 ]);
 
             DB::table('notifications')->insert([
-                'user_id'    => Auth::id(),
+                'user_id' => Auth::id(),
                 'notif_type' => 'Lịch hẹn',
-                'title'      => 'Hủy lịch hẹn thành công',
-                'content'    => 'Lịch hẹn #' . $id . ' đã được hủy.'
+                'title' => 'Hủy lịch hẹn thành công',
+                'content' => 'Lịch hẹn #' . $id . ' đã được hủy.'
                     . ($request->cancel_reason ? ' Lý do: ' . $request->cancel_reason : ''),
-                'ref_id'     => $id,
-                'ref_type'   => 'appointment',
-                'is_read'    => false,
+                'ref_id' => $id,
+                'ref_type' => 'appointment',
+                'is_read' => false,
                 'created_at' => now(),
             ]);
 
             DB::table('activitylogs')->insert([
-                'user_id'    => Auth::id(),
-                'action'     => 'Hủy lịch hẹn #' . $id,
+                'user_id' => Auth::id(),
+                'action' => 'Hủy lịch hẹn #' . $id,
                 'ip_address' => $request->ip(),
                 'created_at' => now(),
             ]);
@@ -644,12 +645,258 @@ class AppointmentController extends Controller
             } catch (\Exception $mailError) {
                 Log::warning('Failed to send appointment cancelled email', [
                     'appointment_id' => $id,
-                    'error'          => $mailError->getMessage(),
+                    'error' => $mailError->getMessage(),
                 ]);
             }
         }
 
         return redirect()->route('appointments.index')
             ->with('success', 'Đã hủy lịch hẹn #' . $id . ' thành công.');
+    }
+
+    /**
+     * Summary of suggest (goi y bac si tu dong)
+     * @param Request $request
+     * thuat toan scoring scoring (100)
+     * 40% ti le slot con trong -> (bac si trong nhieu lich -> uu tien)
+     * 35% danh gia trung binh (avg_rating / 5 * 35)
+     * 15% nam kinh nghiem (capped 20 nam -> 15d)
+     * 10% so luot danh gia 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function suggest(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|integer|exists:departments,department_id',
+            'work_date' => 'required|date|after_or_equal:today',
+        ]);
+
+        $deptId = (int) $request->department_id;
+        $workDate = $request->work_date;
+
+        // lay tat ca danh sach bac si active thuoc khoa 
+        $doctors = DB::table('doctors')->leftJoinSub(
+            DB::table('reviews')->select(
+                'doctor_id',
+                DB::raw('ROUND(AVG(rating), 2) as avg_rating'),
+                DB::raw('COUNT(*) as total_reviews')
+            )->groupBy('doctor_id'),
+            'rv',
+            'rv.doctor_id',
+            '=',
+            'doctors.doctor_id'
+        )->where('doctors.department_id', $deptId)->where('doctors.status', 1)->select(
+                'doctors.doctor_id',
+                'doctors.full_name',
+                'doctors.experience',
+                'doctors.price',
+                'doctors.avatar_url',
+                'doctors.bio',
+                DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
+                DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
+            )->get();
+
+        if ($doctors->isEmpty()) {
+            return response()->json(['suggested' => []]);
+        }
+
+        $doctorIds = $doctors->pluck('doctor_id')->toArray();
+
+        // kiem tra ngay nghi  
+        $daysOff = DB::table('doctordaysoff')
+            ->whereIn('doctor_id', $doctorIds)
+            ->where('off_date', $workDate)
+            ->pluck('doctor_id')
+            ->flip()
+            ->toArray();
+
+        // dem slot trong theo tung bac si trong ngay
+        $scheduleStats = DB::table('doctorschedules')
+            ->leftJoinSub(
+                DB::table('appointments')
+                    ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->groupBy('schedule_id'),
+                'bk',
+                'bk.schedule_id',
+                '=',
+                'doctorschedules.schedule_id'
+            )
+            ->whereIn('doctorschedules.doctor_id', $doctorIds)
+            ->where('doctorschedules.work_date', $workDate)
+            ->where('doctorschedules.status', 'Hoạt động')
+            ->select(
+                'doctorschedules.doctor_id',
+                DB::raw('SUM(doctorschedules.max_slot) as total_slots'),
+                DB::raw('SUM(COALESCE(bk.booked_count, 0)) as booked_count')
+            )
+            ->groupBy('doctorschedules.doctor_id')
+            ->get()
+            ->keyBy('doctor_id');
+
+        // tinh diem loc 
+        $scored = [];
+
+        foreach ($doctors as $doc) {
+            // bo qua bac si da nghi
+            if (isset($daysOff[$doc->doctor_id])) {
+                continue;
+            }
+
+            $stats = $scheduleStats->get($doc->doctor_id);
+            $totalSlots = $stats ? (int) $stats->total_slots : 0;
+            $bookedCount = $stats ? (int) $stats->booked_count : 0;
+            $available = max(0, $totalSlots - $bookedCount);
+
+            // bo cac bac si khong co lich or da full
+            if ($totalSlots === 0 || $available === 0) {
+                continue;
+            }
+
+            $avgRating = (float) $doc->avg_rating;
+            $totalReviews = (int) $doc->total_reviews;
+            $experience = (int) $doc->experience;
+
+            // Scoring
+            $slotScore = ($available / $totalSlots) * 40;
+            $ratingScore = ($avgRating / 5.0) * 35;
+            $expScore = (min($experience, 20) / 20) * 15;
+            $reviewScore = (min($totalReviews, 50) / 50) * 10;
+            $score = $slotScore + $ratingScore + $expScore + $reviewScore;
+
+            $scored[] = [
+                'doctor_id' => $doc->doctor_id,
+                'full_name' => $doc->full_name,
+                'experience' => $experience,
+                'price' => $doc->price,
+                'avatar_url' => $doc->avatar_url,
+                'bio' => $doc->bio,
+                'avg_rating' => $avgRating,
+                'total_reviews' => $totalReviews,
+                'available_slots' => $available,
+                'total_slots' => $totalSlots,
+                'score' => round($score, 2),
+            ];
+        }
+
+        // sap xep lay top 3
+        usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
+        $top3 = array_slice($scored, 0, 3);
+
+        return response()->json(['suggested' => $top3]);
+    }
+
+    public function timeslots(Request $request)
+    {
+        $request->validate([
+            'doctor_id' => 'required|integer|exists:doctors,doctor_id',
+            'work_date' => 'required|date|after_or_equal:today',
+        ]);
+
+        $doctorId = (int) $request->doctor_id;
+        $workDate = $request->work_date;
+
+        // check ngay nghi
+        $isDayOff = DB::table('doctordaysoff')
+            ->where('doctor_id', $doctorId)
+            ->where('off_date', $workDate)
+            ->exists();
+
+        if ($isDayOff) {
+            return response()->json(['day_off' => true, 'slots' => []]);
+        }
+
+        // lay lich bac si
+        $schedules = DB::table('doctorschedules')
+            ->where('doctor_id', $doctorId)
+            ->where('work_date', $workDate)
+            ->where('status', 'Hoạt động')
+            ->select(
+                'schedule_id',
+                'start_time',
+                'end_time',
+                'slot_duration',
+                'max_slot'
+            )
+            ->orderBy('start_time')
+            ->get();
+
+        if ($schedules->isEmpty()) {
+            return response()->json(['day_off' => false, 'slots' => []]);
+        }
+
+        // lay booking theo tung slot
+        $bookings = DB::table('appointments')
+            ->select(
+                'schedule_id',
+                'appointment_time',
+                DB::raw('COUNT(*) as booked_count')
+            )
+            ->whereIn('schedule_id', $schedules->pluck('schedule_id'))
+            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+            ->groupBy('schedule_id', 'appointment_time')
+            ->get()
+            ->groupBy('schedule_id');
+
+        // 4. Sinh slot
+        $slots = [];
+
+        foreach ($schedules as $sch) {
+
+            // map booking theo time cho lich schedule nay
+            $bookingMap = [];
+
+            if (isset($bookings[$sch->schedule_id])) {
+                foreach ($bookings[$sch->schedule_id] as $b) {
+                    $bookingMap[$b->appointment_time] = (int) $b->booked_count;
+                }
+            }
+
+            // tach gio
+            [$sh, $sm] = array_map('intval', explode(':', $sch->start_time));
+            [$eh, $em] = array_map('intval', explode(':', $sch->end_time));
+
+            $duration = (int) $sch->slot_duration;
+            $maxSlot = (int) $sch->max_slot;
+            $endMins = $eh * 60 + $em;
+
+            $curH = $sh;
+            $curM = $sm;
+
+            while ($curH * 60 + $curM + $duration <= $endMins) {
+
+                $timeStr = sprintf('%02d:%02d', $curH, $curM);
+
+                $endH = $curH + intdiv($curM + $duration, 60);
+                $endM = ($curM + $duration) % 60;
+                $endTimeStr = sprintf('%02d:%02d', $endH, $endM);
+
+                // lay booking theo tung slot
+                $booked = $bookingMap[$timeStr] ?? 0;
+
+                $isBooked = ($booked >= $maxSlot);
+
+                $slots[] = [
+                    'schedule_id' => $sch->schedule_id,
+                    'time' => $timeStr,
+                    'end_time' => $endTimeStr,
+                    'is_booked' => $isBooked,
+                    'max_slot' => $maxSlot,
+                    'booked' => $booked,
+                ];
+
+                // tang thoi gian
+                $curM += $duration;
+                if ($curM >= 60) {
+                    $curH += intdiv($curM, 60);
+                    $curM = $curM % 60;
+                }
+            }
+        }
+
+        // 5. sort lai
+        usort($slots, fn($a, $b) => strcmp($a['time'], $b['time']));
+
+        return response()->json(['day_off' => false, 'slots' => $slots]);
     }
 }
