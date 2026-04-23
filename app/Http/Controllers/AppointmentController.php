@@ -917,4 +917,130 @@ class AppointmentController extends Controller
 
         return response()->json(['day_off' => false, 'slots' => $slots]);
     }
+
+    // ================================================================
+    // 5. ƯỚC LƯỢNG THỜI GIAN CHỜ — GET /api/appointments/queue-info
+    // ================================================================
+    /**
+     * Lấy thông tin hàng đợi và ước lượng thời gian chờ
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     * 
+     * Dữ liệu trả về:
+     * {
+     *   "success": true,
+     *   "queue_number": 3,           // Số thứ tự của người dùng hiện tại
+     *   "people_ahead": 2,           // Số người đứng trước
+     *   "estimated_wait_minutes": 30, // Thời gian chờ dự kiến (phút)
+     *   "schedule_info": {
+     *     "start_time": "09:00",
+     *     "slot_duration": 15,
+     *     "max_slot": 20
+     *   },
+     *   "queue_details": [          // Danh sách những người đứng trước
+     *     {
+     *       "queue_number": 1,
+     *       "status": "Đã xác nhận",
+     *       "full_name": "Nguyễn Văn A" (chỉ hiển thị tên viết tắt)
+     *     }
+     *   ]
+     * }
+     */
+    public function getQueueInfo(Request $request)
+    {
+        $request->validate([
+            'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
+        ]);
+
+        $scheduleId = $request->schedule_id;
+
+        // 1. Lấy thông tin schedule
+        $schedule = DB::table('doctorschedules')
+            ->where('schedule_id', $scheduleId)
+            ->where('status', 'Hoạt động')
+            ->select(
+                'schedule_id',
+                'doctor_id',
+                'work_date',
+                'start_time',
+                'end_time',
+                'slot_duration',
+                'max_slot'
+            )
+            ->first();
+
+        if (!$schedule) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lịch khám không tồn tại'
+            ], 404);
+        }
+
+        // 2. Đếm số lượng appointment confirmed + waiting (không tính hold)
+        $appointments = DB::table('appointments')
+            ->where('schedule_id', $scheduleId)
+            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã khám'])
+            ->orderBy('queue_number', 'asc')
+            ->select(
+                'appointment_id',
+                'queue_number',
+                'status',
+                'user_id',
+                'appointment_time'
+            )
+            ->get();
+
+        $totalInQueue = $appointments->count();
+        $queueNumber = $totalInQueue + 1;
+        $peopleAhead = max(0, $totalInQueue);
+
+        // 3. Tính thời gian chờ dự kiến
+        // Công thức: số người trước * thời gian phục vụ trung bình
+        $estimatedWaitMinutes = $peopleAhead * ($schedule->slot_duration ?? 15);
+
+        // 4. Lấy danh sách những người đứng trước (chỉ lấy 5 người đầu tiên)
+        $queueDetails = [];
+        $appointmentsAhead = $appointments
+            ->filter(function($a) use ($queueNumber) {
+                return $a->queue_number < $queueNumber;
+            })
+            ->take(5);
+
+        foreach ($appointmentsAhead as $apt) {
+            $user = DB::table('users')
+                ->where('user_id', $apt->user_id)
+                ->select('user_id', 'full_name')
+                ->first();
+
+            if ($user) {
+                // Hiển thị tên viết tắt (VD: Nguyễn Văn A -> N.V.A)
+                $parts = explode(' ', trim($user->full_name));
+                if (count($parts) > 1) {
+                    $abbreviated = implode('.', array_map(fn($part) => substr($part, 0, 1), $parts)) . '.';
+                } else {
+                    $abbreviated = substr($user->full_name, 0, 3) . '.';
+                }
+
+                $queueDetails[] = [
+                    'queue_number' => $apt->queue_number,
+                    'status' => $apt->status,
+                    'abbreviated_name' => $abbreviated,
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'queue_number' => $queueNumber,
+            'people_ahead' => $peopleAhead,
+            'estimated_wait_minutes' => $estimatedWaitMinutes,
+            'schedule_info' => [
+                'start_time' => $schedule->start_time,
+                'slot_duration' => $schedule->slot_duration,
+                'max_slot' => $schedule->max_slot,
+            ],
+            'queue_details' => $queueDetails,
+        ]);
+    }
 }

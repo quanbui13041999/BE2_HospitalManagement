@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     // API gợi ý (AJAX) – đặt tên là appointments.suggest và appointments.timeslots
     Route::get('/api/appointments/suggest',   [AppointmentController::class, 'suggest'])->name('appointments.suggest');
     Route::get('/api/appointments/timeslots', [AppointmentController::class, 'timeslots'])->name('appointments.timeslots');
+    Route::get('/api/appointments/queue-info', [AppointmentController::class, 'getQueueInfo'])->name('appointments.queue-info');
 
     // Lịch sử + dời/hủy lịch hẹn
     Route::prefix('lich-hen')->name('appointments.')->group(function () {
