@@ -787,6 +787,10 @@ class AppointmentController extends Controller
 
     public function timeslots(Request $request)
     {
+        $request->validate([
+            'doctor_id' => 'required|integer|exists:doctors,doctor_id',
+            'work_date' => 'required|date|after_or_equal:today',
+        ]);
         return response()->json(['day_off' => false, 'slots' => $slots]);
     }
 }
