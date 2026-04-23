@@ -1170,7 +1170,7 @@
         // BASE DATA — truyền từ PHP (preload 14 ngày đầu cho các route
         // bác sĩ → không cần AJAX lần đầu)
         // ══════════════════════════════════════════════════════════════
-        const doctorsByDept = JSON.parse('{!! addslashes(json_encode($doctorsByDept)) !!}');
+        const doctorsByDept = {!! json_encode($doctorsByDept, JSON_UNESCAPED_SLASHES) !!};
 
         // Route URLs
         const ROUTE_SUGGEST = '{{ route("appointments.suggest") }}';
@@ -1352,9 +1352,9 @@
             if (card) card.classList.add('selected-sug');
         }
 
-        ══════════════════════════════════════════════════════════════
-        FEATURE 2 — DYNAMIC TIME SLOTS
-        ══════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════
+        // FEATURE 2 — DYNAMIC TIME SLOTS
+        // ══════════════════════════════════════════════════════════════
         function loadTimeslots() {
             if (!state.doctor || !state.date) return;
 

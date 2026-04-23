@@ -67,6 +67,7 @@ class AppointmentController extends Controller
             )
             ->get()
             ->groupBy('department_id')
+            ->mapWithKeys(fn($group, $key) => [(string)$key => $group])
             ->toArray();
 
         $scheduleData = DB::table('doctorschedules')
