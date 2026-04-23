@@ -652,10 +652,13 @@ class AppointmentController extends Controller
         return redirect()->route('appointments.index')
             ->with('success', 'Đã hủy lịch hẹn #' . $id . ' thành công.');
     }
-
+    
     public function suggest(Request $request)
     {
-       
+       $request->validate([
+        'department_id' => 'required|integer|exists:departments,department_id',
+        'work_date'     => 'required|date|after_or_equal:today',
+    ]);
         return response()->json(['suggested' => $top3]);
     }
 }
