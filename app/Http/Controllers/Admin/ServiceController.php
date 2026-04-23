@@ -17,8 +17,7 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function index(Request $request)
     {
-        // Tab hiện tại
-        $tab = $request->get('tab', 'services'); // services | prices | history
+        $tab = $request->get('tab', 'services');
 
         // ── Tab 1: Danh sách dịch vụ ──────────────────────────────
         $query = Service::with(['department', 'activePrices']);
@@ -42,7 +41,6 @@ class ServiceController extends Controller
         $departments = Department::where('status', 1)->orderBy('department_name')->get();
 
         // ── Tab 2: Bảng giá 3 cột ─────────────────────────────────
-        // Lấy tất cả dịch vụ active + giá hiện hành nhóm theo loại
         $pricesByType = [];
         foreach (['Thường', 'BHYT', 'VIP'] as $type) {
             $pricesByType[$type] = DB::table('ServicePrices as sp')
@@ -59,25 +57,15 @@ class ServiceController extends Controller
                 ->get();
         }
 
-        // // ── Tab 3: Lịch sử thay đổi giá ──────────────────────────
-        // $priceHistory = DB::table('ServicePriceLogs as l')
-        //     ->join('Services as s', 's.service_id', '=', 'l.service_id')
-        //     ->join('Users as u', 'u.user_id', '=', 'l.changed_by')
-        //     ->select(
-        //         'l.*',
-        //         's.service_name',
-        //         's.service_code',
-        //         'u.full_name as changed_by_name'
-        //     )
-        //     ->orderByDesc('l.changed_at')
-        //     ->paginate(30, ['*'], 'history_page')
-        //     ->withQueryString();
+        // ── Tab 3: Lịch sử (chưa có bảng ServicePriceLogs) ────────
+        // Trả về collection rỗng tạm thời, bật lại khi đã tạo migration
+        $priceHistory = collect();
 
         $priceTypes = ServicePrice::PRICE_TYPES;
 
         return view('admin.services.index', compact(
             'services', 'departments', 'pricesByType',
-             'priceTypes', 'tab'
+            'priceHistory', 'priceTypes', 'tab'
         ));
     }
 
@@ -97,13 +85,13 @@ class ServiceController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'service_code'     => 'required|string|max:30|unique:Services,service_code',
-            'service_name'     => 'required|string|max:150',
-            'department_id'    => 'nullable|exists:Departments,department_id',
-            'description'      => 'nullable|string|max:500',
-            'duration_minutes' => 'required|integer|min:5|max:480',
-            'status'           => 'required|boolean',
-            'prices'           => 'nullable|array',
+            'service_code'            => 'required|string|max:30|unique:Services,service_code',
+            'service_name'            => 'required|string|max:150',
+            'department_id'           => 'nullable|exists:Departments,department_id',
+            'description'             => 'nullable|string|max:500',
+            'duration_minutes'        => 'required|integer|min:5|max:480',
+            'status'                  => 'required|boolean',
+            'prices'                  => 'nullable|array',
             'prices.*.price_type'     => 'required_with:prices|in:' . implode(',', ServicePrice::PRICE_TYPES),
             'prices.*.price'          => 'required_with:prices|numeric|min:0',
             'prices.*.effective_date' => 'required_with:prices|date',
@@ -121,7 +109,7 @@ class ServiceController extends Controller
             if ($request->filled('prices')) {
                 foreach ($request->prices as $p) {
                     if (empty($p['price'])) continue;
-                    $price = $service->prices()->create([
+                    $service->prices()->create([
                         'price_type'     => $p['price_type'],
                         'price'          => $p['price'],
                         'effective_date' => $p['effective_date'],
@@ -129,14 +117,6 @@ class ServiceController extends Controller
                         'created_by'     => Auth::id(),
                         'created_at'     => now(),
                     ]);
-                    // // Ghi log khởi tạo giá
-                    // $this->logPriceChange(
-                    //     serviceId: $service->service_id,
-                    //     priceType: $p['price_type'],
-                    //     oldPrice:  null,
-                    //     newPrice:  $p['price'],
-                    //     reason:    'Khởi tạo dịch vụ'
-                    // );
                 }
             }
         });
@@ -190,7 +170,7 @@ class ServiceController extends Controller
     }
 
     // ----------------------------------------------------------------
-    // Toggle trạng thái (Hoạt động ↔ Tạm ngưng)
+    // Toggle trạng thái
     // ----------------------------------------------------------------
     public function toggleStatus(Service $service)
     {
@@ -203,7 +183,6 @@ class ServiceController extends Controller
     //  QUẢN LÝ BẢNG GIÁ
     // ================================================================
 
-    // Thêm mức giá mới
     public function storePrice(Request $request, Service $service)
     {
         $request->validate([
@@ -222,19 +201,12 @@ class ServiceController extends Controller
             'created_at'     => now(),
         ]);
 
-        // Ghi log
-        $this->logPriceChange(
-            serviceId: $service->service_id,
-            priceType: $request->price_type,
-            oldPrice:  null,
-            newPrice:  $request->price,
-            reason:    $request->get('reason', 'Thêm mức giá mới')
-        );
+        // logPriceChange tạm comment — bật lại sau khi tạo bảng ServicePriceLogs
+        // $this->logPriceChange($service->service_id, $request->price_type, null, $request->price, 'Thêm mức giá mới');
 
         return back()->with('success', 'Đã thêm mức giá mới.');
     }
 
-    // Cập nhật mức giá + ghi log lịch sử
     public function updatePrice(Request $request, Service $service, ServicePrice $price)
     {
         abort_if($price->service_id !== $service->service_id, 403);
@@ -251,21 +223,14 @@ class ServiceController extends Controller
 
         $price->update($request->only(['price_type', 'price', 'effective_date', 'end_date']));
 
-        // Ghi log chỉ khi giá thực sự thay đổi
-        if ((float) $oldPrice !== (float) $request->price || $oldType !== $request->price_type) {
-            $this->logPriceChange(
-                serviceId: $service->service_id,
-                priceType: $request->price_type,
-                oldPrice:  $oldPrice,
-                newPrice:  $request->price,
-                reason:    $request->get('reason', 'Cập nhật giá')
-            );
-        }
+        // logPriceChange tạm comment — bật lại sau khi tạo bảng ServicePriceLogs
+        // if ((float) $oldPrice !== (float) $request->price || $oldType !== $request->price_type) {
+        //     $this->logPriceChange($service->service_id, $request->price_type, $oldPrice, $request->price, 'Cập nhật giá');
+        // }
 
         return back()->with('success', 'Cập nhật giá thành công.');
     }
 
-    // Xoá mức giá
     public function destroyPrice(Service $service, ServicePrice $price)
     {
         abort_if($price->service_id !== $service->service_id, 403);
@@ -274,25 +239,18 @@ class ServiceController extends Controller
     }
 
     // ----------------------------------------------------------------
-    // Helper: ghi log lịch sử thay đổi giá
+    // Helper: ghi log — BẬT LẠI sau khi chạy migration ServicePriceLogs
     // ----------------------------------------------------------------
-    private function logPriceChange(
-        int    $serviceId,
-        string $priceType,
-        ?float $oldPrice,
-        float  $newPrice,
-        string $reason = ''
-    ): void {
-        // Bảng ServicePriceLogs cần được tạo trong migration:
-        // service_id, price_type, old_price, new_price, changed_by, changed_at, reason
-        DB::table('ServicePriceLogs')->insert([
-            'service_id'  => $serviceId,
-            'price_type'  => $priceType,
-            'old_price'   => $oldPrice,
-            'new_price'   => $newPrice,
-            'changed_by'  => Auth::id(),
-            'changed_at'  => now(),
-            'reason'      => $reason,
-        ]);
-    }
+    // private function logPriceChange(int $serviceId, string $priceType, ?float $oldPrice, float $newPrice, string $reason = ''): void
+    // {
+    //     DB::table('ServicePriceLogs')->insert([
+    //         'service_id'  => $serviceId,
+    //         'price_type'  => $priceType,
+    //         'old_price'   => $oldPrice,
+    //         'new_price'   => $newPrice,
+    //         'changed_by'  => Auth::id(),
+    //         'changed_at'  => now(),
+    //         'reason'      => $reason,
+    //     ]);
+    // }
 }
