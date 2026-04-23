@@ -13,9 +13,7 @@ use App\Http\Controllers\HomeController;
 // TRANG CHỦ & AUTH
 // ============================================================
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::get('/', [App\Http\Controllers\User\ServiceController::class, 'index'])->name('home');
 
 Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
