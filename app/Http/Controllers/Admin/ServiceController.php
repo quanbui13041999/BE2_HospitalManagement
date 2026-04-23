@@ -58,7 +58,6 @@ class ServiceController extends Controller
         }
 
         // ── Tab 3: Lịch sử (chưa có bảng ServicePriceLogs) ────────
-        // Trả về collection rỗng tạm thời, bật lại khi đã tạo migration
         $priceHistory = collect();
 
         $priceTypes = ServicePrice::PRICE_TYPES;
@@ -170,6 +169,31 @@ class ServiceController extends Controller
     }
 
     // ----------------------------------------------------------------
+    // XOÁ dịch vụ (kèm toàn bộ bảng giá)
+    // ----------------------------------------------------------------
+    public function destroy(Service $service)
+    {
+        // Kiểm tra xem dịch vụ có đang được dùng trong lịch đặt không
+        // (bật lại khi có bảng Appointments / AppointmentServices)
+        // $hasBookings = DB::table('AppointmentServices')
+        //     ->where('service_id', $service->service_id)
+        //     ->exists();
+        // if ($hasBookings) {
+        //     return back()->with('error', 'Không thể xoá dịch vụ đang có lịch đặt. Hãy tạm ngưng thay thế.');
+        // }
+
+        DB::transaction(function () use ($service) {
+            // Xoá toàn bộ bảng giá trước
+            $service->prices()->delete();
+            // Xoá dịch vụ
+            $service->delete();
+        });
+
+        return redirect()->route('admin.services.index')
+            ->with('success', "Đã xoá dịch vụ \"{$service->service_name}\" thành công.");
+    }
+
+    // ----------------------------------------------------------------
     // Toggle trạng thái
     // ----------------------------------------------------------------
     public function toggleStatus(Service $service)
@@ -201,9 +225,6 @@ class ServiceController extends Controller
             'created_at'     => now(),
         ]);
 
-        // logPriceChange tạm comment — bật lại sau khi tạo bảng ServicePriceLogs
-        // $this->logPriceChange($service->service_id, $request->price_type, null, $request->price, 'Thêm mức giá mới');
-
         return back()->with('success', 'Đã thêm mức giá mới.');
     }
 
@@ -218,15 +239,7 @@ class ServiceController extends Controller
             'end_date'       => 'nullable|date|after_or_equal:effective_date',
         ]);
 
-        $oldPrice = $price->price;
-        $oldType  = $price->price_type;
-
         $price->update($request->only(['price_type', 'price', 'effective_date', 'end_date']));
-
-        // logPriceChange tạm comment — bật lại sau khi tạo bảng ServicePriceLogs
-        // if ((float) $oldPrice !== (float) $request->price || $oldType !== $request->price_type) {
-        //     $this->logPriceChange($service->service_id, $request->price_type, $oldPrice, $request->price, 'Cập nhật giá');
-        // }
 
         return back()->with('success', 'Cập nhật giá thành công.');
     }
