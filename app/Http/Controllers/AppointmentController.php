@@ -652,13 +652,22 @@ class AppointmentController extends Controller
         return redirect()->route('appointments.index')
             ->with('success', 'Đã hủy lịch hẹn #' . $id . ' thành công.');
     }
-    
+
     public function suggest(Request $request)
     {
-       $request->validate([
-        'department_id' => 'required|integer|exists:departments,department_id',
-        'work_date'     => 'required|date|after_or_equal:today',
-    ]);
+        $request->validate([
+            'department_id' => 'required|integer|exists:departments,department_id',
+            'work_date' => 'required|date|after_or_equal:today',
+        ]);
+
+        $deptId = (int) $request->department_id;
+        $workDate = $request->work_date;
+
+        // lay tat ca danh sach bac si active thuoc khoa 
+        $doctor = DB::table('doctor')->leftJoinSub(
+            
+        )  
+
         return response()->json(['suggested' => $top3]);
     }
 }
