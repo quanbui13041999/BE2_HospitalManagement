@@ -737,7 +737,7 @@ class AppointmentController extends Controller
         $scored = [];
 
         foreach ($doctors as $doc) {
-            // Bỏ qua bác sĩ nghỉ
+            // bo qua bac si da nghi
             if (isset($daysOff[$doc->doctor_id])) {
                 continue;
             }
@@ -747,7 +747,7 @@ class AppointmentController extends Controller
             $bookedCount = $stats ? (int) $stats->booked_count : 0;
             $available = max(0, $totalSlots - $bookedCount);
 
-            // Bỏ bác sĩ không có lịch hoặc đã full
+            // bo cac bac si khong co lich or da full
             if ($totalSlots === 0 || $available === 0) {
                 continue;
             }
@@ -782,5 +782,6 @@ class AppointmentController extends Controller
         usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
         $top3 = array_slice($scored, 0, 3);
 
+        return response()->json(['suggested' => $top3]);
     }
 }
