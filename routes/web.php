@@ -5,8 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\tiensucontroler;
-use App\Http\Controllers\thanhvienuudai;
-use App\Http\Controllers\MembershipController; // Phải có dòng này ở đầu file
+use App\Http\Controllers\MembershipController; 
 // Trang chủ
 Route::get('/', function () {
     return view('welcome');
@@ -41,7 +40,7 @@ Route::middleware('auth')->group(function () {
 
     // Hủy lịch hẹn
     Route::post('/lich-hen/{id}/huy', [AppointmentController::class, 'cancel'])->name('appointments.cancel');
-    Route::get('/home', [HomeController::class, 'index'])->name('home')->middleware('auth');
+    Route::get('/trangchu', [HomeController::class, 'index'])->name('Home.trangchu')->middleware('auth');
     //xem tien su
     Route::get('/tiensu', [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
 

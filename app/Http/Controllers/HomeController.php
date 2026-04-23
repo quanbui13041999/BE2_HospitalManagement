@@ -3,15 +3,16 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Auth; // Phải có dòng này để lấy user
 
 class HomeController extends Controller
 {
     public function index()
     {
-        // Lấy thông tin user đang đăng nhập để hiển thị (tùy chọn)
+       
         $user = Auth::user();
-        
-        return view('home', compact('user'));
+
+     
+        return view('Home.trangchu', compact('user'));
     }
 }

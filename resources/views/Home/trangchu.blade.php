@@ -86,7 +86,7 @@
                         <a class="nav-link active text-primary" href="#"><i class="fas fa-home me-2"></i>Tổng quan</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-dark" href="booking"><i class="fas fa-calendar-check me-2"></i>Lịch hẹn</a>
+                        <a class="nav-link text-dark" href="dat-lich"><i class="fas fa-calendar-check me-2"></i>Lịch hẹn</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link text-dark" href="#"><i class="fas fa-user-injured me-2"></i>Bệnh nhân</a>
