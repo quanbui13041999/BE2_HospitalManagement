@@ -54,7 +54,7 @@
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="#">
+                        <a class="dropdown-item" href="thethanhvien">
                             <i class="fas fa-star"></i> Thành viên ưu đãi
                         </a>
                     </li>

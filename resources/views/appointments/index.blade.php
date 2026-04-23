@@ -710,7 +710,7 @@
     </a>
 
     <div class="topbar-center">
-        <a href="{{ route('home') }}">🏠 Trang chủ</a>
+        <a href="home">🏠 Trang chủ</a>
         <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
         <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
     </div>
