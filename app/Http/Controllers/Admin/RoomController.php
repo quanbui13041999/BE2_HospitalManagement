@@ -9,6 +9,8 @@ use App\Models\DoctorSchedule;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class RoomController extends Controller
 {
@@ -48,8 +50,20 @@ class RoomController extends Controller
         // ── Lịch theo tuần (7 ngày từ đầu tuần) ──────────────────
         $weekStart  = now()->startOfWeek();
         $weekDates  = collect(range(0, 6))->map(fn($d) => $weekStart->copy()->addDays($d));
-        $timeSlots  = ['07:00','08:00','09:00','10:00','11:00','12:00',
-                       '13:00','14:00','15:00','16:00','17:00','18:00'];
+        $timeSlots  = [
+            '07:00',
+            '08:00',
+            '09:00',
+            '10:00',
+            '11:00',
+            '12:00',
+            '13:00',
+            '14:00',
+            '15:00',
+            '16:00',
+            '17:00',
+            '18:00'
+        ];
 
         $weekSchedules = DoctorSchedule::with(['doctor', 'room'])
             ->whereBetween('work_date', [$weekStart->toDateString(), $weekStart->copy()->endOfWeek()->toDateString()])
@@ -64,14 +78,23 @@ class RoomController extends Controller
         $allRooms     = Room::where('status', '!=', 'Bảo trì')->orderBy('room_code')->get();
 
         return view('admin.rooms.index', compact(
-            'rooms', 'stats', 'todaySchedules', 'weekDates',
-            'weekSchedules', 'timeSlots', 'departments',
-            'roomTypes', 'roomStatuses', 'doctors', 'allRooms'
+            'rooms',
+            'stats',
+            'todaySchedules',
+            'weekDates',
+            'weekStart',        // ← THÊM DÒNG NÀY
+            'weekSchedules',
+            'timeSlots',
+            'departments',
+            'roomTypes',
+            'roomStatuses',
+            'doctors',
+            'allRooms'
         ));
     }
 
     // ----------------------------------------------------------------
-    // Cập nhật nhanh trạng thái phòng (AJAX-friendly)
+    // Cập nhật nhanh trạng thái phòng
     // ----------------------------------------------------------------
     public function updateStatus(Request $request, Room $room)
     {
@@ -180,10 +203,10 @@ class RoomController extends Controller
     //  QUẢN LÝ CA TRỰC (DoctorSchedules)
     // ================================================================
 
-    // Trang phân bổ ca theo ngày (lưới + sidebar)
+    // Trang phân bổ ca theo ngày
     public function scheduleIndex(Request $request)
     {
-        $date  = $request->get('date', today()->toDateString());
+        $date = $request->get('date', today()->toDateString());
 
         $rooms = Room::with([
             'department',
@@ -197,6 +220,67 @@ class RoomController extends Controller
         $statuses    = DoctorSchedule::STATUSES;
 
         return view('admin.rooms.schedule-index', compact('rooms', 'doctors', 'departments', 'date', 'statuses'));
+    }
+
+    // ================================================================
+    //  XEM LỊCH PHÂN BỔ ĐẦY ĐỦ (TẤT CẢ CÁC CA)
+    // ================================================================
+    public function scheduleAll(Request $request)
+    {
+        // Lấy tất cả schedules, sắp xếp theo ngày gần nhất trước
+        $query = DoctorSchedule::with(['doctor', 'room', 'doctor.department']);
+
+        // Lọc theo ngày bắt đầu
+        if ($request->filled('from_date')) {
+            $query->whereDate('work_date', '>=', $request->from_date);
+        }
+
+        // Lọc theo ngày kết thúc
+        if ($request->filled('to_date')) {
+            $query->whereDate('work_date', '<=', $request->to_date);
+        }
+
+        // Lọc theo bác sĩ
+        if ($request->filled('doctor_id')) {
+            $query->where('doctor_id', $request->doctor_id);
+        }
+
+        // Lọc theo phòng
+        if ($request->filled('room_id')) {
+            $query->where('room_id', $request->room_id);
+        }
+
+        // Lọc theo trạng thái
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $schedules = $query->orderBy('work_date', 'desc')
+            ->orderBy('start_time', 'asc')
+            ->paginate(20);
+
+        // ⚠️ THỐNG KÊ - BỎ QUA booked_slots VÌ KHÔNG CÓ TRONG DB
+        // Sử dụng accessor để lấy số lượng đã đặt từ appointments
+        $allSchedules = DoctorSchedule::with('appointments')->get();
+        $totalBooked = 0;
+        foreach ($allSchedules as $sch) {
+            $totalBooked += $sch->booked_slots; // Dùng accessor, không phải cột trong DB
+        }
+
+        $stats = [
+            'total' => DoctorSchedule::count(),
+            'active' => DoctorSchedule::where('status', 'Hoạt động')->count(),
+            'paused' => DoctorSchedule::where('status', 'Tạm dừng')->count(),
+            'cancelled' => DoctorSchedule::where('status', 'Đã huỷ')->count(),
+            'total_slots' => DoctorSchedule::sum('max_slot'),
+            'total_booked' => $totalBooked, // Sử dụng biến đã tính
+        ];
+
+        $doctors = Doctor::where('status', 1)->orderBy('full_name')->get();
+        $rooms = Room::orderBy('room_code')->get();
+        $statuses = DoctorSchedule::STATUSES;
+
+        return view('admin.rooms.schedule-all', compact('schedules', 'stats', 'doctors', 'rooms', 'statuses'));
     }
 
     // Form tạo ca mới
@@ -213,12 +297,12 @@ class RoomController extends Controller
         return view('admin.rooms.schedule-create', compact('rooms', 'doctors', 'statuses', 'selectedRoom'));
     }
 
-    // Lưu ca mới — kiểm tra trùng bác sĩ + trùng phòng
+    // Lưu ca mới
     public function storeSchedule(Request $request)
     {
         $request->validate([
             'doctor_id'     => 'required|exists:Doctors,doctor_id',
-            'room_id'       => 'nullable|exists:Rooms,room_id',
+            'room_id'       => 'required|exists:Rooms,room_id',
             'work_date'     => 'required|date|after_or_equal:today',
             'start_time'    => 'required|date_format:H:i',
             'end_time'      => 'required|date_format:H:i|after:start_time',
@@ -231,6 +315,12 @@ class RoomController extends Controller
             'end_time.after'           => 'Giờ kết thúc phải sau giờ bắt đầu.',
         ]);
 
+        // Kiểm tra phòng có đang bảo trì không
+        $room = Room::find($request->room_id);
+        if ($room && $room->status === 'Bảo trì') {
+            return back()->withErrors(['room_id' => 'Phòng đang bảo trì, không thể phân ca.'])->withInput();
+        }
+
         // Kiểm tra trùng bác sĩ
         if ($this->hasScheduleConflict($request->doctor_id, $request->work_date, $request->start_time, $request->end_time)) {
             return back()
@@ -239,16 +329,22 @@ class RoomController extends Controller
         }
 
         // Kiểm tra trùng phòng
-        if ($request->filled('room_id') && $this->hasRoomConflict($request->room_id, $request->work_date, $request->start_time, $request->end_time)) {
+        if ($this->hasRoomConflict($request->room_id, $request->work_date, $request->start_time, $request->end_time)) {
             return back()
                 ->withErrors(['room_id' => 'Phòng đã có ca khác trùng giờ trong ngày này.'])
                 ->withInput();
         }
 
         DoctorSchedule::create($request->only([
-            'doctor_id', 'room_id', 'work_date',
-            'start_time', 'end_time', 'slot_duration',
-            'max_slot', 'status', 'note',
+            'doctor_id',
+            'room_id',
+            'work_date',
+            'start_time',
+            'end_time',
+            'slot_duration',
+            'max_slot',
+            'status',
+            'note',
         ]));
 
         return redirect()->route('admin.rooms.schedule.index', ['date' => $request->work_date])
@@ -271,7 +367,7 @@ class RoomController extends Controller
     {
         $request->validate([
             'doctor_id'     => 'required|exists:Doctors,doctor_id',
-            'room_id'       => 'nullable|exists:Rooms,room_id',
+            'room_id'       => 'required|exists:Rooms,room_id',
             'work_date'     => 'required|date',
             'start_time'    => 'required|date_format:H:i',
             'end_time'      => 'required|date_format:H:i|after:start_time',
@@ -283,11 +379,24 @@ class RoomController extends Controller
 
         // Kiểm tra trùng bác sĩ (bỏ qua bản ghi hiện tại)
         if ($this->hasScheduleConflict(
-            $request->doctor_id, $request->work_date,
-            $request->start_time, $request->end_time,
+            $request->doctor_id,
+            $request->work_date,
+            $request->start_time,
+            $request->end_time,
             $schedule->schedule_id
         )) {
             return back()->withErrors(['doctor_id' => 'Bác sĩ đã có ca làm việc trùng giờ.'])->withInput();
+        }
+
+        // Kiểm tra trùng phòng (bỏ qua bản ghi hiện tại)
+        if ($this->hasRoomConflict(
+            $request->room_id,
+            $request->work_date,
+            $request->start_time,
+            $request->end_time,
+            $schedule->schedule_id
+        )) {
+            return back()->withErrors(['room_id' => 'Phòng đã có ca khác trùng giờ.'])->withInput();
         }
 
         // Kiểm tra max_slot >= booked_slots
@@ -298,9 +407,15 @@ class RoomController extends Controller
         }
 
         $schedule->update($request->only([
-            'doctor_id', 'room_id', 'work_date',
-            'start_time', 'end_time', 'slot_duration',
-            'max_slot', 'status', 'note',
+            'doctor_id',
+            'room_id',
+            'work_date',
+            'start_time',
+            'end_time',
+            'slot_duration',
+            'max_slot',
+            'status',
+            'note',
         ]));
 
         return redirect()->route('admin.rooms.schedule.index', ['date' => $schedule->work_date])
@@ -321,7 +436,7 @@ class RoomController extends Controller
             ->with('success', 'Đã xoá ca làm việc.');
     }
 
-    // ── AJAX: Kiểm tra xung đột lịch bác sĩ trước khi submit ──────
+    // AJAX: Kiểm tra xung đột lịch bác sĩ
     public function checkConflict(Request $request)
     {
         $conflict = $this->hasScheduleConflict(
@@ -349,12 +464,10 @@ class RoomController extends Controller
         $q = DoctorSchedule::where('doctor_id', $doctorId)
             ->where('work_date', $workDate)
             ->where(function ($q) use ($startTime, $endTime) {
-                $q->whereBetween('start_time', [$startTime, $endTime])
-                  ->orWhereBetween('end_time', [$startTime, $endTime])
-                  ->orWhere(function ($q2) use ($startTime, $endTime) {
-                      $q2->where('start_time', '<=', $startTime)
-                         ->where('end_time', '>=', $endTime);
-                  });
+                $q->where(function ($q2) use ($startTime, $endTime) {
+                    $q2->where('start_time', '<', $endTime)
+                        ->where('end_time', '>', $startTime);
+                });
             });
 
         if ($excludeId) {
@@ -374,12 +487,10 @@ class RoomController extends Controller
         $q = DoctorSchedule::where('room_id', $roomId)
             ->where('work_date', $workDate)
             ->where(function ($q) use ($startTime, $endTime) {
-                $q->whereBetween('start_time', [$startTime, $endTime])
-                  ->orWhereBetween('end_time', [$startTime, $endTime])
-                  ->orWhere(function ($q2) use ($startTime, $endTime) {
-                      $q2->where('start_time', '<=', $startTime)
-                         ->where('end_time', '>=', $endTime);
-                  });
+                $q->where(function ($q2) use ($startTime, $endTime) {
+                    $q2->where('start_time', '<', $endTime)
+                        ->where('end_time', '>', $startTime);
+                });
             });
 
         if ($excludeId) {
@@ -387,5 +498,114 @@ class RoomController extends Controller
         }
 
         return $q->exists();
+    }
+
+    // Thêm method này vào RoomController.php
+
+    // ================================================================
+    //  LỊCH PHÂN BỔ THEO TUẦN CHO 1 PHÒNG
+    // ================================================================
+    public function weeklySchedule(Request $request, $roomId = null)
+    {
+        // Lấy danh sách phòng để chọn
+        $rooms = Room::orderBy('room_code')->get();
+
+        // Nếu có roomId được chọn hoặc từ request
+        $selectedRoomId = $request->get('room_id', $roomId);
+
+        if ($selectedRoomId) {
+            $selectedRoom = Room::with('department')->find($selectedRoomId);
+        } else {
+            $selectedRoom = $rooms->first();
+            $selectedRoomId = $selectedRoom ? $selectedRoom->room_id : null;
+        }
+
+        // Lấy tuần được chọn (mặc định là tuần hiện tại)
+        $weekStart = $request->filled('week_start')
+            ? Carbon::parse($request->week_start)->startOfWeek()
+            : now()->startOfWeek();
+
+        $weekDates = collect(range(0, 6))->map(fn($d) => $weekStart->copy()->addDays($d));
+        $timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+
+        // Lấy schedules cho phòng được chọn trong tuần
+        $weekSchedules = collect();
+        if ($selectedRoomId) {
+            $weekSchedules = DoctorSchedule::with(['doctor', 'room'])
+                ->where('room_id', $selectedRoomId)
+                ->whereBetween('work_date', [$weekStart->toDateString(), $weekStart->copy()->endOfWeek()->toDateString()])
+                ->get()
+                ->groupBy(fn($s) => $s->work_date->format('Y-m-d'));
+        }
+
+        $prevWeek = $weekStart->copy()->subWeek()->toDateString();
+        $nextWeek = $weekStart->copy()->addWeek()->toDateString();
+
+        return view('admin.rooms.weekly-schedule', compact(
+            'rooms',
+            'selectedRoom',
+            'selectedRoomId',
+            'weekDates',
+            'weekStart',
+            'timeSlots',
+            'weekSchedules',
+            'prevWeek',
+            'nextWeek'
+        ));
+    }
+    // AJAX lấy lịch tuần cho 1 phòng
+    public function weeklyScheduleAjax(Request $request)
+    {
+        $roomId = $request->get('room_id');
+        $weekStart = $request->filled('week_start')
+            ? Carbon::parse($request->week_start)->startOfWeek()
+            : now()->startOfWeek();
+
+        if (!$roomId) {
+            return response()->json(['success' => false, 'message' => 'Chưa chọn phòng']);
+        }
+
+        $room = Room::find($roomId);
+        if (!$room) {
+            return response()->json(['success' => false, 'message' => 'Phòng không tồn tại']);
+        }
+
+        $weekDates = collect(range(0, 6))->map(function ($d) use ($weekStart) {
+            $date = $weekStart->copy()->addDays($d);
+            return [
+                'full_date' => $date->toDateString(),
+                'date' => $date->format('d/m'),
+                'day' => $date->isoFormat('dd'),
+            ];
+        });
+
+        $schedules = DoctorSchedule::with(['doctor', 'room'])
+            ->where('room_id', $roomId)
+            ->whereBetween('work_date', [$weekStart->toDateString(), $weekStart->copy()->endOfWeek()->toDateString()])
+            ->get()
+            ->groupBy(fn($s) => $s->work_date->format('Y-m-d'))
+            ->map(function ($items) {
+                return $items->map(function ($item) {
+                    return [
+                        'start_time' => $item->start_time,
+                        'end_time' => $item->end_time,
+                        'status' => $item->status,
+                        'doctor_name' => $item->doctor->full_name ?? '',
+                        'room_code' => $item->room->room_code ?? '',
+                    ];
+                })->toArray();
+            });
+
+        return response()->json([
+            'success' => true,
+            'room_id' => $roomId,
+            'room_code' => $room->room_code,
+            'room_name' => $room->room_name,
+            'week_start' => $weekStart->format('d/m'),
+            'week_end' => $weekStart->copy()->endOfWeek()->format('d/m/Y'),
+            'week_dates' => $weekDates,
+            'schedules' => $schedules,
+            'today' => now()->format('d/m'),
+        ]);
     }
 }
