@@ -281,10 +281,10 @@
 
     {{-- HAI CỘT CHÍNH --}}
     <div class="row g-4">
-        
+
         {{-- ========== CỘT TRÁI: Lưới phòng ========== --}}
         <div class="col-lg-8">
-            
+
             {{-- Bộ lọc nhỏ --}}
             <div class="d-flex gap-2 mb-3 align-items-center">
                 <span class="fw-semibold text-muted small">Lọc:</span>
@@ -358,7 +358,7 @@
         {{-- ========== CỘT PHẢI: Phân bổ hôm nay + Hành động nhanh ========== --}}
         <div class="col-lg-4">
             <div class="mt-0 mt-lg-0">
-                
+
                 {{-- Phân bổ ca hôm nay --}}
                 <div class="card shadow-sm mb-3">
                     <div class="card-header fw-semibold d-flex align-items-center gap-2">
@@ -372,31 +372,31 @@
                         @php
                         $caGroups = $todaySchedules->groupBy(function($s) {
                         $h = (int) substr($s->start_time, 0, 2);
-                        if ($h < 12) return 'Ca Sáng (07:00 – 12:00)';
-                        if ($h < 17) return 'Ca Chiều (13:00 – 17:00)';
-                        return 'Ca Tối (17:00 – 22:00)';
-                        });
-                        @endphp
-                        @forelse($caGroups as $caLabel => $caSchedules)
-                        <div class="small text-muted fw-semibold text-uppercase mb-1 mt-2">{{ $caLabel }}</div>
-                        @foreach($caSchedules as $s)
-                        <div class="sch-row">
-                            <div class="sch-dot {{ $s->status==='Hoạt động' ? 'on' : '' }}"></div>
-                            <div class="flex-fill">
-                                <div class="fw-semibold small">{{ $s->room->room_code ?? '—' }}</div>
-                                <div class="text-muted" style="font-size:11.5px">{{ $s->doctor->full_name ?? '—' }}</div>
+                        if ($h < 12) return 'Ca Sáng (07:00 – 12:00)' ;
+                            if ($h < 17) return 'Ca Chiều (13:00 – 17:00)' ;
+                            return 'Ca Tối (17:00 – 22:00)' ;
+                            });
+                            @endphp
+                            @forelse($caGroups as $caLabel=> $caSchedules)
+                            <div class="small text-muted fw-semibold text-uppercase mb-1 mt-2">{{ $caLabel }}</div>
+                            @foreach($caSchedules as $s)
+                            <div class="sch-row">
+                                <div class="sch-dot {{ $s->status==='Hoạt động' ? 'on' : '' }}"></div>
+                                <div class="flex-fill">
+                                    <div class="fw-semibold small">{{ $s->room->room_code ?? '—' }}</div>
+                                    <div class="text-muted" style="font-size:11.5px">{{ $s->doctor->full_name ?? '—' }}</div>
+                                </div>
+                                <span class="badge {{ $s->status==='Hoạt động' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}" style="font-size:10px">
+                                    {{ $s->status }}
+                                </span>
                             </div>
-                            <span class="badge {{ $s->status==='Hoạt động' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}" style="font-size:10px">
-                                {{ $s->status }}
-                            </span>
-                        </div>
-                        @endforeach
-                        @empty
-                        <div class="text-center text-muted py-3 small">
-                            <i class="bi bi-calendar-x d-block fs-4 mb-1"></i>
-                            Chưa có ca nào hôm nay
-                        </div>
-                        @endforelse
+                            @endforeach
+                            @empty
+                            <div class="text-center text-muted py-3 small">
+                                <i class="bi bi-calendar-x d-block fs-4 mb-1"></i>
+                                Chưa có ca nào hôm nay
+                            </div>
+                            @endforelse
                     </div>
                     <div class="card-footer p-2">
                         <button class="btn btn-primary w-100 btn-sm"
@@ -432,111 +432,58 @@
         </div>
     </div>
 
+    {{-- Lịch phân ca theo tuần --}}
     <div class="card shadow-sm mt-2">
-            <div class="card-header fw-semibold d-flex align-items-center gap-2 flex-wrap">
-                <i class="bi bi-calendar3 text-primary"></i>
-                <span>Lịch phân bổ theo tuần</span>
+        <div class="card-header fw-semibold d-flex align-items-center gap-2 flex-wrap">
+            <i class="bi bi-calendar3 text-primary"></i>
+            <span>Lịch phân bổ theo tuần</span>
 
-                {{-- Dropdown chọn phòng --}}
-                <div class="ms-3" style="min-width: 200px;">
-                    <select id="weeklyRoomSelect" class="form-select form-select-sm" onchange="loadWeeklySchedule()">
-                        <option value="">-- Chọn phòng để xem lịch --</option>
-                        @foreach($allRooms as $room)
-                        <option value="{{ $room->room_id }}" {{ request('weekly_room') == $room->room_id ? 'selected' : '' }}>
-                            {{ $room->room_code }} - {{ $room->room_name ?? 'Không tên' }} ({{ $room->room_type }})
-                        </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <span class="text-muted small fw-normal ms-1" id="weekRangeLabel">
-                    ({{ $weekDates->first()->format('d/m') }} – {{ $weekDates->last()->format('d/m/Y') }})
-                </span>
-
-                {{-- Nút điều hướng tuần --}}
-                <div class="ms-auto d-flex gap-1">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeWeek(-1)">
-                        <i class="bi bi-chevron-left"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeWeek(1)">
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-                    <a href="{{ route('admin.rooms.schedule.all') }}" class="btn btn-sm btn-outline-primary ms-2">
-                        Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
-                    </a>
-                </div>
+            {{-- Dropdown chọn phòng --}}
+            <div class="ms-3" style="min-width: 250px;">
+                <select id="weeklyRoomSelect" class="form-select form-select-sm" onchange="loadWeeklySchedule()">
+                    <option value="">-- Chọn phòng để xem lịch --</option>
+                    @foreach($allRooms as $room)
+                    <option value="{{ $room->room_id }}" {{ request('weekly_room') == $room->room_id ? 'selected' : '' }}>
+                        {{ $room->room_code }} - {{ $room->room_name ?? 'Không tên' }} ({{ $room->room_type }})
+                    </option>
+                    @endforeach
+                </select>
             </div>
 
-            {{-- Loading indicator --}}
-            <div id="weeklyLoading" class="text-center py-4" style="display: none;">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Đang tải...</span>
-                </div>
-                <p class="mt-2 text-muted">Đang tải lịch...</p>
-            </div>
+            <span class="text-muted small fw-normal ms-1" id="weekRangeLabel">
+                ({{ $weekDates->first()->format('d/m') }} – {{ $weekDates->last()->format('d/m/Y') }})
+            </span>
 
-            {{-- Bảng lịch --}}
-            <div id="weeklyScheduleContainer">
-                <div class="card-body p-0" style="overflow-x:auto">
-                    <div class="week-grid" style="min-width:600px">
-                        <div class="week-header" style="border-bottom:2px solid #e0e7ef">Giờ</div>
-                        @foreach($weekDates as $d)
-                        <div class="week-header {{ $d->isToday() ? 'bg-primary text-white' : '' }}"
-                            style="border-bottom:2px solid #e0e7ef">
-                            {{ $d->isoFormat('dd') }}<br>
-                            <span style="font-size:11px;font-weight:400">{{ $d->format('d/m') }}</span>
-                        </div>
-                        @endforeach
-
-                        @foreach($timeSlots as $time)
-                        <div class="week-time">{{ $time }}</div>
-                        @foreach($weekDates as $d)
-                        @php
-                        $daySchedules = $weekSchedules->get($d->format('Y-m-d'), collect());
-                        $slot = $daySchedules->first(function($s) use ($time) {
-                        return $s->start_time <= $time . ':00' && $s->end_time > $time . ':00';
-                            });
-                            @endphp
-                            <div class="week-cell">
-                                @if($slot)
-                                @if($slot->status === 'Hoạt động')
-                                <span class="week-slot has-dr" title="{{ $slot->doctor->full_name ?? '' }} - Phòng: {{ $slot->room->room_code ?? '' }}">
-                                    <i class="bi bi-person-fill me-1"></i>
-                                    {{ $slot->doctor ? mb_substr($slot->doctor->full_name, 0, 10) : '' }}
-                                </span>
-                                @else
-                                <span class="week-slot locked">Tạm dừng</span>
-                                @endif
-                                @else
-                                <span class="week-slot empty" style="opacity:0.4;">Trống</span>
-                                @endif
-                            </div>
-                            @endforeach
-                            @endforeach
-                    </div>
-                </div>
-                <div class="card-footer bg-white text-muted small">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex gap-3">
-                            <span><i class="bi bi-square-fill text-primary me-1" style="font-size: 10px;"></i> Có bác sĩ</span>
-                            <span><i class="bi bi-square-fill text-success me-1" style="font-size: 10px; opacity:0.4;"></i> Trống</span>
-                            <span><i class="bi bi-square-fill text-secondary me-1" style="font-size: 10px;"></i> Tạm dừng</span>
-                        </div>
-                        <div id="selectedRoomInfo" class="text-primary">
-                            @if(request('weekly_room'))
-                            @php $currentRoom = $allRooms->firstWhere('room_id', request('weekly_room')); @endphp
-                            @if($currentRoom)
-                            <i class="bi bi-door-open me-1"></i> Đang xem: {{ $currentRoom->room_code }} - {{ $currentRoom->room_name ?? '' }}
-                            @endif
-                            @else
-                            <i class="bi bi-info-circle me-1"></i> Chọn phòng để xem lịch
-                            @endif
-                        </div>
-                    </div>
-                </div>
+            {{-- Nút điều hướng tuần --}}
+            <div class="ms-auto d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeWeek(-1)">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeWeek(1)">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+                <a href="{{ route('admin.rooms.schedule.all') }}" class="btn btn-sm btn-outline-primary ms-2">
+                    Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
+                </a>
             </div>
         </div>
 
+        {{-- Loading indicator --}}
+        <div id="weeklyLoading" class="text-center py-4" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+            <p class="mt-2 text-muted">Đang tải lịch...</p>
+        </div>
+
+        {{-- Bảng lịch - sẽ được cập nhật bằng AJAX --}}
+        <div id="weeklyScheduleContainer">
+            <div class="card-body text-center py-5 text-muted">
+                <i class="bi bi-info-circle fs-1 d-block mb-2"></i>
+                <p>Chọn phòng để xem lịch phân bổ theo tuần</p>
+            </div>
+        </div>
+    </div>
     {{-- MODAL PHÂN BỔ CA --}}
     <div class="modal fade" id="modalAssign" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -613,174 +560,200 @@
     </div>
 </div>
 
-        {{-- Lịch phân ca theo tuần --}}
-        
+{{-- Lịch phân ca theo tuần --}}
 
-        @push('scripts')
-        <script>
-            const caMap = {
-                sang: {
-                    start: '07:00',
-                    end: '12:00'
-                },
-                chieu: {
-                    start: '13:00',
-                    end: '17:00'
-                },
-                toi: {
-                    start: '17:00',
-                    end: '22:00'
-                },
-            };
 
-            function updateCaTime() {
-                const ca = document.getElementById('assign_ca').value;
-                if (caMap[ca]) {
-                    document.getElementById('assign_start').value = caMap[ca].start;
-                    document.getElementById('assign_end').value = caMap[ca].end;
+@push('scripts')
+<script>
+    const caMap = {
+        sang: {
+            start: '07:00',
+            end: '12:00'
+        },
+        chieu: {
+            start: '13:00',
+            end: '17:00'
+        },
+        toi: {
+            start: '17:00',
+            end: '22:00'
+        },
+    };
+
+    function updateCaTime() {
+        const ca = document.getElementById('assign_ca').value;
+        if (caMap[ca]) {
+            document.getElementById('assign_start').value = caMap[ca].start;
+            document.getElementById('assign_end').value = caMap[ca].end;
+        }
+        checkFormReady();
+        if (allFilled()) checkConflict();
+    }
+
+    function allFilled() {
+        return ['assign_room', 'assign_doctor', 'assign_date', 'assign_ca']
+            .every(id => document.getElementById(id).value);
+    }
+
+    function checkFormReady() {
+        document.getElementById('assignSubmit').disabled = !allFilled();
+    }
+
+    ['assign_room', 'assign_doctor', 'assign_date'].forEach(id =>
+        document.getElementById(id).addEventListener('change', () => {
+            checkFormReady();
+            if (allFilled()) checkConflict();
+        })
+    );
+    document.getElementById('assign_ca').addEventListener('change', updateCaTime);
+
+    function checkConflict() {
+        const doctorId = document.getElementById('assign_doctor').value;
+        const workDate = document.getElementById('assign_date').value;
+        const ca = document.getElementById('assign_ca').value;
+        if (!doctorId || !workDate || !ca) return;
+
+        const {
+            start,
+            end
+        } = caMap[ca];
+
+        fetch('{{ route("admin.rooms.schedule.check-conflict") }}?' + new URLSearchParams({
+                doctor_id: doctorId,
+                work_date: workDate,
+                start_time: start,
+                end_time: end,
+            }))
+            .then(r => r.json())
+            .then(data => {
+                const alert = document.getElementById('conflictAlert');
+                if (data.conflict) {
+                    alert.classList.add('show');
+                    document.getElementById('conflictMsg').textContent =
+                        'Cảnh báo: Bác sĩ đã có lịch trùng trong ca ' + document.getElementById('assign_ca').options[document.getElementById('assign_ca').selectedIndex].text;
+                } else {
+                    alert.classList.remove('show');
                 }
-                checkFormReady();
-                if (allFilled()) checkConflict();
+            })
+            .catch(() => {});
+    }
+
+    document.getElementById('assignForm').addEventListener('submit', function(e) {
+        if (!allFilled()) {
+            e.preventDefault();
+            alert('Vui lòng điền đầy đủ: Phòng, Bác sĩ, Ngày và Ca làm việc.');
+            return false;
+        }
+        const ca = document.getElementById('assign_ca').value;
+        document.getElementById('assign_start').value = caMap[ca].start;
+        document.getElementById('assign_end').value = caMap[ca].end;
+    });
+</script>
+
+<script>
+    let currentWeekStart = '{{ $weekStart->toDateString() }}';
+
+    function loadWeeklySchedule() {
+        const roomSelect = document.getElementById('weeklyRoomSelect');
+        if (!roomSelect) return;
+
+        const roomId = roomSelect.value;
+        const loadingDiv = document.getElementById('weeklyLoading');
+        const container = document.getElementById('weeklyScheduleContainer');
+
+        if (!roomId) {
+            if (container) {
+                container.innerHTML = `<div class="card-body text-center py-5 text-muted">
+                    <i class="bi bi-info-circle fs-1 d-block mb-2"></i>
+                    <p>Chọn phòng để xem lịch phân bổ theo tuần</p>
+                </div>`;
             }
+            return;
+        }
 
-            function allFilled() {
-                return ['assign_room', 'assign_doctor', 'assign_date', 'assign_ca']
-                    .every(id => document.getElementById(id).value);
-            }
+        if (loadingDiv) loadingDiv.style.display = 'block';
+        if (container) container.style.opacity = '0.3';
 
-            function checkFormReady() {
-                document.getElementById('assignSubmit').disabled = !allFilled();
-            }
-
-            ['assign_room', 'assign_doctor', 'assign_date'].forEach(id =>
-                document.getElementById(id).addEventListener('change', () => {
-                    checkFormReady();
-                    if (allFilled()) checkConflict();
-                })
-            );
-            document.getElementById('assign_ca').addEventListener('change', updateCaTime);
-
-            function checkConflict() {
-                const doctorId = document.getElementById('assign_doctor').value;
-                const workDate = document.getElementById('assign_date').value;
-                const ca = document.getElementById('assign_ca').value;
-                if (!doctorId || !workDate || !ca) return;
-
-                const {
-                    start,
-                    end
-                } = caMap[ca];
-
-                fetch('{{ route("admin.rooms.schedule.check-conflict") }}?' + new URLSearchParams({
-                        doctor_id: doctorId,
-                        work_date: workDate,
-                        start_time: start,
-                        end_time: end,
-                    }))
-                    .then(r => r.json())
-                    .then(data => {
-                        const alert = document.getElementById('conflictAlert');
-                        if (data.conflict) {
-                            alert.classList.add('show');
-                            document.getElementById('conflictMsg').textContent =
-                                'Cảnh báo: Bác sĩ đã có lịch trùng trong ca ' + document.getElementById('assign_ca').options[document.getElementById('assign_ca').selectedIndex].text;
-                        } else {
-                            alert.classList.remove('show');
-                        }
-                    })
-                    .catch(() => {});
-            }
-
-            document.getElementById('assignForm').addEventListener('submit', function(e) {
-                if (!allFilled()) {
-                    e.preventDefault();
-                    alert('Vui lòng điền đầy đủ: Phòng, Bác sĩ, Ngày và Ca làm việc.');
-                    return false;
+        fetch('/admin/rooms/weekly-ajax?room_id=' + roomId + '&week_start=' + currentWeekStart)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateWeeklyTable(data);
+                    const rangeLabel = document.getElementById('weekRangeLabel');
+                    if (rangeLabel) rangeLabel.innerHTML = '(' + data.week_start + ' – ' + data.week_end + ')';
+                } else {
+                    if (container) {
+                        container.innerHTML = `<div class="card-body text-center py-5 text-danger">
+                            <i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i>
+                            <p>${data.message || 'Không thể tải dữ liệu'}</p>
+                        </div>`;
+                    }
                 }
-                const ca = document.getElementById('assign_ca').value;
-                document.getElementById('assign_start').value = caMap[ca].start;
-                document.getElementById('assign_end').value = caMap[ca].end;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (container) {
+                    container.innerHTML = `<div class="card-body text-center py-5 text-danger">
+                        <i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i>
+                        <p>Có lỗi xảy ra khi tải dữ liệu</p>
+                    </div>`;
+                }
+            })
+            .finally(() => {
+                if (loadingDiv) loadingDiv.style.display = 'none';
+                if (container) container.style.opacity = '1';
             });
-        </script>
+    }
 
-        <script>
-            let currentWeekStart = '{{ now()->startOfWeek()->toDateString() }}';
+    function updateWeeklyTable(data) {
+        const timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+            '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
+        ];
+        const weekDates = data.week_dates;
+        const schedules = data.schedules;
 
-            function loadWeeklySchedule() {
-                const roomId = document.getElementById('weeklyRoomSelect').value;
-                if (!roomId) {
-                    document.getElementById('selectedRoomInfo').innerHTML = '<i class="bi bi-info-circle me-1"></i> Chọn phòng để xem lịch';
-                    return;
-                }
-
-                document.getElementById('weeklyLoading').style.display = 'block';
-                document.getElementById('weeklyScheduleContainer').style.opacity = '0.3';
-
-                fetch('/admin/rooms/weekly-ajax?room_id=' + roomId + '&week_start=' + currentWeekStart)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            updateWeeklyTable(data);
-                            document.getElementById('selectedRoomInfo').innerHTML =
-                                '<i class="bi bi-door-open me-1"></i> Đang xem: ' + data.room_code;
-                            document.getElementById('weekRangeLabel').innerHTML =
-                                '(' + data.week_start + ' – ' + data.week_end + ')';
-                        }
-                    })
-                    .catch(error => console.error('Error:', error))
-                    .finally(() => {
-                        document.getElementById('weeklyLoading').style.display = 'none';
-                        document.getElementById('weeklyScheduleContainer').style.opacity = '1';
-                    });
-            }
-
-            function updateWeeklyTable(data) {
-                const timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-                    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
-                ];
-                const weekDates = data.week_dates;
-                const schedules = data.schedules;
-
-                let html = `<div class="card-body p-0" style="overflow-x:auto">
+        let html = `<div class="card-body p-0" style="overflow-x:auto">
                         <div class="week-grid" style="min-width:600px">
                             <div class="week-header" style="border-bottom:2px solid #e0e7ef">Giờ</div>`;
 
-                for (let i = 0; i < weekDates.length; i++) {
-                    const d = weekDates[i];
-                    html += `<div class="week-header" style="border-bottom:2px solid #e0e7ef">
+        // Header ngày
+        for (let i = 0; i < weekDates.length; i++) {
+            const d = weekDates[i];
+            html += `<div class="week-header" style="border-bottom:2px solid #e0e7ef">
                             ${d.day}<br>
                             <span style="font-size:11px;font-weight:400">${d.date}</span>
                         </div>`;
-                }
+        }
 
-                for (let t = 0; t < timeSlots.length; t++) {
-                    const time = timeSlots[t];
-                    html += `<div class="week-time">${time}</div>`;
+        // Các dòng giờ
+        for (let t = 0; t < timeSlots.length; t++) {
+            const time = timeSlots[t];
+            html += `<div class="week-time">${time}</div>`;
 
-                    for (let d = 0; d < weekDates.length; d++) {
-                        const dateKey = weekDates[d].full_date;
-                        const slot = schedules[dateKey]?.find(s => s.start_time <= time + ':00' && s.end_time > time + ':00');
+            for (let d = 0; d < weekDates.length; d++) {
+                const dateKey = weekDates[d].full_date;
+                const slot = schedules[dateKey]?.find(s => s.start_time <= time + ':00' && s.end_time > time + ':00');
 
-                        if (slot && slot.status === 'Hoạt động') {
-                            html += `<div class="week-cell">
-                                <span class="week-slot has-dr" title="${slot.doctor_name}">
+                if (slot && slot.status === 'Hoạt động') {
+                    html += `<div class="week-cell">
+                                <span class="week-slot has-dr" title="${slot.doctor_name} - ${slot.room_code}">
                                     <i class="bi bi-person-fill me-1"></i>
-                                    ${slot.doctor_name.substring(0, 10)}
+                                    ${slot.doctor_name.substring(0, 12)}
                                 </span>
                             </div>`;
-                        } else if (slot && slot.status !== 'Hoạt động') {
-                            html += `<div class="week-cell">
+                } else if (slot && slot.status !== 'Hoạt động') {
+                    html += `<div class="week-cell">
                                 <span class="week-slot locked">Tạm dừng</span>
                             </div>`;
-                        } else {
-                            html += `<div class="week-cell">
+                } else {
+                    html += `<div class="week-cell">
                                 <span class="week-slot empty" style="opacity:0.4;">Trống</span>
                             </div>`;
-                        }
-                    }
                 }
+            }
+        }
 
-                html += `</div></div>
+        html += `</div></div>
                  <div class="card-footer bg-white text-muted small">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex gap-3">
@@ -788,30 +761,34 @@
                             <span><i class="bi bi-square-fill text-success me-1" style="font-size:10px; opacity:0.4;"></i> Trống</span>
                             <span><i class="bi bi-square-fill text-secondary me-1" style="font-size:10px;"></i> Tạm dừng</span>
                         </div>
+                        <div class="text-primary">
+                            <i class="bi bi-door-open me-1"></i> Đang xem: ${data.room_code}
+                        </div>
                     </div>
                 </div>`;
 
-                document.getElementById('weeklyScheduleContainer').innerHTML = html;
-            }
+        const container = document.getElementById('weeklyScheduleContainer');
+        if (container) container.innerHTML = html;
+    }
 
-            function changeWeek(direction) {
-                const roomId = document.getElementById('weeklyRoomSelect').value;
-                if (!roomId) {
-                    alert('Vui lòng chọn phòng trước');
-                    return;
-                }
+    function changeWeek(direction) {
+        const roomSelect = document.getElementById('weeklyRoomSelect');
+        if (!roomSelect || !roomSelect.value) {
+            alert('Vui lòng chọn phòng trước');
+            return;
+        }
 
-                let date = new Date(currentWeekStart);
-                date.setDate(date.getDate() + direction * 7);
-                currentWeekStart = date.toISOString().split('T')[0];
+        let date = new Date(currentWeekStart);
+        date.setDate(date.getDate() + direction * 7);
+        currentWeekStart = date.toISOString().split('T')[0];
 
-                loadWeeklySchedule();
-            }
+        loadWeeklySchedule();
+    }
 
-            // Load tự động nếu đã chọn phòng từ URL
-            if (document.getElementById('weeklyRoomSelect') && document.getElementById('weeklyRoomSelect').value) {
-                loadWeeklySchedule();
-            }
-        </script>
-        @endpush
-        @endsection
+    // Load tự động nếu đã chọn phòng
+    if (document.getElementById('weeklyRoomSelect') && document.getElementById('weeklyRoomSelect').value) {
+        loadWeeklySchedule();
+    }
+</script>
+@endpush
+@endsection
