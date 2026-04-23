@@ -696,8 +696,30 @@ class AppointmentController extends Controller
             ->whereIn('doctor_id', $doctorIds)
             ->where('off_date', $workDate)
             ->pluck('doctor_id')
-            ->flip()            // doctor_id → key để isset() O(1)
+            ->flip()           
             ->toArray();
-        return response()->json(['suggested' => $top3]);
+
+        // dem slot trong theo tung bac si trong ngay
+        $scheduleStats = DB::table('doctorschedules')
+        ->leftJoinSub(
+            DB::table('appointments')
+                ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
+                ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                ->groupBy('schedule_id'),
+            'bk',
+            'bk.schedule_id', '=', 'doctorschedules.schedule_id'
+        )
+        ->whereIn('doctorschedules.doctor_id', $doctorIds)
+        ->where('doctorschedules.work_date', $workDate)
+        ->where('doctorschedules.status', 'Hoạt động')
+        ->select(
+            'doctorschedules.doctor_id',
+            DB::raw('SUM(doctorschedules.max_slot) as total_slots'),
+            DB::raw('SUM(COALESCE(bk.booked_count, 0)) as booked_count')
+        )
+        ->groupBy('doctorschedules.doctor_id')
+        ->get()
+        ->keyBy('doctor_id');
+ 
     }
 }
