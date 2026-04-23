@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
     // goi y bac si tu dong
     Route::get('/api/appointments/suggest', [AppointmentController::class, 'suggest'])
         ->name('appointments.suggest');
+    // dynamic time slot 
+    Route::get('/api/appointments/timeslots', [AppointmentController::class, 'timeslots'])
+        ->name('appointments.timeslots');
 
     // Chi tiết lịch hẹn (nếu có)
     // Route::get('/lich-hen/{id}',   [AppointmentController::class, 'show'])->name('appointments.show');
