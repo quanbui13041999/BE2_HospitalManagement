@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\AppointmentConfirmed;
+use App\Mail\AppointmentCancelled;
+use App\Mail\AppointmentRescheduled;
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+
 
 class AppointmentController extends Controller
 {
+
     // ================================================================
     // 1. FORM ĐẶT LỊCH — GET /dat-lich
     // ================================================================
@@ -129,7 +136,6 @@ class AppointmentController extends Controller
     // ================================================================
     public function store(Request $request)
     {
-        // Yêu cầu đăng nhập trước khi validate
         if (!Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Vui lòng đăng nhập để đặt lịch hẹn.');
@@ -150,7 +156,6 @@ class AppointmentController extends Controller
 
         $userId = Auth::id();
 
-        // Kiểm tra đã đặt slot này chưa (loại trừ bản ghi đã đóng)
         $alreadyBooked = DB::table('appointments')
             ->where('user_id', $userId)
             ->where('schedule_id', $request->schedule_id)
@@ -174,14 +179,12 @@ class AppointmentController extends Controller
                 ->withInput();
         }
 
-        // Kiểm tra ngày khớp
         if ($schedule->work_date !== $request->work_date) {
             return back()
                 ->withErrors(['msg' => 'Ngày khám không khớp với lịch đã chọn.'])
                 ->withInput();
         }
 
-        // Đếm slot đã đặt (dùng updateOrCreate để xử lý UNIQUE KEY)
         $booked = DB::table('appointments')
             ->where('schedule_id', $request->schedule_id)
             ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
@@ -195,20 +198,18 @@ class AppointmentController extends Controller
 
         $queueNumber         = $booked + 1;
         $appointmentDatetime = $request->work_date . ' ' . $request->appointment_time . ':00';
+        $appointmentId       = null;
 
+        // ── Transaction: chỉ DB, KHÔNG có mail bên trong ──
         DB::beginTransaction();
         try {
-            /*
-             * Dùng INSERT ... ON DUPLICATE KEY UPDATE để xử lý UNIQUE KEY (user_id, schedule_id):
-             * nếu user đã từng đặt rồi hủy, cập nhật lại thay vì INSERT mới → tránh duplicate key error.
-             */
             $existing = DB::table('appointments')
                 ->where('user_id', $userId)
                 ->where('schedule_id', $request->schedule_id)
                 ->first();
 
             if ($existing) {
-                // Cập nhật bản ghi cũ (đã hủy/dời) thành đặt lịch mới
+                // Cập nhật bản ghi cũ (đã hủy/dời)
                 DB::table('appointments')
                     ->where('appointment_id', $existing->appointment_id)
                     ->update([
@@ -256,23 +257,39 @@ class AppointmentController extends Controller
             ]);
 
             DB::commit();
-            // Gửi email xác nhận
-            $user = User::create([
-                'full_name'     => $request->full_name,
-                'email'         => $request->email,
-                'password'      => Hash::make($request->password),
-                'phone'         => $request->phone,
-                'address'       => $request->address,
-                'date_of_birth' => $request->date_of_birth,
-                'gender'        => $request->gender,
-                'role_id'       => 3,   // User thường
-                'status'        => 1,   // Hoạt động
-            ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             return back()
                 ->withErrors(['msg' => 'Đặt lịch thất bại: ' . $e->getMessage()])
                 ->withInput();
+        }
+
+        // ── Gửi mail SAU khi commit thành công — nằm ngoài transaction ──
+        $appointmentForMail = DB::table('appointments')
+            ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
+            ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
+            ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
+            ->where('appointments.appointment_id', $appointmentId)
+            ->select(
+                'appointments.*',
+                'doctors.full_name as doctor_name',
+                'departments.department_name'
+            )
+            ->first();
+
+        $user = Auth::user();
+        if ($user && $user->email) {
+            try {
+                Mail::to($user->email)->send(
+                    new AppointmentConfirmed($user, $appointmentForMail)
+                );
+            } catch (\Exception $mailError) {
+                Log::warning('Failed to send appointment confirmation email', [
+                    'appointment_id' => $appointmentId,
+                    'error'          => $mailError->getMessage(),
+                ]);
+            }
         }
 
         return redirect()->route('appointments.index')
@@ -286,7 +303,6 @@ class AppointmentController extends Controller
     {
         $userId = Auth::id();
 
-        // Đếm theo trạng thái (toàn bộ — không phân trang)
         $counts = DB::table('appointments')
             ->where('user_id', $userId)
             ->select(
@@ -297,7 +313,6 @@ class AppointmentController extends Controller
             )
             ->first();
 
-        // Query chính
         $query = DB::table('appointments')
             ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
             ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
@@ -321,7 +336,6 @@ class AppointmentController extends Controller
                 'rooms.room_name'
             );
 
-        // Lọc theo tab
         $status = $request->get('status', 'all');
         if ($status === 'upcoming') {
             $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
@@ -332,14 +346,12 @@ class AppointmentController extends Controller
             $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch']);
         }
 
-        // Sắp xếp
         $sort = $request->get('sort', 'desc');
         $query->orderBy('doctorschedules.work_date', $sort === 'asc' ? 'asc' : 'desc')
             ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc');
 
         $appointments = $query->paginate(8)->withQueryString();
 
-        // FIX: return đúng view với đúng biến
         return view('appointments.index', compact('appointments', 'counts', 'status'));
     }
 
@@ -453,12 +465,10 @@ class AppointmentController extends Controller
             return back()->withErrors(['msg' => 'Lịch khám mới không hợp lệ.']);
         }
 
-        // Kiểm tra ngày mới phải trong tương lai
         if (Carbon::parse($newSchedule->work_date)->isPast()) {
             return back()->withErrors(['msg' => 'Ngày dời phải là ngày trong tương lai.']);
         }
 
-        // Kiểm tra còn slot không
         $bookedInNew = DB::table('appointments')
             ->where('schedule_id', $request->new_schedule_id)
             ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
@@ -505,9 +515,37 @@ class AppointmentController extends Controller
             ]);
 
             DB::commit();
+
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['msg' => 'Dời lịch thất bại: ' . $e->getMessage()]);
+        }
+
+        // ── Gửi mail SAU commit ──
+        $updatedAppointment = DB::table('appointments')
+            ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
+            ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
+            ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
+            ->where('appointments.appointment_id', $id)
+            ->select(
+                'appointments.*',
+                'doctors.full_name as doctor_name',
+                'departments.department_name'
+            )
+            ->first();
+
+        $user = Auth::user();
+        if ($user && $user->email) {
+            try {
+                Mail::to($user->email)->send(
+                    new AppointmentRescheduled($user, $updatedAppointment)
+                );
+            } catch (\Exception $mailError) {
+                Log::warning('Failed to send appointment rescheduled email', [
+                    'appointment_id' => $id,
+                    'error'          => $mailError->getMessage(),
+                ]);
+            }
         }
 
         return redirect()->route('appointments.index')
@@ -577,10 +615,38 @@ class AppointmentController extends Controller
             ]);
 
             DB::commit();
+
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->route('appointments.index')
                 ->withErrors(['msg' => 'Hủy lịch thất bại: ' . $e->getMessage()]);
+        }
+
+        // ── Gửi mail SAU commit ──
+        $cancelledAppointment = DB::table('appointments')
+            ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
+            ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
+            ->leftJoin('departments', 'doctors.department_id', '=', 'departments.department_id')
+            ->where('appointments.appointment_id', $id)
+            ->select(
+                'appointments.*',
+                'doctors.full_name as doctor_name',
+                'departments.department_name'
+            )
+            ->first();
+
+        $user = Auth::user();
+        if ($user && $user->email) {
+            try {
+                Mail::to($user->email)->send(
+                    new AppointmentCancelled($user, $cancelledAppointment)
+                );
+            } catch (\Exception $mailError) {
+                Log::warning('Failed to send appointment cancelled email', [
+                    'appointment_id' => $id,
+                    'error'          => $mailError->getMessage(),
+                ]);
+            }
         }
 
         return redirect()->route('appointments.index')

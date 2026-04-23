@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Mail;
-use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -10,16 +9,20 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class WelcomeMail extends Mailable
+class AppointmentRescheduled extends Mailable
 {
     use Queueable, SerializesModels;
+
+    public $user;
+    public $appointment;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(public User $user)
+    public function __construct($user, $appointment)
     {
-        //
+        $this->user = $user;
+        $this->appointment = $appointment;
     }
 
     /**
@@ -28,7 +31,7 @@ class WelcomeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Welcome Mail',
+            subject: 'Xác nhận dời lịch khám bệnh tại HospitalBooking',
         );
     }
 
@@ -38,7 +41,11 @@ class WelcomeMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mail.welcome',
+            view: 'mail.appointment-rescheduled',
+            with: [
+                'user' => $this->user,
+                'appointment' => $this->appointment,
+            ]
         );
     }
 
