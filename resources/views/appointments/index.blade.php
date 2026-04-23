@@ -48,7 +48,7 @@
             font-size: 14px;
         }
 
-        /* ── TOPBAR ── */
+        /* ── TOPBARR ── */
         .topbar {
             position: sticky; top: 0; z-index: 100;
             background: var(--blue-900);
