@@ -792,43 +792,53 @@ class AppointmentController extends Controller
             'work_date' => 'required|date|after_or_equal:today',
         ]);
 
-        $doctorId = (int)$request->doctor_id;
+        $doctorId = (int) $request->doctor_id;
         $workDate = $request->work_date;
-        
+
         // ngay nghi
-       $isDayOff = DB::table('doctordaysoff')
-        ->where('doctor_id', $doctorId)
-        ->where('off_date', $workDate)
-        ->exists();
+        $isDayOff = DB::table('doctordaysoff')
+            ->where('doctor_id', $doctorId)
+            ->where('off_date', $workDate)
+            ->exists();
 
         // neu bac si nghi return
         if ($isDayOff) {
-            return response()->json(['day_off' =>true, 'slots' => []]);
+            return response()->json(['day_off' => true, 'slots' => []]);
         }
 
         // lay lich + so da dat theo tung schedule
         $schedules = DB::table('doctorschedules')
-        ->leftJoinSub(
-            DB::table('appointments')
-                ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-                ->groupBy('schedule_id'),
-            'bk',
-            'bk.schedule_id', '=', 'doctorschedules.schedule_id'
-        )
-        ->where('doctorschedules.doctor_id', $doctorId)
-        ->where('doctorschedules.work_date', $workDate)
-        ->where('doctorschedules.status', 'Hoạt động')
-        ->select(
-            'doctorschedules.schedule_id',
-            'doctorschedules.start_time',
-            'doctorschedules.end_time',
-            'doctorschedules.slot_duration',
-            'doctorschedules.max_slot',
-            DB::raw('COALESCE(bk.booked_count, 0) as booked_count')
-        )
-        ->orderBy('doctorschedules.start_time')
-        ->get();
+            ->leftJoinSub(
+                DB::table('appointments')
+                    ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->groupBy('schedule_id'),
+                'bk',
+                'bk.schedule_id',
+                '=',
+                'doctorschedules.schedule_id'
+            )
+            ->where('doctorschedules.doctor_id', $doctorId)
+            ->where('doctorschedules.work_date', $workDate)
+            ->where('doctorschedules.status', 'Hoạt động')
+            ->select(
+                'doctorschedules.schedule_id',
+                'doctorschedules.start_time',
+                'doctorschedules.end_time',
+                'doctorschedules.slot_duration',
+                'doctorschedules.max_slot',
+                DB::raw('COALESCE(bk.booked_count, 0) as booked_count')
+            )
+            ->orderBy('doctorschedules.start_time')
+            ->get();
+        
+        // neu khong co lich -> bac si khong nghi -> khong co lich lam
+        if ($schedules->isEmpty()) {
+            return response()->json(['day_off' => false, 'slots' => []]);
+        }
+        
+
+
         return response()->json(['day_off' => false, 'slots' => $slots]);
     }
 }
