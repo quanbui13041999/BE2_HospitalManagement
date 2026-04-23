@@ -492,7 +492,7 @@ function onScheduleSelect(radio) {
     radio.closest('.schedule-option').classList.add('selected');
 }
 
-// Auto-select nếu chỉ có 1 lịch
+// Auto-select nếu chỉ có 1 lịch trống
 window.addEventListener('DOMContentLoaded', () => {
     const radios = document.querySelectorAll('input[name="new_schedule_id"]');
     if (radios.length === 1) { radios[0].checked = true; onScheduleSelect(radios[0]); }
