@@ -800,6 +800,10 @@ class AppointmentController extends Controller
         ->where('doctor_id', $doctorId)
         ->where('off_date', $workDate)
         ->exists();
+
+        if ($isDayOff) {
+            return response()->json(['day_off' =>true, 'slots' => []]);
+        }
         
         return response()->json(['day_off' => false, 'slots' => $slots]);
     }
