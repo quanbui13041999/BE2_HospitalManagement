@@ -57,6 +57,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}/doi',         [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy',        [AppointmentController::class, 'cancel'])->name('cancel');
     });
+
+     //xem tien su
+    Route::get('/tiensu', [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
+
+    // sua tien su
+    Route::post('/tiensu', [tiensucontroler::class, 'luutiensu'])->name('tiensu.store');
+    //the thanh vien
+
+    Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
+
+    Route::get('/trangchu', [HomeController::class, 'index'])->name('Home.trangchu')->middleware('auth');
 });
 
 // ============================================================
@@ -116,14 +127,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::put('/{room}',    [RoomController::class, 'update'])->name('update');
         Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
     });
-     //xem tien su
-    Route::get('/tiensu', [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
-
-    // sua tien su
-    Route::post('/tiensu', [tiensucontroler::class, 'luutiensu'])->name('tiensu.store');
-    //the thanh vien
-
-    Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
+    
 });
 
 // ============================================================
