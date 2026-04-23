@@ -451,6 +451,25 @@
             box-shadow: 0 0 0 3px rgba(15, 82, 186, 0.08);
         }
 
+        /* Form control inputs */
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--gray-50);
+            border: 1.5px solid var(--gray-200);
+            border-radius: 16px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: var(--white);
+            box-shadow: 0 0 0 3px rgba(15, 82, 186, 0.08);
+        }
+
         /* Buttons */
         .btn-row {
             display: flex;
@@ -641,6 +660,54 @@
         @csrf
         @method('PUT')
         <input type="hidden" name="new_appointment_time" id="new_appointment_time">
+
+        {{-- Panel: Thông tin người dời lịch --}}
+        <div class="panel">
+            <div class="panel-head">
+                <div class="icon-wrap">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                </div>
+                <div>
+                    <h2>Thông tin người dời lịch</h2>
+                    <p>Cập nhật thông tin cá nhân nếu cần</p>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="schedule-list" style="gap: 0;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px;">
+                        <div>
+                            <div class="form-label">Họ và tên</div>
+                            <input type="text" name="full_name" class="form-control" 
+                                value="{{ old('full_name', auth()->user()->full_name ?? '') }}" placeholder="Họ và tên">
+                        </div>
+                        <div>
+                            <div class="form-label">Số điện thoại</div>
+                            <input type="tel" name="phone" class="form-control" 
+                                value="{{ old('phone', auth()->user()->phone ?? '') }}" placeholder="Số điện thoại">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                        <div>
+                            <div class="form-label">Ngày sinh</div>
+                            <input type="date" name="date_of_birth" class="form-control" 
+                                value="{{ old('date_of_birth', auth()->user()->date_of_birth ?? '') }}">
+                        </div>
+                        <div>
+                            <div class="form-label">Giới tính</div>
+                            <select name="gender" class="form-control">
+                                <option value="">-- Chọn --</option>
+                                <option value="Nam" {{ old('gender', auth()->user()->gender ?? '') === 'Nam' ? 'selected' : '' }}>Nam</option>
+                                <option value="Nữ" {{ old('gender', auth()->user()->gender ?? '') === 'Nữ' ? 'selected' : '' }}>Nữ</option>
+                                <option value="Khác" {{ old('gender', auth()->user()->gender ?? '') === 'Khác' ? 'selected' : '' }}>Khác</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         {{-- Panel 1: Thông tin lịch hiện tại --}}
         <div class="panel">
