@@ -3,6 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\Admin\RoomController;
+use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\User\ServiceController as UserServiceController;
+
 
 // Trang chủ
 Route::get('/', function () {
@@ -46,3 +50,101 @@ Route::middleware('auth')->group(function () {
     // Hủy lịch hẹn
     Route::post('/lich-hen/{id}/huy', [AppointmentController::class, 'cancel'])->name('appointments.cancel');
 });
+
+
+// ============================================================
+//  TÍNH NĂNG 1: Quản lý Dịch vụ & Bảng giá (không prefix admin)
+// ============================================================
+Route::prefix('services')->name('services.')->group(function () {
+    Route::get('/',               [ServiceController::class, 'index'])->name('index');
+    Route::get('/create',         [ServiceController::class, 'create'])->name('create');
+    Route::post('/',              [ServiceController::class, 'store'])->name('store');
+    Route::get('/{service}',      [ServiceController::class, 'show'])->name('show');
+    Route::get('/{service}/edit', [ServiceController::class, 'edit'])->name('edit');
+    Route::put('/{service}',      [ServiceController::class, 'update'])->name('update');
+    Route::delete('/{service}',   [ServiceController::class, 'destroy'])->name('destroy');
+    Route::patch('/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('toggle-status');
+
+    // Bảng giá (nested dưới service)
+    Route::post('/{service}/prices',             [ServiceController::class, 'storePrice'])->name('prices.store');
+    Route::put('/{service}/prices/{price}',      [ServiceController::class, 'updatePrice'])->name('prices.update');
+    Route::delete('/{service}/prices/{price}',   [ServiceController::class, 'destroyPrice'])->name('prices.destroy');
+});
+
+// ============================================================
+//  TÍNH NĂNG 2: Quản lý Phòng khám & Phân bổ ca
+// ============================================================
+Route::prefix('rooms')->name('rooms.')->group(function () {
+    // CRUD phòng
+    Route::get('/',               [RoomController::class, 'index'])->name('index');
+    Route::get('/create',         [RoomController::class, 'create'])->name('create');
+    Route::post('/',              [RoomController::class, 'store'])->name('store');
+    Route::get('/{room}',         [RoomController::class, 'show'])->name('show');
+    Route::get('/{room}/edit',    [RoomController::class, 'edit'])->name('edit');
+    Route::put('/{room}',         [RoomController::class, 'update'])->name('update');
+    Route::patch('/{room}/status',[RoomController::class, 'updateStatus'])->name('update-status');
+
+    // Lịch phân bổ ca (DoctorSchedules)
+    Route::prefix('schedule')->name('schedule.')->group(function () {
+        Route::get('/',                       [RoomController::class, 'scheduleIndex'])->name('index');
+        Route::get('/create',                 [RoomController::class, 'createSchedule'])->name('create');
+        Route::post('/',                      [RoomController::class, 'storeSchedule'])->name('store');
+        Route::get('/{schedule}/edit',        [RoomController::class, 'editSchedule'])->name('edit');
+        Route::put('/{schedule}',             [RoomController::class, 'updateSchedule'])->name('update');
+        Route::delete('/{schedule}',          [RoomController::class, 'destroySchedule'])->name('destroy');
+    });
+});
+
+// ============================================================
+//  ADMIN (yêu cầu đăng nhập + quyền admin)
+// ============================================================
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
+
+    // ── Dịch vụ & Bảng giá ─────────────────────────────────────
+    Route::resource('services', ServiceController::class);
+    Route::patch('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])
+        ->name('services.toggle-status');
+
+    // Bảng giá
+    Route::post('services/{service}/prices',           [ServiceController::class, 'storePrice'])
+        ->name('services.prices.store');
+    Route::put('services/{service}/prices/{price}',    [ServiceController::class, 'updatePrice'])
+        ->name('services.prices.update');
+    Route::delete('services/{service}/prices/{price}', [ServiceController::class, 'destroyPrice'])
+        ->name('services.prices.destroy');
+
+    // ── Phòng khám ──────────────────────────────────────────────
+    Route::resource('rooms', RoomController::class);
+    Route::patch('rooms/{room}/status', [RoomController::class, 'updateStatus'])
+        ->name('rooms.update-status');
+
+    // Ca trực
+    Route::prefix('rooms')->name('rooms.')->group(function () {
+        Route::get('schedule',                  [RoomController::class, 'scheduleIndex'])  ->name('schedule.index');
+        Route::get('schedule/create',           [RoomController::class, 'createSchedule']) ->name('schedule.create');
+        Route::post('schedule',                 [RoomController::class, 'storeSchedule'])  ->name('schedule.store');
+        Route::get('schedule/{schedule}/edit',  [RoomController::class, 'editSchedule'])   ->name('schedule.edit');
+        Route::put('schedule/{schedule}',       [RoomController::class, 'updateSchedule']) ->name('schedule.update');
+        Route::delete('schedule/{schedule}',    [RoomController::class, 'destroySchedule'])->name('schedule.destroy');
+        // AJAX conflict check
+        Route::get('schedule/check-conflict',   [RoomController::class, 'checkConflict'])  ->name('schedule.check-conflict');
+    });
+});
+
+// ============================================================
+//  USER SERVICES (Cho phép guest và user xem dịch vụ)
+//  SỬA LẠI: Chỉ giữ một nhóm route duy nhất, cho phép guest
+// ============================================================
+// Route này cho phép tất cả mọi người (kể cả chưa đăng nhập) xem danh sách và chi tiết dịch vụ
+Route::prefix('dich-vu')->name('user.services.')->controller(UserServiceController::class)->group(function () {
+    Route::get('/', 'index')->name('index');           // URL: /dich-vu
+    Route::get('/{id}', 'show')->name('show');         // URL: /dich-vu/{id}
+    Route::get('/{id}/gia/{priceType}', 'getPrice')->name('get-price');  // API lấy giá theo loại
+});
+
+Route::redirect('/services', '/dich-vu', 301);
+
+// Tạm thời cho route bác sĩ (sẽ xóa sau khi có controller thật)
+Route::get('/bac-si', function () {
+    return view('welcome');
+})->name('doctors.index');
