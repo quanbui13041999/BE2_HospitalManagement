@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\User\ServiceController as UserServiceController;
+
 
 // Trang chủ
 Route::get('/', function () {
@@ -53,7 +55,7 @@ Route::prefix('services')->name('services.')->group(function () {
     Route::get('/{service}',      [ServiceController::class, 'show'])->name('show');
     Route::get('/{service}/edit', [ServiceController::class, 'edit'])->name('edit');
     Route::put('/{service}',      [ServiceController::class, 'update'])->name('update');
-    Route::delete('/{service}',   [ServiceController::class, 'destroy'])->name('destroy'); // ← THÊM MỚI
+    Route::delete('/{service}',   [ServiceController::class, 'destroy'])->name('destroy');
     Route::patch('/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('toggle-status');
 
     // Bảng giá (nested dưới service)
@@ -92,7 +94,6 @@ Route::prefix('rooms')->name('rooms.')->group(function () {
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
     // ── Dịch vụ & Bảng giá ─────────────────────────────────────
-    // Route::resource đã tự sinh đủ 7 route kể cả DELETE destroy
     Route::resource('services', ServiceController::class);
     Route::patch('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])
         ->name('services.toggle-status');
@@ -122,3 +123,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::get('schedule/check-conflict',   [RoomController::class, 'checkConflict'])  ->name('schedule.check-conflict');
     });
 });
+
+// ============================================================
+//  USER SERVICES (Cho phép guest và user xem dịch vụ)
+//  SỬA LẠI: Chỉ giữ một nhóm route duy nhất, cho phép guest
+// ============================================================
+// Route này cho phép tất cả mọi người (kể cả chưa đăng nhập) xem danh sách và chi tiết dịch vụ
+Route::prefix('dich-vu')->name('user.services.')->controller(UserServiceController::class)->group(function () {
+    Route::get('/', 'index')->name('index');           // URL: /dich-vu
+    Route::get('/{id}', 'show')->name('show');         // URL: /dich-vu/{id}
+    Route::get('/{id}/gia/{priceType}', 'getPrice')->name('get-price');  // API lấy giá theo loại
+});
+
+Route::redirect('/services', '/dich-vu', 301);
+
+// Tạm thời cho route bác sĩ (sẽ xóa sau khi có controller thật)
+Route::get('/bac-si', function () {
+    return view('welcome');
+})->name('doctors.index');
