@@ -21,8 +21,6 @@
             line-height: 1.5;
         }
 
-        
-
         /* Giao diện chính: xanh dương tinh tế + trắng tinh khôi */
         :root {
             --primary: #0f52ba;
@@ -49,7 +47,9 @@
         }
 
         /* Typography */
-        h1, h2, h3 {
+        h1,
+        h2,
+        h3 {
             font-weight: 600;
             letter-spacing: -0.01em;
         }
@@ -126,7 +126,8 @@
             transition: all 0.2s;
         }
 
-        .topbar-center a:hover, .topbar-center a.active {
+        .topbar-center a:hover,
+        .topbar-center a.active {
             background: var(--white);
             color: var(--primary);
             box-shadow: var(--shadow-sm);
@@ -271,7 +272,9 @@
             color: #e5484d;
         }
 
-        .form-control, select.form-control, textarea.form-control {
+        .form-control,
+        select.form-control,
+        textarea.form-control {
             width: 100%;
             padding: 12px 16px;
             background: var(--gray-50);
@@ -283,7 +286,8 @@
             outline: none;
         }
 
-        .form-control:focus, select:focus {
+        .form-control:focus,
+        select:focus {
             border-color: var(--primary);
             background: var(--white);
             box-shadow: 0 0 0 4px rgba(15, 82, 186, 0.08);
@@ -368,11 +372,19 @@
             border: 1px solid var(--gray-300);
         }
 
-        .legend-dot.full-dot { background: #fef2f2; border-color: #ffb4b4; }
-        .legend-dot.sel-dot { background: var(--primary); border: none; }
+        .legend-dot.full-dot {
+            background: #fef2f2;
+            border-color: #ffb4b4;
+        }
+
+        .legend-dot.sel-dot {
+            background: var(--primary);
+            border: none;
+        }
 
         /* Sidebar card tinh tế */
-        .doctor-card, .summary-card {
+        .doctor-card,
+        .summary-card {
             background: var(--white);
             border-radius: var(--radius-card);
             box-shadow: var(--shadow-lg);
@@ -510,6 +522,7 @@
             .page {
                 grid-template-columns: 1fr;
             }
+
             .topbar-center {
                 display: none;
             }
@@ -687,7 +700,10 @@
                 <div class="card-head">👨‍⚕️ Bác Sĩ Được Chọn</div>
                 <div class="doctor-body" id="doctor-body">
                     <div style="padding:20px 0;color:var(--gray-400);text-align:center">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
                         <p style="margin-top:8px">Chưa chọn bác sĩ</p>
                     </div>
                 </div>
@@ -715,70 +731,206 @@
         let scheduleData = JSON.parse('{!! addslashes(json_encode($scheduleData)) !!}');
 
         let state = {
-            deptId: null, deptName: '', doctor: null, date: document.getElementById('work_date').value,
-            scheduleId: null, time: null
+            deptId: null,
+            deptName: '',
+            doctor: null,
+            date: document.getElementById('work_date').value,
+            scheduleId: null,
+            time: null
         };
 
         function onDeptChange() {
             let sel = document.getElementById('dept');
             state.deptId = sel.value;
             state.deptName = sel.options[sel.selectedIndex]?.text || '';
-            state.doctor = null; state.scheduleId = null; state.time = null;
+            state.doctor = null;
+            state.scheduleId = null;
+            state.time = null;
             let docSel = document.getElementById('doctor');
             docSel.innerHTML = '<option value="">-- Chọn bác sĩ --</option>';
             docSel.disabled = !state.deptId;
             let list = doctorsByDept[state.deptId] || [];
-            list.forEach(d => { let o = document.createElement('option'); o.value = d.doctor_id; o.textContent = `BS. ${d.full_name}`; docSel.appendChild(o); });
-            renderDoctor(null); renderSlots([]); updateSummary();
+            list.forEach(d => {
+                let o = document.createElement('option');
+                o.value = d.doctor_id;
+                o.textContent = `BS. ${d.full_name}`;
+                docSel.appendChild(o);
+            });
+            renderDoctor(null);
+            renderSlots([]);
+            updateSummary();
         }
 
         function onDoctorChange() {
             let val = document.getElementById('doctor').value;
-            if (!val) { state.doctor = null; renderDoctor(null); renderSlots([]); updateSummary(); return; }
+            if (!val) {
+                state.doctor = null;
+                renderDoctor(null);
+                renderSlots([]);
+                updateSummary();
+                return;
+            }
             let list = doctorsByDept[state.deptId] || [];
             state.doctor = list.find(d => String(d.doctor_id) === String(val)) || null;
-            state.scheduleId = null; state.time = null;
-            renderDoctor(state.doctor); loadSlots(); updateSummary();
+            state.scheduleId = null;
+            state.time = null;
+            renderDoctor(state.doctor);
+            loadSlots();
+            updateSummary();
         }
 
-        function onDateChange() { state.date = document.getElementById('work_date').value; state.scheduleId = null; state.time = null; if(state.doctor) loadSlots(); updateSummary(); }
+        function onDateChange() {
+            state.date = document.getElementById('work_date').value;
+            state.scheduleId = null;
+            state.time = null;
+            if (state.doctor) loadSlots();
+            updateSummary();
+        }
 
         function loadSlots() {
             if (!state.doctor || !state.date) return;
             let key = `${state.doctor.doctor_id}_${state.date}`;
-            if (scheduleData[key]) { renderSlots(scheduleData[key]); return; }
+            if (scheduleData[key]) {
+                renderSlots(scheduleData[key]);
+                return;
+            }
             document.getElementById('slot-wrap').innerHTML = '<div class="slot-loading" style="display:flex;gap:8px"><div class="mini-spin" style="width:16px;height:16px;border:2px solid #ccc; border-top-color:var(--primary); border-radius:50%; animation:spin .6s linear;"></div>Đang tải khung giờ...</div>';
             document.getElementById('slot-legend').style.display = 'none';
-            fetch(`{{ route('appointments.schedules') }}?doctor_id=${state.doctor.doctor_id}&work_date=${state.date}`, { headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+            fetch(`{{ route('appointments.schedules') }}?doctor_id=${state.doctor.doctor_id}&work_date=${state.date}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        Accept: 'application/json'
+                    }
+                })
                 .then(r => r.json()).then(data => {
-                    if (data.day_off) { document.getElementById('slot-wrap').innerHTML = '<span class="slot-placeholder">🚫 Bác sĩ nghỉ ngày này. Vui lòng chọn ngày khác.</span>'; return; }
-                    scheduleData[key] = data.schedules || []; renderSlots(scheduleData[key]);
-                }).catch(() => { document.getElementById('slot-wrap').innerHTML = '<span class="slot-placeholder" style="color:#e5484d">⚠️ Lỗi tải khung giờ. Vui lòng thử lại.</span>'; });
+                    if (data.day_off) {
+                        document.getElementById('slot-wrap').innerHTML = '<span class="slot-placeholder">🚫 Bác sĩ nghỉ ngày này. Vui lòng chọn ngày khác.</span>';
+                        return;
+                    }
+                    scheduleData[key] = data.schedules || [];
+                    renderSlots(scheduleData[key]);
+                }).catch(() => {
+                    document.getElementById('slot-wrap').innerHTML = '<span class="slot-placeholder" style="color:#e5484d">⚠️ Lỗi tải khung giờ. Vui lòng thử lại.</span>';
+                });
         }
 
         function renderSlots(schedules) {
-            let wrap = document.getElementById('slot-wrap'); let legendDiv = document.getElementById('slot-legend');
+            let wrap = document.getElementById('slot-wrap');
+            let legendDiv = document.getElementById('slot-legend');
             clearSlotState();
-            if (!schedules || !schedules.length) { wrap.innerHTML = `<span class="slot-placeholder">${state.doctor ? 'Không có lịch khám cho ngày này' : 'Vui lòng chọn bác sĩ và ngày'}</span>`; legendDiv.style.display = 'none'; return; }
-            wrap.innerHTML = schedules.map(s => { let booked = parseInt(s.booked_count)||0, max = parseInt(s.max_slot)||1, full = booked>=max; let time = s.start_time.substring(0,5); return `<button type="button" class="slot-btn${full ? ' full' : ''}" ${full ? 'disabled' : ''} data-sid="${s.schedule_id}" data-time="${s.start_time}" onclick="selectSlot(this)">${time}<span class="slot-count">${booked}/${max}</span></button>`; }).join('');
+            if (!schedules || !schedules.length) {
+                wrap.innerHTML = `<span class="slot-placeholder">${state.doctor ? 'Không có lịch khám cho ngày này' : 'Vui lòng chọn bác sĩ và ngày'}</span>`;
+                legendDiv.style.display = 'none';
+                return;
+            }
+            wrap.innerHTML = schedules.map(s => {
+                let booked = parseInt(s.booked_count) || 0,
+                    max = parseInt(s.max_slot) || 1,
+                    full = booked >= max;
+                let time = s.start_time.substring(0, 5);
+                return `<button type="button" class="slot-btn${full ? ' full' : ''}" ${full ? 'disabled' : ''} data-sid="${s.schedule_id}" data-time="${s.start_time}" onclick="selectSlot(this)">${time}<span class="slot-count">${booked}/${max}</span></button>`;
+            }).join('');
             legendDiv.innerHTML = `<div class="legend-item"><div class="legend-dot"></div>Còn trống</div><div class="legend-item"><div class="legend-dot full-dot"></div>Đã đầy</div><div class="legend-item"><div class="legend-dot sel-dot"></div>Đang chọn</div>`;
             legendDiv.style.display = 'flex';
         }
 
-        function clearSlotState() { state.scheduleId = null; state.time = null; document.getElementById('schedule_id').value = ''; document.getElementById('appointment_time').value = ''; document.getElementById('slot-error').innerText = ''; }
-        function selectSlot(el) { if(el.disabled || el.classList.contains('full')) return; document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('selected')); el.classList.add('selected'); state.scheduleId = el.dataset.sid; state.time = el.dataset.time.substring(0,5); document.getElementById('schedule_id').value = state.scheduleId; document.getElementById('appointment_time').value = state.time; document.getElementById('slot-error').innerText = ''; updateSummary(); }
-        function renderDoctor(doc) { let body = document.getElementById('doctor-body'); if(!doc) { body.innerHTML = `<div style="padding:20px 0;color:var(--gray-400);text-align:center"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><p>Chưa chọn bác sĩ</p></div>`; return; } let rating = parseFloat(doc.avg_rating)||0, reviews = parseInt(doc.total_reviews)||0; let stars = '★'.repeat(Math.round(rating))+'☆'.repeat(5-Math.round(rating)); let initials = doc.full_name.split(' ').slice(-2).map(w=>w[0]).join('').toUpperCase(); let avatar = doc.avatar_url ? `<img src="${doc.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : initials; let price = parseInt(doc.price)||0; body.innerHTML = `<div class="doc-avatar">${avatar}</div><div class="doc-name">BS. ${doc.full_name}</div><div class="doc-bio">${doc.bio||''} ${doc.experience?`• ${doc.experience} năm kinh nghiệm`:''}</div><div class="doc-stars">${stars} <span style="color:var(--gray-400)">(${reviews.toLocaleString('vi-VN')})</span></div><div class="doc-meta"><div class="doc-meta-row"><span>💰 Phí khám</span><span style="font-weight:800;color:var(--primary)">${price.toLocaleString('vi-VN')} ₫</span></div></div>`; }
-        function updateSummary() { let svcSel = document.getElementById('service_id_select'); let svcText = (svcSel && svcSel.selectedIndex>0) ? svcSel.options[svcSel.selectedIndex].text : ''; setSum('sum-dept', state.deptName); setSum('sum-doctor', state.doctor ? `BS. ${state.doctor.full_name}` : ''); setSum('sum-svc', svcText); setSum('sum-date', state.date ? state.date.split('-').reverse().join('/') : ''); setSum('sum-time', state.time || ''); }
-        function setSum(id, val) { let el = document.getElementById(id); if(!el) return; if(val && val!=='—') { el.textContent = val; el.classList.remove('empty'); } else { el.textContent = '—'; el.classList.add('empty'); } }
-        document.getElementById('booking-form').addEventListener('submit', function(e) { if(!state.scheduleId || !state.time) { e.preventDefault(); document.getElementById('slot-error').innerText = '⚠️ Vui lòng chọn khung giờ trước khi đặt lịch.'; document.getElementById('slot-wrap').scrollIntoView({behavior:'smooth'}); return; } let btn = document.getElementById('submit-btn'); let spinner = document.getElementById('spinner'); let icon = document.getElementById('submit-icon'); btn.disabled = true; spinner.style.display = 'inline-block'; icon.style.display = 'none'; });
+        function clearSlotState() {
+            state.scheduleId = null;
+            state.time = null;
+            document.getElementById('schedule_id').value = '';
+            document.getElementById('appointment_time').value = '';
+            document.getElementById('slot-error').innerText = '';
+        }
+
+        function selectSlot(el) {
+            if (el.disabled || el.classList.contains('full')) return;
+            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            state.scheduleId = el.dataset.sid;
+            state.time = el.dataset.time.substring(0, 5);
+            document.getElementById('schedule_id').value = state.scheduleId;
+            document.getElementById('appointment_time').value = state.time;
+            document.getElementById('slot-error').innerText = '';
+            updateSummary();
+        }
+
+        function renderDoctor(doc) {
+            let body = document.getElementById('doctor-body');
+            if (!doc) {
+                body.innerHTML = `<div style="padding:20px 0;color:var(--gray-400);text-align:center"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><p>Chưa chọn bác sĩ</p></div>`;
+                return;
+            }
+            let rating = parseFloat(doc.avg_rating) || 0,
+                reviews = parseInt(doc.total_reviews) || 0;
+            let stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+            let initials = doc.full_name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase();
+            let avatar = doc.avatar_url ? `<img src="${doc.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : initials;
+            let price = parseInt(doc.price) || 0;
+            body.innerHTML = `<div class="doc-avatar">${avatar}</div><div class="doc-name">BS. ${doc.full_name}</div><div class="doc-bio">${doc.bio||''} ${doc.experience?`• ${doc.experience} năm kinh nghiệm`:''}</div><div class="doc-stars">${stars} <span style="color:var(--gray-400)">(${reviews.toLocaleString('vi-VN')})</span></div><div class="doc-meta"><div class="doc-meta-row"><span>💰 Phí khám</span><span style="font-weight:800;color:var(--primary)">${price.toLocaleString('vi-VN')} ₫</span></div></div>`;
+        }
+
+        function updateSummary() {
+            let svcSel = document.getElementById('service_id_select');
+            let svcText = (svcSel && svcSel.selectedIndex > 0) ? svcSel.options[svcSel.selectedIndex].text : '';
+            setSum('sum-dept', state.deptName);
+            setSum('sum-doctor', state.doctor ? `BS. ${state.doctor.full_name}` : '');
+            setSum('sum-svc', svcText);
+            setSum('sum-date', state.date ? state.date.split('-').reverse().join('/') : '');
+            setSum('sum-time', state.time || '');
+        }
+
+        function setSum(id, val) {
+            let el = document.getElementById(id);
+            if (!el) return;
+            if (val && val !== '—') {
+                el.textContent = val;
+                el.classList.remove('empty');
+            } else {
+                el.textContent = '—';
+                el.classList.add('empty');
+            }
+        }
+        document.getElementById('booking-form').addEventListener('submit', function(e) {
+            if (!state.scheduleId || !state.time) {
+                e.preventDefault();
+                document.getElementById('slot-error').innerText = '⚠️ Vui lòng chọn khung giờ trước khi đặt lịch.';
+                document.getElementById('slot-wrap').scrollIntoView({
+                    behavior: 'smooth'
+                });
+                return;
+            }
+            let btn = document.getElementById('submit-btn');
+            let spinner = document.getElementById('spinner');
+            let icon = document.getElementById('submit-icon');
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+            icon.style.display = 'none';
+        });
         document.getElementById('service_id_select')?.addEventListener('change', updateSummary);
-        (function init() { updateSummary(); })();
-        window.onDeptChange = onDeptChange; window.onDoctorChange = onDoctorChange; window.onDateChange = onDateChange; window.selectSlot = selectSlot;
+        (function init() {
+            updateSummary();
+        })();
+        window.onDeptChange = onDeptChange;
+        window.onDoctorChange = onDoctorChange;
+        window.onDateChange = onDateChange;
+        window.selectSlot = selectSlot;
     </script>
     <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .invalid-msg { display: block; margin-top: 4px; }
-        .slot-error-hint:empty { display: none; }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .invalid-msg {
+            display: block;
+            margin-top: 4px;
+        }
+
+        .slot-error-hint:empty {
+            display: none;
+        }
     </style>
 </body>
+
 </html>
