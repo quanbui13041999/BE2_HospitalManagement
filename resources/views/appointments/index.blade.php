@@ -224,7 +224,7 @@
             display: inline-flex; align-items: center; gap: 4px;
         }
 
-        /* ── BADGES ── */
+        /* ── BADGESS ── */
         .badge {
             display: inline-flex; align-items: center; gap: 5px;
             padding: 4px 10px; border-radius: 20px;
