@@ -784,4 +784,9 @@ class AppointmentController extends Controller
 
         return response()->json(['suggested' => $top3]);
     }
+
+    public function timeslots(Request $request)
+    {
+        return response()->json(['day_off' => false, 'slots' => $slots]);
+    }
 }
