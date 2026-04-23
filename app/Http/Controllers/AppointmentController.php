@@ -141,45 +141,20 @@ class AppointmentController extends Controller
                 ->with('error', 'Vui lòng đăng nhập để đặt lịch hẹn.');
         }
 
-        // ── Làm sạch số điện thoại (bỏ dấu cách, ký tự đặc biệt) ──
-        $request->merge([
-            'phone' => preg_replace('/[^\d]/', '', $request->phone),
-        ]);
-
         $request->validate([
             'schedule_id'      => 'required|integer|exists:doctorschedules,schedule_id',
             'service_id'       => 'nullable|integer|exists:services,service_id',
             'work_date'        => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|string|max:10',
             'note'             => 'nullable|string|max:255',
-            'full_name'        => 'required|string|max:100',
-            'phone'            => 'required|regex:/^0\d{9}$/',
-            'date_of_birth'    => 'required|date|before:today',
-            'gender'           => 'required|in:Nam,Nữ,Khác',
-            'identity_number'  => 'nullable|string|max:20',
         ], [
             'schedule_id.required'      => 'Vui lòng chọn khung giờ khám.',
             'schedule_id.exists'        => 'Khung giờ không hợp lệ.',
             'work_date.after_or_equal'  => 'Ngày khám phải từ hôm nay trở đi.',
             'appointment_time.required' => 'Vui lòng chọn giờ khám.',
-            'full_name.required'        => 'Vui lòng nhập họ và tên.',
-            'phone.required'            => 'Vui lòng nhập số điện thoại.',
-            'phone.regex'               => 'Số điện thoại phải bắt đầu bằng 0 và có 10 chữ số.',
-            'date_of_birth.required'    => 'Vui lòng chọn ngày sinh.',
-            'date_of_birth.before'      => 'Ngày sinh phải trước ngày hôm nay.',
-            'gender.required'           => 'Vui lòng chọn giới tính.',
         ]);
 
         $userId = Auth::id();
-
-        // ── Cập nhật thông tin cá nhân nếu thay đổi ──
-        $userUpdateData = [
-            'full_name'     => $request->full_name,
-            'phone'         => $request->phone,
-            'date_of_birth' => $request->date_of_birth,
-            'gender'        => $request->gender,
-        ];
-        DB::table('users')->where('user_id', $userId)->update($userUpdateData);
 
         $alreadyBooked = DB::table('appointments')
             ->where('user_id', $userId)
@@ -453,45 +428,14 @@ class AppointmentController extends Controller
     // ================================================================
     public function update(Request $request, $id)
     {
-        // ── Làm sạch số điện thoại (bỏ dấu cách, ký tự đặc biệt) ──
-        if ($request->filled('phone')) {
-            $request->merge([
-                'phone' => preg_replace('/[^\d]/', '', $request->phone),
-            ]);
-        }
-
         $request->validate([
             'new_schedule_id'      => 'required|integer|exists:doctorschedules,schedule_id',
             'new_appointment_time' => 'required|string|max:10',
             'reschedule_reason'    => 'nullable|string|max:255',
-            'full_name'            => 'nullable|string|max:100',
-            'phone'                => 'nullable|regex:/^0\d{9}$/',
-            'date_of_birth'        => 'nullable|date|before:today',
-            'gender'               => 'nullable|in:Nam,Nữ,Khác',
         ], [
             'new_schedule_id.required' => 'Vui lòng chọn khung giờ mới.',
             'new_schedule_id.exists'   => 'Khung giờ không hợp lệ.',
-            'phone.regex'              => 'Số điện thoại phải bắt đầu bằng 0 và có 10 chữ số.',
-            'date_of_birth.before'     => 'Ngày sinh phải trước ngày hôm nay.',
         ]);
-
-        // ── Cập nhật thông tin cá nhân nếu có thay đổi ──
-        $userUpdateData = [];
-        if ($request->filled('full_name')) {
-            $userUpdateData['full_name'] = $request->full_name;
-        }
-        if ($request->filled('phone')) {
-            $userUpdateData['phone'] = $request->phone;
-        }
-        if ($request->filled('date_of_birth')) {
-            $userUpdateData['date_of_birth'] = $request->date_of_birth;
-        }
-        if ($request->filled('gender')) {
-            $userUpdateData['gender'] = $request->gender;
-        }
-        if (!empty($userUpdateData)) {
-            DB::table('users')->where('user_id', Auth::id())->update($userUpdateData);
-        }
 
         $appointment = DB::table('appointments')
             ->where('appointment_id', $id)
