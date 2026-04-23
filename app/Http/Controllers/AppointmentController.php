@@ -791,6 +791,9 @@ class AppointmentController extends Controller
             'doctor_id' => 'required|integer|exists:doctors,doctor_id',
             'work_date' => 'required|date|after_or_equal:today',
         ]);
+
+        $doctorId = (int)$request->doctor_id;
+        $workDate = $request->work_date;
         return response()->json(['day_off' => false, 'slots' => $slots]);
     }
 }
