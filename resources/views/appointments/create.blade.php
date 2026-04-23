@@ -21,6 +21,8 @@
             line-height: 1.5;
         }
 
+        
+
         /* Giao diện chính: xanh dương tinh tế + trắng tinh khôi */
         :root {
             --primary: #0f52ba;
@@ -574,6 +576,62 @@
                 @csrf
                 <input type="hidden" name="schedule_id" id="schedule_id">
                 <input type="hidden" name="appointment_time" id="appointment_time">
+
+                {{-- Thông tin người đặt lịch --}}
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="icon-wrap">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                        </div>
+                        <h2>Thông tin người đặt lịch</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Họ và tên đầy đủ <span class="req">*</span></label>
+                                <input type="text" name="full_name" class="form-control @error('full_name') is-invalid @enderror"
+                                    placeholder="VD: Nguyễn Văn An"
+                                    value="{{ old('full_name', auth()->user()->full_name ?? '') }}" required>
+                                @error('full_name')<span class="invalid-msg" style="color:#e5484d;font-size:0.7rem">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Số điện thoại <span class="req">*</span></label>
+                                <input type="tel" name="phone" class="form-control @error('phone') is-invalid @enderror"
+                                    placeholder="VD: 0900 234 567"
+                                    value="{{ old('phone', auth()->user()->phone ?? '') }}" required>
+                                @error('phone')<span class="invalid-msg" style="color:#e5484d;font-size:0.7rem">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Ngày sinh <span class="req">*</span></label>
+                                <input type="date" name="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror"
+                                    value="{{ old('date_of_birth', auth()->user()->date_of_birth ?? '') }}" required>
+                                @error('date_of_birth')<span class="invalid-msg" style="color:#e5484d;font-size:0.7rem">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Giới tính <span class="req">*</span></label>
+                                <select name="gender" class="form-control @error('gender') is-invalid @enderror" required>
+                                    <option value="">-- Chọn --</option>
+                                    <option value="Nam" {{ old('gender', auth()->user()->gender ?? '') === 'Nam' ? 'selected' : '' }}>Nam</option>
+                                    <option value="Nữ" {{ old('gender', auth()->user()->gender ?? '') === 'Nữ' ? 'selected' : '' }}>Nữ</option>
+                                    <option value="Khác" {{ old('gender', auth()->user()->gender ?? '') === 'Khác' ? 'selected' : '' }}>Khác</option>
+                                </select>
+                                @error('gender')<span class="invalid-msg" style="color:#e5484d;font-size:0.7rem">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">CCCD / Hộ chiếu (tùy chọn)</label>
+                            <input type="text" name="identity_number" class="form-control @error('identity_number') is-invalid @enderror"
+                                placeholder="VD: số CCCD 12 chữ số"
+                                value="{{ old('identity_number', '') }}" maxlength="20">
+                            @error('identity_number')<span class="invalid-msg" style="color:#e5484d;font-size:0.7rem">{{ $message }}</span>@enderror
+                        </div>
+                    </div>
+                </div>
 
                 {{-- Bước 1: Khoa & bác sĩ --}}
                 <div class="panel">

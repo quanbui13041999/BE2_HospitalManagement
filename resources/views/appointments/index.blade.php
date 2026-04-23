@@ -44,6 +44,9 @@
         }
 
         /* Topbar mới – trắng sáng, hiện đại */
+
+        /* ── TOPBARR ── */
+
         .topbar {
             background: var(--white);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 0 rgba(0, 0, 0, 0.03);
