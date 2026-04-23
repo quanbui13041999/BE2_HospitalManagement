@@ -86,7 +86,7 @@
                                     value="{{ old('food_allergies', $tiensu->food_allergies ?? '') }}" placeholder="VD: Sữa, Gluten...">
                             </div>
                         </div>
-                        <a href="{{ url('/home') }}"
+                        <a href="{{ url('/trangchu') }}"
                             class="d-inline-block text-decoration-none px-4 py-2 rounded shadow-sm border"
                             style="background-color: #edffec; color: #28a745; font-weight: 600; transition: all 0.3s ease; border-color: #d4edda !important;">
                             <i class="bi bi-house-door-fill me-1">Trang chủ</i> 
