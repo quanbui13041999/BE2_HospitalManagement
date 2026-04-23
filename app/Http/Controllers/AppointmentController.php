@@ -142,15 +142,15 @@ class AppointmentController extends Controller
         }
 
         $request->validate([
-            'schedule_id'      => 'required|integer|exists:doctorschedules,schedule_id',
-            'service_id'       => 'nullable|integer|exists:services,service_id',
-            'work_date'        => 'required|date|after_or_equal:today',
+            'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
+            'service_id' => 'nullable|integer|exists:services,service_id',
+            'work_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|string|max:10',
-            'note'             => 'nullable|string|max:255',
+            'note' => 'nullable|string|max:255',
         ], [
-            'schedule_id.required'      => 'Vui lòng chọn khung giờ khám.',
-            'schedule_id.exists'        => 'Khung giờ không hợp lệ.',
-            'work_date.after_or_equal'  => 'Ngày khám phải từ hôm nay trở đi.',
+            'schedule_id.required' => 'Vui lòng chọn khung giờ khám.',
+            'schedule_id.exists' => 'Khung giờ không hợp lệ.',
+            'work_date.after_or_equal' => 'Ngày khám phải từ hôm nay trở đi.',
             'appointment_time.required' => 'Vui lòng chọn giờ khám.',
         ]);
 
@@ -196,9 +196,9 @@ class AppointmentController extends Controller
                 ->withInput();
         }
 
-        $queueNumber         = $booked + 1;
+        $queueNumber = $booked + 1;
         $appointmentDatetime = $request->work_date . ' ' . $request->appointment_time . ':00';
-        $appointmentId       = null;
+        $appointmentId = null;
 
         // ── Transaction: chỉ DB, KHÔNG có mail bên trong ──
         DB::beginTransaction();
@@ -213,45 +213,45 @@ class AppointmentController extends Controller
                 DB::table('appointments')
                     ->where('appointment_id', $existing->appointment_id)
                     ->update([
-                        'service_id'       => $request->service_id ?: null,
+                        'service_id' => $request->service_id ?: null,
                         'appointment_time' => $appointmentDatetime,
-                        'queue_number'     => $queueNumber,
-                        'status'           => 'Chờ xác nhận',
-                        'note'             => $request->note,
-                        'cancel_reason'    => null,
+                        'queue_number' => $queueNumber,
+                        'status' => 'Chờ xác nhận',
+                        'note' => $request->note,
+                        'cancel_reason' => null,
                         'slot_hold_expire' => null,
                         'rescheduled_from' => null,
                     ]);
                 $appointmentId = $existing->appointment_id;
             } else {
                 $appointmentId = DB::table('appointments')->insertGetId([
-                    'user_id'          => $userId,
-                    'schedule_id'      => $request->schedule_id,
-                    'service_id'       => $request->service_id ?: null,
+                    'user_id' => $userId,
+                    'schedule_id' => $request->schedule_id,
+                    'service_id' => $request->service_id ?: null,
                     'appointment_time' => $appointmentDatetime,
-                    'queue_number'     => $queueNumber,
-                    'status'           => 'Chờ xác nhận',
-                    'note'             => $request->note,
-                    'created_at'       => now(),
+                    'queue_number' => $queueNumber,
+                    'status' => 'Chờ xác nhận',
+                    'note' => $request->note,
+                    'created_at' => now(),
                 ]);
             }
 
             DB::table('notifications')->insert([
-                'user_id'    => $userId,
+                'user_id' => $userId,
                 'notif_type' => 'Lịch hẹn',
-                'title'      => 'Đặt lịch hẹn thành công',
-                'content'    => 'Lịch khám lúc ' . $request->appointment_time
+                'title' => 'Đặt lịch hẹn thành công',
+                'content' => 'Lịch khám lúc ' . $request->appointment_time
                     . ' ngày ' . Carbon::parse($request->work_date)->format('d/m/Y')
                     . '. Số thứ tự: #' . $queueNumber,
-                'ref_id'     => $appointmentId,
-                'ref_type'   => 'appointment',
-                'is_read'    => false,
+                'ref_id' => $appointmentId,
+                'ref_type' => 'appointment',
+                'is_read' => false,
                 'created_at' => now(),
             ]);
 
             DB::table('activitylogs')->insert([
-                'user_id'    => $userId,
-                'action'     => 'Đặt lịch hẹn #' . $appointmentId,
+                'user_id' => $userId,
+                'action' => 'Đặt lịch hẹn #' . $appointmentId,
                 'ip_address' => $request->ip(),
                 'created_at' => now(),
             ]);
@@ -287,7 +287,7 @@ class AppointmentController extends Controller
             } catch (\Exception $mailError) {
                 Log::warning('Failed to send appointment confirmation email', [
                     'appointment_id' => $appointmentId,
-                    'error'          => $mailError->getMessage(),
+                    'error' => $mailError->getMessage(),
                 ]);
             }
         }
@@ -429,12 +429,12 @@ class AppointmentController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'new_schedule_id'      => 'required|integer|exists:doctorschedules,schedule_id',
+            'new_schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
             'new_appointment_time' => 'required|string|max:10',
-            'reschedule_reason'    => 'nullable|string|max:255',
+            'reschedule_reason' => 'nullable|string|max:255',
         ], [
             'new_schedule_id.required' => 'Vui lòng chọn khung giờ mới.',
-            'new_schedule_id.exists'   => 'Khung giờ không hợp lệ.',
+            'new_schedule_id.exists' => 'Khung giờ không hợp lệ.',
         ]);
 
         $appointment = DB::table('appointments')
@@ -452,7 +452,7 @@ class AppointmentController extends Controller
                 ->withErrors(['msg' => 'Lịch hẹn này không thể dời.']);
         }
 
-        if ((int)$request->new_schedule_id === (int)$appointment->schedule_id) {
+        if ((int) $request->new_schedule_id === (int) $appointment->schedule_id) {
             return back()->withErrors(['msg' => 'Vui lòng chọn lịch khác với lịch hiện tại.']);
         }
 
@@ -485,31 +485,31 @@ class AppointmentController extends Controller
             DB::table('appointments')
                 ->where('appointment_id', $id)
                 ->update([
-                    'schedule_id'      => $request->new_schedule_id,
+                    'schedule_id' => $request->new_schedule_id,
                     'appointment_time' => $newDatetime,
-                    'queue_number'     => $bookedInNew + 1,
-                    'status'           => 'Chờ xác nhận',
-                    'cancel_reason'    => $request->reschedule_reason
+                    'queue_number' => $bookedInNew + 1,
+                    'status' => 'Chờ xác nhận',
+                    'cancel_reason' => $request->reschedule_reason
                         ? 'Dời lịch: ' . $request->reschedule_reason
                         : 'Dời sang lịch mới',
                     'rescheduled_from' => $appointment->schedule_id,
                 ]);
 
             DB::table('notifications')->insert([
-                'user_id'    => Auth::id(),
+                'user_id' => Auth::id(),
                 'notif_type' => 'Lịch hẹn',
-                'title'      => 'Dời lịch hẹn thành công',
-                'content'    => 'Lịch hẹn #' . $id . ' đã được dời sang '
+                'title' => 'Dời lịch hẹn thành công',
+                'content' => 'Lịch hẹn #' . $id . ' đã được dời sang '
                     . Carbon::parse($newDatetime)->format('H:i d/m/Y'),
-                'ref_id'     => $id,
-                'ref_type'   => 'appointment',
-                'is_read'    => false,
+                'ref_id' => $id,
+                'ref_type' => 'appointment',
+                'is_read' => false,
                 'created_at' => now(),
             ]);
 
             DB::table('activitylogs')->insert([
-                'user_id'    => Auth::id(),
-                'action'     => 'Dời lịch hẹn #' . $id . ' sang schedule #' . $request->new_schedule_id,
+                'user_id' => Auth::id(),
+                'action' => 'Dời lịch hẹn #' . $id . ' sang schedule #' . $request->new_schedule_id,
                 'ip_address' => $request->ip(),
                 'created_at' => now(),
             ]);
@@ -543,7 +543,7 @@ class AppointmentController extends Controller
             } catch (\Exception $mailError) {
                 Log::warning('Failed to send appointment rescheduled email', [
                     'appointment_id' => $id,
-                    'error'          => $mailError->getMessage(),
+                    'error' => $mailError->getMessage(),
                 ]);
             }
         }
@@ -591,25 +591,25 @@ class AppointmentController extends Controller
             DB::table('appointments')
                 ->where('appointment_id', $id)
                 ->update([
-                    'status'        => 'Đã hủy',
+                    'status' => 'Đã hủy',
                     'cancel_reason' => $request->cancel_reason ?: 'Bệnh nhân tự hủy',
                 ]);
 
             DB::table('notifications')->insert([
-                'user_id'    => Auth::id(),
+                'user_id' => Auth::id(),
                 'notif_type' => 'Lịch hẹn',
-                'title'      => 'Hủy lịch hẹn thành công',
-                'content'    => 'Lịch hẹn #' . $id . ' đã được hủy.'
+                'title' => 'Hủy lịch hẹn thành công',
+                'content' => 'Lịch hẹn #' . $id . ' đã được hủy.'
                     . ($request->cancel_reason ? ' Lý do: ' . $request->cancel_reason : ''),
-                'ref_id'     => $id,
-                'ref_type'   => 'appointment',
-                'is_read'    => false,
+                'ref_id' => $id,
+                'ref_type' => 'appointment',
+                'is_read' => false,
                 'created_at' => now(),
             ]);
 
             DB::table('activitylogs')->insert([
-                'user_id'    => Auth::id(),
-                'action'     => 'Hủy lịch hẹn #' . $id,
+                'user_id' => Auth::id(),
+                'action' => 'Hủy lịch hẹn #' . $id,
                 'ip_address' => $request->ip(),
                 'created_at' => now(),
             ]);
@@ -644,12 +644,18 @@ class AppointmentController extends Controller
             } catch (\Exception $mailError) {
                 Log::warning('Failed to send appointment cancelled email', [
                     'appointment_id' => $id,
-                    'error'          => $mailError->getMessage(),
+                    'error' => $mailError->getMessage(),
                 ]);
             }
         }
 
         return redirect()->route('appointments.index')
             ->with('success', 'Đã hủy lịch hẹn #' . $id . ' thành công.');
+    }
+
+    public function suggest(Request $request)
+    {
+       
+        return response()->json(['suggested' => $top3]);
     }
 }
