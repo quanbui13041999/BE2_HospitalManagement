@@ -61,7 +61,44 @@
             font-size: 14px;
         }
 
+<<<<<<< HEAD
         /* ── TOPBAR ── */
+=======
+        
+
+        /* Giao diện chính: xanh dương tinh tế + trắng tinh khôi */
+        :root {
+            --primary: #0f52ba;
+            --primary-dark: #0a3d8f;
+            --primary-soft: #eef4ff;
+            --primary-glow: rgba(15, 82, 186, 0.08);
+            --accent-teal: #1e8f9b;
+            --accent-teal-light: #cff4f0;
+            --gray-50: #f9fafc;
+            --gray-100: #f2f5f9;
+            --gray-200: #e9edf2;
+            --gray-300: #dce2e8;
+            --gray-400: #9aaebf;
+            --gray-600: #4a5c6c;
+            --gray-800: #1e2a3a;
+            --white: #ffffff;
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.02), 0 2px 6px rgba(0, 20, 50, 0.05);
+            --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.01);
+            --shadow-lg: 0 20px 35px -12px rgba(0, 32, 64, 0.12);
+            --radius-card: 24px;
+            --radius-panel: 20px;
+            --radius-btn: 40px;
+            --radius-input: 16px;
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        /* Topbar – sang trọng, hiện đại */
+>>>>>>> Tu/1_DatLichHen
         .topbar {
             position: sticky; top: 0; z-index: 100;
             background: var(--blue-900);
