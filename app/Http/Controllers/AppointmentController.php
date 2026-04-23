@@ -669,7 +669,11 @@ class AppointmentController extends Controller
                 'doctor_id',
                 DB::raw('ROUND(AVG(rating), 2) as avg_rating'),
                 DB::raw('COUNT(*) as total_reviews')
-            )->groupBy('doctor_id'),'rv','rv.doctor_id','=','doctors.doctor_id'
+            )->groupBy('doctor_id'),
+            'rv',
+            'rv.doctor_id',
+            '=',
+            'doctors.doctor_id'
         )->where('doctors.department_id', $deptId)->where('doctors.status', 1)->select(
                 'doctors.doctor_id',
                 'doctors.full_name',
@@ -680,13 +684,20 @@ class AppointmentController extends Controller
                 DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
                 DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
             )->get();
-        
+
         if ($doctors->isEmpty()) {
             return response()->json(['suggested' => []]);
         }
 
-        $doctors = $doctors->pluck('doctor_id')->toArray();
+        $doctorIds = $doctors->pluck('doctor_id')->toArray();
 
+        // kiem tra ngay nghi  
+        $daysOff = DB::table('doctordaysoff')
+            ->whereIn('doctor_id', $doctorIds)
+            ->where('off_date', $workDate)
+            ->pluck('doctor_id')
+            ->flip()            // doctor_id → key để isset() O(1)
+            ->toArray();
         return response()->json(['suggested' => $top3]);
     }
 }
