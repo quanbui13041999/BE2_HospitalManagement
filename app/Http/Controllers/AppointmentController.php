@@ -664,9 +664,22 @@ class AppointmentController extends Controller
         $workDate = $request->work_date;
 
         // lay tat ca danh sach bac si active thuoc khoa 
-        $doctor = DB::table('doctor')->leftJoinSub(
-            
-        )  
+        $doctors = DB::table('doctors')->leftJoinSub(
+            DB::table('reviews')->select(
+                'doctor_id',
+                DB::raw('ROUND(AVG(rating), 2) as avg_rating'),
+                DB::raw('COUNT(*) as total_reviews')
+            )->groupBy('doctor_id'),'rv','rv.doctor_id','=','doctors.doctor_id'
+        )->where('doctors.department_id', $deptId)->where('doctors.status', 1)->select(
+                'doctors.doctor_id',
+                'doctors.full_name',
+                'doctors.experience',
+                'doctors.price',
+                'doctors.avatar_url',
+                'doctors.bio',
+                DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
+                DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
+            )->get();
 
         return response()->json(['suggested' => $top3]);
     }
