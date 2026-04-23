@@ -680,6 +680,10 @@ class AppointmentController extends Controller
                 DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
                 DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
             )->get();
+        
+        if ($doctors->isEmpty()) {
+            return response()->json(['suggested' => []]);
+        }
 
         return response()->json(['suggested' => $top3]);
     }
