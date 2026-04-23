@@ -653,6 +653,16 @@ class AppointmentController extends Controller
             ->with('success', 'Đã hủy lịch hẹn #' . $id . ' thành công.');
     }
 
+    /**
+     * Summary of suggest (goi y bac si tu dong)
+     * @param Request $request
+     * thuat toan scoring scoring (100)
+     * 40% ti le slot con trong -> (bac si trong nhieu lich -> uu tien)
+     * 35% danh gia trung binh (avg_rating / 5 * 35)
+     * 15% nam kinh nghiem (capped 20 nam -> 15d)
+     * 10% so luot danh gia 
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function suggest(Request $request)
     {
         $request->validate([
@@ -696,30 +706,81 @@ class AppointmentController extends Controller
             ->whereIn('doctor_id', $doctorIds)
             ->where('off_date', $workDate)
             ->pluck('doctor_id')
-            ->flip()           
+            ->flip()
             ->toArray();
 
         // dem slot trong theo tung bac si trong ngay
         $scheduleStats = DB::table('doctorschedules')
-        ->leftJoinSub(
-            DB::table('appointments')
-                ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-                ->groupBy('schedule_id'),
-            'bk',
-            'bk.schedule_id', '=', 'doctorschedules.schedule_id'
-        )
-        ->whereIn('doctorschedules.doctor_id', $doctorIds)
-        ->where('doctorschedules.work_date', $workDate)
-        ->where('doctorschedules.status', 'Hoạt động')
-        ->select(
-            'doctorschedules.doctor_id',
-            DB::raw('SUM(doctorschedules.max_slot) as total_slots'),
-            DB::raw('SUM(COALESCE(bk.booked_count, 0)) as booked_count')
-        )
-        ->groupBy('doctorschedules.doctor_id')
-        ->get()
-        ->keyBy('doctor_id');
- 
+            ->leftJoinSub(
+                DB::table('appointments')
+                    ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->groupBy('schedule_id'),
+                'bk',
+                'bk.schedule_id',
+                '=',
+                'doctorschedules.schedule_id'
+            )
+            ->whereIn('doctorschedules.doctor_id', $doctorIds)
+            ->where('doctorschedules.work_date', $workDate)
+            ->where('doctorschedules.status', 'Hoạt động')
+            ->select(
+                'doctorschedules.doctor_id',
+                DB::raw('SUM(doctorschedules.max_slot) as total_slots'),
+                DB::raw('SUM(COALESCE(bk.booked_count, 0)) as booked_count')
+            )
+            ->groupBy('doctorschedules.doctor_id')
+            ->get()
+            ->keyBy('doctor_id');
+
+        // tinh diem loc 
+        $scored = [];
+
+        foreach ($doctors as $doc) {
+            // Bỏ qua bác sĩ nghỉ
+            if (isset($daysOff[$doc->doctor_id])) {
+                continue;
+            }
+
+            $stats = $scheduleStats->get($doc->doctor_id);
+            $totalSlots = $stats ? (int) $stats->total_slots : 0;
+            $bookedCount = $stats ? (int) $stats->booked_count : 0;
+            $available = max(0, $totalSlots - $bookedCount);
+
+            // Bỏ bác sĩ không có lịch hoặc đã full
+            if ($totalSlots === 0 || $available === 0) {
+                continue;
+            }
+
+            $avgRating = (float) $doc->avg_rating;
+            $totalReviews = (int) $doc->total_reviews;
+            $experience = (int) $doc->experience;
+
+            // Scoring
+            $slotScore = ($available / $totalSlots) * 40;
+            $ratingScore = ($avgRating / 5.0) * 35;
+            $expScore = (min($experience, 20) / 20) * 15;
+            $reviewScore = (min($totalReviews, 50) / 50) * 10;
+            $score = $slotScore + $ratingScore + $expScore + $reviewScore;
+
+            $scored[] = [
+                'doctor_id' => $doc->doctor_id,
+                'full_name' => $doc->full_name,
+                'experience' => $experience,
+                'price' => $doc->price,
+                'avatar_url' => $doc->avatar_url,
+                'bio' => $doc->bio,
+                'avg_rating' => $avgRating,
+                'total_reviews' => $totalReviews,
+                'available_slots' => $available,
+                'total_slots' => $totalSlots,
+                'score' => round($score, 2),
+            ];
+        }
+
+        // sap xep lay top 3
+        usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
+        $top3 = array_slice($scored, 0, 3);
+
     }
 }
