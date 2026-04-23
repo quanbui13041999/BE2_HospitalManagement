@@ -28,8 +28,12 @@ Route::middleware('auth')->group(function () {
 
     // Danh sách lịch hẹn
     Route::get('/lich-hen',           [AppointmentController::class, 'index'])->name('appointments.index');
-
-    // Chi tiết lịch hẹn (nếu có)
+    
+    // goi y bac si tu dong
+    Route::get('/api/appointments/suggest',   [AppointmentController::class, 'suggest'])
+     ->name('appointments.suggest');
+    
+     // Chi tiết lịch hẹn (nếu có)
     // Route::get('/lich-hen/{id}',   [AppointmentController::class, 'show'])->name('appointments.show');
 
     // Dời lịch hẹn
