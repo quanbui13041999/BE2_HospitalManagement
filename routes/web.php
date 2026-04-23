@@ -6,7 +6,9 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\User\ServiceController as UserServiceController;
-
+use App\Http\Controllers\tiensucontroler;
+use App\Http\Controllers\MembershipController; 
+use App\Http\Controllers\HomeController;
 // ============================================================
 // TRANG CHỦ & AUTH
 // ============================================================
@@ -18,7 +20,7 @@ Route::get('/', function () {
 Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('/login',   [AuthController::class, 'login'])->name('login.post');
-Route::post('/register',[AuthController::class, 'register'])->name('register.post');
+Route::post('/register', [AuthController::class, 'register'])->name('register.post');
 Route::post('/logout',  [AuthController::class, 'logout'])->name('logout');
 
 // ============================================================
@@ -101,7 +103,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
             Route::post('/',            [RoomController::class, 'storeSchedule'])->name('store');
             Route::get('/{schedule}/edit', [RoomController::class, 'editSchedule'])->name('edit');
             Route::put('/{schedule}',   [RoomController::class, 'updateSchedule'])->name('update');
-            Route::delete('/{schedule}',[RoomController::class, 'destroySchedule'])->name('destroy');
+            Route::delete('/{schedule}', [RoomController::class, 'destroySchedule'])->name('destroy');
             Route::get('/check-conflict', [RoomController::class, 'checkConflict'])->name('check-conflict');
         });
 
@@ -114,6 +116,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::put('/{room}',    [RoomController::class, 'update'])->name('update');
         Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
     });
+     //xem tien su
+    Route::get('/tiensu', [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
+
+    // sua tien su
+    Route::post('/tiensu', [tiensucontroler::class, 'luutiensu'])->name('tiensu.store');
+    //the thanh vien
+
+    Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
 });
 
 // ============================================================

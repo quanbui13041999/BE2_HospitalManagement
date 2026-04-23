@@ -710,7 +710,7 @@
     </a>
 
     <div class="topbar-center">
-        <a href="{{ route('home') }}">🏠 Trang chủ</a>
+        <a href="{{ route('Home.trangchu') }}">🏠 Trang chủ</a>
         <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
         <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
     </div>
@@ -731,7 +731,7 @@
 
 {{-- BREADCRUMB --}}
 <div class="breadcrumb-bar">
-    <a href="{{ route('home') }}">Trang chủ</a>
+    <a href="{{ route('Home.trangchu) }}">Trang chủ</a>
     <span class="sep">›</span>
     <span style="color: var(--gray-600); font-weight: 500;">Lịch hẹn của tôi</span>
 </div>
