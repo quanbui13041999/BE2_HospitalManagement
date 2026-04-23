@@ -772,6 +772,21 @@
     </div>
     @endif
 
+    @if($errors->any())
+    <div style="background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; gap: 12px; margin-bottom: 28px; font-size: 0.85rem; color: #7f1d1d;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <div>
+            @foreach($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     @php
         $total     = $appointments->count();
         $pending   = $appointments->where('status','Chờ xác nhận')->count();
@@ -921,8 +936,9 @@
         </div>
         <h3>Xác nhận hủy lịch</h3>
         <p>Bạn có chắc muốn hủy lịch khám này không? Hành động này không thể hoàn tác.</p>
-        <form id="cancelForm" method="POST">
+        <form id="cancelForm" method="POST" action="">
             @csrf
+            <input type="hidden" name="_method" value="POST">
             <textarea name="cancel_reason" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
             <div class="modal-btns">
                 <button type="button" class="modal-cancel-btn" onclick="closeModal()">Không, giữ lại</button>
@@ -935,14 +951,30 @@
 <script>
     function openModal(button) {
         const action = button.getAttribute('data-action');
-        document.getElementById('cancelForm').action = action;
-        document.getElementById('cancelModal').classList.add('active');
+        const form = document.getElementById('cancelForm');
+        if (action) {
+            form.action = action;
+            document.getElementById('cancelModal').classList.add('active');
+        } else {
+            console.error('Không tìm thấy route hủy lịch');
+            alert('Có lỗi khi tải dữ liệu. Vui lòng tải lại trang.');
+        }
     }
+    
     function closeModal() {
         document.getElementById('cancelModal').classList.remove('active');
     }
+    
     document.getElementById('cancelModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
+    });
+    
+    // Handle form submission
+    document.getElementById('cancelForm').addEventListener('submit', function(e) {
+        if (!this.action) {
+            e.preventDefault();
+            alert('Có lỗi: không có đường dẫn. Vui lòng tải lại trang.');
+        }
     });
 </script>
 </body>

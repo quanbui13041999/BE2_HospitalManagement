@@ -392,7 +392,16 @@ class AppointmentController extends Controller
         }
 
         $appointmentTime = Carbon::parse($appointment->work_date . ' ' . $appointment->start_time);
-        if ($appointmentTime->diffInHours(now(), false) > -2) {
+        $hoursUntilAppointment = $appointmentTime->diffInHours(now(), false);
+        
+        // Check if appointment is in the past
+        if ($hoursUntilAppointment >= 0) {
+            return redirect()->route('appointments.index')
+                ->withErrors(['msg' => 'Lịch khám này đã qua hoặc đang diễn ra. Không thể dời lịch.']);
+        }
+        
+        // Check if appointment is within 2 hours
+        if ($hoursUntilAppointment > -2) {
             return redirect()->route('appointments.index')
                 ->withErrors(['msg' => 'Chỉ có thể dời lịch trước giờ khám ít nhất 2 tiếng.']);
         }
@@ -582,7 +591,16 @@ class AppointmentController extends Controller
             ->first();
 
         $appointmentTime = Carbon::parse($schedule->work_date . ' ' . $schedule->start_time);
-        if ($appointmentTime->diffInHours(now(), false) > -2) {
+        $hoursUntilAppointment = $appointmentTime->diffInHours(now(), false);
+        
+        // Check if appointment is in the past
+        if ($hoursUntilAppointment >= 0) {
+            return redirect()->route('appointments.index')
+                ->withErrors(['msg' => 'Lịch khám này đã qua hoặc đang diễn ra. Không thể hủy lịch.']);
+        }
+        
+        // Check if appointment is within 2 hours
+        if ($hoursUntilAppointment > -2) {
             return redirect()->route('appointments.index')
                 ->withErrors(['msg' => 'Chỉ có thể hủy lịch trước giờ khám ít nhất 2 tiếng.']);
         }

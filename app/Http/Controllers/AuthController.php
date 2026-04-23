@@ -54,11 +54,11 @@ class AuthController extends Controller
         Auth::login($user);
         // Gửi mail nhưng KHÔNG để lỗi mail chặn đăng ký
 
-        // try {
+        try {
             Mail::to($user->email)->send(new WelcomeMail($user));
-        // } catch (\Exception $e) {
-        //     Log::error('Mail lỗi: ' . $e->getMessage());
-        // }
+        } catch (\Exception $e) {
+            Log::error('Mail lỗi: ' . $e->getMessage());
+        }
 
 
         // BUG CŨ: redirect về /login sau khi đã login → sửa về trang đặt lịch
