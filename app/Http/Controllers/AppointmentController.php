@@ -831,13 +831,59 @@ class AppointmentController extends Controller
             )
             ->orderBy('doctorschedules.start_time')
             ->get();
-        
+
         // neu khong co lich -> bac si khong nghi -> khong co lich lam
         if ($schedules->isEmpty()) {
             return response()->json(['day_off' => false, 'slots' => []]);
         }
-        
 
+        // sinh slot
+        $slots = [];
+
+        foreach ($schedules as $sch) {
+            // tach gio bat dau
+            [$sh, $sm] = array_map('intval', explode(':', $sch->start_time));
+            // tach gio ket thuc
+            [$eh, $em] = array_map('intval', explode(':', $sch->end_time));
+            $duration = (int) $sch->slot_duration;   // phut / slot
+            $maxSlot = (int) $sch->max_slot;
+            $booked = (int) $sch->booked_count;
+            $endMins = $eh * 60 + $em;
+
+            $curH = $sh;
+            $curM = $sm;
+
+            // dem index slot trong schedules nay de biet slot nao bi dat
+            // booked_count la tong - moi appiontment chiem 1 slot cua schedule
+            // is_booked = schedule da du nguoi (max_slot)
+            $scheduleIsFull = ($booked >= $maxSlot); // kiem tra xem co full khong
+
+            while ($curH * 60 + $curM + $duration <= $endMins) {
+                $timeStr = sprintf('%02d:%02d', $curH, $curM);
+                $endH = $curH + intdiv($curM + $duration, 60);
+                $endM = ($curM + $duration) % 60;
+                $endTimeStr = sprintf('%02d:%02d', $endH, $endM);
+
+                $slots[] = [
+                    'schedule_id' => $sch->schedule_id,
+                    'time' => $timeStr,
+                    'end_time' => $endTimeStr,
+                    'is_booked' => $scheduleIsFull,
+                    'max_slot' => $maxSlot,
+                    'booked' => $booked,
+                ];
+
+                // Advance
+                $curM += $duration;
+                if ($curM >= 60) {
+                    $curH += intdiv($curM, 60);
+                    $curM = $curM % 60;
+                }
+            }
+        }
+
+        // Sắp xếp theo giờ (đề phòng nhiều schedule xen kẽ)
+        usort($slots, fn($a, $b) => strcmp($a['time'], $b['time']));
 
         return response()->json(['day_off' => false, 'slots' => $slots]);
     }
