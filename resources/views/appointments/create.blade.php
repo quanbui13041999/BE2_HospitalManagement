@@ -23,10 +23,6 @@
             line-height: 1.5;
         }
 
-<<<<<<< HEAD
-        /* Giao diện chính: xanh dương tinh tế + trắng tinh khôi */
-=======
->>>>>>> origin/Tuan/21_GoiYBacSi
         :root {
             --primary: #0f52ba;
             --primary-dark: #0a3d8f;
@@ -53,10 +49,6 @@
             --radius-input: 16px;
         }
 
-<<<<<<< HEAD
-        /* Typography */
-=======
->>>>>>> origin/Tuan/21_GoiYBacSi
         h1,
         h2,
         h3 {
@@ -642,15 +634,6 @@
             background: #fef2f2;
             border-color: #ffb4b4;
         }
-<<<<<<< HEAD
-
-        .legend-dot.sel-dot {
-            background: var(--primary);
-            border: none;
-        }
-
-        /* Sidebar card tinh tế */
-=======
 
         .legend-dot.sel-dot {
             background: var(--primary);
@@ -681,7 +664,6 @@
             gap: 20px;
         }
 
->>>>>>> origin/Tuan/21_GoiYBacSi
         .doctor-card,
         .summary-card {
             background: var(--white);
@@ -1147,20 +1129,12 @@
                 <div class="card-head">👨‍⚕️ Bác Sĩ Được Chọn</div>
                 <div class="doctor-body" id="doctor-body">
                     <div style="padding:20px 0;color:var(--gray-400);text-align:center">
-<<<<<<< HEAD
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                            <circle cx="12" cy="7" r="4" />
-                        </svg>
-                        <p style="margin-top:8px">Chưa chọn bác sĩ</p>
-=======
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="1">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
                         </svg>
                         <p style="margin-top:10px;font-size:.82rem">Chưa chọn bác sĩ</p>
->>>>>>> origin/Tuan/21_GoiYBacSi
                     </div>
                 </div>
             </div>
@@ -1198,9 +1172,6 @@
         // ══════════════════════════════════════════════════════════════
         const doctorsByDept = {!! json_encode($doctorsByDept, JSON_UNESCAPED_SLASHES) !!};
 
-<<<<<<< HEAD
-        let state = {
-=======
         // Route URLs
         const ROUTE_SUGGEST = '{{ route("appointments.suggest") }}';
         const ROUTE_TIMESLOTS = '{{ route("appointments.timeslots") }}';
@@ -1209,18 +1180,13 @@
         // STATE
         // ══════════════════════════════════════════════════════════════
         const state = {
->>>>>>> origin/Tuan/21_GoiYBacSi
             deptId: null,
             deptName: '',
             doctor: null,
             date: document.getElementById('work_date').value,
             scheduleId: null,
-<<<<<<< HEAD
-            time: null
-=======
             time: null,
             timeEnd: null,
->>>>>>> origin/Tuan/21_GoiYBacSi
         };
 
         // AJAX caches — tránh gọi lại khi đã có data
@@ -1235,16 +1201,6 @@
             state.deptId = sel.value;
             state.deptName = sel.options[sel.selectedIndex]?.text || '';
             state.doctor = null;
-<<<<<<< HEAD
-            state.scheduleId = null;
-            state.time = null;
-            let docSel = document.getElementById('doctor');
-            docSel.innerHTML = '<option value="">-- Chọn bác sĩ --</option>';
-            docSel.disabled = !state.deptId;
-            let list = doctorsByDept[state.deptId] || [];
-            list.forEach(d => {
-                let o = document.createElement('option');
-=======
             clearSlotState();
 
             // Reset doctor select
@@ -1254,16 +1210,10 @@
 
             (doctorsByDept[state.deptId] || []).forEach(d => {
                 const o = document.createElement('option');
->>>>>>> origin/Tuan/21_GoiYBacSi
                 o.value = d.doctor_id;
                 o.textContent = `BS. ${d.full_name}`;
                 docSel.appendChild(o);
             });
-<<<<<<< HEAD
-            renderDoctor(null);
-            renderSlots([]);
-            updateSummary();
-=======
 
             renderDoctorCard(null);
             renderTimeslots([]);
@@ -1272,125 +1222,12 @@
             // Feature 1: tải gợi ý khi có khoa + ngày
             if (state.deptId && state.date) loadSuggestions();
             else hideSuggestions();
->>>>>>> origin/Tuan/21_GoiYBacSi
         }
 
         // ══════════════════════════════════════════════════════════════
         // 2. DOCTOR CHANGE
         // ══════════════════════════════════════════════════════════════
         function onDoctorChange() {
-<<<<<<< HEAD
-            let val = document.getElementById('doctor').value;
-            if (!val) {
-                state.doctor = null;
-                renderDoctor(null);
-                renderSlots([]);
-                updateSummary();
-                return;
-            }
-            let list = doctorsByDept[state.deptId] || [];
-            state.doctor = list.find(d => String(d.doctor_id) === String(val)) || null;
-            state.scheduleId = null;
-            state.time = null;
-            renderDoctor(state.doctor);
-            loadSlots();
-            updateSummary();
-        }
-
-        function onDateChange() {
-            state.date = document.getElementById('work_date').value;
-            state.scheduleId = null;
-            state.time = null;
-            if (state.doctor) loadSlots();
-            updateSummary();
-        }
-
-        function loadSlots() {
-            if (!state.doctor || !state.date) return;
-            let key = `${state.doctor.doctor_id}_${state.date}`;
-            if (scheduleData[key]) {
-                renderSlots(scheduleData[key]);
-                return;
-            }
-            document.getElementById('slot-wrap').innerHTML = '<div class="slot-loading" style="display:flex;gap:8px"><div class="mini-spin" style="width:16px;height:16px;border:2px solid #ccc; border-top-color:var(--primary); border-radius:50%; animation:spin .6s linear;"></div>Đang tải khung giờ...</div>';
-            document.getElementById('slot-legend').style.display = 'none';
-            fetch(`{{ route('appointments.schedules') }}?doctor_id=${state.doctor.doctor_id}&work_date=${state.date}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        Accept: 'application/json'
-                    }
-                })
-                .then(r => r.json()).then(data => {
-                    if (data.day_off) {
-                        document.getElementById('slot-wrap').innerHTML = '<span class="slot-placeholder">🚫 Bác sĩ nghỉ ngày này. Vui lòng chọn ngày khác.</span>';
-                        return;
-                    }
-                    scheduleData[key] = data.schedules || [];
-                    renderSlots(scheduleData[key]);
-                }).catch(() => {
-                    document.getElementById('slot-wrap').innerHTML = '<span class="slot-placeholder" style="color:#e5484d">⚠️ Lỗi tải khung giờ. Vui lòng thử lại.</span>';
-                });
-        }
-
-        function renderSlots(schedules) {
-            let wrap = document.getElementById('slot-wrap');
-            let legendDiv = document.getElementById('slot-legend');
-            clearSlotState();
-            if (!schedules || !schedules.length) {
-                wrap.innerHTML = `<span class="slot-placeholder">${state.doctor ? 'Không có lịch khám cho ngày này' : 'Vui lòng chọn bác sĩ và ngày'}</span>`;
-                legendDiv.style.display = 'none';
-                return;
-            }
-            wrap.innerHTML = schedules.map(s => {
-                let booked = parseInt(s.booked_count) || 0,
-                    max = parseInt(s.max_slot) || 1,
-                    full = booked >= max;
-                let time = s.start_time.substring(0, 5);
-                return `<button type="button" class="slot-btn${full ? ' full' : ''}" ${full ? 'disabled' : ''} data-sid="${s.schedule_id}" data-time="${s.start_time}" onclick="selectSlot(this)">${time}<span class="slot-count">${booked}/${max}</span></button>`;
-            }).join('');
-            legendDiv.innerHTML = `<div class="legend-item"><div class="legend-dot"></div>Còn trống</div><div class="legend-item"><div class="legend-dot full-dot"></div>Đã đầy</div><div class="legend-item"><div class="legend-dot sel-dot"></div>Đang chọn</div>`;
-            legendDiv.style.display = 'flex';
-        }
-
-        function clearSlotState() {
-            state.scheduleId = null;
-            state.time = null;
-            document.getElementById('schedule_id').value = '';
-            document.getElementById('appointment_time').value = '';
-            document.getElementById('slot-error').innerText = '';
-        }
-
-        function selectSlot(el) {
-            if (el.disabled || el.classList.contains('full')) return;
-            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
-            el.classList.add('selected');
-            state.scheduleId = el.dataset.sid;
-            state.time = el.dataset.time.substring(0, 5);
-            document.getElementById('schedule_id').value = state.scheduleId;
-            document.getElementById('appointment_time').value = state.time;
-            document.getElementById('slot-error').innerText = '';
-            updateSummary();
-        }
-
-        function renderDoctor(doc) {
-            let body = document.getElementById('doctor-body');
-            if (!doc) {
-                body.innerHTML = `<div style="padding:20px 0;color:var(--gray-400);text-align:center"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><p>Chưa chọn bác sĩ</p></div>`;
-                return;
-            }
-            let rating = parseFloat(doc.avg_rating) || 0,
-                reviews = parseInt(doc.total_reviews) || 0;
-            let stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
-            let initials = doc.full_name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase();
-            let avatar = doc.avatar_url ? `<img src="${doc.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : initials;
-            let price = parseInt(doc.price) || 0;
-            body.innerHTML = `<div class="doc-avatar">${avatar}</div><div class="doc-name">BS. ${doc.full_name}</div><div class="doc-bio">${doc.bio||''} ${doc.experience?`• ${doc.experience} năm kinh nghiệm`:''}</div><div class="doc-stars">${stars} <span style="color:var(--gray-400)">(${reviews.toLocaleString('vi-VN')})</span></div><div class="doc-meta"><div class="doc-meta-row"><span>💰 Phí khám</span><span style="font-weight:800;color:var(--primary)">${price.toLocaleString('vi-VN')} ₫</span></div></div>`;
-        }
-
-        function updateSummary() {
-            let svcSel = document.getElementById('service_id_select');
-            let svcText = (svcSel && svcSel.selectedIndex > 0) ? svcSel.options[svcSel.selectedIndex].text : '';
-=======
             const val = document.getElementById('doctor').value;
             if (!val) {
                 state.doctor = null;
@@ -1706,39 +1543,10 @@
                 ? (state.timeEnd ? `${state.time} – ${state.timeEnd}` : state.time)
                 : '';
 
->>>>>>> origin/Tuan/21_GoiYBacSi
             setSum('sum-dept', state.deptName);
             setSum('sum-doctor', state.doctor ? `BS. ${state.doctor.full_name}` : '');
             setSum('sum-svc', svcText);
             setSum('sum-date', state.date ? state.date.split('-').reverse().join('/') : '');
-<<<<<<< HEAD
-            setSum('sum-time', state.time || '');
-        }
-
-        function setSum(id, val) {
-            let el = document.getElementById(id);
-            if (!el) return;
-            if (val && val !== '—') {
-                el.textContent = val;
-                el.classList.remove('empty');
-            } else {
-                el.textContent = '—';
-                el.classList.add('empty');
-            }
-        }
-        document.getElementById('booking-form').addEventListener('submit', function(e) {
-            if (!state.scheduleId || !state.time) {
-                e.preventDefault();
-                document.getElementById('slot-error').innerText = '⚠️ Vui lòng chọn khung giờ trước khi đặt lịch.';
-                document.getElementById('slot-wrap').scrollIntoView({
-                    behavior: 'smooth'
-                });
-                return;
-            }
-            let btn = document.getElementById('submit-btn');
-            let spinner = document.getElementById('spinner');
-            let icon = document.getElementById('submit-icon');
-=======
             setSum('sum-time', timeDisplay);
         }
 
@@ -1763,38 +1571,10 @@
             const btn = document.getElementById('submit-btn');
             const spinner = document.getElementById('spinner');
             const icon = document.getElementById('submit-icon');
->>>>>>> origin/Tuan/21_GoiYBacSi
             btn.disabled = true;
             spinner.style.display = 'inline-block';
             icon.style.display = 'none';
         });
-<<<<<<< HEAD
-        document.getElementById('service_id_select')?.addEventListener('change', updateSummary);
-        (function init() {
-            updateSummary();
-        })();
-        window.onDeptChange = onDeptChange;
-        window.onDoctorChange = onDoctorChange;
-        window.onDateChange = onDateChange;
-        window.selectSlot = selectSlot;
-    </script>
-    <style>
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .invalid-msg {
-            display: block;
-            margin-top: 4px;
-        }
-
-        .slot-error-hint:empty {
-            display: none;
-        }
-    </style>
-=======
 
         // Service dropdown → cập nhật summary
         document.getElementById('service_id_select')?.addEventListener('change', updateSummary);
@@ -1803,7 +1583,6 @@
         updateSummary();
     </script>
 
->>>>>>> origin/Tuan/21_GoiYBacSi
 </body>
 
 </html>
