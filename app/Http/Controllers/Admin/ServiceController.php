@@ -59,25 +59,25 @@ class ServiceController extends Controller
                 ->get();
         }
 
-        // ── Tab 3: Lịch sử thay đổi giá ──────────────────────────
-        $priceHistory = DB::table('ServicePriceLogs as l')
-            ->join('Services as s', 's.service_id', '=', 'l.service_id')
-            ->join('Users as u', 'u.user_id', '=', 'l.changed_by')
-            ->select(
-                'l.*',
-                's.service_name',
-                's.service_code',
-                'u.full_name as changed_by_name'
-            )
-            ->orderByDesc('l.changed_at')
-            ->paginate(30, ['*'], 'history_page')
-            ->withQueryString();
+        // // ── Tab 3: Lịch sử thay đổi giá ──────────────────────────
+        // $priceHistory = DB::table('ServicePriceLogs as l')
+        //     ->join('Services as s', 's.service_id', '=', 'l.service_id')
+        //     ->join('Users as u', 'u.user_id', '=', 'l.changed_by')
+        //     ->select(
+        //         'l.*',
+        //         's.service_name',
+        //         's.service_code',
+        //         'u.full_name as changed_by_name'
+        //     )
+        //     ->orderByDesc('l.changed_at')
+        //     ->paginate(30, ['*'], 'history_page')
+        //     ->withQueryString();
 
         $priceTypes = ServicePrice::PRICE_TYPES;
 
         return view('admin.services.index', compact(
             'services', 'departments', 'pricesByType',
-            'priceHistory', 'priceTypes', 'tab'
+             'priceTypes', 'tab'
         ));
     }
 
@@ -129,14 +129,14 @@ class ServiceController extends Controller
                         'created_by'     => Auth::id(),
                         'created_at'     => now(),
                     ]);
-                    // Ghi log khởi tạo giá
-                    $this->logPriceChange(
-                        serviceId: $service->service_id,
-                        priceType: $p['price_type'],
-                        oldPrice:  null,
-                        newPrice:  $p['price'],
-                        reason:    'Khởi tạo dịch vụ'
-                    );
+                    // // Ghi log khởi tạo giá
+                    // $this->logPriceChange(
+                    //     serviceId: $service->service_id,
+                    //     priceType: $p['price_type'],
+                    //     oldPrice:  null,
+                    //     newPrice:  $p['price'],
+                    //     reason:    'Khởi tạo dịch vụ'
+                    // );
                 }
             }
         });
