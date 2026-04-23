@@ -794,6 +794,13 @@ class AppointmentController extends Controller
 
         $doctorId = (int)$request->doctor_id;
         $workDate = $request->work_date;
+        
+        // ngay nghi
+       $isDayOff = DB::table('doctordaysoff')
+        ->where('doctor_id', $doctorId)
+        ->where('off_date', $workDate)
+        ->exists();
+        
         return response()->json(['day_off' => false, 'slots' => $slots]);
     }
 }
