@@ -149,7 +149,7 @@
 
         /* ── INFO GRID ── */
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
-        .info-item { }
+        
         .info-label {
             font-size: .68rem; font-weight: 700; text-transform: uppercase;
             letter-spacing: .05em; color: var(--gray-400); margin-bottom: 4px;
