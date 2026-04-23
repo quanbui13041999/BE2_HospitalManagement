@@ -9,39 +9,33 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-// ======================
-// AUTH ROUTES
-// ======================
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+// ── AUTH ──────────────────────────────────────────────
+Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
+Route::get('/register',  [AuthController::class, 'showRegister'])->name('register');
+Route::post('/login',    [AuthController::class, 'login'])->name('login.post');
 Route::post('/register', [AuthController::class, 'register'])->name('register.post');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/logout',   [AuthController::class, 'logout'])->name('logout');
 
-// ======================
-// BOOKING (Đặt lịch khám)
-// ======================
-Route::get('/booking', [AppointmentController::class, 'create'])
-    ->name('booking.create');
+// ── APPOINTMENT (yêu cầu đăng nhập) ──────────────────
+Route::middleware('auth')->group(function () {
 
-Route::post('/booking', [AppointmentController::class, 'store'])
-    ->name('booking.store');
+    // Đặt lịch hẹn
+    Route::get('/dat-lich',           [AppointmentController::class, 'create'])->name('appointments.create');
+    Route::post('/dat-lich',          [AppointmentController::class, 'store'])->name('appointments.store');
 
-// Danh sách lịch đã đặt của tôi
-Route::get('/my-bookings', [AppointmentController::class, 'index'])
-    ->name('booking.index');
+    // AJAX: lấy khung giờ theo bác sĩ + ngày (dùng cho cả trang đặt lịch và modal dời lịch)
+    Route::get('/dat-lich/schedules', [AppointmentController::class, 'getSchedules'])->name('appointments.schedules');
 
-// Dời lịch (Edit)
-Route::get('/booking/edit/{id}', [AppointmentController::class, 'edit'])
-    ->name('booking.edit');
+    // Danh sách lịch hẹn
+    Route::get('/lich-hen',           [AppointmentController::class, 'index'])->name('appointments.index');
 
-Route::put('/booking/update/{id}', [AppointmentController::class, 'update'])
-    ->name('booking.update');
-Route::post('/booking/update/{id}', [AppointmentController::class, 'update'])
-    ->name('booking.update');
-      
+    // Chi tiết lịch hẹn (nếu có)
+    // Route::get('/lich-hen/{id}',   [AppointmentController::class, 'show'])->name('appointments.show');
 
-// Hủy lịch
-Route::post('/booking/cancel/{id}', [AppointmentController::class, 'cancel'])
-    ->name('booking.cancel');
+    // Dời lịch hẹn
+    Route::get('/lich-hen/{id}/doi',  [AppointmentController::class, 'edit'])->name('appointments.edit');
+    Route::put('/lich-hen/{id}/doi',  [AppointmentController::class, 'update'])->name('appointments.update');
+
+    // Hủy lịch hẹn
+    Route::post('/lich-hen/{id}/huy', [AppointmentController::class, 'cancel'])->name('appointments.cancel');
+});
