@@ -1,4 +1,3 @@
-{{-- resources/views/appointments/edit.blade.php --}}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -6,292 +5,581 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Dời Lịch Khám – HospitalBooking</title>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg:       #f0f4f8;
-            --white:    #ffffff;
-            --blue-950: #0a1628;
-            --blue-900: #0d2248;
-            --blue-800: #1a3a6e;
-            --blue-700: #1d4ed8;
-            --blue-600: #2563eb;
-            --blue-500: #3b82f6;
-            --blue-400: #60a5fa;
-            --blue-100: #dbeafe;
-            --blue-50:  #eff6ff;
-            --teal:     #0891b2;
-            --violet:   #7c3aed;
-            --violet-50:#f5f3ff;
-            --violet-100:#ede9fe;
-            --amber:    #d97706;
-            --amber-50: #fffbeb;
-            --green:    #059669;
-            --green-50: #ecfdf5;
-            --red:      #dc2626;
-            --red-50:   #fef2f2;
-            --gray-700: #374151;
-            --gray-500: #6b7280;
-            --gray-400: #9ca3af;
-            --gray-200: #e5e7eb;
-            --gray-100: #f3f4f6;
-            --text:     #111827;
-            --muted:    #6b7280;
-            --r:        12px;
-            --r-sm:     8px;
-            --shadow:   0 1px 3px rgba(0,0,0,.08);
-            --shadow-md:0 4px 16px rgba(37,99,235,.10);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: 'Be Vietnam Pro', sans-serif;
-            background: var(--bg); color: var(--text);
-            min-height: 100vh; font-size: 14px;
+            font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+            background: linear-gradient(145deg, #f4f9ff 0%, #eef3fc 100%);
+            color: #0b2b42;
+            line-height: 1.5;
         }
 
-        /* ── TOPBAR ── */
+        :root {
+            --primary: #0f52ba;
+            --primary-dark: #0a3d8f;
+            --primary-soft: #eef4ff;
+            --primary-glow: rgba(15, 82, 186, 0.08);
+            --accent-teal: #1e8f9b;
+            --gray-50: #f9fafc;
+            --gray-100: #f2f5f9;
+            --gray-200: #e9edf2;
+            --gray-300: #dce2e8;
+            --gray-400: #9aaebf;
+            --gray-600: #4a5c6c;
+            --gray-800: #1e2a3a;
+            --white: #ffffff;
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.02), 0 2px 6px rgba(0, 20, 50, 0.05);
+            --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.01);
+            --shadow-lg: 0 20px 35px -12px rgba(0, 32, 64, 0.12);
+            --radius-card: 24px;
+            --radius-panel: 20px;
+            --radius-btn: 40px;
+            --radius-input: 16px;
+        }
+
+        /* Topbar mới – trắng sáng, hiện đại */
         .topbar {
-            position: sticky; top: 0; z-index: 100;
-            background: var(--blue-900);
-            box-shadow: 0 2px 8px rgba(10,22,40,.18);
-            padding: 0 28px; height: 62px;
-            display: flex; align-items: center; justify-content: space-between;
+            background: var(--white);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 0 rgba(0, 0, 0, 0.03);
+            padding: 0 32px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 110;
+            border-bottom: 1px solid var(--gray-200);
         }
+
         .topbar-brand {
-            display: flex; align-items: center; gap: 11px;
-            font-weight: 800; font-size: 1rem; color: #fff;
-            text-decoration: none; letter-spacing: -.01em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
         }
-        .topbar-brand .icon {
-            width: 36px; height: 36px;
-            background: linear-gradient(135deg, #3b82f6, #06b6d4);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 2px 8px rgba(59,130,246,.4);
-        }
-        .topbar-brand .brand-sub {
-            font-size: .65rem; font-weight: 400;
-            color: rgba(255,255,255,.55); display: block; margin-top: -1px;
-            letter-spacing: .03em; text-transform: uppercase;
-        }
-        .topbar-center { display: flex; align-items: center; gap: 4px; }
-        .topbar-center a {
-            font-size: .82rem; font-weight: 500; color: rgba(255,255,255,.65);
-            text-decoration: none; padding: 7px 14px; border-radius: 8px; transition: all .15s;
-        }
-        .topbar-center a:hover { color: #fff; background: rgba(255,255,255,.1); }
-        .topbar-right { display: flex; align-items: center; gap: 10px; }
-        .user-pill {
-            display: flex; align-items: center; gap: 8px;
-            background: rgba(255,255,255,.08); border-radius: 24px;
-            padding: 5px 14px 5px 8px;
-        }
-        .user-avatar {
-            width: 28px; height: 28px; border-radius: 50%;
-            background: linear-gradient(135deg, #3b82f6, #06b6d4);
-            display: flex; align-items: center; justify-content: center;
-            font-size: .72rem; font-weight: 700; color: #fff;
-        }
-        .user-name { font-size: .8rem; font-weight: 600; color: rgba(255,255,255,.85); }
-        .btn-logout {
-            font-family: inherit; font-size: .78rem; font-weight: 600;
-            color: rgba(255,255,255,.6); background: none;
-            border: 1px solid rgba(255,255,255,.2); border-radius: 8px;
-            padding: 6px 14px; cursor: pointer; transition: all .15s;
-        }
-        .btn-logout:hover { color: #fff; border-color: rgba(255,255,255,.45); background: rgba(255,255,255,.08); }
 
-        /* ── BREADCRUMB ── */
-        .breadcrumb-bar {
-            background: var(--white); border-bottom: 1px solid var(--gray-200);
-            padding: 10px 28px;
-            display: flex; align-items: center; gap: 6px;
-            font-size: .75rem; color: var(--gray-400);
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), #2b6ed7);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 12px -6px rgba(15, 82, 186, 0.3);
         }
-        .breadcrumb-bar a { color: var(--blue-600); text-decoration: none; transition: color .15s; }
-        .breadcrumb-bar a:hover { color: var(--blue-800); }
 
-        /* ── PAGE ── */
-        .page { max-width: 820px; margin: 0 auto; padding: 28px 20px 60px; }
+        .logo-icon svg {
+            width: 22px;
+            height: 22px;
+        }
 
-        /* ── PAGE TITLE ── */
-        .page-title { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-        .page-title-icon {
-            width: 46px; height: 46px; border-radius: 12px;
-            background: linear-gradient(135deg, var(--violet), #6d28d9);
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(124,58,237,.25); flex-shrink: 0;
+        .brand-text {
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--gray-800);
+            letter-spacing: -0.3px;
         }
-        .page-title h1 { font-size: 1.15rem; font-weight: 800; color: var(--blue-900); }
-        .page-title p  { font-size: .78rem; color: var(--muted); margin-top: 2px; }
 
-        /* ── PANEL ── */
-        .panel {
-            background: var(--white); border: 1px solid var(--gray-200);
-            border-radius: var(--r); overflow: hidden;
-            box-shadow: var(--shadow-md); margin-bottom: 18px;
+        .brand-sub {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--gray-400);
+            margin-top: 2px;
         }
-        .panel:last-child { margin-bottom: 0; }
-        .panel-head {
-            padding: 14px 20px; border-bottom: 1px solid var(--gray-200);
-            display: flex; align-items: center; gap: 12px;
-            background: var(--blue-50);
-        }
-        .panel-head .icon-wrap {
-            width: 30px; height: 30px; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .panel-head .icon-wrap.amber { background: linear-gradient(135deg, #f59e0b, #f97316); }
-        .panel-head .icon-wrap.violet { background: linear-gradient(135deg, var(--violet), #6d28d9); }
-        .panel-head h2 { font-size: .88rem; font-weight: 700; color: var(--blue-900); }
-        .panel-head p  { font-size: .73rem; color: var(--muted); margin-top: 1px; }
-        .panel-body { padding: 22px; }
 
-        /* ── INFO GRID ── */
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
-        .info-item { }
-        .info-label {
-            font-size: .68rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: .05em; color: var(--gray-400); margin-bottom: 4px;
-        }
-        .info-val { font-size: .88rem; font-weight: 600; color: var(--text); }
-        .info-val.amber { color: var(--amber); }
-
-        /* ── BADGES ── */
-        .badge {
-            display: inline-flex; align-items: center; gap: 5px;
-            padding: 4px 10px; border-radius: 100px;
-            font-size: .72rem; font-weight: 600; border: 1px solid;
-        }
-        .badge-dot { width: 5px; height: 5px; border-radius: 50%; }
-        .badge-pending   { background: var(--amber-50); border-color: #fde68a; color: #92400e; }
-        .badge-pending .badge-dot { background: var(--amber); }
-        .badge-confirmed { background: var(--green-50); border-color: #a7f3d0; color: #065f46; }
-        .badge-confirmed .badge-dot { background: var(--green); }
-
-        /* ── ALERT ── */
-        .alert {
-            padding: 12px 16px; border-radius: var(--r-sm);
-            font-size: .82rem; border: 1px solid;
-            display: flex; align-items: flex-start; gap: 9px; margin-bottom: 20px;
-        }
-        .alert svg { flex-shrink: 0; margin-top: 1px; }
-        .alert-error { background: var(--red-50); border-color: #fecaca; color: #991b1b; }
-        .alert-info  { background: var(--blue-50); border-color: var(--blue-100); color: var(--blue-700); }
-
-        /* ── SCHEDULE LIST ── */
-        .schedule-list { display: flex; flex-direction: column; gap: 8px; }
-        .schedule-option {
-            display: flex; align-items: center; gap: 14px;
-            padding: 14px 16px;
-            border: 1px solid var(--gray-200); border-radius: var(--r-sm);
-            cursor: pointer; transition: all .15s;
+        .topbar-center {
+            display: flex;
+            gap: 6px;
             background: var(--gray-100);
+            padding: 4px;
+            border-radius: 48px;
         }
-        .schedule-option:hover { border-color: var(--violet); background: var(--violet-50); }
-        .schedule-option.selected { border-color: var(--violet); background: var(--violet-100); box-shadow: 0 0 0 3px rgba(124,58,237,.08); }
-        .schedule-option input[type="radio"] { accent-color: var(--violet); width: 16px; height: 16px; flex-shrink: 0; }
-        .sch-date { font-size: .84rem; font-weight: 700; color: var(--blue-900); }
-        .sch-time { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+
+        .topbar-center a {
+            padding: 8px 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            text-decoration: none;
+            border-radius: 40px;
+            transition: all 0.2s;
+        }
+
+        .topbar-center a:hover, .topbar-center a.active {
+            background: var(--white);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--gray-100);
+            padding: 5px 12px 5px 8px;
+            border-radius: 48px;
+        }
+
+        .user-avatar {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(145deg, var(--primary), #3279dc);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 0.85rem;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--gray-800);
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid var(--gray-300);
+            border-radius: 32px;
+            padding: 7px 18px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-logout:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-400);
+            color: var(--primary-dark);
+        }
+
+        /* Breadcrumb */
+        .breadcrumb-bar {
+            padding: 14px 32px;
+            font-size: 0.75rem;
+            color: var(--gray-400);
+            background: transparent;
+            max-width: 1280px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .breadcrumb-bar a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* Layout chính */
+        .page {
+            max-width: 1000px;
+            margin: 24px auto 48px;
+            padding: 0 28px;
+        }
+
+        /* Page title */
+        .page-title {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .page-title-icon {
+            width: 54px;
+            height: 54px;
+            background: linear-gradient(145deg, var(--primary), #448af2);
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 18px -8px rgba(15, 82, 186, 0.25);
+        }
+
+        .page-title h1 {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--gray-800);
+            letter-spacing: -0.3px;
+        }
+
+        .page-title p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--white);
+            border-radius: var(--radius-panel);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+            margin-bottom: 28px;
+            transition: transform 0.1s ease;
+        }
+
+        .panel-head {
+            padding: 18px 28px;
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .icon-wrap.amber {
+            background: #fff3e0;
+            color: #d97706;
+        }
+
+        .icon-wrap.violet {
+            background: #eef4ff;
+            color: var(--primary);
+        }
+
+        .panel-head h2 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .panel-head p {
+            font-size: 0.7rem;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        .panel-body {
+            padding: 24px 28px;
+        }
+
+        /* Info grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px 32px;
+        }
+
+        .info-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--gray-400);
+            margin-bottom: 6px;
+        }
+
+        .info-val {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .info-val.amber {
+            color: #c2410c;
+        }
+
+        /* Badge status */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            border: 1px solid;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .badge-pending {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: #b45309;
+        }
+
+        .badge-pending .badge-dot {
+            background: #f59e0b;
+        }
+
+        .badge-confirmed {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+            color: #065f46;
+        }
+
+        .badge-confirmed .badge-dot {
+            background: #10b981;
+        }
+
+        /* Schedule list */
+        .schedule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .schedule-option {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            background: var(--gray-50);
+            border: 1.5px solid var(--gray-200);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .schedule-option:hover {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+            transform: translateX(3px);
+        }
+
+        .schedule-option.selected {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+            box-shadow: 0 4px 12px rgba(15, 82, 186, 0.12);
+        }
+
+        .schedule-option input[type="radio"] {
+            accent-color: var(--primary);
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .sch-date {
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: var(--gray-800);
+        }
+
+        .sch-time {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
         .sch-slot {
-            margin-left: auto; font-size: .7rem; font-weight: 700;
-            padding: 3px 10px; border-radius: 100px; border: 1px solid; flex-shrink: 0;
+            margin-left: auto;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 40px;
+            flex-shrink: 0;
         }
-        .sch-slot.ok    { color: #065f46; background: var(--green-50); border-color: #a7f3d0; }
-        .sch-slot.tight { color: #92400e; background: var(--amber-50); border-color: #fde68a; }
+
+        .sch-slot.ok {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .sch-slot.tight {
+            background: #fef3c7;
+            color: #b45309;
+        }
 
         .empty-schedules {
-            padding: 32px 16px; text-align: center;
-            border: 1px dashed var(--gray-200); border-radius: var(--r-sm);
-            color: var(--muted); font-size: .84rem; background: var(--gray-100);
+            text-align: center;
+            padding: 48px 20px;
+            background: var(--gray-50);
+            border-radius: 28px;
+            color: var(--gray-400);
+            font-size: 0.85rem;
         }
-        .empty-schedules svg { display: block; margin: 0 auto 10px; opacity: .4; }
 
-        /* ── FORM ELEMENTS ── */
         .form-label {
-            font-size: .75rem; font-weight: 700; color: var(--muted);
-            text-transform: uppercase; letter-spacing: .04em;
-            margin-bottom: 7px; display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--gray-500);
+            margin-bottom: 8px;
+            display: block;
         }
-        .form-textarea {
-            width: 100%; padding: 10px 14px;
-            background: var(--gray-100); border: 1px solid var(--gray-200);
-            border-radius: var(--r-sm); font-family: inherit;
-            font-size: .84rem; color: var(--text);
-            resize: vertical; min-height: 80px; outline: none;
-            transition: border-color .15s, background .15s;
-        }
-        .form-textarea:focus { border-color: var(--violet); background: var(--violet-50); }
-        .form-textarea::placeholder { color: var(--gray-400); }
 
-        /* ── BUTTONS ── */
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--gray-50);
+            border: 1.5px solid var(--gray-200);
+            border-radius: 20px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            resize: vertical;
+            min-height: 90px;
+            transition: all 0.2s;
+        }
+
+        .form-textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: var(--white);
+            box-shadow: 0 0 0 3px rgba(15, 82, 186, 0.08);
+        }
+
+        /* Buttons */
         .btn-row {
-            display: flex; justify-content: space-between; align-items: center;
-            gap: 10px; margin-top: 24px; padding-top: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-top: 32px;
+            padding-top: 16px;
             border-top: 1px solid var(--gray-200);
         }
+
         .btn {
-            padding: 10px 22px; border-radius: var(--r-sm);
-            font-family: inherit; font-size: .84rem; font-weight: 700;
-            cursor: pointer; transition: all .15s;
-            display: inline-flex; align-items: center; gap: 7px;
-            border: none; text-decoration: none;
+            padding: 12px 28px;
+            border-radius: 48px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
         }
+
         .btn-secondary {
-            background: var(--gray-100); border: 1px solid var(--gray-200); color: var(--gray-700);
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: 1px solid var(--gray-200);
         }
-        .btn-secondary:hover { background: var(--gray-200); color: var(--text); }
-        .btn-violet {
-            background: linear-gradient(135deg, var(--violet), #6d28d9);
-            color: #fff; box-shadow: 0 4px 14px rgba(124,58,237,.3);
+
+        .btn-secondary:hover {
+            background: var(--gray-200);
+            transform: translateY(-1px);
         }
-        .btn-violet:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(124,58,237,.35); }
-        .btn-violet:active { transform: translateY(0); }
-        .btn-violet:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .btn-primary {
+            background: linear-gradient(105deg, var(--primary), #2065cf);
+            color: white;
+            box-shadow: 0 4px 12px rgba(15, 82, 186, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 22px -6px rgba(15, 82, 186, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
 
         .spinner {
-            display: none; width: 14px; height: 14px;
-            border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
-            border-radius: 50%; animation: spin .6s linear infinite;
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ── FOOTER ── */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 14px 20px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border-left: 4px solid #e5484d;
+            color: #b91c1c;
+        }
+
+        .alert-info {
+            background: #eef4ff;
+            border-left: 4px solid var(--primary);
+            color: #1e3a8a;
+        }
+
         .footer {
-            background: var(--blue-950); color: rgba(255,255,255,.45);
-            text-align: center; font-size: .75rem; padding: 22px 20px;
-            border-top: 1px solid rgba(255,255,255,.06);
+            background: var(--white);
+            border-top: 1px solid var(--gray-200);
+            text-align: center;
+            padding: 28px;
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-top: 40px;
         }
-        .footer a { color: var(--blue-400); text-decoration: none; }
 
-        @media (max-width: 580px) {
-            .info-grid { grid-template-columns: 1fr; }
+        @media (max-width: 680px) {
+            .page { padding: 0 16px; }
+            .topbar-center { display: none; }
+            .info-grid { grid-template-columns: 1fr; gap: 14px; }
             .btn-row { flex-direction: column-reverse; }
             .btn { width: 100%; justify-content: center; }
-            .topbar-center { display: none; }
+            .schedule-option { flex-wrap: wrap; }
+            .sch-slot { margin-left: 0; margin-top: 6px; }
         }
     </style>
 </head>
 <body>
 
-{{-- ── TOPBAR ── --}}
+{{-- Topbar hiện đại --}}
 <nav class="topbar">
     <a href="{{ route('home') }}" class="topbar-brand">
-        <div class="icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <div class="logo-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
         </div>
         <div>
-            HospitalBooking
-            <span class="brand-sub">Hệ thống đặt lịch khám</span>
+            <div class="brand-text">HospitalBooking</div>
+            <div class="brand-sub">Đặt lịch thông minh</div>
         </div>
     </a>
-
     <div class="topbar-center">
-        <a href="{{ route('home') }}">Trang chủ</a>
-        <a href="{{ route('appointments.index') }}">Lịch hẹn</a>
-        <a href="{{ route('appointments.create') }}">Đặt lịch mới</a>
+        <a href="{{ route('home') }}">🏠 Trang chủ</a>
+        <a href="{{ route('appointments.index') }}">📋 Lịch hẹn</a>
+        <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
     </div>
-
     <div class="topbar-right">
         @auth
         <div class="user-pill">
@@ -306,40 +594,46 @@
     </div>
 </nav>
 
-{{-- ── BREADCRUMB ── --}}
 <div class="breadcrumb-bar">
-    <a href="{{ route('home') }}">Trang chủ</a>
-    <span>›</span>
-    <a href="{{ route('appointments.index') }}">Lịch hẹn của tôi</a>
-    <span>›</span>
-    <span style="color:var(--gray-600)">Dời lịch</span>
+    <a href="{{ route('home') }}">Trang chủ</a> <span style="margin:0 6px">/</span>
+    <a href="{{ route('appointments.index') }}">Lịch hẹn của tôi</a> <span style="margin:0 6px">/</span>
+    <span style="color:var(--gray-600); font-weight:500">Dời lịch</span>
 </div>
 
 <div class="page">
 
-    {{-- Page title --}}
     <div class="page-title">
         <div class="page-title-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 .49-4.95" />
+            </svg>
         </div>
         <div>
             <h1>Dời Lịch Khám</h1>
-            <p>Chọn khung giờ mới phù hợp với cùng bác sĩ</p>
+            <p>Thay đổi khung giờ với cùng bác sĩ – nhanh chóng, tiện lợi</p>
         </div>
     </div>
 
-    {{-- Error --}}
     @if($errors->has('msg'))
     <div class="alert alert-error">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
         {{ $errors->first('msg') }}
     </div>
     @endif
 
     @if($availableSchedules->isEmpty())
     <div class="alert alert-info">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Không có lịch trống trong 14 ngày tới của BS. {{ $appointment->doctor_name }}. Vui lòng liên hệ phòng khám.
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        Không có lịch trống trong 14 ngày tới của BS. {{ $appointment->doctor_name }}. Vui lòng liên hệ phòng khám để được hỗ trợ.
     </div>
     @endif
 
@@ -348,11 +642,16 @@
         @method('PUT')
         <input type="hidden" name="new_appointment_time" id="new_appointment_time">
 
-        {{-- Panel 1: Lịch hiện tại --}}
+        {{-- Panel 1: Thông tin lịch hiện tại --}}
         <div class="panel">
             <div class="panel-head">
                 <div class="icon-wrap amber">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
                 </div>
                 <div>
                     <h2>Lịch hẹn hiện tại</h2>
@@ -398,7 +697,10 @@
         <div class="panel">
             <div class="panel-head">
                 <div class="icon-wrap violet">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
                 </div>
                 <div>
                     <h2>Chọn lịch mới</h2>
@@ -406,11 +708,16 @@
                 </div>
             </div>
             <div class="panel-body">
-
                 @if($availableSchedules->isEmpty())
                 <div class="empty-schedules">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    Không có lịch trống nào trong 14 ngày tới.
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    <p style="margin-top: 10px;">Hiện tại chưa có lịch trống</p>
+                    <p style="font-size:0.7rem">Vui lòng thử lại sau hoặc liên hệ tổng đài</p>
                 </div>
                 @else
                 <div class="schedule-list">
@@ -443,69 +750,75 @@
                     </label>
                     @endforeach
                 </div>
-
                 @error('new_schedule_id')
-                <p style="font-size:.73rem;color:var(--red);margin-top:8px">{{ $message }}</p>
+                <p style="font-size:0.7rem; color:#e5484d; margin-top: 10px;">{{ $message }}</p>
                 @enderror
                 @endif
 
-                {{-- Lý do --}}
-                <div style="margin-top:20px">
+                <div style="margin-top: 28px;">
                     <label class="form-label" for="reschedule_reason">
-                        Lý do dời lịch
-                        <span style="text-transform:none;font-weight:400;color:var(--gray-400)">(tùy chọn)</span>
+                        Lý do dời lịch <span style="text-transform: none; font-weight: 400;">(tùy chọn)</span>
                     </label>
                     <textarea name="reschedule_reason" id="reschedule_reason"
                         class="form-textarea"
-                        placeholder="VD: bận công việc đột xuất, trùng lịch khác...">{{ old('reschedule_reason') }}</textarea>
+                        placeholder="VD: bận công việc đột xuất, trùng lịch khám khác, sức khỏe chưa ổn…">{{ old('reschedule_reason') }}</textarea>
                 </div>
 
-                {{-- Buttons --}}
                 <div class="btn-row">
                     <a href="{{ route('appointments.index') }}" class="btn btn-secondary">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
                         Quay lại
                     </a>
-                    <button type="submit" class="btn btn-violet" id="submit-btn"
+                    <button type="submit" class="btn btn-primary" id="submit-btn"
                         {{ $availableSchedules->isEmpty() ? 'disabled' : '' }}>
                         <span class="spinner" id="spinner"></span>
-                        <svg id="submit-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+                        <svg id="submit-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="1 4 1 10 7 10" />
+                            <path d="M3.51 15a9 9 0 1 0 .49-4.95" />
+                        </svg>
                         Xác nhận dời lịch
                     </button>
                 </div>
-
             </div>
         </div>
-
     </form>
 </div>
 
-{{-- ── FOOTER ── --}}
 <footer class="footer">
-    © {{ date('Y') }} HospitalBooking &nbsp;·&nbsp; <a href="#">Chính sách bảo mật</a> &nbsp;·&nbsp; <a href="#">Hỗ trợ</a>
+    © {{ date('Y') }} HospitalBooking · Nền tảng đặt lịch khám hiện đại · <a href="#" style="color:var(--primary); text-decoration: none;">Chính sách bảo mật</a>
 </footer>
 
 <script>
-function onScheduleSelect(radio) {
-    document.getElementById('new_appointment_time').value = radio.dataset.time;
-    document.querySelectorAll('.schedule-option').forEach(el => el.classList.remove('selected'));
-    radio.closest('.schedule-option').classList.add('selected');
-}
+    function onScheduleSelect(radio) {
+        document.getElementById('new_appointment_time').value = radio.dataset.time;
+        document.querySelectorAll('.schedule-option').forEach(el => el.classList.remove('selected'));
+        radio.closest('.schedule-option').classList.add('selected');
+    }
 
-// Auto-select nếu chỉ có 1 lịch trống
-window.addEventListener('DOMContentLoaded', () => {
-    const radios = document.querySelectorAll('input[name="new_schedule_id"]');
-    if (radios.length === 1) { radios[0].checked = true; onScheduleSelect(radios[0]); }
-});
+    // Tự động chọn nếu chỉ có một lịch
+    window.addEventListener('DOMContentLoaded', () => {
+        const radios = document.querySelectorAll('input[name="new_schedule_id"]');
+        if (radios.length === 1) {
+            radios[0].checked = true;
+            onScheduleSelect(radios[0]);
+        }
+        // Nếu có lỗi validation và đã chọn trước đó thì highlight
+        const selectedRadio = document.querySelector('input[name="new_schedule_id"]:checked');
+        if (selectedRadio) onScheduleSelect(selectedRadio);
+    });
 
-document.getElementById('reschedule-form')?.addEventListener('submit', function(e) {
-    const btn     = document.getElementById('submit-btn');
-    const spinner = document.getElementById('spinner');
-    const icon    = document.getElementById('submit-icon');
-    btn.disabled          = true;
-    spinner.style.display = 'block';
-    icon.style.display    = 'none';
-});
+    // Xử lý submit loading
+    document.getElementById('reschedule-form')?.addEventListener('submit', function(e) {
+        const btn = document.getElementById('submit-btn');
+        const spinner = document.getElementById('spinner');
+        const icon = document.getElementById('submit-icon');
+        if (btn.disabled) return;
+        btn.disabled = true;
+        spinner.style.display = 'inline-block';
+        icon.style.display = 'none';
+    });
 </script>
 </body>
 </html>
