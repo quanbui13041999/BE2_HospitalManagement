@@ -685,6 +685,8 @@ class AppointmentController extends Controller
             return response()->json(['suggested' => []]);
         }
 
+        $doctors = $doctors->pluck('doctor_id')->toArray();
+
         return response()->json(['suggested' => $top3]);
     }
 }
