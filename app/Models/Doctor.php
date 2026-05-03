@@ -25,7 +25,11 @@ class Doctor extends Model
         return $this->hasMany(DoctorSchedule::class, 'doctor_id', 'doctor_id');
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+    
+>>>>>>> Tuan/23_UocLuongThoiGian
     public function daysOff()
     {
         return $this->hasMany(DoctorDayOff::class, 'doctor_id', 'doctor_id');
@@ -94,7 +98,10 @@ class Doctor extends Model
             ->groupBy('doctor_id');
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> Tuan/21_GoiYBacSi
 =======
 >>>>>>> Tuan/22_TaoGioThongMinh
+=======
+>>>>>>> Tuan/23_UocLuongThoiGian
 }
