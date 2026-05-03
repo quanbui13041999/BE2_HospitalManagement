@@ -7,6 +7,7 @@ use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentRescheduled;
 use App\Services\DoctorSuggestionService;
 use App\Services\DoctorTimeslotService;
+use App\Services\AppointmentQueueService;
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -721,6 +722,7 @@ class AppointmentController extends Controller
      * Lấy thông tin hàng đợi và ước lượng thời gian chờ
      * 
      * @param Request $request
+     * @param AppointmentQueueService $queueService
      * @return \Illuminate\Http\JsonResponse
      * 
      * Dữ liệu trả về:
@@ -738,105 +740,23 @@ class AppointmentController extends Controller
      *     {
      *       "queue_number": 1,
      *       "status": "Đã xác nhận",
-     *       "full_name": "Nguyễn Văn A" (chỉ hiển thị tên viết tắt)
+     *       "abbreviated_name": "N.V.A." 
      *     }
      *   ]
      * }
      */
-    public function getQueueInfo(Request $request)
+    public function getQueueInfo(Request $request, AppointmentQueueService $queueService)
     {
         $request->validate([
             'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
         ]);
 
-        $scheduleId = $request->schedule_id;
+        $queueInfo = $queueService->getQueueInfo((int) $request->schedule_id);
 
-        // 1. Lấy thông tin schedule
-        $schedule = DB::table('doctorschedules')
-            ->where('schedule_id', $scheduleId)
-            ->where('status', 'Hoạt động')
-            ->select(
-                'schedule_id',
-                'doctor_id',
-                'work_date',
-                'start_time',
-                'end_time',
-                'slot_duration',
-                'max_slot'
-            )
-            ->first();
-
-        if (!$schedule) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Lịch khám không tồn tại'
-            ], 404);
+        if (!$queueInfo['success']) {
+            return response()->json($queueInfo, 404);
         }
 
-        // 2. Đếm số lượng appointment confirmed + waiting (không tính hold)
-        $appointments = DB::table('appointments')
-            ->where('schedule_id', $scheduleId)
-            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã khám'])
-            ->orderBy('queue_number', 'asc')
-            ->select(
-                'appointment_id',
-                'queue_number',
-                'status',
-                'user_id',
-                'appointment_time'
-            )
-            ->get();
-
-        $totalInQueue = $appointments->count();
-        $queueNumber = $totalInQueue + 1;
-        $peopleAhead = max(0, $totalInQueue);
-
-        // 3. Tính thời gian chờ dự kiến
-        // Công thức: số người trước * thời gian phục vụ trung bình
-        $estimatedWaitMinutes = $peopleAhead * ($schedule->slot_duration ?? 15);
-
-        // 4. Lấy danh sách những người đứng trước (chỉ lấy 5 người đầu tiên)
-        $queueDetails = [];
-        $appointmentsAhead = $appointments
-            ->filter(function($a) use ($queueNumber) {
-                return $a->queue_number < $queueNumber;
-            })
-            ->take(5);
-
-        foreach ($appointmentsAhead as $apt) {
-            $user = DB::table('users')
-                ->where('user_id', $apt->user_id)
-                ->select('user_id', 'full_name')
-                ->first();
-
-            if ($user) {
-                // Hiển thị tên viết tắt (VD: Nguyễn Văn A -> N.V.A)
-                $parts = explode(' ', trim($user->full_name));
-                if (count($parts) > 1) {
-                    $abbreviated = implode('.', array_map(fn($part) => substr($part, 0, 1), $parts)) . '.';
-                } else {
-                    $abbreviated = substr($user->full_name, 0, 3) . '.';
-                }
-
-                $queueDetails[] = [
-                    'queue_number' => $apt->queue_number,
-                    'status' => $apt->status,
-                    'abbreviated_name' => $abbreviated,
-                ];
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'queue_number' => $queueNumber,
-            'people_ahead' => $peopleAhead,
-            'estimated_wait_minutes' => $estimatedWaitMinutes,
-            'schedule_info' => [
-                'start_time' => $schedule->start_time,
-                'slot_duration' => $schedule->slot_duration,
-                'max_slot' => $schedule->max_slot,
-            ],
-            'queue_details' => $queueDetails,
-        ]);
+        return response()->json($queueInfo);
     }
 }
