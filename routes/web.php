@@ -8,7 +8,8 @@ use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\User\ServiceController as UserServiceController;
 use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController; 
-use App\Http\Controllers\HomeController;
+use App\Http\Controllers\EmergencyContactController; 
+use App\Http\Controllers\ProfileController;
 // ============================================================
 // TRANG CHỦ & AUTH
 // ============================================================
@@ -66,7 +67,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
 
-    Route::get('/trangchu', [HomeController::class, 'index'])->name('Home.trangchu')->middleware('auth');
+   
 });
 
 // ============================================================
@@ -135,3 +136,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 Route::get('/bac-si', function () {
     return view('welcome');
 })->name('doctors.index');
+// liên hệ khẩn cấp
+Route::middleware(['auth'])->group(function () {
+ 
+    Route::get('/lien-he-khan-cap', [EmergencyContactController::class, 'index'])
+        ->name('emergency-contacts.index');
+ 
+    Route::post('/lien-he-khan-cap', [EmergencyContactController::class, 'store'])
+        ->name('emergency-contacts.store');
+ 
+});
+//profile 
+Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function () {
+
+    Route::get('/',          [ProfileController::class, 'show'])->name('show');      // → /profile
+
+    Route::get('/edit',      [ProfileController::class, 'edit'])->name('edit');      // → /profile/edit
+    Route::put('/update',    [ProfileController::class, 'update'])->name('update');  // → /profile/update
+
+    Route::get('/password',  [ProfileController::class, 'editPassword'])->name('password.edit');
+    Route::put('/password',  [ProfileController::class, 'updatePassword'])->name('password.update');
+
+    Route::delete('/avatar', [ProfileController::class, 'deleteAvatar'])->name('avatar.delete');
+});
