@@ -93,5 +93,8 @@ class Doctor extends Model
             )
             ->groupBy('doctor_id');
     }
+<<<<<<< HEAD
 >>>>>>> Tuan/21_GoiYBacSi
+=======
+>>>>>>> Tuan/22_TaoGioThongMinh
 }

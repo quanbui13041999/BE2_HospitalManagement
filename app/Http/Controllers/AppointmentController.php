@@ -6,6 +6,10 @@ use App\Mail\AppointmentConfirmed;
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentRescheduled;
 use App\Services\DoctorSuggestionService;
+<<<<<<< HEAD
+=======
+use App\Services\DoctorTimeslotService;
+>>>>>>> Tuan/22_TaoGioThongMinh
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -698,118 +702,19 @@ class AppointmentController extends Controller
         return response()->json(['suggested' => $suggested]);
     }
 
-    public function timeslots(Request $request)
+    public function timeslots(Request $request, DoctorTimeslotService $timeslotService)
     {
         $request->validate([
             'doctor_id' => 'required|integer|exists:doctors,doctor_id',
             'work_date' => 'required|date|after_or_equal:today',
         ]);
 
-        $doctorId = (int) $request->doctor_id;
-        $workDate = $request->work_date;
+        $result = $timeslotService->getTimeslots(
+            (int) $request->doctor_id,
+            $request->work_date
+        );
 
-        // check ngay nghi
-        $isDayOff = DB::table('doctordaysoff')
-            ->where('doctor_id', $doctorId)
-            ->where('off_date', $workDate)
-            ->exists();
-
-        if ($isDayOff) {
-            return response()->json(['day_off' => true, 'slots' => []]);
-        }
-
-        // lay lich bac si
-        $schedules = DB::table('doctorschedules')
-            ->where('doctor_id', $doctorId)
-            ->where('work_date', $workDate)
-            ->where('status', 'Hoạt động')
-            ->select(
-                'schedule_id',
-                'start_time',
-                'end_time',
-                'slot_duration',
-                'max_slot'
-            )
-            ->orderBy('start_time')
-            ->get();
-
-        if ($schedules->isEmpty()) {
-            return response()->json(['day_off' => false, 'slots' => []]);
-        }
-
-        // lay booking theo tung slot
-        $bookings = DB::table('appointments')
-            ->select(
-                'schedule_id',
-                'appointment_time',
-                DB::raw('COUNT(*) as booked_count')
-            )
-            ->whereIn('schedule_id', $schedules->pluck('schedule_id'))
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-            ->groupBy('schedule_id', 'appointment_time')
-            ->get()
-            ->groupBy('schedule_id');
-
-        // 4. Sinh slot
-        $slots = [];
-
-        foreach ($schedules as $sch) {
-
-            // map booking theo time cho lich schedule nay
-            $bookingMap = [];
-
-            if (isset($bookings[$sch->schedule_id])) {
-                foreach ($bookings[$sch->schedule_id] as $b) {
-                    $bookingMap[$b->appointment_time] = (int) $b->booked_count;
-                }
-            }
-
-            // tach gio
-            [$sh, $sm] = array_map('intval', explode(':', $sch->start_time));
-            [$eh, $em] = array_map('intval', explode(':', $sch->end_time));
-
-            $duration = (int) $sch->slot_duration;
-            $maxSlot = (int) $sch->max_slot;
-            $endMins = $eh * 60 + $em;
-
-            $curH = $sh;
-            $curM = $sm;
-
-            while ($curH * 60 + $curM + $duration <= $endMins) {
-
-                $timeStr = sprintf('%02d:%02d', $curH, $curM);
-
-                $endH = $curH + intdiv($curM + $duration, 60);
-                $endM = ($curM + $duration) % 60;
-                $endTimeStr = sprintf('%02d:%02d', $endH, $endM);
-
-                // lay booking theo tung slot
-                $booked = $bookingMap[$timeStr] ?? 0;
-
-                $isBooked = ($booked >= $maxSlot);
-
-                $slots[] = [
-                    'schedule_id' => $sch->schedule_id,
-                    'time' => $timeStr,
-                    'end_time' => $endTimeStr,
-                    'is_booked' => $isBooked,
-                    'max_slot' => $maxSlot,
-                    'booked' => $booked,
-                ];
-
-                // tang thoi gian
-                $curM += $duration;
-                if ($curM >= 60) {
-                    $curH += intdiv($curM, 60);
-                    $curM = $curM % 60;
-                }
-            }
-        }
-
-        // 5. sort lai
-        usort($slots, fn($a, $b) => strcmp($a['time'], $b['time']));
-
-        return response()->json(['day_off' => false, 'slots' => $slots]);
+        return response()->json($result);
     }
 
     // ================================================================
