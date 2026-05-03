@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\AppointmentConfirmed;
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentRescheduled;
+use App\Services\DoctorSuggestionService;
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -655,135 +656,28 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Summary of suggest (goi y bac si tu dong)
+     * Summary of suggest (gọi ý bác sĩ tự động)
      * @param Request $request
-     * thuat toan scoring scoring (100)
-     * 40% ti le slot con trong -> (bac si trong nhieu lich -> uu tien)
-     * 35% danh gia trung binh (avg_rating / 5 * 35)
-     * 15% nam kinh nghiem (capped 20 nam -> 15d)
-     * 10% so luot danh gia 
+     * thuật toán scoring (100):
+     * - 40% tỉ lệ slot còn trống (bác sĩ trong nhiều lịch → ưu tiên)
+     * - 35% đánh giá trung bình (avg_rating / 5 * 35)
+     * - 15% năm kinh nghiệm (capped 20 năm → 15đ)
+     * - 10% số lượt đánh giá
      * @return \Illuminate\Http\JsonResponse
      */
-    public function suggest(Request $request)
+    public function suggest(Request $request, DoctorSuggestionService $suggestionService)
     {
         $request->validate([
             'department_id' => 'required|integer|exists:departments,department_id',
             'work_date' => 'required|date|after_or_equal:today',
         ]);
 
-        $deptId = (int) $request->department_id;
-        $workDate = $request->work_date;
+        $suggested = $suggestionService->suggestTopDoctors(
+            (int) $request->department_id,
+            $request->work_date
+        );
 
-        // lay tat ca danh sach bac si active thuoc khoa 
-        $doctors = DB::table('doctors')->leftJoinSub(
-            DB::table('reviews')->select(
-                'doctor_id',
-                DB::raw('ROUND(AVG(rating), 2) as avg_rating'),
-                DB::raw('COUNT(*) as total_reviews')
-            )->groupBy('doctor_id'),
-            'rv',
-            'rv.doctor_id',
-            '=',
-            'doctors.doctor_id'
-        )->where('doctors.department_id', $deptId)->where('doctors.status', 1)->select(
-                'doctors.doctor_id',
-                'doctors.full_name',
-                'doctors.experience',
-                'doctors.price',
-                'doctors.avatar_url',
-                'doctors.bio',
-                DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
-                DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
-            )->get();
-
-        if ($doctors->isEmpty()) {
-            return response()->json(['suggested' => []]);
-        }
-
-        $doctorIds = $doctors->pluck('doctor_id')->toArray();
-
-        // kiem tra ngay nghi  
-        $daysOff = DB::table('doctordaysoff')
-            ->whereIn('doctor_id', $doctorIds)
-            ->where('off_date', $workDate)
-            ->pluck('doctor_id')
-            ->flip()
-            ->toArray();
-
-        // dem slot trong theo tung bac si trong ngay
-        $scheduleStats = DB::table('doctorschedules')
-            ->leftJoinSub(
-                DB::table('appointments')
-                    ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-                    ->groupBy('schedule_id'),
-                'bk',
-                'bk.schedule_id',
-                '=',
-                'doctorschedules.schedule_id'
-            )
-            ->whereIn('doctorschedules.doctor_id', $doctorIds)
-            ->where('doctorschedules.work_date', $workDate)
-            ->where('doctorschedules.status', 'Hoạt động')
-            ->select(
-                'doctorschedules.doctor_id',
-                DB::raw('SUM(doctorschedules.max_slot) as total_slots'),
-                DB::raw('SUM(COALESCE(bk.booked_count, 0)) as booked_count')
-            )
-            ->groupBy('doctorschedules.doctor_id')
-            ->get()
-            ->keyBy('doctor_id');
-
-        // tinh diem loc 
-        $scored = [];
-
-        foreach ($doctors as $doc) {
-            // bo qua bac si da nghi
-            if (isset($daysOff[$doc->doctor_id])) {
-                continue;
-            }
-
-            $stats = $scheduleStats->get($doc->doctor_id);
-            $totalSlots = $stats ? (int) $stats->total_slots : 0;
-            $bookedCount = $stats ? (int) $stats->booked_count : 0;
-            $available = max(0, $totalSlots - $bookedCount);
-
-            // bo cac bac si khong co lich or da full
-            if ($totalSlots === 0 || $available === 0) {
-                continue;
-            }
-
-            $avgRating = (float) $doc->avg_rating;
-            $totalReviews = (int) $doc->total_reviews;
-            $experience = (int) $doc->experience;
-
-            // Scoring
-            $slotScore = ($available / $totalSlots) * 40;
-            $ratingScore = ($avgRating / 5.0) * 35;
-            $expScore = (min($experience, 20) / 20) * 15;
-            $reviewScore = (min($totalReviews, 50) / 50) * 10;
-            $score = $slotScore + $ratingScore + $expScore + $reviewScore;
-
-            $scored[] = [
-                'doctor_id' => $doc->doctor_id,
-                'full_name' => $doc->full_name,
-                'experience' => $experience,
-                'price' => $doc->price,
-                'avatar_url' => $doc->avatar_url,
-                'bio' => $doc->bio,
-                'avg_rating' => $avgRating,
-                'total_reviews' => $totalReviews,
-                'available_slots' => $available,
-                'total_slots' => $totalSlots,
-                'score' => round($score, 2),
-            ];
-        }
-
-        // sap xep lay top 3
-        usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
-        $top3 = array_slice($scored, 0, 3);
-
-        return response()->json(['suggested' => $top3]);
+        return response()->json(['suggested' => $suggested]);
     }
 
     public function timeslots(Request $request)
