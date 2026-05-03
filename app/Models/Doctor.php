@@ -81,4 +81,30 @@ class Doctor extends Model
     {
         return $q->where('department_id', $id);
     }
+    
+    public function scopeWithReviewStats($q)
+    {
+        return $q->leftJoinSub(
+            static::getReviewStatsQuery(),
+            'rv',
+            'rv.doctor_id',
+            '=',
+            'doctors.doctor_id'
+        )->addSelect(
+            'doctors.*',
+            \Illuminate\Support\Facades\DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
+        );
+    }
+    
+    public static function getReviewStatsQuery()
+    {
+        return \Illuminate\Support\Facades\DB::table('reviews')
+            ->select(
+                'doctor_id',
+                \Illuminate\Support\Facades\DB::raw('ROUND(AVG(rating), 2) as avg_rating'),
+                \Illuminate\Support\Facades\DB::raw('COUNT(*) as total_reviews')
+            )
+            ->groupBy('doctor_id');
+    }
 }
