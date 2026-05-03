@@ -6,8 +6,15 @@ use App\Mail\AppointmentConfirmed;
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentRescheduled;
 use App\Services\DoctorSuggestionService;
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+use App\Services\DoctorTimeslotService;
+>>>>>>> Tuan/22_TaoGioThongMinh
+=======
 use App\Services\DoctorTimeslotService;
 use App\Services\AppointmentQueueService;
+>>>>>>> Tuan/23_UocLuongThoiGian
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
