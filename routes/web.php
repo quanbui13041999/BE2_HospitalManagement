@@ -6,7 +6,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\User\ServiceController as UserServiceController;
-use App\Http\Controllers\tiensucontroler;
+use App\Http\Controllers\Tiensucontroller;
 use App\Http\Controllers\MembershipController; 
 use App\Http\Controllers\EmergencyContactController; 
 use App\Http\Controllers\ProfileController;
@@ -59,12 +59,10 @@ Route::middleware('auth')->group(function () {
     });
 
      //xem tien su
-    Route::get('/tiensu', [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
-
-    // sua tien su
-    Route::post('/tiensu', [tiensucontroler::class, 'luutiensu'])->name('tiensu.store');
-    //the thanh vien
-
+  Route::middleware('auth')->group(function () {
+    Route::get('/tiensu', [TiensuController::class, 'index'])->name('tiensu.index');
+    Route::post('/tiensu', [TiensuController::class, 'store'])->name('tiensu.store');
+});
     Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
 
    

@@ -27,11 +27,11 @@
                 <div class="card-stats">
                     <div class="stat-item">
                         <small>ĐIỂM TÍCH LŨY</small>
-                       <div class="stat-value">{{ number_format($membership->points ?? 0) }} đ</div>
+                        <div class="stat-value">{{ number_format($membership->points ?? 0) }} đ</div>
                     </div>
                     <div class="stat-item text-right">
                         <small>TỔNG CHI TIÊU</small>
-                    <p>{{ number_format(($membership->points ?? 0) / 1000000, 1) }}M đ</p>
+                        <p>{{ $membership->total_spent }}M đ</p>
                     </div>
                 </div>
             </div>
@@ -54,9 +54,11 @@
                 </div>
 
                 <div class="progress-bar-container">
-                 <div class="progress-bar" style="width: {{ $progressPercent }}%;"></div>
+                    <div class="progress-bar"
+     style="width: {{ $membership->progress_percent }}%">
+</div>
                 </div>
-                <p class="progress-text">Còn thiếu <strong>{{ number_format($remaining) }} đ</strong> để đạt hạng Kim Cương</p>
+                <p class="progress-text">Còn thiếu <strong>{{ number_format($membership->remaining) }} đ</strong> để đạt hạng Kim Cương</p>
 
                 <div class="extra-stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
                     <div class="extra-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
