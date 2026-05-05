@@ -6,9 +6,9 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\User\ServiceController as UserServiceController;
-use App\Http\Controllers\Tiensucontroller;
-use App\Http\Controllers\MembershipController; 
-use App\Http\Controllers\EmergencyContactController; 
+use App\Http\Controllers\HealthBackgroundController;
+use App\Http\Controllers\MembershipController;
+use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 // ============================================================
 // TRANG CHỦ & AUTH
@@ -58,14 +58,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/{id}/huy',        [AppointmentController::class, 'cancel'])->name('cancel');
     });
 
-     //xem tien su
-  Route::middleware('auth')->group(function () {
-    Route::get('/tiensu', [TiensuController::class, 'index'])->name('tiensu.index');
-    Route::post('/tiensu', [TiensuController::class, 'store'])->name('tiensu.store');
-});
+    //xem tien su
+    Route::middleware('auth')->group(function () {
+        Route::get('/health-background', [HealthBackgroundController::class, 'index'])->name('health.index');
+        Route::post('/health-background', [HealthBackgroundController::class, 'store'])->name('health.store');
+    });
+    //thanh vien uu dai
     Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
-
-   
 });
 
 // ============================================================
@@ -125,7 +124,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::put('/{room}',    [RoomController::class, 'update'])->name('update');
         Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
     });
-    
 });
 
 // ============================================================
@@ -136,13 +134,12 @@ Route::get('/bac-si', function () {
 })->name('doctors.index');
 // liên hệ khẩn cấp
 Route::middleware(['auth'])->group(function () {
- 
+
     Route::get('/lien-he-khan-cap', [EmergencyContactController::class, 'index'])
         ->name('emergency-contacts.index');
- 
+
     Route::post('/lien-he-khan-cap', [EmergencyContactController::class, 'store'])
         ->name('emergency-contacts.store');
- 
 });
 //profile 
 Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function () {

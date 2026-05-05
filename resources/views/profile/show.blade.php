@@ -119,7 +119,7 @@
 
             <div class="quick-links">
 
-                <a href="{{ route('tiensu.index') }}" class="quick-link-item">
+                <a href="{{ route('health.store') }}" class="quick-link-item">
                     <div class="link-icon">📋</div>
                     <div>
                         <strong>Tiền sử & dị ứng</strong>

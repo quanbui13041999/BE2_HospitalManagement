@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Tiensu extends Model
+class HealthBackground extends Model
 {
-    protected $table = 'tiensu';
+    protected $table = 'health_backgrounds';
 
     protected $fillable = [
         'user_id',

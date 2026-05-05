@@ -4,16 +4,16 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Tiensu;
+use App\Models\HealthBackground;
 
-class TiensuController extends Controller
+class HealthBackgroundController extends Controller
 {
     // 👉 View
     public function index()
     {
-        $tiensu = Tiensu::where('user_id', Auth::id())->first();
+        $healthData = HealthBackground::where('user_id', Auth::id())->first();
 
-        return view('tiensu.index', compact('tiensu'));
+       return view('health_background.index', compact('healthData'));
     }
 
     // 👉 Store / Update
@@ -28,7 +28,7 @@ class TiensuController extends Controller
         $data['user_id'] = Auth::id();
         $data['bmi'] = $this->calculateBMI($request->height, $request->weight);
 
-        Tiensu::updateOrCreate(
+        HealthBackground::updateOrCreate(
             ['user_id' => Auth::id()],
             $this->mapData($data)
         );
