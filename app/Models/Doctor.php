@@ -24,7 +24,7 @@ class Doctor extends Model
     {
         return $this->hasMany(DoctorSchedule::class, 'doctor_id', 'doctor_id');
     }
-    
+
     public function daysOff()
     {
         return $this->hasMany(DoctorDayOff::class, 'doctor_id', 'doctor_id');
