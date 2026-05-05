@@ -779,6 +779,166 @@
             color: #c47b2e;
         }
 
+        /* ══════════════════════════════════════════
+           FEATURE 3 — QUEUE WAITING TIME
+        ══════════════════════════════════════════ */
+        .queue-card {
+            background: var(--white);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(0, 0, 0, .03);
+            overflow: hidden;
+        }
+
+        .queue-card.hidden {
+            display: none;
+        }
+
+        .queue-header {
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            font-weight: 700;
+            font-size: .7rem;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: #065f46;
+            border-bottom: 1px solid #6ee7b7;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .queue-body {
+            padding: 18px 22px;
+        }
+
+        .queue-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: .82rem;
+        }
+
+        .queue-row:last-child {
+            border-bottom: none;
+        }
+
+        .queue-row .qlabel {
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+
+        .queue-row .qvalue {
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .queue-number-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f52ba, #2b6ed7);
+            color: #fff;
+            font-weight: 800;
+            font-size: 1.2rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(15, 82, 186, .25);
+        }
+
+        .wait-time-info {
+            background: #eff6ff;
+            border-left: 3px solid #0f52ba;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 12px 0;
+            font-size: .8rem;
+        }
+
+        .wait-time-value {
+            font-weight: 800;
+            color: #0f52ba;
+            font-size: 1.1rem;
+            display: block;
+            margin: 4px 0;
+        }
+
+        .wait-time-label {
+            color: var(--gray-500);
+            font-size: .7rem;
+            display: block;
+        }
+
+        .queue-people-ahead {
+            background: #f0fdf4;
+            border-left: 3px solid #059669;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 12px 0;
+            font-size: .8rem;
+        }
+
+        .queue-people-count {
+            font-weight: 800;
+            color: #059669;
+            display: block;
+            margin: 4px 0;
+        }
+
+        .queue-list {
+            background: var(--gray-50);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-top: 12px;
+            font-size: .75rem;
+        }
+
+        .queue-list-title {
+            font-weight: 700;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .queue-person {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            color: var(--gray-600);
+        }
+
+        .queue-person-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 700;
+            font-size: .7rem;
+            flex-shrink: 0;
+        }
+
+        .queue-person-name {
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .queue-loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 0;
+            font-size: .8rem;
+            color: var(--gray-500);
+        }
+
         /* ── BUTTONS ── */
         .btn-row {
             display: flex;
@@ -1155,6 +1315,38 @@
                             nhận</span></div>
                 </div>
             </div>
+
+            <div class="queue-card hidden" id="queue-card">
+                <div class="queue-header">
+                    📊 Thông Tin Hàng Đợi
+                </div>
+                <div class="queue-body">
+                    <div class="queue-row">
+                        <span class="qlabel">Số thứ tự</span>
+                        <span class="queue-number-badge" id="queue-number-display">—</span>
+                    </div>
+
+                    <div class="wait-time-info">
+                        <span class="wait-time-label">⏱️ Thời gian chờ dự kiến</span>
+                        <span class="wait-time-value" id="estimated-wait-time">— phút</span>
+                    </div>
+
+                    <div class="queue-people-ahead">
+                        <span class="queue-people-count" id="people-ahead-count">— người</span>
+                        <span class="queue-list-title">đứng trước bạn</span>
+                    </div>
+
+                    <div class="queue-list" id="queue-list-container" style="display:none">
+                        <span class="queue-list-title">Danh sách khách hàng trước bạn:</span>
+                        <div id="queue-people-list"></div>
+                    </div>
+
+                    <div class="queue-loading" id="queue-loading-spinner">
+                        <div class="mini-spin"></div>
+                        <span>Đang tải thông tin...</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>{{-- /page --}}
@@ -1175,6 +1367,7 @@
         // Route URLs
         const ROUTE_SUGGEST = '{{ route("appointments.suggest") }}';
         const ROUTE_TIMESLOTS = '{{ route("appointments.timeslots") }}';
+        const ROUTE_QUEUE_INFO = '{{ route("appointments.queue-info") }}';
 
         // ══════════════════════════════════════════════════════════════
         // STATE
@@ -1401,6 +1594,83 @@
             document.getElementById('slot-stats-bar').style.display = 'none';
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // FETCH & DISPLAY QUEUE INFO
+        // ══════════════════════════════════════════════════════════════
+        function fetchQueueInfo(scheduleId) {
+            const card = document.getElementById('queue-card');
+            const spinner = document.getElementById('queue-loading-spinner');
+            
+            // Show card & spinner
+            card.classList.remove('hidden');
+            spinner.style.display = 'flex';
+            document.getElementById('queue-list-container').style.display = 'none';
+
+            fetch(`${ROUTE_QUEUE_INFO}?schedule_id=${scheduleId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        spinner.innerHTML = '<span style="color:#e5484d">❌ Không thể tải thông tin hàng đợi</span>';
+                        return;
+                    }
+
+                    // Hiển thị thông tin hàng đợi
+                    displayQueueInfo(data);
+                    spinner.style.display = 'none';
+                })
+                .catch(err => {
+                    console.error('Queue fetch error:', err);
+                    spinner.innerHTML = '<span style="color:#e5484d">❌ Lỗi kết nối</span>';
+                });
+        }
+
+        function displayQueueInfo(data) {
+            const {
+                queue_number,
+                people_ahead,
+                estimated_wait_minutes,
+                queue_details
+            } = data;
+
+            // Cập nhật số thứ tự
+            document.getElementById('queue-number-display').textContent = queue_number;
+
+            // Cập nhật thời gian chờ dự kiến
+            let waitTimeText = '';
+            if (estimated_wait_minutes === 0) {
+                waitTimeText = '< 5 phút';
+            } else if (estimated_wait_minutes < 60) {
+                waitTimeText = estimated_wait_minutes + ' phút';
+            } else {
+                const hours = Math.floor(estimated_wait_minutes / 60);
+                const mins = estimated_wait_minutes % 60;
+                waitTimeText = hours + 'h ' + (mins > 0 ? mins + 'p' : '');
+            }
+            document.getElementById('estimated-wait-time').textContent = waitTimeText;
+
+            // Cập nhật số người đứng trước
+            document.getElementById('people-ahead-count').textContent = people_ahead + ' người';
+
+            // Cập nhật danh sách người đứng trước
+            const listContainer = document.getElementById('queue-list-container');
+            const peopleList = document.getElementById('queue-people-list');
+            
+            if (queue_details && queue_details.length > 0) {
+                listContainer.style.display = 'block';
+                peopleList.innerHTML = queue_details.map((person, idx) => `
+                    <div class="queue-person">
+                        <span class="queue-person-num">${person.queue_number}</span>
+                        <span class="queue-person-name">${person.abbreviated_name}</span>
+                        <span style="color: var(--gray-400); font-size: .7rem; margin-left: auto;">
+                            ${person.status === 'Đã xác nhận' ? '✓ Xác nhận' : '⏳ Chờ'}
+                        </span>
+                    </div>
+                `).join('');
+            } else {
+                listContainer.style.display = 'none';
+            }
+        }
+
         // Phân loại slot theo buổi
         function getSession(timeStr) {
             const h = parseInt(timeStr.split(':')[0]);
@@ -1478,6 +1748,9 @@
             document.getElementById('appointment_time').value = state.time;
             document.getElementById('slot-error').style.display = 'none';
             updateSummary();
+
+            // ✅ Fetch queue info khi chọn slot
+            fetchQueueInfo(state.scheduleId);
         }
 
         function clearSlotState() {
@@ -1486,6 +1759,9 @@
             state.timeEnd    = null;
             document.getElementById('schedule_id').value      = '';
             document.getElementById('appointment_time').value = '';
+            
+            // Hide queue card when slot is cleared
+            document.getElementById('queue-card').classList.add('hidden');
         }
 
         // ══════════════════════════════════════════════════════════════

@@ -6,40 +6,25 @@ use Illuminate\Database\Eloquent\Model;
 
 class Doctor extends Model
 {
-    protected $table      = 'doctors';
+    protected $table = 'Doctors';
     protected $primaryKey = 'doctor_id';
-    public $timestamps    = false;
+    public $timestamps = false;
 
     protected $fillable = [
-        'user_id',
-        'full_name',
-        'department_id',
-        'experience',
-        'price',
-        'avatar_url',
-        'bio',
-        'status',
+        'user_id', 'full_name', 'department_id',
+        'experience', 'price', 'avatar_url', 'bio', 'status',
     ];
 
-    protected $casts = [
-        'price'      => 'decimal:2',
-        'status'     => 'boolean',
-        'experience' => 'integer',
-    ];
-
-    // ── Relations ──
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id', 'user_id');
-    }
     public function department()
     {
         return $this->belongsTo(Department::class, 'department_id', 'department_id');
     }
+
     public function schedules()
     {
         return $this->hasMany(DoctorSchedule::class, 'doctor_id', 'doctor_id');
     }
+
     public function daysOff()
     {
         return $this->hasMany(DoctorDayOff::class, 'doctor_id', 'doctor_id');

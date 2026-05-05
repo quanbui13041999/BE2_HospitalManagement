@@ -1,80 +1,159 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
 
 class DoctorSchedule extends Model
 {
-    protected $table      = 'doctorschedules';
+    protected $table = 'DoctorSchedules';
     protected $primaryKey = 'schedule_id';
-    public $timestamps    = false;
+    
+    // ⚠️ TẮT timestamps vì bảng KHÔNG có created_at, updated_at
+    public $timestamps = false;
 
+    // Constants
+    const STATUSES = ['Hoạt động', 'Tạm dừng', 'Đã huỷ'];
+
+    // Fillable properties
     protected $fillable = [
-        'doctor_id','room_id','work_date','start_time',
-        'end_time','slot_duration','max_slot','status','note',
+        'doctor_id',
+        'room_id',
+        'work_date',
+        'start_time',
+        'end_time',
+        'slot_duration',
+        'max_slot',
+        'status',
+        'note',
     ];
 
+    // Casts
     protected $casts = [
-        'work_date'     => 'date',
+        'work_date' => 'date',
+        'start_time' => 'string',
+        'end_time' => 'string',
         'slot_duration' => 'integer',
-        'max_slot'      => 'integer',
+        'max_slot' => 'integer',
+        'booked_slots' => 'integer',
     ];
 
-    // ── Relations ──
-    public function doctor()       { return $this->belongsTo(Doctor::class, 'doctor_id', 'doctor_id'); }
-    public function room()         { return $this->belongsTo(Room::class, 'room_id', 'room_id'); }
-    public function appointments() { return $this->hasMany(Appointment::class, 'schedule_id', 'schedule_id'); }
+    // ============================================================
+    // RELATIONSHIPS
+    // ============================================================
+    
+    public function doctor()
+    {
+        return $this->belongsTo(Doctor::class, 'doctor_id', 'doctor_id');
+    }
 
-    // ── Helpers ──
-    public function getBookedCountAttribute()
+    public function room()
+    {
+        return $this->belongsTo(Room::class, 'room_id', 'room_id');
+    }
+
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class, 'schedule_id', 'schedule_id');
+    }
+
+    // ============================================================
+    // ACCESSORS & MUTATORS
+    // ============================================================
+    
+    /**
+     * Số slot đã đặt (không tính huỷ / dời lịch)
+     */
+    public function getBookedSlotsAttribute(): int
     {
         return $this->appointments()
-            ->whereNotIn('status', ['Đã hủy','Dời lịch','Giữ slot'])
+            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
             ->count();
     }
 
-    public function getRemainingSlotAttribute()
+    /**
+     * Số slot còn trống
+     */
+    public function getRemainingSlotAttribute(): int
     {
-        return max(0, $this->max_slot - $this->booked_count);
+        return max(0, $this->max_slot - $this->booked_slots);
     }
 
-    public function isFull(): bool
+    /**
+     * Kiểm tra xem còn slot trống không
+     */
+    public function hasAvailableSlot(): bool
     {
-        return $this->booked_count >= $this->max_slot;
+        return $this->remaining_slot > 0 && $this->status === 'Hoạt động';
     }
 
-    // Sinh danh sách khung giờ
-    public function generateTimeSlots(): array
+    /**
+     * Lấy phần trăm đã đặt
+     */
+    public function getBookedPercentageAttribute(): float
     {
-        $slots = [];
-        [$h, $m] = explode(':', $this->start_time);
-        [$eh, $em] = explode(':', $this->end_time);
-        $endMins = (int)$eh * 60 + (int)$em;
-        $h = (int)$h; $m = (int)$m;
-
-        while ($h * 60 + $m + $this->slot_duration <= $endMins) {
-            $slots[] = sprintf('%02d:%02d', $h, $m);
-            $m += $this->slot_duration;
-            if ($m >= 60) { $h++; $m -= 60; }
+        if ($this->max_slot <= 0) {
+            return 0;
         }
-        return $slots;
+        return round(($this->booked_slots / $this->max_slot) * 100, 2);
     }
 
-    // ── Scopes ──
-    public function scopeActive($q)            { return $q->where('doctorschedules.status', 'Hoạt động'); }
-    public function scopeByDoctor($q, $id)     { return $q->where('doctor_id', $id); }
-    public function scopeByDate($q, $date)     { return $q->where('work_date', $date); }
-    public function scopeUpcoming($q)          { return $q->where('work_date', '>=', now()->toDateString()); }
-}
+    // ============================================================
+    // SCOPES
+    // ============================================================
+    
+    /**
+     * Scope lấy các ca đang hoạt động
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'Hoạt động');
+    }
 
+    /**
+     * Scope lấy các ca trong ngày
+     */
+    public function scopeOnDate($query, $date)
+    {
+        return $query->whereDate('work_date', $date);
+    }
 
-class DoctorDayOff extends Model
-{
-    protected $table      = 'doctordaysoff';
-    protected $primaryKey = 'day_off_id';
-    public $timestamps    = false;
+    /**
+     * Scope lấy các ca theo bác sĩ
+     */
+    public function scopeForDoctor($query, $doctorId)
+    {
+        return $query->where('doctor_id', $doctorId);
+    }
 
-    protected $fillable = ['doctor_id','off_date','reason','created_at'];
-    protected $casts    = ['off_date' => 'date', 'created_at' => 'datetime'];
+    /**
+     * Scope lấy các ca theo phòng
+     */
+    public function scopeForRoom($query, $roomId)
+    {
+        return $query->where('room_id', $roomId);
+    }
 
-    public function doctor() { return $this->belongsTo(Doctor::class, 'doctor_id', 'doctor_id'); }
+    /**
+     * Scope lấy các ca trong khoảng thời gian
+     */
+    public function scopeInTimeRange($query, $startTime, $endTime)
+    {
+        return $query->where(function ($q) use ($startTime, $endTime) {
+            $q->where('start_time', '<', $endTime)
+              ->where('end_time', '>', $startTime);
+        });
+    }
+
+    // ============================================================
+    // HELPER METHODS
+    // ============================================================
+    
+    /**
+     * Kiểm tra xem có thể đặt lịch được không
+     */
+    public function isBookable(): bool
+    {
+        return $this->status === 'Hoạt động' && $this->remaining_slot > 0;
+    }
 }

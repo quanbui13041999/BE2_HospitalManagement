@@ -7,6 +7,7 @@ use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentRescheduled;
 use App\Services\DoctorSuggestionService;
 use App\Services\DoctorTimeslotService;
+use App\Services\AppointmentQueueService;
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -394,7 +395,16 @@ class AppointmentController extends Controller
         }
 
         $appointmentTime = Carbon::parse($appointment->work_date . ' ' . $appointment->start_time);
-        if ($appointmentTime->diffInHours(now(), false) > -2) {
+        $hoursUntilAppointment = $appointmentTime->diffInHours(now(), false);
+        
+        // Check if appointment is in the past
+        if ($hoursUntilAppointment >= 0) {
+            return redirect()->route('appointments.index')
+                ->withErrors(['msg' => 'Lịch khám này đã qua hoặc đang diễn ra. Không thể dời lịch.']);
+        }
+        
+        // Check if appointment is within 2 hours
+        if ($hoursUntilAppointment > -2) {
             return redirect()->route('appointments.index')
                 ->withErrors(['msg' => 'Chỉ có thể dời lịch trước giờ khám ít nhất 2 tiếng.']);
         }
@@ -584,7 +594,16 @@ class AppointmentController extends Controller
             ->first();
 
         $appointmentTime = Carbon::parse($schedule->work_date . ' ' . $schedule->start_time);
-        if ($appointmentTime->diffInHours(now(), false) > -2) {
+        $hoursUntilAppointment = $appointmentTime->diffInHours(now(), false);
+        
+        // Check if appointment is in the past
+        if ($hoursUntilAppointment >= 0) {
+            return redirect()->route('appointments.index')
+                ->withErrors(['msg' => 'Lịch khám này đã qua hoặc đang diễn ra. Không thể hủy lịch.']);
+        }
+        
+        // Check if appointment is within 2 hours
+        if ($hoursUntilAppointment > -2) {
             return redirect()->route('appointments.index')
                 ->withErrors(['msg' => 'Chỉ có thể hủy lịch trước giờ khám ít nhất 2 tiếng.']);
         }
@@ -694,5 +713,50 @@ class AppointmentController extends Controller
         );
 
         return response()->json($result);
+    }
+
+    // ================================================================
+    // 5. ƯỚC LƯỢNG THỜI GIAN CHỜ — GET /api/appointments/queue-info
+    // ================================================================
+    /**
+     * Lấy thông tin hàng đợi và ước lượng thời gian chờ
+     * 
+     * @param Request $request
+     * @param AppointmentQueueService $queueService
+     * @return \Illuminate\Http\JsonResponse
+     * 
+     * Dữ liệu trả về:
+     * {
+     *   "success": true,
+     *   "queue_number": 3,           // Số thứ tự của người dùng hiện tại
+     *   "people_ahead": 2,           // Số người đứng trước
+     *   "estimated_wait_minutes": 30, // Thời gian chờ dự kiến (phút)
+     *   "schedule_info": {
+     *     "start_time": "09:00",
+     *     "slot_duration": 15,
+     *     "max_slot": 20
+     *   },
+     *   "queue_details": [          // Danh sách những người đứng trước
+     *     {
+     *       "queue_number": 1,
+     *       "status": "Đã xác nhận",
+     *       "abbreviated_name": "N.V.A." 
+     *     }
+     *   ]
+     * }
+     */
+    public function getQueueInfo(Request $request, AppointmentQueueService $queueService)
+    {
+        $request->validate([
+            'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
+        ]);
+
+        $queueInfo = $queueService->getQueueInfo((int) $request->schedule_id);
+
+        if (!$queueInfo['success']) {
+            return response()->json($queueInfo, 404);
+        }
+
+        return response()->json($queueInfo);
     }
 }
