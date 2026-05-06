@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\Review;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rules\Can;
 use Illuminate\Validation\ValidationException;
 
 class ReviewsDoctorService
@@ -39,6 +40,23 @@ class ReviewsDoctorService
     ];
   }
 
+  public function canReviews(int $appointment, int $userID) {
+    $appointment = Appointment::where('appointment_id',$appointment)
+    ->where('appointment_id',$appointment)
+    ->first();
+
+    if ($appointment) {
+      return ['can' => false, 'messege' => 'Lịch hẹn không tồn tại'];
+    }
+
+    if($appointment->status != 'Hoàn Thành') {
+      return ['can' => false, 'messege' => 'Chỉ có thể đánh giá sau khi hoàn thành khám'];
+    }
+
+    $Ready = Review::where('appointment_id',$appointment)
+    ->where('user_id',$userID)
+    ->exists(); // xac dinh xem cho hang nao ton tai trong truy van hien tai khong
+  }
   public function createReviews(array $data, int $userID) {
     return DB::transaction(function() use ($data,$userID) {
     
