@@ -200,8 +200,19 @@ class AppointmentController extends Controller
                 ->withInput();
         }
 
-        $queueNumber = $booked + 1;
+        // ✅ FIX: Calculate appointment_timeEnd based on slot_duration
         $appointmentDatetime = $request->work_date . ' ' . $request->appointment_time . ':00';
+        $appointmentEndtime = Carbon::parse($appointmentDatetime)
+            ->addMinutes($schedule->slot_duration ?? 15)
+            ->format('Y-m-d H:i:s');
+
+        // ✅ FIX: Calculate queue_number for THIS SPECIFIC appointment_time ONLY (not entire schedule)
+        $queueNumber = DB::table('appointments')
+            ->where('schedule_id', $request->schedule_id)
+            ->whereRaw("DATE_FORMAT(appointment_time, '%H:%i') = ?", [substr($request->appointment_time, 0, 5)])
+            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Đã khám'])
+            ->count() + 1;
+        
         $appointmentId = null;
 
         // ── Transaction: chỉ DB, KHÔNG có mail bên trong ──
@@ -219,6 +230,7 @@ class AppointmentController extends Controller
                     ->update([
                         'service_id' => $request->service_id ?: null,
                         'appointment_time' => $appointmentDatetime,
+                        'appointment_timeEnd' => $appointmentEndtime,
                         'queue_number' => $queueNumber,
                         'status' => 'Chờ xác nhận',
                         'note' => $request->note,
@@ -233,6 +245,7 @@ class AppointmentController extends Controller
                     'schedule_id' => $request->schedule_id,
                     'service_id' => $request->service_id ?: null,
                     'appointment_time' => $appointmentDatetime,
+                    'appointment_timeEnd' => $appointmentEndtime,
                     'queue_number' => $queueNumber,
                     'status' => 'Chờ xác nhận',
                     'note' => $request->note,
@@ -749,9 +762,15 @@ class AppointmentController extends Controller
     {
         $request->validate([
             'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
+            'appointment_time' => 'nullable|string',
+            'appointment_id' => 'nullable|integer|exists:appointments,appointment_id',
         ]);
 
-        $queueInfo = $queueService->getQueueInfo((int) $request->schedule_id);
+        $queueInfo = $queueService->getQueueInfo(
+            (int) $request->schedule_id,
+            $request->appointment_time,
+            $request->appointment_id ? (int) $request->appointment_id : null
+        );
 
         if (!$queueInfo['success']) {
             return response()->json($queueInfo, 404);
