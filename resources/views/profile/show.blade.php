@@ -74,7 +74,7 @@
 
         {{-- Personal Information --}}
         <div class="profile-card info-card">
-            <h2>Thông tin cá nhân</h2>
+            <h2>Thông tin cá nhân </h2>
 
             <div class="info-group">
 
@@ -139,6 +139,13 @@
                     <div>
                         <strong>Liên hệ khẩn câp</strong>
                         <small>Hỗ trợ mạng lưới và liên hệ</small>
+                    </div>
+                </a>
+                <a href="{{ route('documents.index') }}" class="quick-link-item">
+                    <div class="link-icon">📁</div>
+                    <div>
+                        <strong>Kho tài liệu y tế</strong>
+                        <small>Lưu trữ và truy cập tài liệu sức khỏe</small>
                     </div>
                 </a>
             </div>
