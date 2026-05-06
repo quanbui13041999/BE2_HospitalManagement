@@ -14,7 +14,11 @@
         .spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
         /* Class selected cho schedule-option (JS dùng) */
         .schedule-option.selected {
-            @apply border-blue-600 bg-blue-50 shadow-md ring-2 ring-blue-200;
+            border-color: #2563eb;
+            background-color: #eff6ff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            outline: 2px solid #bfdbfe;
+            outline-offset: 2px;
         }
         body { font-family: 'Inter', sans-serif; }
         .schedule-option { transition: all 0.2s; }
