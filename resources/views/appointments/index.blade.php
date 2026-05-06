@@ -817,89 +817,131 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($appointments as $item)
-                    <tr>
-                        <td>
-                            <div class="doctor-cell">
-                                <div class="avatar">
-                                    {{ strtoupper(substr($item->doctor_name, -2)) }}
-                                </div>
-                                <div>
-                                    <div class="doctor-name">BS. {{ $item->doctor_name }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>{{ $item->service_name }}</td>
-                        <td>
-                            <div class="date-cell">
-                                <div class="date">{{ $item->work_date }}</div>
-                                <div class="time">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="10" />
-                                        <polyline points="12 6 12 12 16 14" />
-                                    </svg>
-                                    {{ $item->start_time }}
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            @php
-                                $statusMap = [
-                                    'Chờ xác nhận' => 'badge-pending',
-                                    'Đã xác nhận'  => 'badge-confirmed',
-                                    'Đã hủy'       => 'badge-cancelled',
-                                    'Hoàn thành'   => 'badge-done',
-                                ];
-                                $badgeClass = $statusMap[$item->status] ?? 'badge-pending';
-                            @endphp
-                            <span class="badge {{ $badgeClass }}">
-                                <span class="badge-dot"></span>
-                                {{ $item->status }}
-                            </span>
-                        </td>
-                        <td>
-                            @if($item->status != 'Đã hủy' && $item->status != 'Hoàn thành')
-                                <div class="actions">
-                                    <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                            <rect x="3" y="4" width="18" height="18" rx="2" />
-                                            <line x1="16" y1="2" x2="16" y2="6" />
-                                            <line x1="8" y1="2" x2="8" y2="6" />
-                                            <line x1="3" y1="10" x2="21" y2="10" />
-                                        </svg>
-                                        Dời lịch
-                                    </a>
-                                    <button type="button" onclick="openModal(this)" data-action="{{ route('appointments.cancel', $item->appointment_id) }}" class="btn-cancel">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                            <circle cx="12" cy="12" r="10" />
-                                            <line x1="15" y1="9" x2="9" y2="15" />
-                                            <line x1="9" y1="9" x2="15" y2="15" />
-                                        </svg>
-                                        Hủy
-                                    </button>
-                                </div>
-                            @else
-                                <span style="font-size: 0.75rem; color: var(--gray-400);">—</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5">
-                            <div class="empty-state">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" />
-                                    <line x1="16" y1="2" x2="16" y2="6" />
-                                    <line x1="8" y1="2" x2="8" y2="6" />
-                                    <line x1="3" y1="10" x2="21" y2="10" />
-                                </svg>
-                                <p>Bạn chưa có lịch khám nào.</p>
-                                <a href="{{ route('appointments.create') }}" class="btn-book-new" style="margin-top: 16px; display: inline-flex;">Đặt lịch ngay</a>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
+    @forelse($appointments as $item)
+    <tr>
+        <td>
+            <div class="doctor-cell">
+                <div class="avatar">
+                    {{ strtoupper(substr($item->doctor_name, -2)) }}
+                </div>
+                <div>
+                    <div class="doctor-name">BS. {{ $item->doctor_name }}</div>
+                    <div style="font-size:.7rem;color:var(--gray-400)">{{ $item->department_name }}</div>
+                </div>
+            </div>
+        </td>
+ 
+        <td>{{ $item->service_name ?? '—' }}</td>
+
+        <td>
+            <div class="date-cell">
+                <div class="date">
+                    {{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}
+                </div>
+                <div class="time">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    {{ \Carbon\Carbon::parse($item->start_time)->format('H:i') }}
+                </div>
+            </div>
+        </td>
+
+        <td>
+            @php
+                $statusMap = [
+                    'Chờ xác nhận' => 'badge-pending',
+                    'Đã xác nhận'  => 'badge-confirmed',
+                    'Đã hủy'       => 'badge-cancelled',
+                    'Dời lịch'     => 'badge-cancelled',
+                    'Đã khám'      => 'badge-done',
+                    'Hoàn thành'   => 'badge-done',
+                ];
+                $badgeClass = $statusMap[$item->status] ?? 'badge-pending';
+            @endphp
+            <span class="badge {{ $badgeClass }}">
+                <span class="badge-dot"></span>
+                {{ $item->status }}
+            </span>
+        </td>
+ 
+        <td>
+            @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
+                <div class="actions">
+                    <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <rect x="3" y="4" width="18" height="18" rx="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Dời lịch
+                    </a>
+                    <button type="button"
+                        onclick="openModal(this)"
+                        data-action="{{ route('appointments.cancel', $item->appointment_id) }}"
+                        class="btn-cancel">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="15" y1="9" x2="9" y2="15"/>
+                            <line x1="9" y1="9" x2="15" y2="15"/>
+                        </svg>
+                        Hủy
+                    </button>
+                </div>
+ 
+            @elseif(in_array($item->status, ['Đã khám', 'Hoàn thành']))
+                <div class="actions">
+                    @if($item->review_id ?? null)
+                        <span class="badge-reviewed">✓ Đã đánh giá</span>
+                    @else
+                        <button
+                            type="button"
+                            class="btn-edit btn-review"
+                            data-id="{{ $item->appointment_id }}"
+                            onclick="openReviewModal({
+                                appointmentId: {{ $item->appointment_id }},
+                                doctorId:      {{ $item->doctor_id }},
+                                doctorName:    '{{ addslashes($item->doctor_name) }}',
+                                deptName:      '{{ addslashes($item->department_name) }}',
+                                workDate:      '{{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}',
+                                avatarUrl:     '{{ $item->doctor_avatar ?? '' }}',
+                                existing:      null,
+                                storeUrl:      '{{ route('reviews.store') }}'
+                            })">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            Đánh giá
+                        </button>
+                    @endif
+                </div>
+ 
+            @else
+                <span style="font-size:.75rem;color:var(--gray-400)">—</span>
+            @endif
+        </td>
+    </tr>
+    @empty
+    <tr>
+        <td colspan="5">
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <p>Bạn chưa có lịch khám nào.</p>
+                <a href="{{ route('appointments.create') }}" class="btn-book-new"
+                    style="margin-top:16px;display:inline-flex;">Đặt lịch ngay</a>
+            </div>
+        </td>
+    </tr>
+    @endforelse
+</tbody>
+ 
             </table>
         </div>
     </div>
