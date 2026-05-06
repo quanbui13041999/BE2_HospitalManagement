@@ -672,7 +672,13 @@
             thead th:nth-child(2) {
                 display: none;
             }
+            thead th:nth-child(3) {
+                display: none;
+            }
             tbody td:nth-child(2) {
+                display: none;
+            }
+            tbody td:nth-child(3) {
                 display: none;
             }
         }
@@ -809,6 +815,7 @@
             <table>
                 <thead>
                     <tr>
+                        <th>Người Đặt</th>
                         <th>Bác sĩ</th>
                         <th>Dịch vụ</th>
                         <th>Ngày khám</th>
@@ -819,6 +826,14 @@
                 <tbody>
                     @forelse($appointments as $item)
                     <tr>
+                        <td>
+                            <div class="doctor-cell">
+                                <div>
+                                    <div class="doctor-name">{{ $item->user_full_name ?? 'N/A' }}</div>
+                                    <div style="font-size: 0.7rem; color: var(--gray-500); margin-top: 3px;">{{ $item->user_phone ?? 'Không có' }}</div>
+                                </div>
+                            </div>
+                        </td>
                         <td>
                             <div class="doctor-cell">
                                 <div class="avatar">
