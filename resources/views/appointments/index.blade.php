@@ -987,5 +987,6 @@
         if (e.target === this) closeModal();
     });
 </script>
+@include('appointments.reviews')
 </body>
 </html>
