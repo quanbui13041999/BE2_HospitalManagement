@@ -2,13 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ServicePrice extends Model
 {
+    use HasFactory;
+
     protected $table = 'ServicePrices';
     protected $primaryKey = 'price_id';
-    public $timestamps = false;
+    public $timestamps = false;  // ĐÚNG: không có updated_at
+
+    const PRICE_TYPES = ['Thường', 'BHYT', 'VIP'];
 
     protected $fillable = [
         'service_id',
@@ -17,34 +22,23 @@ class ServicePrice extends Model
         'effective_date',
         'end_date',
         'created_by',
+        'created_at',
     ];
 
     protected $casts = [
+        'price' => 'float',
         'effective_date' => 'date',
-        'end_date'       => 'date',
-        'price'          => 'decimal:2',
-        'created_at'     => 'datetime',
+        'end_date' => 'date',
     ];
-
-    // Danh sách loại giá hợp lệ
-    const PRICE_TYPES = ['Thường', 'BHYT', 'VIP', 'Theo yêu cầu'];
 
     public function service()
     {
         return $this->belongsTo(Service::class, 'service_id', 'service_id');
     }
 
+    // ĐÚNG: ServiceService.php -> with('createdBy')
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by', 'user_id');
-    }
-
-    // Scope: còn hiệu lực
-    public function scopeActive($query)
-    {
-        return $query->where('effective_date', '<=', now()->toDateString())
-            ->where(function ($q) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
-            });
     }
 }

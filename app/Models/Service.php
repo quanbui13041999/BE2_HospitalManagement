@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
+    use HasFactory;
+
     protected $table = 'Services';
     protected $primaryKey = 'service_id';
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'service_code',
@@ -20,25 +23,29 @@ class Service extends Model
     ];
 
     protected $casts = [
+        'duration_minutes' => 'integer',
         'status' => 'boolean',
     ];
 
+    // Relationships
     public function department()
     {
         return $this->belongsTo(Department::class, 'department_id', 'department_id');
     }
 
-    public function prices()
-    {
-        return $this->hasMany(ServicePrice::class, 'service_id', 'service_id');
-    }
-
+    // ĐÚNG: ServiceRepository.php -> with('activePrices')
     public function activePrices()
     {
         return $this->hasMany(ServicePrice::class, 'service_id', 'service_id')
-            ->where(function ($q) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
-            })
-            ->where('effective_date', '<=', now()->toDateString());
+            ->where('effective_date', '<=', now()->toDateString())
+            ->where(function($q) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', now()->toDateString());
+            });
+    }
+
+    public function prices()
+    {
+        return $this->hasMany(ServicePrice::class, 'service_id', 'service_id');
     }
 }
