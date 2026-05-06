@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\ReviewsDoctorController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\User\ServiceController as UserServiceController;
@@ -55,7 +56,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/doi',         [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',         [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy',        [AppointmentController::class, 'cancel'])->name('cancel');
-    });
+    }); 
+
+    Route::get('/reviews/check',  [ReviewsDoctorController::class, 'checkCanReview'])->name('reviews.check');
+    Route::post('/reviews',       [ReviewsDoctorController::class, 'store'])->name('reviews.store');
 
      //xem tien su
     Route::get('/tiensu', [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
