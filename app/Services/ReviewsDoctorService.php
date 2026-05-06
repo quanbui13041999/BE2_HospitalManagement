@@ -39,6 +39,15 @@ class ReviewsDoctorService
     ];
   }
 
-  
+  public function createReviews(array $data, int $userID) {
+    return DB::transaction(function() use ($data,$userID) {
+    
+    // kiem tra lich hen thuoc user hien tai
+    $appointment = Appointment::where('appointment_id',$data['appointment_id'])
+    ->where('user_id',$userID)
+    ->whereIn('status',['Đã Khám','Hoàn Thành'])
+    ->firstOrFail();
+    });
+  }
 }
 ?>
