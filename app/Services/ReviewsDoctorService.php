@@ -64,7 +64,7 @@ class ReviewsDoctorService
         }
 
         // Chấp nhận cả hai trạng thái phổ biến
-        $validStatuses = ['Hoàn thành', 'Đã khám', 'Hoàn Thành'];
+        $validStatuses = ['Hoàn thành', 'Đã khám', 'Đã Khám', 'Hoàn Thành'];
         if (!in_array($appointment->status, $validStatuses)) {
             return ['can' => false, 'message' => 'Chỉ có thể đánh giá sau khi hoàn thành khám.'];
         }

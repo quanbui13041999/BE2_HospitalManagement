@@ -944,7 +944,7 @@
                                         </div>
 
                                         {{-- ── Hoàn thành / Đã khám → Đánh giá ── --}}
-                                    @elseif(in_array($item->status, ['Đã khám', 'Hoàn thành', 'Hoàn Thành']))
+                                    @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
                                         <div class="actions" style="flex-wrap:wrap">
 
                                             @if($item->review_id ?? null)
