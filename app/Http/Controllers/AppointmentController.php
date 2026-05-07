@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Mail\AppointmentConfirmed;
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentRescheduled;
+use App\Services\DoctorSuggestionService;
+use App\Services\DoctorTimeslotService;
+use App\Services\AppointmentQueueService;
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -197,8 +200,19 @@ class AppointmentController extends Controller
                 ->withInput();
         }
 
-        $queueNumber = $booked + 1;
+        // ✅ FIX: Calculate appointment_timeEnd based on slot_duration
         $appointmentDatetime = $request->work_date . ' ' . $request->appointment_time . ':00';
+        $appointmentEndtime = Carbon::parse($appointmentDatetime)
+            ->addMinutes($schedule->slot_duration ?? 15)
+            ->format('Y-m-d H:i:s');
+
+        // ✅ FIX: Calculate queue_number for THIS SPECIFIC appointment_time ONLY (not entire schedule)
+        $queueNumber = DB::table('appointments')
+            ->where('schedule_id', $request->schedule_id)
+            ->whereRaw("DATE_FORMAT(appointment_time, '%H:%i') = ?", [substr($request->appointment_time, 0, 5)])
+            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Đã khám'])
+            ->count() + 1;
+        
         $appointmentId = null;
 
         // ── Transaction: chỉ DB, KHÔNG có mail bên trong ──
@@ -216,6 +230,7 @@ class AppointmentController extends Controller
                     ->update([
                         'service_id' => $request->service_id ?: null,
                         'appointment_time' => $appointmentDatetime,
+                        'appointment_timeEnd' => $appointmentEndtime,
                         'queue_number' => $queueNumber,
                         'status' => 'Chờ xác nhận',
                         'note' => $request->note,
@@ -230,6 +245,7 @@ class AppointmentController extends Controller
                     'schedule_id' => $request->schedule_id,
                     'service_id' => $request->service_id ?: null,
                     'appointment_time' => $appointmentDatetime,
+                    'appointment_timeEnd' => $appointmentEndtime,
                     'queue_number' => $queueNumber,
                     'status' => 'Chờ xác nhận',
                     'note' => $request->note,
@@ -301,60 +317,72 @@ class AppointmentController extends Controller
     // 2. DANH SÁCH LỊCH HẸN — GET /lich-hen
     // ================================================================
     public function index(Request $request)
-    {
-        $userId = Auth::id();
-
-        $counts = DB::table('appointments')
-            ->where('user_id', $userId)
-            ->select(
-                DB::raw('COUNT(*) as total'),
-                DB::raw("SUM(CASE WHEN status IN ('Chờ xác nhận','Đã xác nhận') AND appointment_time >= NOW() THEN 1 ELSE 0 END) as upcoming"),
-                DB::raw("SUM(CASE WHEN status = 'Đã khám' THEN 1 ELSE 0 END) as completed"),
-                DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch') THEN 1 ELSE 0 END) as cancelled")
-            )
-            ->first();
-
-        $query = DB::table('appointments')
-            ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
-            ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
-            ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
-            ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
-            ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
-            ->where('appointments.user_id', $userId)
-            ->select(
-                'appointments.*',
-                'doctorschedules.work_date',
-                'doctorschedules.start_time',
-                'doctorschedules.end_time',
-                'doctorschedules.slot_duration',
-                'doctors.doctor_id',
-                'doctors.full_name as doctor_name',
-                'doctors.avatar_url as doctor_avatar',
-                'doctors.price as doctor_price',
-                'departments.department_name',
-                'services.service_name',
-                'rooms.room_code',
-                'rooms.room_name'
-            );
-
-        $status = $request->get('status', 'all');
-        if ($status === 'upcoming') {
-            $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
-                ->where('doctorschedules.work_date', '>=', now()->toDateString());
-        } elseif ($status === 'completed') {
-            $query->where('appointments.status', 'Đã khám');
-        } elseif ($status === 'cancelled') {
-            $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch']);
-        }
-
-        $sort = $request->get('sort', 'desc');
-        $query->orderBy('doctorschedules.work_date', $sort === 'asc' ? 'asc' : 'desc')
-            ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc');
-
-        $appointments = $query->paginate(8)->withQueryString();
-
-        return view('appointments.index', compact('appointments', 'counts', 'status'));
+{
+    $userId = Auth::id();
+ 
+    $counts = DB::table('appointments')
+        ->where('user_id', $userId)
+        ->select(
+            DB::raw('COUNT(*) as total'),
+            DB::raw("SUM(CASE WHEN status IN ('Chờ xác nhận','Đã xác nhận') AND appointment_time >= NOW() THEN 1 ELSE 0 END) as upcoming"),
+            DB::raw("SUM(CASE WHEN status = 'Đã khám' THEN 1 ELSE 0 END) as completed"),
+            DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch') THEN 1 ELSE 0 END) as cancelled")
+        )
+        ->first();
+ 
+    $query = DB::table('appointments')
+        ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
+        ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
+        ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
+        ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
+        ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
+        ->leftJoin('users', 'appointments.user_id', '=', 'users.user_id')
+        ->leftJoin('reviews', function ($join) use ($userId) {
+            $join->on('reviews.appointment_id', '=', 'appointments.appointment_id')
+                 ->where('reviews.user_id', '=', $userId);
+        })
+        ->where('appointments.user_id', $userId)
+        ->select(
+            'appointments.*',
+            'doctorschedules.work_date',
+            'doctorschedules.start_time',
+            'doctorschedules.end_time',
+            'doctorschedules.slot_duration',
+            'doctors.doctor_id',
+            'doctors.full_name as doctor_name',
+            'doctors.avatar_url as doctor_avatar',
+            'doctors.price as doctor_price',
+            'departments.department_name',
+            'services.service_name',
+            'rooms.room_code',
+            'rooms.room_name',
+            'users.full_name as patient_name',
+            'reviews.review_id',
+            'reviews.rating      as review_rating',
+            'reviews.comment     as review_comment',
+            'reviews.doctor_reply',
+            'reviews.created_at  as review_created_at',
+        );
+ 
+    $status = $request->get('status', 'all');
+    if ($status === 'upcoming') {
+        $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
+              ->where('doctorschedules.work_date', '>=', now()->toDateString());
+    } elseif ($status === 'completed') {
+        $query->where('appointments.status', 'Đã khám');
+    } elseif ($status === 'cancelled') {
+        $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch']);
     }
+ 
+    $sort = $request->get('sort', 'desc');
+    $query->orderBy('doctorschedules.work_date', $sort === 'asc' ? 'asc' : 'desc')
+          ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc');
+ 
+    $appointments = $query->paginate(8)->withQueryString();
+ 
+    return view('appointments.index', compact('appointments', 'counts', 'status'));
+}
+ 
 
     // ================================================================
     // 3. FORM DỜI LỊCH — GET /lich-hen/{id}/doi
@@ -673,249 +701,43 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Summary of suggest (goi y bac si tu dong)
+     * Summary of suggest (gọi ý bác sĩ tự động)
      * @param Request $request
-     * thuat toan scoring scoring (100)
-     * 40% ti le slot con trong -> (bac si trong nhieu lich -> uu tien)
-     * 35% danh gia trung binh (avg_rating / 5 * 35)
-     * 15% nam kinh nghiem (capped 20 nam -> 15d)
-     * 10% so luot danh gia 
+     * thuật toán scoring (100):
+     * - 40% tỉ lệ slot còn trống (bác sĩ trong nhiều lịch → ưu tiên)
+     * - 35% đánh giá trung bình (avg_rating / 5 * 35)
+     * - 15% năm kinh nghiệm (capped 20 năm → 15đ)
+     * - 10% số lượt đánh giá
      * @return \Illuminate\Http\JsonResponse
      */
-    public function suggest(Request $request)
+    public function suggest(Request $request, DoctorSuggestionService $suggestionService)
     {
         $request->validate([
             'department_id' => 'required|integer|exists:departments,department_id',
             'work_date' => 'required|date|after_or_equal:today',
         ]);
 
-        $deptId = (int) $request->department_id;
-        $workDate = $request->work_date;
+        $suggested = $suggestionService->suggestTopDoctors(
+            (int) $request->department_id,
+            $request->work_date
+        );
 
-        // lay tat ca danh sach bac si active thuoc khoa 
-        $doctors = DB::table('doctors')->leftJoinSub(
-            DB::table('reviews')->select(
-                'doctor_id',
-                DB::raw('ROUND(AVG(rating), 2) as avg_rating'),
-                DB::raw('COUNT(*) as total_reviews')
-            )->groupBy('doctor_id'),
-            'rv',
-            'rv.doctor_id',
-            '=',
-            'doctors.doctor_id'
-        )->where('doctors.department_id', $deptId)->where('doctors.status', 1)->select(
-                'doctors.doctor_id',
-                'doctors.full_name',
-                'doctors.experience',
-                'doctors.price',
-                'doctors.avatar_url',
-                'doctors.bio',
-                DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
-                DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
-            )->get();
-
-        if ($doctors->isEmpty()) {
-            return response()->json(['suggested' => []]);
-        }
-
-        $doctorIds = $doctors->pluck('doctor_id')->toArray();
-
-        // kiem tra ngay nghi  
-        $daysOff = DB::table('doctordaysoff')
-            ->whereIn('doctor_id', $doctorIds)
-            ->where('off_date', $workDate)
-            ->pluck('doctor_id')
-            ->flip()
-            ->toArray();
-
-        // dem slot trong theo tung bac si trong ngay
-        $scheduleStats = DB::table('doctorschedules')
-            ->leftJoinSub(
-                DB::table('appointments')
-                    ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-                    ->groupBy('schedule_id'),
-                'bk',
-                'bk.schedule_id',
-                '=',
-                'doctorschedules.schedule_id'
-            )
-            ->whereIn('doctorschedules.doctor_id', $doctorIds)
-            ->where('doctorschedules.work_date', $workDate)
-            ->where('doctorschedules.status', 'Hoạt động')
-            ->select(
-                'doctorschedules.doctor_id',
-                DB::raw('SUM(doctorschedules.max_slot) as total_slots'),
-                DB::raw('SUM(COALESCE(bk.booked_count, 0)) as booked_count')
-            )
-            ->groupBy('doctorschedules.doctor_id')
-            ->get()
-            ->keyBy('doctor_id');
-
-        // tinh diem loc 
-        $scored = [];
-
-        foreach ($doctors as $doc) {
-            // bo qua bac si da nghi
-            if (isset($daysOff[$doc->doctor_id])) {
-                continue;
-            }
-
-            $stats = $scheduleStats->get($doc->doctor_id);
-            $totalSlots = $stats ? (int) $stats->total_slots : 0;
-            $bookedCount = $stats ? (int) $stats->booked_count : 0;
-            $available = max(0, $totalSlots - $bookedCount);
-
-            // bo cac bac si khong co lich or da full
-            if ($totalSlots === 0 || $available === 0) {
-                continue;
-            }
-
-            $avgRating = (float) $doc->avg_rating;
-            $totalReviews = (int) $doc->total_reviews;
-            $experience = (int) $doc->experience;
-
-            // Scoring
-            $slotScore = ($available / $totalSlots) * 40;
-            $ratingScore = ($avgRating / 5.0) * 35;
-            $expScore = (min($experience, 20) / 20) * 15;
-            $reviewScore = (min($totalReviews, 50) / 50) * 10;
-            $score = $slotScore + $ratingScore + $expScore + $reviewScore;
-
-            $scored[] = [
-                'doctor_id' => $doc->doctor_id,
-                'full_name' => $doc->full_name,
-                'experience' => $experience,
-                'price' => $doc->price,
-                'avatar_url' => $doc->avatar_url,
-                'bio' => $doc->bio,
-                'avg_rating' => $avgRating,
-                'total_reviews' => $totalReviews,
-                'available_slots' => $available,
-                'total_slots' => $totalSlots,
-                'score' => round($score, 2),
-            ];
-        }
-
-        // sap xep lay top 3
-        usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
-        $top3 = array_slice($scored, 0, 3);
-
-        return response()->json(['suggested' => $top3]);
+        return response()->json(['suggested' => $suggested]);
     }
 
-    public function timeslots(Request $request)
+    public function timeslots(Request $request, DoctorTimeslotService $timeslotService)
     {
         $request->validate([
             'doctor_id' => 'required|integer|exists:doctors,doctor_id',
             'work_date' => 'required|date|after_or_equal:today',
         ]);
 
-        $doctorId = (int) $request->doctor_id;
-        $workDate = $request->work_date;
+        $result = $timeslotService->getTimeslots(
+            (int) $request->doctor_id,
+            $request->work_date
+        );
 
-        // check ngay nghi
-        $isDayOff = DB::table('doctordaysoff')
-            ->where('doctor_id', $doctorId)
-            ->where('off_date', $workDate)
-            ->exists();
-
-        if ($isDayOff) {
-            return response()->json(['day_off' => true, 'slots' => []]);
-        }
-
-        // lay lich bac si
-        $schedules = DB::table('doctorschedules')
-            ->where('doctor_id', $doctorId)
-            ->where('work_date', $workDate)
-            ->where('status', 'Hoạt động')
-            ->select(
-                'schedule_id',
-                'start_time',
-                'end_time',
-                'slot_duration',
-                'max_slot'
-            )
-            ->orderBy('start_time')
-            ->get();
-
-        if ($schedules->isEmpty()) {
-            return response()->json(['day_off' => false, 'slots' => []]);
-        }
-
-        // lay booking theo tung slot
-        $bookings = DB::table('appointments')
-            ->select(
-                'schedule_id',
-                'appointment_time',
-                DB::raw('COUNT(*) as booked_count')
-            )
-            ->whereIn('schedule_id', $schedules->pluck('schedule_id'))
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-            ->groupBy('schedule_id', 'appointment_time')
-            ->get()
-            ->groupBy('schedule_id');
-
-        // 4. Sinh slot
-        $slots = [];
-
-        foreach ($schedules as $sch) {
-
-            // map booking theo time cho lich schedule nay
-            $bookingMap = [];
-
-            if (isset($bookings[$sch->schedule_id])) {
-                foreach ($bookings[$sch->schedule_id] as $b) {
-                    $bookingMap[$b->appointment_time] = (int) $b->booked_count;
-                }
-            }
-
-            // tach gio
-            [$sh, $sm] = array_map('intval', explode(':', $sch->start_time));
-            [$eh, $em] = array_map('intval', explode(':', $sch->end_time));
-
-            $duration = (int) $sch->slot_duration;
-            $maxSlot = (int) $sch->max_slot;
-            $endMins = $eh * 60 + $em;
-
-            $curH = $sh;
-            $curM = $sm;
-
-            while ($curH * 60 + $curM + $duration <= $endMins) {
-
-                $timeStr = sprintf('%02d:%02d', $curH, $curM);
-
-                $endH = $curH + intdiv($curM + $duration, 60);
-                $endM = ($curM + $duration) % 60;
-                $endTimeStr = sprintf('%02d:%02d', $endH, $endM);
-
-                // lay booking theo tung slot
-                $booked = $bookingMap[$timeStr] ?? 0;
-
-                $isBooked = ($booked >= $maxSlot);
-
-                $slots[] = [
-                    'schedule_id' => $sch->schedule_id,
-                    'time' => $timeStr,
-                    'end_time' => $endTimeStr,
-                    'is_booked' => $isBooked,
-                    'max_slot' => $maxSlot,
-                    'booked' => $booked,
-                ];
-
-                // tang thoi gian
-                $curM += $duration;
-                if ($curM >= 60) {
-                    $curH += intdiv($curM, 60);
-                    $curM = $curM % 60;
-                }
-            }
-        }
-
-        // 5. sort lai
-        usort($slots, fn($a, $b) => strcmp($a['time'], $b['time']));
-
-        return response()->json(['day_off' => false, 'slots' => $slots]);
+        return response()->json($result);
     }
 
     // ================================================================
@@ -925,6 +747,7 @@ class AppointmentController extends Controller
      * Lấy thông tin hàng đợi và ước lượng thời gian chờ
      * 
      * @param Request $request
+     * @param AppointmentQueueService $queueService
      * @return \Illuminate\Http\JsonResponse
      * 
      * Dữ liệu trả về:
@@ -942,105 +765,29 @@ class AppointmentController extends Controller
      *     {
      *       "queue_number": 1,
      *       "status": "Đã xác nhận",
-     *       "full_name": "Nguyễn Văn A" (chỉ hiển thị tên viết tắt)
+     *       "abbreviated_name": "N.V.A." 
      *     }
      *   ]
      * }
      */
-    public function getQueueInfo(Request $request)
+    public function getQueueInfo(Request $request, AppointmentQueueService $queueService)
     {
         $request->validate([
             'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
+            'appointment_time' => 'nullable|string',
+            'appointment_id' => 'nullable|integer|exists:appointments,appointment_id',
         ]);
 
-        $scheduleId = $request->schedule_id;
+        $queueInfo = $queueService->getQueueInfo(
+            (int) $request->schedule_id,
+            $request->appointment_time,
+            $request->appointment_id ? (int) $request->appointment_id : null
+        );
 
-        // 1. Lấy thông tin schedule
-        $schedule = DB::table('doctorschedules')
-            ->where('schedule_id', $scheduleId)
-            ->where('status', 'Hoạt động')
-            ->select(
-                'schedule_id',
-                'doctor_id',
-                'work_date',
-                'start_time',
-                'end_time',
-                'slot_duration',
-                'max_slot'
-            )
-            ->first();
-
-        if (!$schedule) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Lịch khám không tồn tại'
-            ], 404);
+        if (!$queueInfo['success']) {
+            return response()->json($queueInfo, 404);
         }
 
-        // 2. Đếm số lượng appointment confirmed + waiting (không tính hold)
-        $appointments = DB::table('appointments')
-            ->where('schedule_id', $scheduleId)
-            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã khám'])
-            ->orderBy('queue_number', 'asc')
-            ->select(
-                'appointment_id',
-                'queue_number',
-                'status',
-                'user_id',
-                'appointment_time'
-            )
-            ->get();
-
-        $totalInQueue = $appointments->count();
-        $queueNumber = $totalInQueue + 1;
-        $peopleAhead = max(0, $totalInQueue);
-
-        // 3. Tính thời gian chờ dự kiến
-        // Công thức: số người trước * thời gian phục vụ trung bình
-        $estimatedWaitMinutes = $peopleAhead * ($schedule->slot_duration ?? 15);
-
-        // 4. Lấy danh sách những người đứng trước (chỉ lấy 5 người đầu tiên)
-        $queueDetails = [];
-        $appointmentsAhead = $appointments
-            ->filter(function($a) use ($queueNumber) {
-                return $a->queue_number < $queueNumber;
-            })
-            ->take(5);
-
-        foreach ($appointmentsAhead as $apt) {
-            $user = DB::table('users')
-                ->where('user_id', $apt->user_id)
-                ->select('user_id', 'full_name')
-                ->first();
-
-            if ($user) {
-                // Hiển thị tên viết tắt (VD: Nguyễn Văn A -> N.V.A)
-                $parts = explode(' ', trim($user->full_name));
-                if (count($parts) > 1) {
-                    $abbreviated = implode('.', array_map(fn($part) => substr($part, 0, 1), $parts)) . '.';
-                } else {
-                    $abbreviated = substr($user->full_name, 0, 3) . '.';
-                }
-
-                $queueDetails[] = [
-                    'queue_number' => $apt->queue_number,
-                    'status' => $apt->status,
-                    'abbreviated_name' => $abbreviated,
-                ];
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'queue_number' => $queueNumber,
-            'people_ahead' => $peopleAhead,
-            'estimated_wait_minutes' => $estimatedWaitMinutes,
-            'schedule_info' => [
-                'start_time' => $schedule->start_time,
-                'slot_duration' => $schedule->slot_duration,
-                'max_slot' => $schedule->max_slot,
-            ],
-            'queue_details' => $queueDetails,
-        ]);
+        return response()->json($queueInfo);
     }
 }

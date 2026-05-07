@@ -1597,7 +1597,7 @@
         // ══════════════════════════════════════════════════════════════
         // FETCH & DISPLAY QUEUE INFO
         // ══════════════════════════════════════════════════════════════
-        function fetchQueueInfo(scheduleId) {
+        function fetchQueueInfo(scheduleId, appointmentTime = null) {
             const card = document.getElementById('queue-card');
             const spinner = document.getElementById('queue-loading-spinner');
             
@@ -1606,7 +1606,13 @@
             spinner.style.display = 'flex';
             document.getElementById('queue-list-container').style.display = 'none';
 
-            fetch(`${ROUTE_QUEUE_INFO}?schedule_id=${scheduleId}`)
+            // Build query string with schedule_id and optional appointment_time
+            let queryUrl = `${ROUTE_QUEUE_INFO}?schedule_id=${scheduleId}`;
+            if (appointmentTime) {
+                queryUrl += `&appointment_time=${encodeURIComponent(appointmentTime)}`;
+            }
+
+            fetch(queryUrl)
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) {
@@ -1749,8 +1755,8 @@
             document.getElementById('slot-error').style.display = 'none';
             updateSummary();
 
-            // ✅ Fetch queue info khi chọn slot
-            fetchQueueInfo(state.scheduleId);
+            // ✅ Fetch queue info khi chọn slot (gửi cả appointment_time để filter chính xác)
+            fetchQueueInfo(state.scheduleId, state.time);
         }
 
         function clearSlotState() {

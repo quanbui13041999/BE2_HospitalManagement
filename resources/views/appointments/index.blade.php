@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Lịch Khám Của Tôi – HospitalBooking</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
+        rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -113,7 +116,8 @@
             transition: all 0.2s;
         }
 
-        .topbar-center a:hover, .topbar-center a.active {
+        .topbar-center a:hover,
+        .topbar-center a.active {
             background: var(--white);
             color: var(--primary);
             box-shadow: var(--shadow-sm);
@@ -299,10 +303,21 @@
             margin-top: 8px;
         }
 
-        .stat-card .stat-num.blue { color: var(--primary); }
-        .stat-card .stat-num.green { color: #10b981; }
-        .stat-card .stat-num.yellow { color: #f59e0b; }
-        .stat-card .stat-num.red { color: #ef4444; }
+        .stat-card .stat-num.blue {
+            color: var(--primary);
+        }
+
+        .stat-card .stat-num.green {
+            color: #10b981;
+        }
+
+        .stat-card .stat-num.yellow {
+            color: #f59e0b;
+        }
+
+        .stat-card .stat-num.red {
+            color: #ef4444;
+        }
 
         /* Card table */
         .card {
@@ -440,28 +455,40 @@
             border-color: #fde68a;
             color: #b45309;
         }
-        .badge-pending .badge-dot { background: #f59e0b; }
+
+        .badge-pending .badge-dot {
+            background: #f59e0b;
+        }
 
         .badge-confirmed {
             background: #ecfdf5;
             border-color: #a7f3d0;
             color: #065f46;
         }
-        .badge-confirmed .badge-dot { background: #10b981; }
+
+        .badge-confirmed .badge-dot {
+            background: #10b981;
+        }
 
         .badge-cancelled {
             background: #fef2f2;
             border-color: #fecaca;
             color: #dc2626;
         }
-        .badge-cancelled .badge-dot { background: #dc2626; }
+
+        .badge-cancelled .badge-dot {
+            background: #dc2626;
+        }
 
         .badge-done {
             background: var(--gray-100);
             border-color: var(--gray-200);
             color: var(--gray-600);
         }
-        .badge-done .badge-dot { background: var(--gray-400); }
+
+        .badge-done .badge-dot {
+            background: var(--gray-400);
+        }
 
         /* Actions */
         .actions {
@@ -470,7 +497,8 @@
             gap: 10px;
         }
 
-        .btn-edit, .btn-cancel {
+        .btn-edit,
+        .btn-cancel {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -557,8 +585,15 @@
         }
 
         @keyframes modalIn {
-            from { transform: scale(0.96); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+            from {
+                transform: scale(0.96);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         .modal-icon {
@@ -610,7 +645,8 @@
             gap: 12px;
         }
 
-        .modal-cancel-btn, .modal-confirm-btn {
+        .modal-cancel-btn,
+        .modal-confirm-btn {
             flex: 1;
             padding: 12px;
             border-radius: 60px;
@@ -663,15 +699,19 @@
                 grid-template-columns: repeat(2, 1fr);
                 gap: 14px;
             }
+
             .topbar-center {
                 display: none;
             }
+
             .page {
                 padding: 0 16px;
             }
+
             thead th:nth-child(2) {
                 display: none;
             }
+
             tbody td:nth-child(2) {
                 display: none;
             }
@@ -682,268 +722,367 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
+
             .actions {
                 flex-direction: column;
                 gap: 6px;
             }
-            .btn-edit, .btn-cancel {
+
+            .btn-edit,
+            .btn-cancel {
                 width: 100%;
                 justify-content: center;
             }
         }
     </style>
 </head>
+
 <body>
 
-{{-- TOPBAR HIỆN ĐẠI --}}
-<nav class="topbar">
-    <a href="{{ route('home') }}" class="topbar-brand">
-        <div class="logo-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-        </div>
-        <div>
-            <div class="brand-text">HospitalBooking</div>
-            <div class="brand-sub">Đặt lịch thông minh</div>
-        </div>
-    </a>
-
-    <div class="topbar-center">
-        <a href="{{ route('home') }}">🏠 Trang chủ</a>
-        <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
-        <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
-    </div>
-
-    <div class="topbar-right">
-        @auth
-        <div class="user-pill">
-            <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
-            <span class="user-name">{{ auth()->user()->name ?? 'Người dùng' }}</span>
-        </div>
-        <form method="POST" action="{{ route('logout') }}" style="margin:0">
-            @csrf
-            <button type="submit" class="btn-logout">Đăng xuất</button>
-        </form>
-        @endauth
-    </div>
-</nav>
-
-{{-- BREADCRUMB --}}
-<div class="breadcrumb-bar">
-    <a href="{{ route('home') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span style="color: var(--gray-600); font-weight: 500;">Lịch hẹn của tôi</span>
-</div>
-
-<div class="page">
-
-    <div class="page-header">
-        <div class="page-header-left">
-            <div class="page-header-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-                    <rect x="3" y="4" width="18" height="18" rx="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
+    {{-- TOPBAR HIỆN ĐẠI --}}
+    <nav class="topbar">
+        <a href="{{ route('home') }}" class="topbar-brand">
+            <div class="logo-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                 </svg>
             </div>
             <div>
-                <h1>Lịch Khám Của Tôi</h1>
-                <p>Quản lý và theo dõi các lịch hẹn khám bệnh</p>
+                <div class="brand-text">HospitalBooking</div>
+                <div class="brand-sub">Đặt lịch thông minh</div>
             </div>
-        </div>
-        <a href="{{ route('appointments.create') }}" class="btn-book-new">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Đặt lịch mới
         </a>
+
+        <div class="topbar-center">
+            <a href="{{ route('home') }}">🏠 Trang chủ</a>
+            <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
+            <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
+        </div>
+
+        <div class="topbar-right">
+            @auth
+                <div class="user-pill">
+                    <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
+                    <span class="user-name">{{ auth()->user()->name ?? 'Người dùng' }}</span>
+                </div>
+                <form method="POST" action="{{ route('logout') }}" style="margin:0">
+                    @csrf
+                    <button type="submit" class="btn-logout">Đăng xuất</button>
+                </form>
+            @endauth
+        </div>
+    </nav>
+
+    {{-- BREADCRUMB --}}
+    <div class="breadcrumb-bar">
+        <a href="{{ route('home') }}">Trang chủ</a>
+        <span class="sep">›</span>
+        <span style="color: var(--gray-600); font-weight: 500;">Lịch hẹn của tôi</span>
     </div>
 
-    @if(session('success'))
-    <div class="alert-success">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-        </svg>
-        {{ session('success') }}
-    </div>
-    @endif
+    <div class="page">
 
-    @php
-        $total     = $appointments->count();
-        $pending   = $appointments->where('status','Chờ xác nhận')->count();
-        $confirmed = $appointments->where('status','Đã xác nhận')->count();
-        $done      = $appointments->where('status','Hoàn thành')->count();
-    @endphp
+        <div class="page-header">
+            <div class="page-header-left">
+                <div class="page-header-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                </div>
+                <div>
+                    <h1>Lịch Khám Của Tôi</h1>
+                    <p>Quản lý và theo dõi các lịch hẹn khám bệnh</p>
+                </div>
+            </div>
+            <a href="{{ route('appointments.create') }}" class="btn-book-new">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Đặt lịch mới
+            </a>
+        </div>
 
-    <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-label">Tổng lịch hẹn</div>
-            <div class="stat-num blue">{{ $total }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Chờ xác nhận</div>
-            <div class="stat-num yellow">{{ $pending }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Đã xác nhận</div>
-            <div class="stat-num green">{{ $confirmed }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Hoàn thành</div>
-            <div class="stat-num" style="color: var(--gray-500);">{{ $done }}</div>
-        </div>
-    </div>
+        @if(session('success'))
+            <div class="alert-success">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                {{ session('success') }}
+            </div>
+        @endif
 
-    <div class="card">
-        <div class="card-top">
-            <div>
-                <div class="card-top-title">Danh sách lịch hẹn</div>
-                <div class="card-top-sub">Hiển thị {{ $total }} lịch hẹn của bạn</div>
+        @php
+            $total = $appointments->count();
+            $pending = $appointments->where('status', 'Chờ xác nhận')->count();
+            $confirmed = $appointments->where('status', 'Đã xác nhận')->count();
+            $done = $appointments->where('status', 'Hoàn thành')->count();
+        @endphp
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">Tổng lịch hẹn</div>
+                <div class="stat-num blue">{{ $total }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Chờ xác nhận</div>
+                <div class="stat-num yellow">{{ $pending }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Đã xác nhận</div>
+                <div class="stat-num green">{{ $confirmed }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Hoàn thành</div>
+                <div class="stat-num" style="color: var(--gray-500);">{{ $done }}</div>
             </div>
         </div>
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Bác sĩ</th>
-                        <th>Dịch vụ</th>
-                        <th>Ngày khám</th>
-                        <th>Trạng thái</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($appointments as $item)
-                    <tr>
-                        <td>
-                            <div class="doctor-cell">
-                                <div class="avatar">
-                                    {{ strtoupper(substr($item->doctor_name, -2)) }}
-                                </div>
-                                <div>
-                                    <div class="doctor-name">BS. {{ $item->doctor_name }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>{{ $item->service_name }}</td>
-                        <td>
-                            <div class="date-cell">
-                                <div class="date">{{ $item->work_date }}</div>
-                                <div class="time">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="10" />
-                                        <polyline points="12 6 12 12 16 14" />
-                                    </svg>
-                                    {{ $item->start_time }}
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            @php
-                                $statusMap = [
-                                    'Chờ xác nhận' => 'badge-pending',
-                                    'Đã xác nhận'  => 'badge-confirmed',
-                                    'Đã hủy'       => 'badge-cancelled',
-                                    'Hoàn thành'   => 'badge-done',
-                                ];
-                                $badgeClass = $statusMap[$item->status] ?? 'badge-pending';
-                            @endphp
-                            <span class="badge {{ $badgeClass }}">
-                                <span class="badge-dot"></span>
-                                {{ $item->status }}
-                            </span>
-                        </td>
-                        <td>
-                            @if($item->status != 'Đã hủy' && $item->status != 'Hoàn thành')
-                                <div class="actions">
-                                    <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+
+        <div class="card">
+            <div class="card-top">
+                <div>
+                    <div class="card-top-title">Danh sách lịch hẹn</div>
+                    <div class="card-top-sub">Hiển thị {{ $total }} lịch hẹn của bạn</div>
+                </div>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Bác sĩ</th>
+                            <th>Dịch vụ</th>
+                            <th>Ngày khám</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($appointments as $item)
+                            <tr>
+                                <td>
+                                    <div class="doctor-cell">
+                                        @php
+                                            $words = explode(' ', trim($item->doctor_name));
+                                            $initials = count($words) >= 2
+                                                ? strtoupper(mb_substr($words[count($words) - 2], 0, 1) . mb_substr($words[count($words) - 1], 0, 1))
+                                                : strtoupper(mb_substr($item->doctor_name, 0, 2));
+                                        @endphp
+                                        <div class="avatar">{{ $initials }}</div>
+                                        <div>
+                                            <div class="doctor-name">BS. {{ $item->doctor_name }}</div>
+                                            <div style="font-size:.7rem;color:var(--gray-400)">{{ $item->department_name }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ $item->service_name ?? '—' }}</td>
+                                <td>
+                                    <div class="date-cell">
+                                        <div class="date">
+                                            {{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}
+                                        </div>
+                                        <div class="time">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <polyline points="12 6 12 12 16 14" />
+                                            </svg>
+                                            {{ \Carbon\Carbon::parse($item->start_time)->format('H:i') }}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @php
+                                        $statusMap = [
+                                            'Chờ xác nhận' => 'badge-pending',
+                                            'Đã xác nhận' => 'badge-confirmed',
+                                            'Đã hủy' => 'badge-cancelled',
+                                            'Dời lịch' => 'badge-cancelled',
+                                            'Đã khám' => 'badge-done',
+                                            'Hoàn thành' => 'badge-done',
+                                        ];
+                                        $badgeClass = $statusMap[$item->status] ?? 'badge-pending';
+                                    @endphp
+                                    <span class="badge {{ $badgeClass }}">
+                                        <span class="badge-dot"></span>
+                                        {{ $item->status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
+                                        <div class="actions">
+                                            <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
+                                                ...Dời lịch
+                                            </a>
+                                            <button type="button" onclick="openModal(this)"
+                                                data-action="{{ route('appointments.cancel', $item->appointment_id) }}"
+                                                class="btn-cancel">
+                                                ...Huỷ
+                                            </button>
+                                        </div>
+
+                                    @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
+                                        @php
+                                            $reviewCreatedAt = \Carbon\Carbon::parse($item->review_created_at ?? null);
+                                            $canEdit = $item->review_created_at &&
+                                                $reviewCreatedAt->diffInHours(now()) <= 24;
+                                            $isAdmin = auth()->user()->role === 'admin';
+                                            $isDoctor = auth()->user()->role === 'doctor';
+                                        @endphp
+
+                                        <div class="actions" style="flex-wrap:wrap">
+                                            @if($item->review_id ?? null)
+
+                                                {{-- Hiển thị nội dung đánh giá --}}
+                                                <div class="review-summary">
+                                                    <div class="review-summary-stars">
+                                                        @for($i = 1; $i <= 5; $i++)
+                                                            <span
+                                                                style="color:{{ $i <= $item->review_rating ? '#f59e0b' : '#d1d5db' }}">★</span>
+                                                        @endfor
+                                                    </div>
+                                                    @if($item->review_comment)
+                                                        <div class="review-summary-comment">
+                                                            {{ Str::limit($item->review_comment, 40) }}
+                                                        </div>
+                                                    @endif
+                                                    @if($item->doctor_reply)
+                                                        <div class="review-summary-reply">
+                                                            💬 {{ Str::limit($item->doctor_reply, 30) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                {{-- Sửa: user trong 24h hoặc admin --}}
+                                                @if($canEdit || $isAdmin)
+                                                                    <button type="button" class="btn-edit" onclick="openReviewModal({
+                                                        appointmentId : {{ $item->appointment_id }},
+                                                        doctorId      : {{ $item->doctor_id }},
+                                                        doctorName    : '{{ addslashes($item->doctor_name) }}',
+                                                        deptName      : '{{ addslashes($item->department_name) }}',
+                                                        workDate      : '{{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}',
+                                                        avatarUrl     : '',
+                                                        storeUrl      : '{{ route('reviews.store') }}',
+                                                        existing      : {
+                                                            reviewId  : {{ $item->review_id }},
+                                                            rating    : {{ $item->review_rating ?? 0 }},
+                                                            comment   : '{{ addslashes($item->review_comment ?? '') }}',
+                                                            updateUrl : '{{ route('reviews.update', $item->review_id ?? 0) }}'
+                                                        }
+                                                    })">✏️ Sửa</button>
+                                                @endif
+
+                                                {{-- Xóa: chính user hoặc admin --}}
+                                                @if($canEdit || $isAdmin)
+                                                    <button type="button" class="btn-cancel"
+                                                        onclick="openDeleteReviewModal('{{ route('reviews.destroy', $item->review_id ?? 0) }}')">
+                                                        🗑 Xóa
+                                                    </button>
+                                                @endif
+
+                                                {{-- Trả lời: chỉ doctor hoặc admin --}}
+                                                @if($isAdmin || $isDoctor)
+                                                                <button type="button" class="btn-edit"
+                                                                    style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0" onclick="openReplyModal({
+                                                        replyUrl      : '{{ route('reviews.reply', $item->review_id ?? 0) }}',
+                                                        stars         : {{ $item->review_rating ?? 0 }},
+                                                        comment       : '{{ addslashes($item->review_comment ?? '') }}',
+                                                        userName      : '{{ addslashes(auth()->user()->full_name ?? auth()->user()->name ?? '') }}',
+                                                        existingReply : '{{ addslashes($item->doctor_reply ?? '') }}'
+                                                    })">
+                                                                    💬 {{ $item->doctor_reply ? 'Sửa phản hồi' : 'Trả lời' }}
+                                                                </button>
+                                                @endif
+
+                                            @else
+                                                                    {{-- Chưa đánh giá --}}
+                                                                    <button type="button" class="btn-edit btn-review" onclick="openReviewModal({
+                                                    appointmentId : {{ $item->appointment_id }},
+                                                    doctorId      : {{ $item->doctor_id }},
+                                                    doctorName    : '{{ addslashes($item->doctor_name) }}',
+                                                    deptName      : '{{ addslashes($item->department_name) }}',
+                                                    workDate      : '{{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}',
+                                                    avatarUrl     : '',
+                                                    storeUrl      : '{{ route('reviews.store') }}',
+                                                    existing      : null
+                                                })">⭐ Đánh giá</button>
+                                            @endif
+                                        </div>
+
+                                    @else
+                                        <span style="font-size:.75rem;color:var(--gray-400)">—</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5">
+                                    <div class="empty-state">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
                                             <rect x="3" y="4" width="18" height="18" rx="2" />
                                             <line x1="16" y1="2" x2="16" y2="6" />
                                             <line x1="8" y1="2" x2="8" y2="6" />
                                             <line x1="3" y1="10" x2="21" y2="10" />
                                         </svg>
-                                        Dời lịch
-                                    </a>
-                                    <button type="button" onclick="openModal(this)" data-action="{{ route('appointments.cancel', $item->appointment_id) }}" class="btn-cancel">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                            <circle cx="12" cy="12" r="10" />
-                                            <line x1="15" y1="9" x2="9" y2="15" />
-                                            <line x1="9" y1="9" x2="15" y2="15" />
-                                        </svg>
-                                        Hủy
-                                    </button>
-                                </div>
-                            @else
-                                <span style="font-size: 0.75rem; color: var(--gray-400);">—</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5">
-                            <div class="empty-state">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" />
-                                    <line x1="16" y1="2" x2="16" y2="6" />
-                                    <line x1="8" y1="2" x2="8" y2="6" />
-                                    <line x1="3" y1="10" x2="21" y2="10" />
-                                </svg>
-                                <p>Bạn chưa có lịch khám nào.</p>
-                                <a href="{{ route('appointments.create') }}" class="btn-book-new" style="margin-top: 16px; display: inline-flex;">Đặt lịch ngay</a>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<footer class="footer">
-    © {{ date('Y') }} HospitalBooking · Nền tảng đặt lịch khám hiện đại · <a href="#">Chính sách bảo mật</a> &nbsp;·&nbsp; <a href="#">Hỗ trợ</a>
-</footer>
-
-{{-- Modal hủy lịch --}}
-<div class="modal-overlay" id="cancelModal">
-    <div class="modal">
-        <div class="modal-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-        </div>
-        <h3>Xác nhận hủy lịch</h3>
-        <p>Bạn có chắc muốn hủy lịch khám này không? Hành động này không thể hoàn tác.</p>
-        <form id="cancelForm" method="POST">
-            @csrf
-            <textarea name="cancel_reason" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
-            <div class="modal-btns">
-                <button type="button" class="modal-cancel-btn" onclick="closeModal()">Không, giữ lại</button>
-                <button type="submit" class="modal-confirm-btn">Xác nhận hủy</button>
+                                        <p>Bạn chưa có lịch khám nào.</p>
+                                        <a href="{{ route('appointments.create') }}" class="btn-book-new"
+                                            style="margin-top:16px;display:inline-flex;">Đặt lịch ngay</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
-        </form>
+        </div>
     </div>
-</div>
 
-<script>
-    function openModal(button) {
-        const action = button.getAttribute('data-action');
-        document.getElementById('cancelForm').action = action;
-        document.getElementById('cancelModal').classList.add('active');
-    }
-    function closeModal() {
-        document.getElementById('cancelModal').classList.remove('active');
-    }
-    document.getElementById('cancelModal').addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
-</script>
+    <footer class="footer">
+        © {{ date('Y') }} HospitalBooking · Nền tảng đặt lịch khám hiện đại · <a href="#">Chính sách bảo mật</a>
+        &nbsp;·&nbsp; <a href="#">Hỗ trợ</a>
+    </footer>
+
+    {{-- Modal hủy lịch --}}
+    <div class="modal-overlay" id="cancelModal">
+        <div class="modal">
+            <div class="modal-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+            </div>
+            <h3>Xác nhận hủy lịch</h3>
+            <p>Bạn có chắc muốn hủy lịch khám này không? Hành động này không thể hoàn tác.</p>
+            <form id="cancelForm" method="POST">
+                @csrf
+                <textarea name="cancel_reason" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
+                <div class="modal-btns">
+                    <button type="button" class="modal-cancel-btn" onclick="closeModal()">Không, giữ lại</button>
+                    <button type="submit" class="modal-confirm-btn">Xác nhận hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @include('appointments.reviews')
+    <script>
+        function openModal(button) {
+            const action = button.getAttribute('data-action');
+            document.getElementById('cancelForm').action = action;
+            document.getElementById('cancelModal').classList.add('active');
+        }
+        function closeModal() {
+            document.getElementById('cancelModal').classList.remove('active');
+        }
+        document.getElementById('cancelModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+
 </body>
+
 </html>
