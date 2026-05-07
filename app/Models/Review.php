@@ -1,96 +1,81 @@
 <?php
+// app/Models/Review.php
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Review extends Model
 {
-    protected $table      = 'reviews';
+    protected $table = 'reviews';
     protected $primaryKey = 'review_id';
-
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = null;
-
+    
+    public $timestamps = false;
+    
     protected $fillable = [
-        'appointment_id','user_id','doctor_id',
-        'rating','comment','doctor_reply',
+        'appointment_id', 'user_id', 'doctor_id',
+        'rating', 'comment', 'doctor_reply',
+        'created_at', 'updated_at', 'doctor_reply_updated_at'
     ];
-
+    
     protected $casts = [
-        'rating'     => 'integer',
+        'rating' => 'integer',
         'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'doctor_reply_updated_at' => 'datetime',
     ];
-
-    public function appointment() { return $this->belongsTo(Appointment::class, 'appointment_id', 'appointment_id'); }
-    public function user()        { return $this->belongsTo(User::class, 'user_id', 'user_id'); }
-    public function doctor()      { return $this->belongsTo(Doctor::class, 'doctor_id', 'doctor_id'); }
-}
-
-
-class Notification extends Model
-{
-    protected $table      = 'notifications';
-    protected $primaryKey = 'notification_id';
-
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = null;
-
-    protected $fillable = [
-        'user_id','notif_type','title','content',
-        'ref_id','ref_type','is_read',
-    ];
-
-    protected $casts = [
-        'is_read'    => 'boolean',
-        'created_at' => 'datetime',
-    ];
-
-    public function user() { return $this->belongsTo(User::class, 'user_id', 'user_id'); }
-
-    public function scopeUnread($q) { return $q->where('is_read', false); }
-
-    public function markAsRead(): void
+    
+    // Relationships
+    public function appointment()
     {
-        $this->update(['is_read' => true]);
+        return $this->belongsTo(Appointment::class, 'appointment_id', 'appointment_id');
     }
-}
-
-
-class ActivityLog extends Model
-{
-    protected $table      = 'activitylogs';
-    protected $primaryKey = 'log_id';
-
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = null;
-
-    protected $fillable = ['user_id','action','ip_address'];
-    protected $casts    = ['created_at' => 'datetime'];
-
-    public function user() { return $this->belongsTo(User::class, 'user_id', 'user_id'); }
-}
-
-
-class TreatmentReminder extends Model
-{
-    protected $table      = 'treatmentreminders';
-    protected $primaryKey = 'reminder_id';
-
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = null;
-
-    protected $fillable = [
-        'user_id','record_id','reminder_type',
-        'remind_at','message','is_sent',
-    ];
-
-    protected $casts = [
-        'remind_at'  => 'datetime',
-        'is_sent'    => 'boolean',
-        'created_at' => 'datetime',
-    ];
-
-    public function user()          { return $this->belongsTo(User::class, 'user_id', 'user_id'); }
-    public function medicalRecord() { return $this->belongsTo(MedicalRecord::class, 'record_id', 'record_id'); }
-
-    public function scopePending($q) { return $q->where('is_sent', false)->where('remind_at', '<=', now()); }
+    
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+    
+    public function doctor()
+    {
+        return $this->belongsTo(Doctor::class, 'doctor_id', 'doctor_id');
+    }
+    
+    // Kiểm tra có thể chỉnh sửa không (trong 24 giờ)
+    public function canEdit($userId)
+    {
+        if (!$this->created_at) return false;
+        
+        $hoursSinceCreated = $this->created_at->diffInHours(now());
+        return $this->user_id === $userId && $hoursSinceCreated <= 24;
+    }
+    
+    // Kiểm tra có thể xóa không
+    public function canDelete($userId, $isAdmin = false)
+    {
+        return $isAdmin || $this->user_id === $userId;
+    }
+    
+    // Kiểm tra có thể trả lời không (chỉ bác sĩ liên quan hoặc admin)
+    public function canReply($userId, $isAdmin = false)
+    {
+        return $isAdmin || $this->doctor_id === $userId;
+    }
+    
+    // Scope lấy reviews theo doctor
+    public function scopeByDoctor($query, $doctorId)
+    {
+        return $query->where('doctor_id', $doctorId);
+    }
+    
+    // Scope lấy reviews theo user
+    public function scopeByUser($query, $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+    
+    // Accessor: lấy rating dạng sao
+    public function getStarsAttribute()
+    {
+        return str_repeat('★', $this->rating) . str_repeat('☆', 5 - $this->rating);
+    }
 }

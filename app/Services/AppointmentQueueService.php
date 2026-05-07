@@ -7,12 +7,14 @@ use Illuminate\Support\Facades\DB;
 class AppointmentQueueService
 {
     /**
-     * Get queue information for a schedule
+     * Get queue information for a specific appointment time
      * 
      * @param int $scheduleId
-     * @return array Queue info including queue number, people ahead, wait time, and queue details
+     * @param string|null $appointmentTime
+     * @param int|null $currentAppointmentId
+     * @return array 
      */
-    public function getQueueInfo(int $scheduleId): array
+    public function getQueueInfo(int $scheduleId, ?string $appointmentTime = null, ?int $currentAppointmentId = null): array
     {
         // Get schedule information
         $schedule = $this->getSchedule($scheduleId);
@@ -24,12 +26,22 @@ class AppointmentQueueService
             ];
         }
 
-        // Get all appointments in queue
-        $appointments = $this->getAppointmentsInQueue($scheduleId);
+        // Get all appointments for this specific time slot
+        $appointments = $this->getAppointmentsInQueue($scheduleId, $appointmentTime);
 
-        // Calculate queue metrics
-        $queueNumber = $appointments->count() + 1;
-        $peopleAhead = max(0, $appointments->count());
+        // If no appointment_id provided, use total count 
+        if ($currentAppointmentId === null) {
+            $queueNumber = $appointments->count() + 1;
+            $peopleAhead = max(0, $appointments->count());
+        } else {
+            // Calculate exact queue position: count appointments created BEFORE current appointment in same time slot
+            $appointmentsBeforeCurrent = $appointments->filter(function($apt) use ($currentAppointmentId) {
+                return $apt->appointment_id < $currentAppointmentId;
+            });
+            $peopleAhead = $appointmentsBeforeCurrent->count();
+            $queueNumber = $peopleAhead + 1;
+        }
+
         $estimatedWaitMinutes = $this->calculateEstimatedWaitTime($peopleAhead, $schedule->slot_duration);
 
         // Get queue details for people ahead
@@ -70,15 +82,30 @@ class AppointmentQueueService
     }
 
     /**
-     * Get all appointments in queue for this schedule
+     * Get all appointments in queue for this schedule and specific appointment time
+     * If appointmentTime is null, returns all appointments for the schedule
      * Ordered by queue number
+     * 
+     * @param int $scheduleId
+     * @param string|null $appointmentTime 
      */
-    private function getAppointmentsInQueue(int $scheduleId)
+    private function getAppointmentsInQueue(int $scheduleId, ?string $appointmentTime = null)
     {
-        return DB::table('appointments')
+        $query = DB::table('appointments')
             ->where('schedule_id', $scheduleId)
-            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã khám'])
-            ->orderBy('queue_number', 'asc')
+            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận']);
+
+        // Filter by specific appointment time if provided
+        if ($appointmentTime !== null) {
+            $timeToMatch = strlen($appointmentTime) > 5 
+                ? substr($appointmentTime, 0, 5) 
+                : $appointmentTime;          
+            
+            $query->whereRaw("DATE_FORMAT(appointment_time, '%H:%i') = ?", [$timeToMatch]);
+        }
+
+        return $query
+            ->orderBy('appointment_id', 'asc')
             ->select(
                 'appointment_id',
                 'queue_number',
@@ -101,22 +128,27 @@ class AppointmentQueueService
     /**
      * Get details of people ahead in queue (max 5 people)
      * Includes abbreviated names
+     * Recalculates queue positions based on appointment_id order (creation order)
      */
     private function getQueueDetails($appointments, int $currentQueueNumber): array
     {
         $queueDetails = [];
 
-        // Filter appointments ahead of current queue number and take first 5
-        $appointmentsAhead = $appointments
-            ->filter(fn($a) => $a->queue_number < $currentQueueNumber)
-            ->take(5);
+        // Sort by appointment_id to get creation order 
+        $sortedAppointments = $appointments->sortBy('appointment_id');
+        
+        // Get only appointments before current queue number 
+        $appointmentsAhead = $sortedAppointments
+            ->take($currentQueueNumber - 1)  
+            ->take(5);                       
 
-        foreach ($appointmentsAhead as $appointment) {
+        foreach ($appointmentsAhead as $index => $appointment) {
             $user = $this->getUser($appointment->user_id);
 
             if ($user) {
+                $recalculatedQueueNumber = $index + 1;
                 $queueDetails[] = [
-                    'queue_number' => $appointment->queue_number,
+                    'queue_number' => $recalculatedQueueNumber,
                     'status' => $appointment->status,
                     'abbreviated_name' => $this->abbreviateName($user->full_name),
                 ];

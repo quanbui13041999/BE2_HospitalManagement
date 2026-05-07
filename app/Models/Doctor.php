@@ -29,6 +29,7 @@ class Doctor extends Model
     {
         return $this->hasMany(DoctorDayOff::class, 'doctor_id', 'doctor_id');
     }
+
     public function reviews()
     {
         return $this->hasMany(Review::class, 'doctor_id', 'doctor_id');

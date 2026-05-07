@@ -657,6 +657,39 @@
             flex-shrink: 0;
         }
 
+        /* Info grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px 32px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .info-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #0f5db8;
+            margin-bottom: 8px;
+        }
+
+        .info-val {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .info-val.amber {
+            color: #c2410c;
+        }
+
         /* ── SIDEBAR ── */
         .sidebar {
             display: flex;
@@ -1118,6 +1151,43 @@
                 <input type="hidden" name="schedule_id" id="schedule_id">
                 <input type="hidden" name="appointment_time" id="appointment_time">
 
+                {{-- ══ THÔNG TIN NGƯỜI ĐẶT ══ --}}
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="icon-wrap">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                        </div>
+                        <h2>Thông Tin Người Đặt Lịch</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Họ Tên</div>
+                                <div class="info-val">{{ $user->full_name ?? '—' }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Số Điện Thoại</div>
+                                <div class="info-val">{{ $user->phone ?? '—' }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Địa Chỉ</div>
+                                <div class="info-val">{{ $user->address ?? '—' }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Email</div>
+                                <div class="info-val">{{ $user->email ?? '—' }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Ngày Sinh</div>
+                                <div class="info-val">{{ $user->date_of_birth ? \Carbon\Carbon::parse($user->date_of_birth)->format('d/m/Y') : '—' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- ══ BƯỚC 1: Khoa & bác sĩ ══ --}}
                 <div class="panel">
                     <div class="panel-head">
@@ -1362,7 +1432,7 @@
         // BASE DATA — truyền từ PHP (preload 14 ngày đầu cho các route
         // bác sĩ → không cần AJAX lần đầu)
         // ══════════════════════════════════════════════════════════════
-        const doctorsByDept = {!! json_encode($doctorsByDept, JSON_UNESCAPED_SLASHES) !!};
+        const doctorsByDept = JSON.parse('{!! json_encode($doctorsByDept, JSON_UNESCAPED_SLASHES) !!}');
 
         // Route URLs
         const ROUTE_SUGGEST = '{{ route("appointments.suggest") }}';
@@ -1597,7 +1667,7 @@
         // ══════════════════════════════════════════════════════════════
         // FETCH & DISPLAY QUEUE INFO
         // ══════════════════════════════════════════════════════════════
-        function fetchQueueInfo(scheduleId) {
+        function fetchQueueInfo(scheduleId, appointmentTime = null) {
             const card = document.getElementById('queue-card');
             const spinner = document.getElementById('queue-loading-spinner');
             
@@ -1606,7 +1676,13 @@
             spinner.style.display = 'flex';
             document.getElementById('queue-list-container').style.display = 'none';
 
-            fetch(`${ROUTE_QUEUE_INFO}?schedule_id=${scheduleId}`)
+            // Build query string with schedule_id and optional appointment_time
+            let queryUrl = `${ROUTE_QUEUE_INFO}?schedule_id=${scheduleId}`;
+            if (appointmentTime) {
+                queryUrl += `&appointment_time=${encodeURIComponent(appointmentTime)}`;
+            }
+
+            fetch(queryUrl)
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) {
@@ -1749,8 +1825,8 @@
             document.getElementById('slot-error').style.display = 'none';
             updateSummary();
 
-            // ✅ Fetch queue info khi chọn slot
-            fetchQueueInfo(state.scheduleId);
+            // ✅ Fetch queue info khi chọn slot (gửi cả appointment_time để filter chính xác)
+            fetchQueueInfo(state.scheduleId, state.time);
         }
 
         function clearSlotState() {
