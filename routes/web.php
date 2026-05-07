@@ -58,8 +58,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/appointments/timeslots',  [AppointmentController::class, 'timeslots'])->name('appointments.timeslots');
     Route::get('/api/appointments/queue-info', [AppointmentController::class, 'getQueueInfo'])->name('appointments.queue-info');
 
-    // Lịch sử + dời/hủy lịch hẹn
+    // Lịch sử + dời/hủy lịch hẹn (Route chính)
     Route::prefix('lich-hen')->name('user.appointments.')->group(function () {
+        Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
+        Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
+        Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
+    });
+
+    // ALIAS: Route cũ cho tương thích với view (quan trọng để tránh lỗi RouteNotFoundException)
+    Route::prefix('lich-hen')->name('appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
@@ -68,48 +76,21 @@ Route::middleware('auth')->group(function () {
 
     // --------------------------------------------------------
     // THANH TOÁN (User)
-    // Prefix: /payments  |  Name prefix: user.payments.
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
 
-        // Đặt /history TRƯỚC /{paymentId} để tránh conflict
-        Route::get('/history', [UserPaymentController::class, 'history'])
-            ->name('history');
-
-        // Trang chọn phương thức thanh toán cho 1 lịch hẹn
-        Route::get('/appointment/{appointmentId}', [UserPaymentController::class, 'show'])
-            ->name('show');
-
-        // Khởi tạo giao dịch (POST từ form chọn phương thức)
-        Route::post('/store', [UserPaymentController::class, 'store'])
-            ->name('store');
-
-        // Trang quét QR
-        Route::get('/{paymentId}/qr', [UserPaymentController::class, 'qr'])
-            ->name('qr');
-
-        // Trang giả lập cổng thanh toán (ATM / MoMo / ZaloPay)
-        Route::get('/{paymentId}/gateway', [UserPaymentController::class, 'gateway'])
-            ->name('gateway');
-
-        // Xác nhận thanh toán thành công
-        Route::post('/{paymentId}/confirm', [UserPaymentController::class, 'confirm'])
-            ->name('confirm');
-
-        // Hủy / thất bại
-        Route::get('/{paymentId}/fail',  [UserPaymentController::class, 'fail'])
-            ->name('fail');
-        Route::post('/{paymentId}/fail', [UserPaymentController::class, 'fail'])
-            ->name('fail.post');
-
-        // Trang kết quả / biên lai
-        Route::get('/{paymentId}/success', [UserPaymentController::class, 'success'])
-            ->name('success');
+        Route::get('/history', [UserPaymentController::class, 'history'])->name('history');
+        Route::get('/appointment/{appointmentId}', [UserPaymentController::class, 'show'])->name('show');
+        Route::post('/store', [UserPaymentController::class, 'store'])->name('store');
+        Route::get('/{paymentId}/qr', [UserPaymentController::class, 'qr'])->name('qr');
+        Route::get('/{paymentId}/gateway', [UserPaymentController::class, 'gateway'])->name('gateway');
+        Route::post('/{paymentId}/confirm', [UserPaymentController::class, 'confirm'])->name('confirm');
+        Route::get('/{paymentId}/fail', [UserPaymentController::class, 'fail'])->name('fail');
+        Route::post('/{paymentId}/fail', [UserPaymentController::class, 'fail'])->name('fail.post');
+        Route::get('/{paymentId}/success', [UserPaymentController::class, 'success'])->name('success');
     });
 
-    // --------------------------------------------------------
     // Đánh giá bác sĩ
-    // --------------------------------------------------------
     Route::get('/reviews/check',           [ReviewsDoctorController::class, 'checkCanReview'])->name('reviews.check');
     Route::post('/reviews',                [ReviewsDoctorController::class, 'store'])->name('reviews.store');
     Route::put('/reviews/{review}',        [ReviewsDoctorController::class, 'update'])->name('reviews.update');
@@ -166,9 +147,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         return view('admin.dashboard');
     })->name('dashboard');
 
-    // --------------------------------------------------------
-    // Quản lý DỊCH VỤ (CRUD + bảng giá)
-    // --------------------------------------------------------
+    // Quản lý DỊCH VỤ
     Route::prefix('services')->name('services.')->group(function () {
         Route::get('/',               [AdminServiceController::class, 'index'])->name('index');
         Route::get('/create',         [AdminServiceController::class, 'create'])->name('create');
@@ -179,23 +158,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::delete('/{service}',   [AdminServiceController::class, 'destroy'])->name('destroy');
         Route::patch('/{service}/toggle-status', [AdminServiceController::class, 'toggleStatus'])->name('toggle-status');
 
-        // Bảng giá (nested)
         Route::post('/{service}/prices',           [AdminServiceController::class, 'storePrice'])->name('prices.store');
         Route::put('/{service}/prices/{price}',    [AdminServiceController::class, 'updatePrice'])->name('prices.update');
         Route::delete('/{service}/prices/{price}', [AdminServiceController::class, 'destroyPrice'])->name('prices.destroy');
     });
 
-    // --------------------------------------------------------
     // Quản lý PHÒNG KHÁM + LỊCH TRỰC
-    // --------------------------------------------------------
     Route::prefix('rooms')->name('rooms.')->group(function () {
 
-        // Lịch tuần
         Route::get('/weekly',          [RoomController::class, 'weeklySchedule'])->name('weekly');
         Route::get('/weekly/{roomId}', [RoomController::class, 'weeklySchedule'])->name('weekly.room');
         Route::get('/weekly-ajax',     [RoomController::class, 'weeklyScheduleAjax'])->name('weekly.ajax');
 
-        // Quản lý ca trực
         Route::prefix('schedule')->name('schedule.')->group(function () {
             Route::get('/all',             [RoomController::class, 'scheduleAll'])->name('all');
             Route::get('/',                [RoomController::class, 'scheduleIndex'])->name('index');
@@ -207,7 +181,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
             Route::get('/check-conflict',  [RoomController::class, 'checkConflict'])->name('check-conflict');
         });
 
-        // CRUD phòng (đặt SAU prefix để tránh conflict)
         Route::get('/',            [RoomController::class, 'index'])->name('index');
         Route::get('/create',      [RoomController::class, 'create'])->name('create');
         Route::post('/',           [RoomController::class, 'store'])->name('store');
@@ -217,36 +190,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
     });
 
-    // --------------------------------------------------------
     // THANH TOÁN (Admin)
-    // --------------------------------------------------------
     Route::prefix('payments')->name('payments.')->group(function () {
-
-        // Danh sách giao dịch
         Route::get('/', [PaymentController::class, 'index'])->name('index');
-
-        // Trang thanh toán hóa đơn (checkout)
         Route::get('/checkout/{invoiceId}', [PaymentController::class, 'checkout'])->name('checkout');
-
-        // Chi tiết giao dịch theo paymentId
         Route::get('/{paymentId}', [PaymentController::class, 'show'])->name('show');
-
-        // Tạo giao dịch
         Route::post('/store', [PaymentController::class, 'store'])->name('store');
-
-        // Trang QR
         Route::get('/{paymentId}/qr', [PaymentController::class, 'qr'])->name('qr');
-
-        // Xác nhận thanh toán
         Route::post('/{paymentId}/confirm', [PaymentController::class, 'confirm'])->name('confirm');
-
-        // Đánh dấu thất bại
         Route::post('/{paymentId}/fail', [PaymentController::class, 'fail'])->name('fail');
     });
 
-    // --------------------------------------------------------
     // Quản lý BHYT
-    // --------------------------------------------------------
     Route::prefix('bhyt')->name('bhyt.')->group(function () {
         Route::get('/',        [BhytController::class, 'index'])->name('index');
         Route::post('/lookup', [BhytController::class, 'lookup'])->name('lookup');
