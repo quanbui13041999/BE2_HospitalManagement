@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PaymentRequest;
 use App\Services\Admin\PaymentService;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -12,14 +13,31 @@ class PaymentController extends Controller
     public function __construct(protected PaymentService $paymentService) {}
 
     // ----------------------------------------------------------------
-    // Trang thanh toán cho 1 hóa đơn cụ thể
+    // Trang thanh toán hóa đơn (checkout)
     // ----------------------------------------------------------------
-    public function show(int $invoiceId)
+    public function checkout(int $invoiceId)
     {
         return view(
-            'payments.show',
+            'admin.payments.checkout',
             $this->paymentService->buildIndexData($invoiceId)
         );
+    }
+
+    // ----------------------------------------------------------------
+    // Trang chi tiết giao dịch (dùng paymentId)
+    // ----------------------------------------------------------------
+    public function show(int $paymentId)
+    {
+        // Lấy payment chi tiết từ database
+        $payment = Payment::with([
+            'appointment.user',
+            'appointment.schedule.doctor',
+            'items',
+            'insurance',
+            'membership'
+        ])->findOrFail($paymentId);
+        
+        return view('admin.payments.show', compact('payment'));
     }
 
     // ----------------------------------------------------------------
@@ -28,7 +46,7 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         return view(
-            'payments.index',
+            'admin.payments.index',
             $this->paymentService->buildListData($request)
         );
     }
@@ -42,7 +60,7 @@ class PaymentController extends Controller
 
         // Nếu là QR, redirect sang trang chờ quét QR
         if ($request->payment_method === 'QR') {
-            return redirect()->route('payments.qr', $result['payment']->payment_id)
+            return redirect()->route('admin.payments.qr', $result['payment']->payment_id)
                 ->with([
                     'qr_content' => $result['qr_content'],
                     'ref'        => $result['ref'],
@@ -50,7 +68,7 @@ class PaymentController extends Controller
         }
 
         // Các phương thức khác: redirect về trang chi tiết với thông báo
-        return redirect()->route('payments.show', $request->invoice_id)
+        return redirect()->route('admin.payments.show', $result['payment']->payment_id)
             ->with('success', "Đã tạo giao dịch #{$result['ref']}. Vui lòng hoàn tất thanh toán.");
     }
 
@@ -59,11 +77,12 @@ class PaymentController extends Controller
     // ----------------------------------------------------------------
     public function qr(int $paymentId)
     {
-        return view('payments.qr', compact('paymentId'));
+        $payment = Payment::findOrFail($paymentId);
+        return view('admin.payments.qr', compact('paymentId', 'payment'));
     }
 
     // ----------------------------------------------------------------
-    // Webhook: cổng thanh toán callback xác nhận thành công
+    // Xác nhận thanh toán thành công
     // ----------------------------------------------------------------
     public function confirm(Request $request, int $paymentId)
     {
@@ -72,19 +91,34 @@ class PaymentController extends Controller
             $request->input('ref', '')
         );
 
-        return response()->json([
-            'success' => $success,
-            'message' => $success ? 'Thanh toán thành công.' : 'Xác nhận thất bại.',
-        ]);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => $success,
+                'message' => $success ? 'Thanh toán thành công.' : 'Xác nhận thất bại.',
+            ]);
+        }
+
+        if ($success) {
+            return redirect()->route('admin.payments.show', $paymentId)
+                ->with('success', 'Thanh toán thành công!');
+        }
+
+        return redirect()->route('admin.payments.show', $paymentId)
+            ->with('error', 'Xác nhận thất bại!');
     }
 
     // ----------------------------------------------------------------
-    // Webhook: callback thất bại
+    // Đánh dấu thất bại
     // ----------------------------------------------------------------
     public function fail(int $paymentId)
     {
         $this->paymentService->failPayment($paymentId);
 
-        return response()->json(['success' => true, 'message' => 'Đã cập nhật trạng thái thất bại.']);
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Đã cập nhật trạng thái thất bại.']);
+        }
+
+        return redirect()->route('admin.payments.show', $paymentId)
+            ->with('error', 'Đã cập nhật trạng thái thất bại.');
     }
 }

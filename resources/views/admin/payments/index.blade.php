@@ -99,7 +99,8 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Mã GD</th>
-                                    <th>Thông tin giao dịch</th>
+                                    <th>Loại giao dịch</th>
+                                    <th>Thông tin liên quan</th>
                                     <th>Số tiền</th>
                                     <th>Phương thức</th>
                                     <th>Trạng thái</th>
@@ -111,41 +112,82 @@
                             <tbody>
                                 @forelse($payments ?? [] as $payment)
                                 <tr>
-                                    <td><strong>{{ $payment->payment_id }}</strong>}}
+                                    <!-- SỬA: Bỏ dấu >> hoặc » thừa -->
+                                    <td><strong>{{ $payment->payment_id }}</strong></td>
 
-                                    <!-- THAY THẾ: Hiển thị thông tin giao dịch thay vì tên bệnh nhân -->
+
+                                    <!-- Loại giao dịch -->
+                                    <td>
+                                        @php
+                                            $type = 'Khác';
+                                            $typeIcon = 'bi-question-circle';
+                                            
+                                            if($payment->appointment_id) {
+                                                $type = 'Đặt lịch khám';
+                                                $typeIcon = 'bi-calendar-check';
+                                            } elseif($payment->invoice_id) {
+                                                $type = 'Hóa đơn dịch vụ';
+                                                $typeIcon = 'bi-receipt';
+                                            } elseif($payment->membership_id) {
+                                                $type = 'Thẻ thành viên';
+                                                $typeIcon = 'bi-gem';
+                                            } elseif($payment->insurance_id) {
+                                                $type = 'BHYT';
+                                                $typeIcon = 'bi-shield-check';
+                                            }
+                                        @endphp
+                                        <span class="badge bg-info">
+                                            <i class="bi {{ $typeIcon }}"></i> {{ $type }}
+                                        </span>
+                                    </td>
+
+                                    <!-- Thông tin liên quan -->
                                     <td>
                                         <div class="d-flex flex-column gap-1">
-                                            <!-- Appointment ID -->
-                                            <div>
-                                                <i class="bi bi-hash text-muted"></i>
-                                                <span class="small text-muted">Appointment ID:</span>
-                                                <strong>{{ $payment->appointment_id ?? 'N/A' }}</strong>
-                                            </div>
-                                            
-                                            <!-- Mã hóa đơn (nếu có) -->
-                                            @if($payment->invoice_id)
-                                            <div>
-                                                <i class="bi bi-receipt text-muted"></i>
-                                                <span class="small text-muted">Invoice ID:</span>
-                                                <strong>{{ $payment->invoice_id }}</strong>
-                                            </div>
+                                            @if($payment->appointment_id)
+                                                <div>
+                                                    <i class="bi bi-calendar text-muted"></i>
+                                                    <span class="small text-muted">Lịch hẹn:</span>
+                                                    <strong>#{{ $payment->appointment_id }}</strong>
+                                                </div>
                                             @endif
                                             
-                                            <!-- Mã giao dịch -->
+                                            @if($payment->invoice_id)
+                                                <div>
+                                                    <i class="bi bi-receipt text-muted"></i>
+                                                    <span class="small text-muted">Hóa đơn:</span>
+                                                    <strong>#{{ $payment->invoice_id }}</strong>
+                                                </div>
+                                            @endif
+                                            
+                                            @if($payment->membership_id)
+                                                <div>
+                                                    <i class="bi bi-gem text-muted"></i>
+                                                    <span class="small text-muted">Thẻ TV:</span>
+                                                    <strong>#{{ $payment->membership_id }}</strong>
+                                                </div>
+                                            @endif
+                                            
+                                            @if($payment->insurance_id)
+                                                <div>
+                                                    <i class="bi bi-shield-check text-muted"></i>
+                                                    <span class="small text-muted">BHYT:</span>
+                                                    <strong>#{{ $payment->insurance_id }}</strong>
+                                                </div>
+                                            @endif
+                                            
+                                            @if(!$payment->appointment_id && !$payment->invoice_id && !$payment->membership_id && !$payment->insurance_id)
+                                                <div>
+                                                    <i class="bi bi-credit-card text-muted"></i>
+                                                    <span class="small text-muted">Thanh toán</span>
+                                                    <strong>trực tiếp</strong>
+                                                </div>
+                                            @endif
+                                            
                                             <div>
                                                 <i class="bi bi-upc-scan text-muted"></i>
                                                 <span class="small text-muted">Mã GD:</span>
                                                 <code class="small">{{ $payment->transaction_ref ?? '---' }}</code>
-                                            </div>
-                                            
-                                            <!-- Ngày tạo -->
-                                            <div>
-                                                <i class="bi bi-clock text-muted"></i>
-                                                <span class="small text-muted">Tạo lúc:</span>
-                                                <span class="small">
-                                                    {{ $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d/m/Y H:i') : 'N/A' }}
-                                                </span>
                                             </div>
                                         </div>
                                     </td>
@@ -193,96 +235,15 @@
                                     </td>
                                     
                                     <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{{ route('admin.payments.show', $payment->payment_id) }}" 
-                                               class="btn btn-sm btn-info" title="Xem chi tiết">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                            @if($payment->status == 'Chờ xử lý' || $payment->status == 'Chờ thanh toán')
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-success" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#confirmModal{{ $payment->payment_id }}"
-                                                    title="Xác nhận thành công">
-                                                <i class="bi bi-check-lg"></i>
-                                            </button>
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-danger" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#failModal{{ $payment->payment_id }}"
-                                                    title="Xác nhận thất bại">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
-                                            @endif
-                                        </div>
-
-                                        <!-- Modal Confirm -->
-                                        <div class="modal fade" id="confirmModal{{ $payment->payment_id }}" tabindex="-1">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header bg-success text-white">
-                                                        <h5 class="modal-title">
-                                                            <i class="bi bi-check-circle"></i> Xác nhận thanh toán
-                                                        </h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <p>Xác nhận thanh toán thành công cho giao dịch:</p>
-                                                        <ul>
-                                                            <li><strong>Mã GD:</strong> {{ $payment->payment_id }}</li>
-                                                            <li><strong>Số tiền:</strong> <span class="text-primary">{{ number_format($payment->total_amount) }} ₫</span></li>
-                                                            <li><strong>Phương thức:</strong> {{ $payment->method }}</li>
-                                                        </ul>
-                                                        <p class="text-warning mb-0">⚠️ Hành động này không thể hoàn tác!</p>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                                                        <form action="{{ route('admin.payments.confirm', $payment->payment_id) }}" method="POST">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-success">
-                                                                <i class="bi bi-check-lg"></i> Xác nhận thành công
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Modal Fail -->
-                                        <div class="modal fade" id="failModal{{ $payment->payment_id }}" tabindex="-1">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header bg-danger text-white">
-                                                        <h5 class="modal-title">
-                                                            <i class="bi bi-x-circle"></i> Xác nhận thất bại
-                                                        </h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <p>Xác nhận thanh toán <strong class="text-danger">THẤT BẠI</strong> cho giao dịch:</p>
-                                                        <ul>
-                                                            <li><strong>Mã GD:</strong> {{ $payment->payment_id }}</li>
-                                                            <li><strong>Số tiền:</strong> {{ number_format($payment->total_amount) }} ₫</li>
-                                                        </ul>
-                                                        <p class="text-danger mb-0">⚠️ Hành động này không thể hoàn tác!</p>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                                                        <form action="{{ route('admin.payments.fail', $payment->payment_id) }}" method="POST">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-danger">
-                                                                <i class="bi bi-x-lg"></i> Xác nhận thất bại
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <a href="{{ route('admin.payments.show', $payment->payment_id) }}" 
+                                           class="btn btn-sm btn-info" title="Xem chi tiết">
+                                            <i class="bi bi-eye"></i> Xem
+                                        </a>
                                     </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-5">
+                                    <td colspan="9" class="text-center py-5">
                                         <i class="bi bi-inbox fs-1 text-muted"></i>
                                         <p class="text-muted mt-2">Không có giao dịch nào</p>
                                         <small class="text-muted">Hãy thử thay đổi bộ lọc hoặc tạo giao dịch mới</small>

@@ -9,7 +9,7 @@ class DoctorSchedule extends Model
 {
     use HasFactory;
 
-    protected $table = 'doctor_schedules';
+    protected $table = 'doctorschedules';
     protected $primaryKey = 'schedule_id';
     public $timestamps = false;
 

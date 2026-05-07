@@ -11,28 +11,38 @@ class Payment extends Model
 
     protected $table = 'payments';
     protected $primaryKey = 'payment_id';
-    public $timestamps = false;  // ĐÚNG: không có updated_at
+    public $timestamps = false;
 
-    protected $fillable = [
-        'invoice_id',
-        'payment_method',
-        'amount',
-        'status',
-        'paid_at',
-        'transaction_ref',
-    ];
+    protected $guarded = [];
 
     protected $casts = [
-        'amount' => 'float',
-        'paid_at' => 'datetime',
+        'subtotal' => 'float',
+        'discount_amount' => 'float',
+        'total_amount' => 'float',
+        'payment_date' => 'datetime',
     ];
 
-    // Relationships
-    public function invoice()
+    // Relationship với Appointment
+    public function appointment()
     {
-        // ĐÚNG: PaymentRepository.php -> with('invoice.patient')
-        return $this->belongsTo(Invoice::class, 'invoice_id', 'invoice_id');
+        return $this->belongsTo(Appointment::class, 'appointment_id', 'appointment_id');
     }
 
-    // ĐÚNG theo PaymentService.php -> $payment->invoice?->update
+    // Relationship với PaymentItems
+    public function items()
+    {
+        return $this->hasMany(PaymentItem::class, 'payment_id', 'payment_id');
+    }
+
+    // Relationship với Insurance (BHYT)
+    public function insurance()
+    {
+        return $this->belongsTo(InsuranceCard::class, 'insurance_id', 'insurance_id');
+    }
+
+    // Relationship với Membership (Thẻ thành viên)
+    public function membership()
+    {
+        return $this->belongsTo(MembershipCard::class, 'membership_id', 'card_id');
+    }
 }

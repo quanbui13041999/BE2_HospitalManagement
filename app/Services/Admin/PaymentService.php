@@ -7,12 +7,13 @@ use App\Models\Payment;
 use App\Repositories\PaymentRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class PaymentService
 {
     // Các phương thức thanh toán được hỗ trợ
     const PAYMENT_METHODS = ['QR', 'ATM', 'MoMo', 'ZaloPay', 'Counter'];
-    const PAYMENT_STATUSES = ['Chờ xử lý', 'Thành công', 'Thất bại', 'Hoàn tiền'];
+    const PAYMENT_STATUSES = ['Chờ xử lý', 'Thành công', 'Thất bại', 'Hoàn tiền', 'Đã thanh toán', 'Chưa thanh toán'];
 
     public function __construct(protected PaymentRepository $repo) {}
 
@@ -37,9 +38,20 @@ class PaymentService
     public function buildListData(Request $request): array
     {
         $filters = $request->only(['from_date', 'to_date', 'status', 'method']);
+        
+        // Debug log
+        Log::info('buildListData called', ['filters' => $filters]);
+        
+        $payments = $this->repo->paginatedPayments($filters);
+        
+        // Debug log kết quả
+        Log::info('Payments result', [
+            'total' => $payments->total(),
+            'count' => $payments->count()
+        ]);
 
         return [
-            'payments'       => $this->repo->paginatedPayments($filters),
+            'payments'       => $payments,
             'statuses'       => self::PAYMENT_STATUSES,
             'methods'        => self::PAYMENT_METHODS,
             'todayStats'     => $this->repo->todayStats(),
@@ -73,11 +85,16 @@ class PaymentService
      */
     public function confirmPayment(int $paymentId, string $ref): bool
     {
-        $updated = $this->repo->updateStatus($paymentId, 'Thành công', $ref);
+        Log::info('confirmPayment called', ['payment_id' => $paymentId, 'ref' => $ref]);
+        
+        $updated = $this->repo->confirmPayment($paymentId, $ref);
 
         if ($updated) {
             // Đánh dấu hóa đơn đã thanh toán
-            Payment::find($paymentId)?->invoice?->update(['status' => 'Đã thanh toán']);
+            $payment = Payment::find($paymentId);
+            if ($payment && $payment->invoice) {
+                $payment->invoice->update(['status' => 'Đã thanh toán']);
+            }
         }
 
         return $updated;
@@ -88,7 +105,9 @@ class PaymentService
      */
     public function failPayment(int $paymentId): bool
     {
-        return $this->repo->updateStatus($paymentId, 'Thất bại');
+        Log::info('failPayment called', ['payment_id' => $paymentId]);
+        
+        return $this->repo->failPayment($paymentId);
     }
 
     // ----------------------------------------------------------------
@@ -104,8 +123,8 @@ class PaymentService
         return sprintf(
             'HOSPITAL|%s|%d|%s',
             $payment->transaction_ref,
-            (int) $payment->amount,
-            'Thanh toan hoa don ' . $payment->invoice_id
+            (int) ($payment->total_amount ?? 0),
+            'Thanh toan hoa don ' . ($payment->invoice_id ?? '')
         );
     }
 }
