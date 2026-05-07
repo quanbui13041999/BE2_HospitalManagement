@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Bệnh viện') - Hệ thống đặt lịch khám</title>
-    
+
     {{-- Bootstrap 5 --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     {{-- Bootstrap Icons --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    
+
     @stack('styles')
 </head>
+
 <body>
     {{-- Header Navigation --}}
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
@@ -36,37 +38,45 @@
                         </a>
                     </li>
                     @auth
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('appointments.index') }}">
-                                <i class="bi bi-calendar-check"></i> Lịch hẹn
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('appointments.index') }}">
+                            <i class="bi bi-calendar-check"></i> Lịch hẹn
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> {{ Auth::user()->full_name ?? Auth::user()->name ?? 'User' }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {{-- Tạm thời comment link Hồ sơ cá nhân cho đến khi có route --}}
+                            {{--
+                                <li><a class="dropdown-item" href="{{ route('profile') }}">Hồ sơ cá nhân</a>
+                    </li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    --}}
+                    <li>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <!-- Mục Tiền sử -->
+                            <a class="dropdown-item" href="{{ route('profile.show') }}">
+                                <i class="fas fa-history me-2">Profile</i>
                             </a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle"></i> {{ Auth::user()->full_name ?? Auth::user()->name ?? 'User' }}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                {{-- Tạm thời comment link Hồ sơ cá nhân cho đến khi có route --}}
-                                {{-- 
-                                <li><a class="dropdown-item" href="{{ route('profile') }}">Hồ sơ cá nhân</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                --}}
-                                <li>
-                                    <form method="POST" action="{{ route('logout') }}">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item">Đăng xuất</button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </li>
-                    @else
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('login') }}">Đăng nhập</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('register') }}">Đăng ký</a>
-                        </li>
-                    @endauth
+                            
+                            <button type="submit" class="dropdown-item">Đăng xuất</button>
+                        </form>
+                    </li>
+                </ul>
+                </li>
+                @else
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('login') }}">Đăng nhập</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('register') }}">Đăng ký</a>
+                </li>
+                @endauth
                 </ul>
             </div>
         </div>
@@ -108,4 +118,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @stack('scripts')
 </body>
+
 </html>

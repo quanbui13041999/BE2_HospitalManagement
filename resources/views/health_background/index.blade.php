@@ -28,7 +28,7 @@
             </div>
         </div>
 
-        <form action="{{ route('tiensu.store') }}" method="POST">
+        <form action="{{ route('health.store') }}" method="POST">
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
@@ -42,7 +42,7 @@
                                     <label class="form-label small text-muted">NHÓM MÁU</label>
                                     <select name="nhommau" class="form-select border-light-subtle">
                                         @foreach(['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'] as $type)
-                                        <option value="{{ $type }}" {{ (old('nhommau', $tiensu->blood_group ?? '') == $type) ? 'selected' : '' }}>
+                                        <option value="{{ $type }}" {{ (old('nhommau', $$healthData->blood_group ?? '') == $type) ? 'selected' : '' }}>
                                             {{ $type }}
                                         </option>
                                         @endforeach
@@ -51,8 +51,8 @@
                                 <div class="col-6">
                                     <label class="form-label small text-muted">YẾU TỐ RH</label>
                                     <select name="yeuto_rh" class="form-select border-light-subtle">
-                                        <option value="positive" {{ (old('yeuto_rh', $tiensu->yeuto_rh ?? '') == 'positive') ? 'selected' : '' }}>Dương tính (+)</option>
-                                        <option value="negative" {{ (old('yeuto_rh', $tiensu->yeuto_rh ?? '') == 'negative') ? 'selected' : '' }}>Âm tính (-)</option>
+                                        <option value="positive" {{ (old('yeuto_rh', $$healthData->yeuto_rh ?? '') == 'positive') ? 'selected' : '' }}>Dương tính (+)</option>
+                                        <option value="negative" {{ (old('yeuto_rh', $$healthData->yeuto_rh ?? '') == 'negative') ? 'selected' : '' }}>Âm tính (-)</option>
                                     </select>
                                 </div>
                             </div>
@@ -60,17 +60,17 @@
                                 <div class="col-6">
                                     <label class="form-label small text-muted">Chiều cao (cm)</label>
                                     <input type="number" name="height" class="form-control"
-                                        value="{{ old('height', $tiensu->height ?? '') }}" placeholder="Nhập chiều cao..">
+                                        value="{{ old('height', $healthData->height ?? '') }}" placeholder="Nhập chiều cao..">
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small text-muted">Cân nặng (kg)</label>
                                     <input type="number" name="weight" class="form-control"
-                                        value="{{ old('weight', $tiensu->weight ?? '') }}" placeholder="Nhập cân nặng..">
+                                        value="{{ old('weight', $healthData->weight ?? '') }}" placeholder="Nhập cân nặng..">
                                 </div>
                             </div>
                             <div class="mt-3 p-3 rounded bg-light border border-info-subtle">
-                                <span class="fs-4 fw-bold text-primary">{{ $tiensu->blood_group ?? 'O+' }}</span>
-                                <span class="ms-2">BMI HIỆN TẠI: <strong id="bmi-value">{{ $tiensu->bmi ?? 0 }}</strong></span>
+                                <span class="fs-4 fw-bold text-primary">{{ $healthData->blood_group ?? 'O+' }}</span>
+                                <span class="ms-2">BMI HIỆN TẠI: <strong id="bmi-value">{{ $healthData->bmi ?? 0 }}</strong></span>
                             </div>
                         </div>
                     </div>
@@ -83,10 +83,10 @@
                             <div class="mb-3">
                                 <label class="form-label small text-muted">THỰC PHẨM</label>
                                 <input type="text" name="food_allergies" class="form-control"
-                                    value="{{ old('food_allergies', $tiensu->food_allergies ?? '') }}" placeholder="VD: Sữa, Gluten...">
+                                    value="{{ old('food_allergies', $healthData->food_allergies ?? '') }}" placeholder="VD: Sữa, Gluten...">
                             </div>
                         </div>
-                        <a href="{{ url('/trangchu') }}"
+                        <a href="{{ url('/') }}"
                             class="d-inline-block text-decoration-none px-4 py-2 rounded shadow-sm border"
                             style="background-color: #edffec; color: #28a745; font-weight: 600; transition: all 0.3s ease; border-color: #d4edda !important;">
                             <i class="bi bi-house-door-fill me-1">Trang chủ</i> 
@@ -102,7 +102,7 @@
                             </h6>
                             <div class="input-group">
                                 <input type="text" name="drug_allergies" class="form-control"
-                                    value="{{ old('drug_allergies', $tiensu->drug_allergies ?? '') }}" placeholder="Nhập tên thuốc...">
+                                    value="{{ old('drug_allergies', $healthData->drug_allergies ?? '') }}" placeholder="Nhập tên thuốc...">
                             </div>
                         </div>
                     </div>
@@ -113,7 +113,7 @@
                                 <i class="bi bi-flower1"></i> BỆNH MÃN TÍNH
                             </h6>
                             @php
-                            $selectedDiseases = old('chronic_diseases', $tiensu->chronic_diseases ?? []);
+                            $selectedDiseases = old('chronic_diseases', $healthData->chronic_diseases ?? []);
                             @endphp
                             <div class="row g-2">
                                 <div class="col-12">
@@ -131,7 +131,7 @@
                             </div>
                             <div class="mt-3 mb-3">
                                 <label class="form-label small text-muted">BỆNH MÃN TÍNH KHÁC</label>
-                                <textarea name="other_chronic_diseases" class="form-control bg-light" rows="3">{{ old('other_chronic_diseases', $tiensu->other_chronic_diseases ?? '') }}</textarea>
+                                <textarea name="other_chronic_diseases" class="form-control bg-light" rows="3">{{ old('other_chronic_diseases', $healthData->other_chronic_diseases ?? '') }}</textarea>
                             </div>
                             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Lưu thông tin</button>
                         </div>
