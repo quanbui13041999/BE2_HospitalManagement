@@ -60,6 +60,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/reviews/check',  [ReviewsDoctorController::class, 'checkCanReview'])->name('reviews.check');
     Route::post('/reviews',       [ReviewsDoctorController::class, 'store'])->name('reviews.store');
+    Route::put('/reviews/{review}',    [ReviewsDoctorController::class, 'update'])->name('reviews.update');
+    Route::delete('/reviews/{review}', [ReviewsDoctorController::class, 'destroy'])->name('reviews.destroy');
+    Route::post('/reviews/{review}/reply', [ReviewsDoctorController::class, 'reply'])->name('reviews.reply');
 
      //xem tien su
     Route::get('/tiensu', [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
