@@ -8,7 +8,7 @@ use App\Http\Controllers\Admin\BhytController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
-use App\Http\Controllers\User\ServiceController as UserServiceController;
+use App\Http\Controllers\ServiceController as UserServiceController;
 use App\Http\Controllers\User\PaymentController as UserPaymentController;
 use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController;
@@ -66,7 +66,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
     });
 
-    // ALIAS: Route cũ cho tương thích với view (quan trọng để tránh lỗi RouteNotFoundException)
+    // ALIAS: Route cũ cho tương thích với view
     Route::prefix('lich-hen')->name('appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
