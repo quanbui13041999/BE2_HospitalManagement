@@ -337,12 +337,10 @@ class AppointmentController extends Controller
         ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
         ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
         ->leftJoin('users', 'appointments.user_id', '=', 'users.user_id')
-        // ── Thêm join reviews ──────────────────────────────────────────
         ->leftJoin('reviews', function ($join) use ($userId) {
             $join->on('reviews.appointment_id', '=', 'appointments.appointment_id')
                  ->where('reviews.user_id', '=', $userId);
         })
-        // ───────────────────────────────────────────────────────────────
         ->where('appointments.user_id', $userId)
         ->select(
             'appointments.*',
@@ -358,14 +356,12 @@ class AppointmentController extends Controller
             'services.service_name',
             'rooms.room_code',
             'rooms.room_name',
-            'users.name as patient_name',
-            // ── Thêm các cột review ──────────────────────────────────
+            'users.full_name as patient_name',
             'reviews.review_id',
             'reviews.rating      as review_rating',
             'reviews.comment     as review_comment',
             'reviews.doctor_reply',
             'reviews.created_at  as review_created_at',
-            // ─────────────────────────────────────────────────────────
         );
  
     $status = $request->get('status', 'all');

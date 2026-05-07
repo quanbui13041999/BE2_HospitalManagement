@@ -865,13 +865,13 @@
                             <tr>
                                 <td>
                                     <div class="doctor-cell">
-                                       @php
-    $words  = explode(' ', trim($item->doctor_name));
-    $initials = count($words) >= 2
-        ? strtoupper(mb_substr($words[count($words)-2], 0, 1) . mb_substr($words[count($words)-1], 0, 1))
-        : strtoupper(mb_substr($item->doctor_name, 0, 2));
-@endphp
-<div class="avatar">{{ $initials }}</div>
+                                        @php
+                                            $words = explode(' ', trim($item->doctor_name));
+                                            $initials = count($words) >= 2
+                                                ? strtoupper(mb_substr($words[count($words) - 2], 0, 1) . mb_substr($words[count($words) - 1], 0, 1))
+                                                : strtoupper(mb_substr($item->doctor_name, 0, 2));
+                                        @endphp
+                                        <div class="avatar">{{ $initials }}</div>
                                         <div>
                                             <div class="doctor-name">BS. {{ $item->doctor_name }}</div>
                                             <div style="font-size:.7rem;color:var(--gray-400)">{{ $item->department_name }}
@@ -879,9 +879,7 @@
                                         </div>
                                     </div>
                                 </td>
-
                                 <td>{{ $item->service_name ?? '—' }}</td>
-
                                 <td>
                                     <div class="date-cell">
                                         <div class="date">
@@ -897,7 +895,6 @@
                                         </div>
                                     </div>
                                 </td>
-
                                 <td>
                                     @php
                                         $statusMap = [
@@ -915,9 +912,7 @@
                                         {{ $item->status }}
                                     </span>
                                 </td>
-
                                 <td>
-                                    {{-- ── Lịch hẹn chờ / đã xác nhận → Dời / Huỷ ── --}}
                                     @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
                                         <div class="actions">
                                             <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
@@ -942,24 +937,36 @@
                                                 Huỷ
                                             </button>
                                         </div>
-
-                                        {{-- ── Hoàn thành / Đã khám → Đánh giá ── --}}
                                     @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
                                         <div class="actions" style="flex-wrap:wrap">
-
                                             @if($item->review_id ?? null)
-                                                {{-- ── Đã có đánh giá ── --}}
-                                                <span class="badge-reviewed">✓ Đã đánh giá</span>
+                                                <div class="review-summary">
+                                                    <div class="review-summary-stars">
+                                                        @for($i = 1; $i <= 5; $i++)
+                                                            <span
+                                                                style="color: {{ $i <= $item->review_rating ? '#f59e0b' : '#d1d5db' }}">★</span>
+                                                        @endfor
+                                                    </div>
+                                                    @if($item->review_comment)
+                                                        <div class="review-summary-comment">
+                                                            {{ Str::limit($item->review_comment, 40) }}
+                                                        </div>
+                                                    @endif
+                                                    @if($item->doctor_reply)
+                                                        <div class="review-summary-reply">
+                                                            💬 {{ Str::limit($item->doctor_reply, 30) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
 
-                                                {{-- Nút Sửa (nếu trong 24h hoặc admin) --}}
                                                 @php
                                                     $reviewCreatedAt = \Carbon\Carbon::parse($item->review_created_at ?? null);
                                                     $canEdit = $item->review_created_at &&
                                                         $reviewCreatedAt->diffInHours(now()) <= 24;
                                                 @endphp
 
-                                                @if($canEdit || auth()->user()->hasRole('admin'))
-                                                                <button type="button" class="btn-edit" onclick="openReviewModal({
+                                                @if(in_array(auth()->user()->role, ['admin', 'doctor']))
+                                                            <button type="button" class="btn-edit" onclick="openReviewModal({
                                                         appointmentId : {{ $item->appointment_id }},
                                                         doctorId      : {{ $item->doctor_id }},
                                                         doctorName    : '{{ addslashes($item->doctor_name) }}',
@@ -974,49 +981,47 @@
                                                             updateUrl : '{{ route('reviews.update', $item->review_id ?? 0) }}'
                                                         }
                                                     })">
-                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                                        stroke="currentColor" stroke-width="2.5">
-                                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                                    </svg>
-                                                                    Sửa
-                                                                </button>
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                                    stroke="currentColor" stroke-width="2.5">
+                                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                                </svg>
+                                                                Sửa
+                                                            </button>
                                                 @endif
 
-                                                {{-- Nút Xóa (user hoặc admin) --}}
-                                                <button type="button" class="btn-cancel"
-                                                    onclick="openDeleteReviewModal('{{ route('reviews.destroy', $item->review_id ?? 0) }}')">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                        stroke="currentColor" stroke-width="2.5">
-                                                        <polyline points="3 6 5 6 21 6" />
-                                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                                        <path d="M10 11v6" />
-                                                        <path d="M14 11v6" />
-                                                    </svg>
-                                                    Xóa
-                                                </button>
+                                                @if(in_array(auth()->user()->role, ['admin', 'doctor']))
+                                                    <button type="button" class="btn-cancel"
+                                                        onclick="openDeleteReviewModal('{{ route('reviews.destroy', $item->review_id ?? 0) }}')">
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                            stroke="currentColor" stroke-width="2.5">
+                                                            <polyline points="3 6 5 6 21 6" />
+                                                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                            <path d="M10 11v6" />
+                                                            <path d="M14 11v6" />
+                                                        </svg>
+                                                        Xóa
+                                                    </button>
+                                                @endif
 
-                                                {{-- Nút Trả lời (chỉ bác sĩ hoặc admin) --}}
-                                                @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('doctor'))
-                                                                <button type="button" class="btn-edit"
-                                                                    style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0" onclick="openReplyModal({
+                                                @if(in_array(auth()->user()->role, ['admin', 'doctor']))
+                                                        <button type="button" class="btn-edit"
+                                                            style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0" onclick="openReplyModal({
                                                         replyUrl      : '{{ route('reviews.reply', $item->review_id ?? 0) }}',
                                                         stars         : {{ $item->review_rating ?? 0 }},
                                                         comment       : '{{ addslashes($item->review_comment ?? '') }}',
                                                         userName      : '{{ addslashes($item->patient_name ?? auth()->user()->name) }}',
                                                         existingReply : '{{ addslashes($item->doctor_reply ?? '') }}'
                                                     })">
-                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                                        stroke="currentColor" stroke-width="2.5">
-                                                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                                                    </svg>
-                                                                    {{ $item->doctor_reply ? 'Sửa phản hồi' : 'Trả lời' }}
-                                                                </button>
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                                stroke="currentColor" stroke-width="2.5">
+                                                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                                            </svg>
+                                                            {{ $item->doctor_reply ? 'Sửa phản hồi' : 'Trả lời' }}
+                                                        </button>
                                                 @endif
-
                                             @else
-                                                                {{-- ── Chưa đánh giá ── --}}
-                                                                <button type="button" class="btn-edit btn-review" onclick="openReviewModal({
+                                                            <button type="button" class="btn-edit btn-review" onclick="openReviewModal({
                                                     appointmentId : {{ $item->appointment_id }},
                                                     doctorId      : {{ $item->doctor_id }},
                                                     doctorName    : '{{ addslashes($item->doctor_name) }}',
@@ -1026,17 +1031,15 @@
                                                     storeUrl      : '{{ route('reviews.store') }}',
                                                     existing      : null
                                                 })">
-                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                                        stroke="currentColor" stroke-width="2.5">
-                                                                        <polygon
-                                                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                                                    </svg>
-                                                                    Đánh giá
-                                                                </button>
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                                    stroke="currentColor" stroke-width="2.5">
+                                                                    <polygon
+                                                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                                </svg>
+                                                                Đánh giá
+                                                            </button>
                                             @endif
-
                                         </div>
-
                                     @else
                                         <span style="font-size:.75rem;color:var(--gray-400)">—</span>
                                     @endif
@@ -1060,7 +1063,6 @@
                             </tr>
                         @endforelse
                     </tbody>
-
                 </table>
             </div>
         </div>
@@ -1093,7 +1095,7 @@
             </form>
         </div>
     </div>
-@include('appointments.reviews');
+    @include('appointments.reviews')
     <script>
         function openModal(button) {
             const action = button.getAttribute('data-action');
@@ -1107,7 +1109,7 @@
             if (e.target === this) closeModal();
         });
     </script>
-    
+
 </body>
 
 </html>
