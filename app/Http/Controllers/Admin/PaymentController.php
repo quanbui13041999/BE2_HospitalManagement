@@ -17,7 +17,7 @@ class PaymentController extends Controller
     public function show(int $invoiceId)
     {
         return view(
-            'admin.payments.show',
+            'payments.show',
             $this->paymentService->buildIndexData($invoiceId)
         );
     }
@@ -28,7 +28,7 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         return view(
-            'admin.payments.index',
+            'payments.index',
             $this->paymentService->buildListData($request)
         );
     }
@@ -42,7 +42,7 @@ class PaymentController extends Controller
 
         // Nếu là QR, redirect sang trang chờ quét QR
         if ($request->payment_method === 'QR') {
-            return redirect()->route('admin.payments.qr', $result['payment']->payment_id)
+            return redirect()->route('payments.qr', $result['payment']->payment_id)
                 ->with([
                     'qr_content' => $result['qr_content'],
                     'ref'        => $result['ref'],
@@ -50,7 +50,7 @@ class PaymentController extends Controller
         }
 
         // Các phương thức khác: redirect về trang chi tiết với thông báo
-        return redirect()->route('admin.payments.show', $request->invoice_id)
+        return redirect()->route('payments.show', $request->invoice_id)
             ->with('success', "Đã tạo giao dịch #{$result['ref']}. Vui lòng hoàn tất thanh toán.");
     }
 
@@ -59,7 +59,7 @@ class PaymentController extends Controller
     // ----------------------------------------------------------------
     public function qr(int $paymentId)
     {
-        return view('admin.payments.qr', compact('paymentId'));
+        return view('payments.qr', compact('paymentId'));
     }
 
     // ----------------------------------------------------------------

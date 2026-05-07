@@ -71,7 +71,7 @@
                                     <select name="status" class="form-select">
                                         <option value="">Tất cả</option>
                                         @foreach($statuses ?? [] as $status)
-                                            <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>{{ $status }}</option>
+                                        <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>{{ $status }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -80,7 +80,7 @@
                                     <select name="method" class="form-select">
                                         <option value="">Tất cả</option>
                                         @foreach($methods ?? [] as $method)
-                                            <option value="{{ $method }}" {{ request('method') == $method ? 'selected' : '' }}>{{ $method }}</option>
+                                        <option value="{{ $method }}" {{ request('method') == $method ? 'selected' : '' }}>{{ $method }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -111,37 +111,42 @@
                             </thead>
                             <tbody>
                                 @forelse($payments ?? [] as $payment)
-                                    <tr>
-                                        <td>#{{ $payment->payment_id }}</td>
-                                        <td>{{ $payment->invoice->invoice_number ?? 'N/A' }}</td>
-                                        <td>{{ $payment->invoice->patient->full_name ?? 'N/A' }}</td>
-                                        <td class="fw-bold">{{ number_format($payment->amount) }} ₫</td>
-                                        <td>
-                                            <span class="badge bg-secondary">{{ $payment->payment_method }}</span>
-                                        </td>
-                                        <td>
-                                            @php
-                                                $statusClass = match($payment->status) {
-                                                    'Thành công' => 'success',
-                                                    'Chờ xử lý' => 'warning',
-                                                    'Thất bại' => 'danger',
-                                                    default => 'secondary'
-                                                };
-                                            @endphp
-                                            <span class="badge bg-{{ $statusClass }}">{{ $payment->status }}</span>
-                                        </td>
-                                        <td>{{ $payment->paid_at ? \Carbon\Carbon::parse($payment->paid_at)->format('d/m/Y H:i') : 'N/A' }}</td>
-                                        <td><code>{{ $payment->transaction_ref ?? '---' }}</code></td>
-                                        <td>
-                                            <a href="{{ route('admin.payments.show', $payment->invoice_id) }}" class="btn btn-sm btn-info">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
+                                <tr>
+                                    <td>#{{ $payment->payment_id }}</td>
+                                    <td>{{ $payment->invoice->invoice_number ?? 'N/A' }}</td>
+                                    <td>{{ $payment->invoice->patient->full_name ?? 'N/A' }}</td>
+                                    <td class="fw-bold">{{ number_format($payment->amount) }} ₫</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ $payment->payment_method }}</span>
+                                    </td>
+                                    <td>
+                                        @php
+                                        $statusClass = match($payment->status) {
+                                        'Thành công' => 'success',
+                                        'Chờ xử lý' => 'warning',
+                                        'Thất bại' => 'danger',
+                                        default => 'secondary'
+                                        };
+                                        @endphp
+                                        <span class="badge bg-{{ $statusClass }}">{{ $payment->status }}</span>
+                                    </td>
+                                    <td>{{ $payment->paid_at ? \Carbon\Carbon::parse($payment->paid_at)->format('d/m/Y H:i') : 'N/A' }}</td>
+                                    <td><code>{{ $payment->transaction_ref ?? '---' }}</code></td>
+                                    <td>
+                                        @if($payment->invoice_id)
+                                        <a href="{{ route('admin.payments.show', $payment->invoice_id) }}" class="btn btn-sm btn-info">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        @else
+                                        <span class="text-muted">—</span>
+                                        @endif <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="9" class="text-center">Không có giao dịch nào</td>
-                                    </tr>
+                                <tr>
+                                    <td colspan="9" class="text-center">Không có giao dịch nào</td>
+                                </tr>
                                 @endforelse
                             </tbody>
                         </table>

@@ -11,7 +11,7 @@ class Service extends Model
 
     protected $table = 'Services';
     protected $primaryKey = 'service_id';
-    public $timestamps = true;
+    public $timestamps = false;
 
     protected $fillable = [
         'service_code',

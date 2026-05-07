@@ -16,7 +16,7 @@ class BhytController extends Controller
     // ----------------------------------------------------------------
     public function index()
     {
-        return view('admin.bhyt.index', $this->bhytService->buildIndexData());
+        return view('bhyt.index', $this->bhytService->buildIndexData());
     }
 
     // ----------------------------------------------------------------

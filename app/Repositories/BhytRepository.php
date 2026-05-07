@@ -57,7 +57,7 @@ class BhytRepository
     public function applyBhytToInvoice(Invoice $invoice, float $coverageRate): array
     {
         $items        = $invoice->items;
-        $totalOriginal = $items->sum('unit_price');
+        $totalOriginal = $items->sum('subtotal');
         $bhytPays     = round($totalOriginal * $coverageRate / 100);
         $patientPays  = $totalOriginal - $bhytPays;
 

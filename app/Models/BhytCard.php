@@ -9,8 +9,8 @@ class BhytCard extends Model
 {
     use HasFactory;
 
-    protected $table = 'bhyt_cards';
-    protected $primaryKey = 'bhyt_card_id';
+    protected $table = 'insurancecards';
+    protected $primaryKey = 'insurance_id';
     public $timestamps = true;
 
     protected $fillable = [
@@ -32,7 +32,7 @@ class BhytCard extends Model
     // Relationships
     public function patient()
     {
-        return $this->belongsTo(Patient::class, 'patient_id', 'patient_id');
+        return $this->belongsTo(User::class, 'patient_id', 'user_id');
     }
 
     // ĐÚNG theo BhytRepository.php -> với('patient')

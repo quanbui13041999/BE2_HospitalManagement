@@ -17,7 +17,7 @@ class DoctorScheduleRequest extends FormRequest
         $isUpdate = $this->isMethod('PUT') || $this->isMethod('PATCH');
 
         return [
-            'doctor_id'     => 'required|exists:Doctors,doctor_id',
+            'doctor_id'     => 'required|exists:Users,user_id',
             'room_id'       => 'required|exists:Rooms,room_id',
             'work_date'     => 'required|date' . ($isUpdate ? '' : '|after_or_equal:today'),
             'start_time'    => 'required|date_format:H:i',

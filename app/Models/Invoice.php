@@ -41,7 +41,7 @@ class Invoice extends Model
     // Relationships
     public function patient()
     {
-        return $this->belongsTo(Patient::class, 'patient_id', 'patient_id');
+        return $this->belongsTo(User::class, 'patient_id', 'user_id');
     }
 
     public function doctor()

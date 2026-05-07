@@ -36,9 +36,8 @@ class Room extends Model
         'room_name',
         'room_type',
         'department_id',
-        'capacity',
         'status',
-        'description',
+        'notes',
     ];
 
     public function department()

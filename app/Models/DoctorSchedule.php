@@ -11,9 +11,9 @@ class DoctorSchedule extends Model
 
     protected $table = 'doctor_schedules';
     protected $primaryKey = 'schedule_id';
-    public $timestamps = true;
+    public $timestamps = false;
 
-    const STATUSES = ['Scheduled', 'In Progress', 'Completed', 'Cancelled', 'Full'];
+    const STATUSES = ['Hoạt động', 'Tạm dừng', 'Đã huỷ'];
 
     protected $fillable = [
         'doctor_id',
@@ -21,18 +21,18 @@ class DoctorSchedule extends Model
         'work_date',
         'start_time',
         'end_time',
+        'slot_duration',
         'max_slot',
-        'booked_slots',
         'status',
-        'notes',
+        'note',
     ];
 
     protected $casts = [
         'work_date' => 'date',
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
+        'start_time' => 'string',
+        'end_time' => 'string',
         'max_slot' => 'integer',
-        'booked_slots' => 'integer',
+        'slot_duration' => 'integer',
     ];
 
     public function doctor()
@@ -46,4 +46,4 @@ class DoctorSchedule extends Model
         // ĐÚNG: RoomService.php -> $item->room->room_code
         return $this->belongsTo(Room::class, 'room_id', 'room_id');
     }
-}
+}   

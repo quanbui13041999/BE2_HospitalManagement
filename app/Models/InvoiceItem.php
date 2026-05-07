@@ -9,9 +9,9 @@ class InvoiceItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'InvoiceItems';
+    protected $table = 'invoice_items';
     protected $primaryKey = 'item_id';
-    public $timestamps = true;
+    public $timestamps = false;
 
     protected $fillable = [
         'invoice_id',
@@ -19,8 +19,7 @@ class InvoiceItem extends Model
         'service_name',
         'quantity',
         'unit_price',
-        'total_price',
-        'notes',
+        'subtotal',
     ];
 
     protected $casts = [

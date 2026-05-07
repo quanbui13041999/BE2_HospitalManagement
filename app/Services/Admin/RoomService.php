@@ -163,10 +163,6 @@ class RoomService
             return ['room_id' => 'Phòng đã có ca khác trùng giờ.'];
         }
 
-        if ($data['max_slot'] < $schedule->booked_slots) {
-            return ['max_slot' => "Số slot tối đa không thể nhỏ hơn số lượt đã đặt ({$schedule->booked_slots})."];
-        }
-
         $schedule->update($data);
         return null;
     }

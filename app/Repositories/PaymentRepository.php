@@ -27,7 +27,7 @@ class PaymentRepository
     public function recentTransactions(int $limit = 5)
     {
         return Payment::with(['invoice.patient'])
-            ->orderBy('paid_at', 'desc')
+            ->orderBy('payment_date', 'desc')
             ->limit($limit)
             ->get();
     }
@@ -37,7 +37,7 @@ class PaymentRepository
      */
     public function todayStats(): array
     {
-        $payments = Payment::whereDate('paid_at', today())->get();
+        $payments = Payment::whereDate('payment_date', today())->get();
 
         $total     = $payments->sum('amount');
         $count     = $payments->count();
@@ -62,7 +62,7 @@ class PaymentRepository
             'payment_method' => $data['payment_method'],
             'amount'         => $data['amount'],
             'status'         => 'Chờ xử lý',
-            'paid_at'        => now(),
+            'payment_date'        => now(),
             'transaction_ref'=> $data['transaction_ref'] ?? null,
         ]);
     }
@@ -84,13 +84,13 @@ class PaymentRepository
     public function paginatedPayments(array $filters, int $perPage = 20)
     {
         $query = Payment::with(['invoice.patient'])
-            ->orderBy('paid_at', 'desc');
+            ->orderBy('payment_date', 'desc');
 
         if (!empty($filters['from_date'])) {
-            $query->whereDate('paid_at', '>=', $filters['from_date']);
+            $query->whereDate('payment_date', '>=', $filters['from_date']);
         }
         if (!empty($filters['to_date'])) {
-            $query->whereDate('paid_at', '<=', $filters['to_date']);
+            $query->whereDate('payment_date', '<=', $filters['to_date']);
         }
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
