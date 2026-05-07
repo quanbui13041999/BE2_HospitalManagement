@@ -11,6 +11,7 @@ use App\Http\Controllers\HealthBackgroundController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DocumentController;
 // ============================================================
 // TRANG CHỦ & AUTH
 // ============================================================
@@ -161,3 +162,35 @@ Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function
 
     Route::delete('/avatar', [ProfileController::class, 'deleteAvatar'])->name('avatar.delete');
 });
+/*
+|--------------------------------------------------------------------------
+|  Lưu Trữ & Tra Cứu Tài Liệu Y Khoa Cá Nhân
+|--------------------------------------------------------------------------
+*/
+ 
+Route::prefix('tai-lieu')->name('documents.')->group(function () {
+ 
+    // Danh sách + tìm kiếm + lọc
+    Route::get('/',                      [DocumentController::class, 'index'])    ->name('index');
+ 
+    // Upload file mới
+    Route::post('/',                     [DocumentController::class, 'store'])    ->name('store');
+ 
+    // Xem file inline (PDF / ảnh)
+    Route::get('/{document}/view',       [DocumentController::class, 'show'])     ->name('show');
+ 
+    // Tải file về máy
+    Route::get('/{document}/download',   [DocumentController::class, 'download']) ->name('download');
+ 
+    // Form chỉnh sửa metadata
+    Route::get('/{document}/edit',       [DocumentController::class, 'edit'])     ->name('edit');
+ 
+    // Lưu chỉnh sửa metadata
+    Route::put('/{document}',            [DocumentController::class, 'update'])   ->name('update');
+ 
+    // Xoá tài liệu
+    Route::delete('/{document}',         [DocumentController::class, 'destroy'])  ->name('destroy');
+});
+ 
+// // Redirect root về danh sách
+// Route::redirect('tai-lieu', '/documents');
