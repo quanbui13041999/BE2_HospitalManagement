@@ -336,6 +336,7 @@ class AppointmentController extends Controller
         ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
         ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
         ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
+        ->leftJoin('users', 'appointments.user_id', '=', 'users.user_id')
         // ── Thêm join reviews ──────────────────────────────────────────
         ->leftJoin('reviews', function ($join) use ($userId) {
             $join->on('reviews.appointment_id', '=', 'appointments.appointment_id')
@@ -357,6 +358,7 @@ class AppointmentController extends Controller
             'services.service_name',
             'rooms.room_code',
             'rooms.room_name',
+            'users.name as patient_name',
             // ── Thêm các cột review ──────────────────────────────────
             'reviews.review_id',
             'reviews.rating      as review_rating',
