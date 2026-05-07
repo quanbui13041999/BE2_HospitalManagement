@@ -317,60 +317,72 @@ class AppointmentController extends Controller
     // 2. DANH SÁCH LỊCH HẸN — GET /lich-hen
     // ================================================================
     public function index(Request $request)
-    {
-        $userId = Auth::id();
-
-        $counts = DB::table('appointments')
-            ->where('user_id', $userId)
-            ->select(
-                DB::raw('COUNT(*) as total'),
-                DB::raw("SUM(CASE WHEN status IN ('Chờ xác nhận','Đã xác nhận') AND appointment_time >= NOW() THEN 1 ELSE 0 END) as upcoming"),
-                DB::raw("SUM(CASE WHEN status = 'Đã khám' THEN 1 ELSE 0 END) as completed"),
-                DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch') THEN 1 ELSE 0 END) as cancelled")
-            )
-            ->first();
-
-        $query = DB::table('appointments')
-            ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
-            ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
-            ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
-            ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
-            ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
-            ->where('appointments.user_id', $userId)
-            ->select(
-                'appointments.*',
-                'doctorschedules.work_date',
-                'doctorschedules.start_time',
-                'doctorschedules.end_time',
-                'doctorschedules.slot_duration',
-                'doctors.doctor_id',
-                'doctors.full_name as doctor_name',
-                'doctors.avatar_url as doctor_avatar',
-                'doctors.price as doctor_price',
-                'departments.department_name',
-                'services.service_name',
-                'rooms.room_code',
-                'rooms.room_name'
-            );
-
-        $status = $request->get('status', 'all');
-        if ($status === 'upcoming') {
-            $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
-                ->where('doctorschedules.work_date', '>=', now()->toDateString());
-        } elseif ($status === 'completed') {
-            $query->where('appointments.status', 'Đã khám');
-        } elseif ($status === 'cancelled') {
-            $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch']);
-        }
-
-        $sort = $request->get('sort', 'desc');
-        $query->orderBy('doctorschedules.work_date', $sort === 'asc' ? 'asc' : 'desc')
-            ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc');
-
-        $appointments = $query->paginate(8)->withQueryString();
-
-        return view('appointments.index', compact('appointments', 'counts', 'status'));
+{
+    $userId = Auth::id();
+ 
+    $counts = DB::table('appointments')
+        ->where('user_id', $userId)
+        ->select(
+            DB::raw('COUNT(*) as total'),
+            DB::raw("SUM(CASE WHEN status IN ('Chờ xác nhận','Đã xác nhận') AND appointment_time >= NOW() THEN 1 ELSE 0 END) as upcoming"),
+            DB::raw("SUM(CASE WHEN status = 'Đã khám' THEN 1 ELSE 0 END) as completed"),
+            DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch') THEN 1 ELSE 0 END) as cancelled")
+        )
+        ->first();
+ 
+    $query = DB::table('appointments')
+        ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
+        ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
+        ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
+        ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
+        ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
+        ->leftJoin('users', 'appointments.user_id', '=', 'users.user_id')
+        ->leftJoin('reviews', function ($join) use ($userId) {
+            $join->on('reviews.appointment_id', '=', 'appointments.appointment_id')
+                 ->where('reviews.user_id', '=', $userId);
+        })
+        ->where('appointments.user_id', $userId)
+        ->select(
+            'appointments.*',
+            'doctorschedules.work_date',
+            'doctorschedules.start_time',
+            'doctorschedules.end_time',
+            'doctorschedules.slot_duration',
+            'doctors.doctor_id',
+            'doctors.full_name as doctor_name',
+            'doctors.avatar_url as doctor_avatar',
+            'doctors.price as doctor_price',
+            'departments.department_name',
+            'services.service_name',
+            'rooms.room_code',
+            'rooms.room_name',
+            'users.full_name as patient_name',
+            'reviews.review_id',
+            'reviews.rating      as review_rating',
+            'reviews.comment     as review_comment',
+            'reviews.doctor_reply',
+            'reviews.created_at  as review_created_at',
+        );
+ 
+    $status = $request->get('status', 'all');
+    if ($status === 'upcoming') {
+        $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
+              ->where('doctorschedules.work_date', '>=', now()->toDateString());
+    } elseif ($status === 'completed') {
+        $query->where('appointments.status', 'Đã khám');
+    } elseif ($status === 'cancelled') {
+        $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch']);
     }
+ 
+    $sort = $request->get('sort', 'desc');
+    $query->orderBy('doctorschedules.work_date', $sort === 'asc' ? 'asc' : 'desc')
+          ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc');
+ 
+    $appointments = $query->paginate(8)->withQueryString();
+ 
+    return view('appointments.index', compact('appointments', 'counts', 'status'));
+}
+ 
 
     // ================================================================
     // 3. FORM DỜI LỊCH — GET /lich-hen/{id}/doi
