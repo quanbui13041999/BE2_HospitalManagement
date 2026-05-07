@@ -13,6 +13,10 @@ use App\Http\Controllers\User\PaymentController as UserPaymentController;
 use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HealthBackgroundController;
+use App\Http\Controllers\EmergencyContactController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DocumentController;
 
 // ============================================================
 // TRANG CHỦ & AUTH
@@ -60,7 +64,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
-        Route::get('/',          [AppointmentController::class, 'index'])->name('index');
     });
 
     // --------------------------------------------------------
@@ -69,7 +72,7 @@ Route::middleware('auth')->group(function () {
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
 
-        // !! Đặt /history TRƯỚC /{paymentId} để tránh conflict !!
+        // Đặt /history TRƯỚC /{paymentId} để tránh conflict
         Route::get('/history', [UserPaymentController::class, 'history'])
             ->name('history');
 
@@ -94,8 +97,6 @@ Route::middleware('auth')->group(function () {
             ->name('confirm');
 
         // Hủy / thất bại
-        // GET  → dùng cho link "Hủy giao dịch" trong gateway.blade.php
-        // POST → dùng cho fetch() trong qr.blade.php (timeout / nút hủy)
         Route::get('/{paymentId}/fail',  [UserPaymentController::class, 'fail'])
             ->name('fail');
         Route::post('/{paymentId}/fail', [UserPaymentController::class, 'fail'])
@@ -124,6 +125,35 @@ Route::middleware('auth')->group(function () {
 
     // Trang chủ sau khi đăng nhập
     Route::get('/trangchu', [HomeController::class, 'index'])->name('Home.trangchu');
+
+    // Health Background
+    Route::get('/health-background', [HealthBackgroundController::class, 'index'])->name('health.index');
+    Route::post('/health-background', [HealthBackgroundController::class, 'store'])->name('health.store');
+
+    // Liên hệ khẩn cấp
+    Route::get('/lien-he-khan-cap', [EmergencyContactController::class, 'index'])->name('emergency-contacts.index');
+    Route::post('/lien-he-khan-cap', [EmergencyContactController::class, 'store'])->name('emergency-contacts.store');
+
+    // Profile
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/',          [ProfileController::class, 'show'])->name('show');
+        Route::get('/edit',      [ProfileController::class, 'edit'])->name('edit');
+        Route::put('/update',    [ProfileController::class, 'update'])->name('update');
+        Route::get('/password',  [ProfileController::class, 'editPassword'])->name('password.edit');
+        Route::put('/password',  [ProfileController::class, 'updatePassword'])->name('password.update');
+        Route::delete('/avatar', [ProfileController::class, 'deleteAvatar'])->name('avatar.delete');
+    });
+
+    // Tài liệu y khoa
+    Route::prefix('tai-lieu')->name('documents.')->group(function () {
+        Route::get('/',                      [DocumentController::class, 'index'])->name('index');
+        Route::post('/',                     [DocumentController::class, 'store'])->name('store');
+        Route::get('/{document}/view',       [DocumentController::class, 'show'])->name('show');
+        Route::get('/{document}/download',   [DocumentController::class, 'download'])->name('download');
+        Route::get('/{document}/edit',       [DocumentController::class, 'edit'])->name('edit');
+        Route::put('/{document}',            [DocumentController::class, 'update'])->name('update');
+        Route::delete('/{document}',         [DocumentController::class, 'destroy'])->name('destroy');
+    });
 });
 
 // ============================================================
@@ -187,7 +217,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
     });
 
+    // --------------------------------------------------------
     // THANH TOÁN (Admin)
+    // --------------------------------------------------------
     Route::prefix('payments')->name('payments.')->group(function () {
 
         // Danh sách giao dịch
@@ -211,6 +243,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         // Đánh dấu thất bại
         Route::post('/{paymentId}/fail', [PaymentController::class, 'fail'])->name('fail');
     });
+
     // --------------------------------------------------------
     // Quản lý BHYT
     // --------------------------------------------------------
