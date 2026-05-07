@@ -39,8 +39,7 @@
                     </li>
                     @auth
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('appointments.index') }}">
-                            <i class="bi bi-calendar-check"></i> Lịch hẹn
+                        <a class="nav-link" href="/lich-hen"> <i class="bi bi-calendar-check"></i> Lịch hẹn
                         </a>
                     </li>
                     <li class="nav-item dropdown">
@@ -59,11 +58,6 @@
                     <li>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <!-- Mục Tiền sử -->
-                            <a class="dropdown-item" href="{{ route('profile.show') }}">
-                                <i class="fas fa-history me-2">Profile</i>
-                            </a>
-                            
                             <button type="submit" class="dropdown-item">Đăng xuất</button>
                         </form>
                     </li>

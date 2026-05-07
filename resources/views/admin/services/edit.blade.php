@@ -18,15 +18,7 @@
             <div class="card-header fw-semibold"><i class="bi bi-pencil me-2"></i>Thông tin dịch vụ</div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Mã dịch vụ <span class="text-danger">*</span></label>
-                        <input type="text" name="service_code"
-                               class="form-control @error('service_code') is-invalid @enderror"
-                               value="{{ old('service_code', $service->service_code) }}" required>
-                        @error('service_code')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                   
                     <div class="col-md-8">
                         <label class="form-label">Tên dịch vụ <span class="text-danger">*</span></label>
                         <input type="text" name="service_name"
