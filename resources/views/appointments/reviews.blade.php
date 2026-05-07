@@ -429,9 +429,9 @@ JAVASCRIPT
 
         try {
             const res = await fetch(_deleteReviewUrl, {
-                method: 'POST',
+                method: 'DELETE',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({ _method: 'DELETE', _token: CSRF }),
+                body: JSON.stringify({ _token: CSRF }),
             });
             const data = await res.json();
 
