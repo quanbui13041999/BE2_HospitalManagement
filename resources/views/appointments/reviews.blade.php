@@ -369,6 +369,7 @@ JAVASCRIPT
         try {
             const isEdit = !!_reviewState.existingId;
             const url = isEdit ? _reviewState.updateUrl : _reviewState.storeUrl;
+            const method = isEdit ? 'PUT' : 'POST';
 
             const body = {
                 _token: CSRF,
@@ -381,11 +382,13 @@ JAVASCRIPT
                 body.doctor_id = _reviewState.doctorId;
             }
 
-            if (isEdit) body._method = 'PUT';
-
             const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                    'Accept': 'application/json',
+                },
                 body: JSON.stringify(body),
             });
             const data = await res.json();
