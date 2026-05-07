@@ -341,6 +341,7 @@ class AppointmentService
             ->join('users', 'appointments.user_id', '=', 'users.user_id')
             ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
             ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
+            ->leftJoin('reviews', 'appointments.appointment_id', '=', 'reviews.appointment_id')
             ->where('appointments.user_id', $userId)
             ->select(
                 'appointments.*',
@@ -359,7 +360,12 @@ class AppointmentService
                 'users.full_name as user_full_name',
                 'users.phone as user_phone',
                 'users.address as user_address',
-                'users.email as user_email'
+                'users.email as user_email',
+                'reviews.review_id',
+                'reviews.rating as review_rating',
+                'reviews.comment as review_comment',
+                'reviews.doctor_reply',
+                'reviews.created_at as review_created_at'
             );
 
         if ($status === 'upcoming') {

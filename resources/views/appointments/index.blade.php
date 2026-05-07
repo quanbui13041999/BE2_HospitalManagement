@@ -679,21 +679,30 @@
 
         .review-summary {
             font-size: 0.75rem;
+            flex: 1;
+            min-width: 150px;
+            padding: 8px 12px;
+            background: var(--gray-50);
+            border-radius: 12px;
+            border: 1px solid var(--gray-200);
         }
 
         .review-summary-stars {
             color: #f59e0b;
+            margin-bottom: 4px;
         }
 
         .review-summary-comment {
             color: var(--gray-600);
             margin-top: 2px;
+            display: block;
         }
 
         .review-summary-reply {
             color: var(--gray-400);
             margin-top: 2px;
             font-style: italic;
+            display: block;
         }
 
         @media (max-width: 860px) {
@@ -934,15 +943,15 @@
                                 @php
                                 // ← FIX: dùng ?? null để tránh Undefined property
                                 $rawReviewDate = $item->review_created_at ?? null;
-                                $reviewCreatedAt = \Carbon\Carbon::parse($rawReviewDate);
+                                $reviewCreatedAt = $rawReviewDate ? \Carbon\Carbon::parse($rawReviewDate) : null;
                                 $canEdit = !empty($rawReviewDate)
-                                && $reviewCreatedAt->diffInHours(now()) <= 24;
+                                && $reviewCreatedAt && $reviewCreatedAt->diffInHours(now()) <= 24;
                                     $isAdmin=auth()->user()->role === 'admin';
                                     $isDoctor = auth()->user()->role === 'doctor';
                                     @endphp
 
                                     <div class="actions" style="flex-wrap:wrap">
-                                        @if($item->review_id ?? null)
+                                        @if(!empty($item->review_id))
                                         {{-- Đã có đánh giá: hiển thị tóm tắt --}}
                                         <div class="review-summary">
                                             <div class="review-summary-stars">
