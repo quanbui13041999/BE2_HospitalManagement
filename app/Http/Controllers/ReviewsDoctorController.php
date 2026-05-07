@@ -91,7 +91,7 @@ class ReviewsDoctorController extends Controller
                 'comment.max'     => 'Nhận xét tối đa 1000 ký tự.',
             ]);
 
-            $isAdmin = Auth::user()->hasRole('admin') ?? false;  // tuỳ hệ thống
+            $isAdmin = Auth::user()->isAdmin() ?? false;
             $updated = $this->service->update($review, $validated, Auth::id(), $isAdmin);
 
             return response()->json([
@@ -123,7 +123,7 @@ class ReviewsDoctorController extends Controller
         }
 
         try {
-            $isAdmin = Auth::user()->hasRole('admin') ?? false;
+            $isAdmin = Auth::user()->isAdmin() ?? false;
             $this->service->delete($review, Auth::id(), $isAdmin);
 
             return response()->json([
@@ -161,7 +161,7 @@ class ReviewsDoctorController extends Controller
             ]);
 
             $user    = Auth::user();
-            $isAdmin = $user->hasRole('admin') ?? false;
+            $isAdmin = $user->isAdmin() ?? false;
 
             // Nếu bác sĩ đăng nhập, truyền doctor_id của họ
             // Giả sử Doctor model có trường user_id liên kết với users
