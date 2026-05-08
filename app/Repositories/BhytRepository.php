@@ -13,8 +13,7 @@ class BhytRepository
      */
     public function findByCardNumber(string $cardNumber): ?BhytCard
     {
-        return BhytCard::with('patient')
-            ->where('card_number', strtoupper($cardNumber))
+        return BhytCard::with('user')->where('card_number', strtoupper($cardNumber))
             ->first();
     }
 
@@ -23,8 +22,7 @@ class BhytRepository
      */
     public function expiringSoon(int $days = 60): Collection
     {
-        return BhytCard::with('patient')
-            ->where('status', 'Còn hạn')
+        return BhytCard::with('user')->where('status', 'Còn hạn')
             ->where('expiry_date', '<=', now()->addDays($days)->toDateString())
             ->orderBy('expiry_date')
             ->get();
