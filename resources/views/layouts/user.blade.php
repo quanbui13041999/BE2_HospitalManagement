@@ -48,13 +48,13 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             {{-- Tạm thời comment link Hồ sơ cá nhân cho đến khi có route --}}
-                            {{--
-                                <li><a class="dropdown-item" href="{{ route('profile') }}">Hồ sơ cá nhân</a>
+                           
+                                <li><a class="dropdown-item" href="{{ route('profile.show') }}">Hồ sơ cá nhân</a>
                     </li>
                     <li>
                         <hr class="dropdown-divider">
                     </li>
-                    --}}
+                   
                     <li>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
