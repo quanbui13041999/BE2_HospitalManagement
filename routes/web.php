@@ -22,7 +22,7 @@ use App\Http\Controllers\DocumentController;
 // TRANG CHỦ & AUTH
 // ============================================================
 
-Route::get('/', [UserServiceController::class, 'index'])->name('home');
+Route::get('/', [HomeController::class, 'welcome'])->name('home');
 
 Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
 Route::get('/register',  [AuthController::class, 'showRegister'])->name('register');
@@ -213,6 +213,4 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 // ROUTE BÁC SĨ (tạm thời)
 // ============================================================
 
-Route::get('/bac-si', function () {
-    return view('welcome');
-})->name('doctors.index');
+Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
