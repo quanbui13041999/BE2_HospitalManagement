@@ -10,7 +10,6 @@ use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\ServiceController as UserServiceController;
 use App\Http\Controllers\User\PaymentController as UserPaymentController;
-use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HealthBackgroundController;
@@ -96,10 +95,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/reviews/{review}',        [ReviewsDoctorController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}',     [ReviewsDoctorController::class, 'destroy'])->name('reviews.destroy');
     Route::post('/reviews/{review}/reply', [ReviewsDoctorController::class, 'reply'])->name('reviews.reply');
-
-    // Xem tiền sử bệnh
-    Route::get('/tiensu',  [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
-    Route::post('/tiensu', [tiensucontroler::class, 'luutiensu'])->name('tiensu.store');
 
     // Thẻ thành viên
     Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
