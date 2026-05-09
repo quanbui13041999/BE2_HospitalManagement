@@ -74,7 +74,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // --------------------------------------------------------
-    // THANH TOÁN (User)
+    // THANH TOÁN (Users)
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
 
