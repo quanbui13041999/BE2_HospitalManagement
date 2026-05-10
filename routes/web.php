@@ -1,4 +1,5 @@
 <?php
+require __DIR__ . '/medical_records.php';
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -216,3 +217,5 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 Route::get('/bac-si', function () {
     return view('welcome');
 })->name('doctors.index');
+
+

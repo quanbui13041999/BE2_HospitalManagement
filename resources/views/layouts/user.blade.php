@@ -38,39 +38,74 @@
                         </a>
                     </li>
                     @auth
+                    {{-- Nút DEMO MỚI (bên trái nút lịch hẹn) --}}
                     <li class="nav-item">
                         <a class="nav-link" href="/lich-hen"> <i class="bi bi-calendar-check"></i> Lịch hẹn
                         </a>
                     </li>
+                    @php
+                    $user = Auth::user();
+                    $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
+                    $demoLink = '#';
+                    $demoText = 'Demo';
+                    $demoIcon = 'bi-star';
+                    $demoClass = 'btn-outline-secondary';
+
+                    if ($roleId == 2 || ($user->role == 'doctor')) {
+                    $demoLink = route('doctor.appointments.index');
+                    $demoText = 'Demo BS';
+                    $demoIcon = 'bi-stethoscope';
+                    $demoClass = 'btn-outline-primary';
+                    } elseif ($roleId == 3 || ($user->role == 'patient')) {
+                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
+                    $demoText = 'Demo Bệnh án';
+                    $demoIcon = 'bi-file-medical';
+                    $demoClass = 'btn-outline-success';
+                    } elseif ($roleId == 1 || ($user->role == 'admin')) {
+                    $demoLink = route('admin.dashboard');
+                    $demoText = 'Demo Admin';
+                    $demoIcon = 'bi-speedometer2';
+                    $demoClass = 'btn-outline-warning';
+                    }
+                    @endphp
+
+                    <li class="nav-item me-2">
+                        <a class="nav-link {{ $demoClass }}"
+                            href="{{ $demoLink }}"
+                            style="border-radius: 20px; padding: 5px 15px; border-width: 1px; border-style: solid;">
+                            <i class="bi {{ $demoIcon }}"></i> {{ $demoText }}
+                        </a>
+                    </li>
+                    
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i> {{ Auth::user()->full_name ?? Auth::user()->name ?? 'User' }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             {{-- Tạm thời comment link Hồ sơ cá nhân cho đến khi có route --}}
-                           
-                                <li><a class="dropdown-item" href="{{ route('profile.show') }}">Hồ sơ cá nhân</a>
+
+                            <li><a class="dropdown-item" href="{{ route('profile.show') }}">Hồ sơ cá nhân</a>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item">Đăng xuất</button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
-                    <li>
-                        <hr class="dropdown-divider">
+                    @else
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('login') }}">Đăng nhập</a>
                     </li>
-                   
-                    <li>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="dropdown-item">Đăng xuất</button>
-                        </form>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('register') }}">Đăng ký</a>
                     </li>
-                </ul>
-                </li>
-                @else
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('login') }}">Đăng nhập</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('register') }}">Đăng ký</a>
-                </li>
-                @endauth
+                    @endauth
                 </ul>
             </div>
         </div>
