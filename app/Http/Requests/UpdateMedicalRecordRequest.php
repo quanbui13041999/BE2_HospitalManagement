@@ -103,9 +103,6 @@ class UpdateMedicalRecordRequest extends FormRequest
         ];
     }
 
-    /**
-     * Chuẩn bị dữ liệu trước khi validate
-     */
     protected function prepareForValidation(): void
     {
         // Chuyển đổi patient_id và doctor_id sang integer nếu có

@@ -92,6 +92,21 @@
     .form-label .text-danger {
         font-size: 14px;
     }
+    
+    /* Select2 style */
+    .select2-container--default .select2-selection--single {
+        height: 38px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 38px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+    }
 </style>
 @endpush
 
@@ -127,7 +142,6 @@
             <div class="form-section-body">
                 <div class="row g-3">
 
-                    {{-- appointment_id hidden — PHẢI ĐẶT TRONG row --}}
                     @if(isset($appointment) && $appointment)
                     <input type="hidden" name="appointment_id" value="{{ $appointment->appointment_id }}">
                     @endif
@@ -137,14 +151,15 @@
                         <input type="text" name="patient_name" class="form-control"
                             value="{{ old('patient_name', $record->patient_name ?? $appointment?->user?->full_name) }}"
                             required>
-                        <input type="hidden" name="patient_id"
+                        <input type="hidden" name="patient_id" id="patient_id"
                             value="{{ old('patient_id', $record->patient_id ?? $appointment?->user_id) }}">
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Mã bệnh nhân</label>
-                        <input type="text" name="patient_code" class="form-control"
+                        <input type="text" name="patient_code" id="patient_code" class="form-control" readonly
                             value="{{ old('patient_code', $record->patient_code ?? '') }}">
+                        <small class="text-muted" id="patientCodeHint">Sẽ tự động tạo nếu chưa có</small>
                     </div>
 
                     <div class="col-md-2">
@@ -162,7 +177,6 @@
 
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Bác sĩ <span class="text-danger">*</span></label>
-                        {{-- DoctorSchedule::doctor() trả về User, dùng ->full_name --}}
                         <input type="text" name="doctor_name" class="form-control"
                             value="{{ old('doctor_name',
                                 $record->doctor_name
@@ -187,7 +201,6 @@
 
                     <div class="col-12">
                         <label class="form-label fw-semibold">Lý do đến khám / Triệu chứng</label>
-                        {{-- Lấy từ note của appointment khi đặt lịch --}}
                         <textarea name="chief_complaint" class="form-control" rows="2">{{
                             old('chief_complaint',
                                 $record->chief_complaint
@@ -276,7 +289,7 @@
             </div>
         </div>
 
-        {{-- ── Dị ứng ───────────────────────────────────────── --}}
+        {{-- ── Dị ứng (CÓ DROPDOWN) ───────────────────────────────────────── --}}
         <div class="form-section">
             <div class="form-section-header">⚠️ Dị ứng</div>
             <div class="form-section-body">
@@ -285,8 +298,19 @@
                     <div class="allergy-row">
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <input type="text" name="allergies[{{ $i }}][allergen]" class="form-control"
-                                    placeholder="Tên chất gây dị ứng" value="{{ $allergy->allergen }}">
+                                <select name="allergies[{{ $i }}][allergen]" class="form-select allergy-select" onchange="handleAllergySelect(this)">
+                                    <option value="">-- Chọn chất gây dị ứng --</option>
+                                    @foreach($commonAllergens ?? ['Thuốc', 'Thức ăn', 'Phấn hoa', 'Bụi nhà', 'Lông động vật', 'Hải sản', 'Đậu phộng', 'Sữa', 'Trứng', 'Cao su'] as $allergen)
+                                    <option value="{{ $allergen }}" {{ $allergy->allergen == $allergen ? 'selected' : '' }}>
+                                        {{ $allergen }}
+                                    </option>
+                                    @endforeach
+                                    <option value="other">-- Khác (nhập tay) --</option>
+                                </select>
+                                <input type="text" name="allergies[{{ $i }}][allergen_custom]" class="form-control mt-1" 
+                                    style="display: {{ !in_array($allergy->allergen, ($commonAllergens ?? [])) && $allergy->allergen ? 'block' : 'none' }};" 
+                                    placeholder="Nhập chất gây dị ứng khác"
+                                    value="{{ !in_array($allergy->allergen, ($commonAllergens ?? [])) ? $allergy->allergen : '' }}">
                             </div>
                             <div class="col-md-3">
                                 <select name="allergies[{{ $i }}][severity]" class="form-select">
@@ -312,7 +336,7 @@
             </div>
         </div>
 
-        {{-- ── Chẩn đoán ────────────────────────────────────── --}}
+        {{-- ── Chẩn đoán (CÓ DROPDOWN) ────────────────────────────────────── --}}
         <div class="form-section">
             <div class="form-section-header">🩺 Chẩn đoán <span class="text-danger">*</span></div>
             <div class="form-section-body">
@@ -321,8 +345,19 @@
                     <div class="diagnosis-row">
                         <div class="row g-2">
                             <div class="col-md-5">
-                                <input type="text" name="diagnoses[{{ $i }}][diagnosis_name]" class="form-control"
-                                    placeholder="Tên chẩn đoán *" value="{{ $diag->diagnosis_name }}" required>
+                                <select name="diagnoses[{{ $i }}][diagnosis_name]" class="form-select diagnosis-select" onchange="handleDiagnosisSelect(this)">
+                                    <option value="">-- Chọn chẩn đoán --</option>
+                                    @foreach($commonDiagnoses ?? ['Cảm cúm', 'Viêm họng', 'Viêm phổi', 'Đau dạ dày', 'Cao huyết áp', 'Tiểu đường', 'Viêm da', 'Hen suyễn', 'Viêm khớp', 'Đau đầu'] as $diagnosis)
+                                    <option value="{{ $diagnosis }}" {{ $diag->diagnosis_name == $diagnosis ? 'selected' : '' }}>
+                                        {{ $diagnosis }}
+                                    </option>
+                                    @endforeach
+                                    <option value="other">-- Khác (nhập tay) --</option>
+                                </select>
+                                <input type="text" name="diagnoses[{{ $i }}][diagnosis_name_custom]" class="form-control mt-1" 
+                                    style="display: {{ !in_array($diag->diagnosis_name, ($commonDiagnoses ?? [])) && $diag->diagnosis_name ? 'block' : 'none' }};" 
+                                    placeholder="Nhập chẩn đoán khác"
+                                    value="{{ !in_array($diag->diagnosis_name, ($commonDiagnoses ?? [])) ? $diag->diagnosis_name : '' }}">
                             </div>
                             <div class="col-md-2">
                                 <input type="text" name="diagnoses[{{ $i }}][icd_code]" class="form-control"
@@ -330,13 +365,18 @@
                             </div>
                             <div class="col-md-3">
                                 <select name="diagnoses[{{ $i }}][diagnosis_type]" class="form-select">
-                                    <option value="primary" {{ $diag->diagnosis_type === 'primary'      ? 'selected' : '' }}>Chính</option>
-                                    <option value="secondary" {{ $diag->diagnosis_type === 'secondary'    ? 'selected' : '' }}>Phụ</option>
+                                    <option value="primary" {{ $diag->diagnosis_type === 'primary' ? 'selected' : '' }}>Chính</option>
+                                    <option value="secondary" {{ $diag->diagnosis_type === 'secondary' ? 'selected' : '' }}>Phụ</option>
                                     <option value="complication" {{ $diag->diagnosis_type === 'complication' ? 'selected' : '' }}>Biến chứng</option>
                                 </select>
                             </div>
                             <div class="col-md-1 text-center">
                                 <button type="button" class="row-delete-btn" onclick="this.closest('.diagnosis-row').remove()">✕</button>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <textarea name="diagnoses[{{ $i }}][note]" class="form-control" rows="1" placeholder="Ghi chú chẩn đoán">{{ $diag->note ?? '' }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -347,7 +387,7 @@
             </div>
         </div>
 
-        {{-- ── Đơn thuốc ────────────────────────────────────── --}}
+        {{-- ── Đơn thuốc (CÓ DROPDOWN) ────────────────────────────────────── --}}
         <div class="form-section">
             <div class="form-section-header">💊 Đơn thuốc</div>
             <div class="form-section-body">
@@ -355,15 +395,26 @@
                     @forelse($record->prescriptions ?? [] as $i => $rx)
                     <div class="rx-row">
                         <div class="row g-2">
-                            <div class="col-md-3"> {{-- SỬA: col-md-4 -> col-md-3 --}}
-                                <input type="text" name="prescriptions[{{ $i }}][drug_name]" class="form-control"
-                                    placeholder="Tên thuốc *" value="{{ $rx->drug_name }}" required>
+                            <div class="col-md-3">
+                                <select name="prescriptions[{{ $i }}][drug_name]" class="form-select drug-select" onchange="handleDrugSelect(this)">
+                                    <option value="">-- Chọn thuốc --</option>
+                                    @foreach($commonDrugs ?? ['Paracetamol', 'Amoxicillin', 'Ibuprofen', 'Omeprazole', 'Loratadine', 'Vitamin C', 'Aspirin', 'Metformin', 'Amlodipine', 'Cetirizine'] as $drug)
+                                    <option value="{{ $drug }}" {{ $rx->drug_name == $drug ? 'selected' : '' }}>
+                                        {{ $drug }}
+                                    </option>
+                                    @endforeach
+                                    <option value="other">-- Khác (nhập tay) --</option>
+                                </select>
+                                <input type="text" name="prescriptions[{{ $i }}][drug_name_custom]" class="form-control mt-1" 
+                                    style="display: {{ !in_array($rx->drug_name, ($commonDrugs ?? [])) && $rx->drug_name ? 'block' : 'none' }};" 
+                                    placeholder="Nhập tên thuốc khác"
+                                    value="{{ !in_array($rx->drug_name, ($commonDrugs ?? [])) ? $rx->drug_name : '' }}">
                             </div>
-                            <div class="col-md-2"> {{-- col-md-3 -> col-md-2 --}}
+                            <div class="col-md-2">
                                 <input type="text" name="prescriptions[{{ $i }}][dosage]" class="form-control"
                                     placeholder="Liều dùng" value="{{ $rx->dosage }}">
                             </div>
-                            <div class="col-md-2"> {{-- THÊM DÒNG NÀY --}}
+                            <div class="col-md-2">
                                 <input type="number" name="prescriptions[{{ $i }}][quantity]" class="form-control"
                                     placeholder="Số lượng" value="{{ $rx->quantity ?? 1 }}" min="1">
                             </div>
@@ -387,7 +438,7 @@
             </div>
         </div>
 
-        {{-- ── Chỉ định xét nghiệm ──────────────────────────── --}}
+        {{-- ── Chỉ định xét nghiệm (CÓ DROPDOWN) ──────────────────────────── --}}
         <div class="form-section">
             <div class="form-section-header">🔬 Chỉ định xét nghiệm / hình ảnh</div>
             <div class="form-section-body">
@@ -397,14 +448,25 @@
                         <div class="row g-2">
                             <div class="col-md-2">
                                 <select name="orders[{{ $i }}][order_type]" class="form-select">
-                                    <option value="lab" {{ $order->order_type === 'lab'     ? 'selected' : '' }}>🧪 Xét nghiệm</option>
+                                    <option value="lab" {{ $order->order_type === 'lab' ? 'selected' : '' }}>🧪 Xét nghiệm</option>
                                     <option value="imaging" {{ $order->order_type === 'imaging' ? 'selected' : '' }}>🩻 Hình ảnh</option>
-                                    <option value="other" {{ $order->order_type === 'other'   ? 'selected' : '' }}>📋 Khác</option>
+                                    <option value="other" {{ $order->order_type === 'other' ? 'selected' : '' }}>📋 Khác</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <input type="text" name="orders[{{ $i }}][order_name]" class="form-control"
-                                    placeholder="Tên xét nghiệm *" value="{{ $order->order_name }}" required>
+                                <select name="orders[{{ $i }}][order_name]" class="form-select order-select" onchange="handleOrderSelect(this)">
+                                    <option value="">-- Chọn chỉ định --</option>
+                                    @foreach($commonOrders ?? ['Xét nghiệm máu', 'X-quang', 'Siêu âm', 'CT Scanner', 'MRI', 'Nội soi', 'Điện tâm đồ', 'Xét nghiệm nước tiểu', 'Test COVID', 'Xét nghiệm chức năng gan'] as $orderName)
+                                    <option value="{{ $orderName }}" {{ $order->order_name == $orderName ? 'selected' : '' }}>
+                                        {{ $orderName }}
+                                    </option>
+                                    @endforeach
+                                    <option value="other">-- Khác (nhập tay) --</option>
+                                </select>
+                                <input type="text" name="orders[{{ $i }}][order_name_custom]" class="form-control mt-1" 
+                                    style="display: {{ !in_array($order->order_name, ($commonOrders ?? [])) && $order->order_name ? 'block' : 'none' }};" 
+                                    placeholder="Nhập chỉ định khác"
+                                    value="{{ !in_array($order->order_name, ($commonOrders ?? [])) ? $order->order_name : '' }}">
                             </div>
                             <div class="col-md-5">
                                 <input type="text" name="orders[{{ $i }}][description]" class="form-control"
@@ -439,230 +501,321 @@ $aiCount = isset($record) ? ($record->allergies->count() ?? 0) : 0;
 $diCount = isset($record) ? ($record->diagnoses->count() ?? 0) : 0;
 $riCount = isset($record) ? ($record->prescriptions->count() ?? 0) : 0;
 $oiCount = isset($record) ? ($record->medicalOrders->count() ?? 0) : 0;
+$commonAllergensJson = json_encode($commonAllergens ?? ['Thuốc', 'Thức ăn', 'Phấn hoa', 'Bụi nhà', 'Lông động vật', 'Hải sản', 'Đậu phộng', 'Sữa', 'Trứng', 'Cao su']);
+$commonDiagnosesJson = json_encode($commonDiagnoses ?? ['Cảm cúm', 'Viêm họng', 'Viêm phổi', 'Đau dạ dày', 'Cao huyết áp', 'Tiểu đường', 'Viêm da', 'Hen suyễn', 'Viêm khớp', 'Đau đầu']);
+$commonDrugsJson = json_encode($commonDrugs ?? ['Paracetamol', 'Amoxicillin', 'Ibuprofen', 'Omeprazole', 'Loratadine', 'Vitamin C', 'Aspirin', 'Metformin', 'Amlodipine', 'Cetirizine']);
+$commonOrdersJson = json_encode($commonOrders ?? ['Xét nghiệm máu', 'X-quang', 'Siêu âm', 'CT Scanner', 'MRI', 'Nội soi', 'Điện tâm đồ', 'Xét nghiệm nước tiểu', 'Test COVID', 'Xét nghiệm chức năng gan']);
 @endphp
 <script>
 let ai = {{ $aiCount }};
 let di = {{ $diCount }};
 let ri = {{ $riCount }};
 let oi = {{ $oiCount }};
+let commonAllergens = {!! $commonAllergensJson !!};
+let commonDiagnoses = {!! $commonDiagnosesJson !!};
+let commonDrugs = {!! $commonDrugsJson !!};
+let commonOrders = {!! $commonOrdersJson !!};
 
-    // Kiểm tra xem các biến có được khởi tạo đúng không
-    console.log('Counts:', {
-        ai,
-        di,
-        ri,
-        oi
+// ── TỰ ĐỘNG TẠO MÃ BỆNH NHÂN ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const patientIdInput = document.querySelector('[name="patient_id"]');
+    const patientCodeInput = document.getElementById('patient_code');
+    const patientNameInput = document.querySelector('[name="patient_name"]');
+    
+    function generatePatientCode(patientId, patientName) {
+        if (!patientId && !patientName) return '';
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        const prefix = patientName ? patientName.substring(0, 2).toUpperCase() : 'PAT';
+        return `${prefix}${year}${month}${random}`;
+    }
+    
+    if (patientCodeInput && !patientCodeInput.value.trim()) {
+        const patientId = patientIdInput?.value;
+        const patientName = patientNameInput?.value;
+        const newCode = generatePatientCode(patientId, patientName);
+        patientCodeInput.value = newCode;
+        document.getElementById('patientCodeHint').innerHTML = 'Đã tạo mã mới: <strong>' + newCode + '</strong>';
+        document.getElementById('patientCodeHint').style.color = '#28a745';
+    }
+});
+
+// ── XỬ LÝ DROPDOWN DỊ ỨNG ────────────────────────────────────────────────
+function handleAllergySelect(selectEl) {
+    const row = selectEl.closest('.allergy-row');
+    const customInput = row.querySelector('[name*="[allergen_custom]"]');
+    if (selectEl.value === 'other') {
+        customInput.style.display = 'block';
+        customInput.required = true;
+    } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
+    }
+}
+
+// ── XỬ LÝ DROPDOWN CHẨN ĐOÁN ────────────────────────────────────────────────
+function handleDiagnosisSelect(selectEl) {
+    const row = selectEl.closest('.diagnosis-row');
+    const customInput = row.querySelector('[name*="[diagnosis_name_custom]"]');
+    if (selectEl.value === 'other') {
+        customInput.style.display = 'block';
+        customInput.required = true;
+    } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
+    }
+}
+
+// ── XỬ LÝ DROPDOWN THUỐC ────────────────────────────────────────────────
+function handleDrugSelect(selectEl) {
+    const row = selectEl.closest('.rx-row');
+    const customInput = row.querySelector('[name*="[drug_name_custom]"]');
+    if (selectEl.value === 'other') {
+        customInput.style.display = 'block';
+        customInput.required = true;
+    } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
+    }
+}
+
+// ── XỬ LÝ DROPDOWN CHỈ ĐỊNH ────────────────────────────────────────────────
+function handleOrderSelect(selectEl) {
+    const row = selectEl.closest('.order-row');
+    const customInput = row.querySelector('[name*="[order_name_custom]"]');
+    if (selectEl.value === 'other') {
+        customInput.style.display = 'block';
+        customInput.required = true;
+    } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
+    }
+}
+
+// ── THÊM DÒNG MỚI ────────────────────────────────────────────────
+
+function addAllergy() {
+    const index = Date.now();
+    const optionsHtml = commonAllergens.map(a => `<option value="${a}">${a}</option>`).join('');
+    document.getElementById('allergyContainer').insertAdjacentHTML('beforeend', `
+    <div class="allergy-row" data-index="${index}">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <select name="allergies[${index}][allergen]" class="form-select allergy-select" onchange="handleAllergySelect(this)">
+                    <option value="">-- Chọn chất gây dị ứng --</option>
+                    ${optionsHtml}
+                    <option value="other">-- Khác (nhập tay) --</option>
+                </select>
+                <input type="text" name="allergies[${index}][allergen_custom]" class="form-control mt-1" 
+                    style="display: none;" placeholder="Nhập chất gây dị ứng khác">
+            </div>
+            <div class="col-md-3">
+                <select name="allergies[${index}][severity]" class="form-select">
+                    <option value="">Mức độ</option>
+                    <option value="Nhẹ">Nhẹ</option>
+                    <option value="Vừa">Vừa</option>
+                    <option value="Nặng">Nặng</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="allergies[${index}][reaction]" class="form-control" placeholder="Phản ứng">
+            </div>
+            <div class="col-md-1 text-center">
+                <button type="button" class="row-delete-btn" onclick="this.closest('.allergy-row').remove()">✕</button>
+            </div>
+        </div>
+    </div>`);
+}
+
+function addDiagnosis() {
+    const index = di;
+    const optionsHtml = commonDiagnoses.map(d => `<option value="${d}">${d}</option>`).join('');
+    document.getElementById('diagnosisContainer').insertAdjacentHTML('beforeend', `
+    <div class="diagnosis-row">
+        <div class="row g-2">
+            <div class="col-md-5">
+                <select name="diagnoses[${index}][diagnosis_name]" class="form-select diagnosis-select" onchange="handleDiagnosisSelect(this)">
+                    <option value="">-- Chọn chẩn đoán --</option>
+                    ${optionsHtml}
+                    <option value="other">-- Khác (nhập tay) --</option>
+                </select>
+                <input type="text" name="diagnoses[${index}][diagnosis_name_custom]" class="form-control mt-1" 
+                    style="display: none;" placeholder="Nhập chẩn đoán khác">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="diagnoses[${index}][icd_code]" class="form-control" placeholder="Mã ICD">
+            </div>
+            <div class="col-md-3">
+                <select name="diagnoses[${index}][diagnosis_type]" class="form-select">
+                    <option value="primary">Chính</option>
+                    <option value="secondary">Phụ</option>
+                    <option value="complication">Biến chứng</option>
+                </select>
+            </div>
+            <div class="col-md-1 text-center">
+                <button type="button" class="row-delete-btn" onclick="this.closest('.diagnosis-row').remove()">✕</button>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <textarea name="diagnoses[${index}][note]" class="form-control" rows="1" placeholder="Ghi chú chẩn đoán"></textarea>
+            </div>
+        </div>
+    </div>`);
+    di++;
+}
+
+function addRx() {
+    const index = ri;
+    const optionsHtml = commonDrugs.map(d => `<option value="${d}">${d}</option>`).join('');
+    document.getElementById('rxContainer').insertAdjacentHTML('beforeend', `
+    <div class="rx-row">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select name="prescriptions[${index}][drug_name]" class="form-select drug-select" onchange="handleDrugSelect(this)">
+                    <option value="">-- Chọn thuốc --</option>
+                    ${optionsHtml}
+                    <option value="other">-- Khác (nhập tay) --</option>
+                </select>
+                <input type="text" name="prescriptions[${index}][drug_name_custom]" class="form-control mt-1" 
+                    style="display: none;" placeholder="Nhập tên thuốc khác">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="prescriptions[${index}][dosage]" class="form-control" placeholder="Liều dùng">
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="prescriptions[${index}][quantity]" class="form-control" placeholder="Số lượng" value="1" min="1">
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="prescriptions[${index}][duration_days]" class="form-control" placeholder="Số ngày" value="30" min="1">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="prescriptions[${index}][instructions]" class="form-control" placeholder="Hướng dẫn">
+            </div>
+            <div class="col-md-1 text-center">
+                <button type="button" class="row-delete-btn" onclick="this.closest('.rx-row').remove()">✕</button>
+            </div>
+        </div>
+    </div>`);
+    ri++;
+}
+
+function addOrder() {
+    const index = oi;
+    const optionsHtml = commonOrders.map(o => `<option value="${o}">${o}</option>`).join('');
+    document.getElementById('orderContainer').insertAdjacentHTML('beforeend', `
+    <div class="order-row">
+        <div class="row g-2">
+            <div class="col-md-2">
+                <select name="orders[${index}][order_type]" class="form-select">
+                    <option value="lab">🧪 Xét nghiệm</option>
+                    <option value="imaging">🩻 Hình ảnh</option>
+                    <option value="other">📋 Khác</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select name="orders[${index}][order_name]" class="form-select order-select" onchange="handleOrderSelect(this)">
+                    <option value="">-- Chọn chỉ định --</option>
+                    ${optionsHtml}
+                    <option value="other">-- Khác (nhập tay) --</option>
+                </select>
+                <input type="text" name="orders[${index}][order_name_custom]" class="form-control mt-1" 
+                    style="display: none;" placeholder="Nhập chỉ định khác">
+            </div>
+            <div class="col-md-5">
+                <input type="text" name="orders[${index}][description]" class="form-control" placeholder="Mô tả">
+            </div>
+            <div class="col-md-1 text-center">
+                <button type="button" class="row-delete-btn" onclick="this.closest('.order-row').remove()">✕</button>
+            </div>
+        </div>
+    </div>`);
+    oi++;
+}
+
+// ── VALIDATION TRƯỚC KHI SUBMIT ───────────────────────────────────
+document.getElementById('medicalRecordForm')?.addEventListener('submit', function(e) {
+    let errors = [];
+    
+    // Xử lý custom fields
+    document.querySelectorAll('.allergy-row, .diagnosis-row, .rx-row, .order-row').forEach(row => {
+        const selectEl = row.querySelector('select[onchange*="handle"]');
+        if (!selectEl) return;
+        
+        const customInput = row.querySelector('[class*="custom"]');
+        const hiddenField = document.createElement('input');
+        const originalName = selectEl.getAttribute('name');
+        
+        if (selectEl.value === 'other') {
+            if (customInput && customInput.value.trim()) {
+                hiddenField.type = 'hidden';
+                hiddenField.name = originalName;
+                hiddenField.value = customInput.value.trim();
+                row.appendChild(hiddenField);
+                selectEl.disabled = true;
+            } else if (customInput) {
+                errors.push(`⚠️ Vui lòng nhập giá trị cho mục "${selectEl.closest('.form-section-header')?.innerText?.trim() || 'này'}"`);
+                customInput.classList.add('is-invalid');
+            }
+        }
+    });
+    
+    // 1. Lý do khám
+    const chiefComplaint = document.querySelector('[name="chief_complaint"]');
+    if (!chiefComplaint?.value.trim()) {
+        errors.push('⚠️ Vui lòng nhập lý do đến khám / triệu chứng');
+        chiefComplaint?.classList.add('is-invalid');
+    }
+
+    // 2. Chỉ số sinh tồn
+    const vitals = ['vitals[blood_pressure]', 'vitals[heart_rate]', 'vitals[temperature]', 'vitals[spo2]', 'vitals[weight]'];
+    const vitalLabels = ['huyết áp', 'nhịp tim', 'nhiệt độ', 'SpO2', 'cân nặng'];
+    vitals.forEach((name, idx) => {
+        const el = document.querySelector(`[name="${name}"]`);
+        if (!el?.value) {
+            errors.push(`⚠️ Vui lòng nhập ${vitalLabels[idx]}`);
+            el?.classList.add('is-invalid');
+        }
     });
 
-    // ── Thêm dòng mới ────────────────────────────────────────────────
-
-    function addAllergy() {
-        const index = Date.now();
-        document.getElementById('allergyContainer').insertAdjacentHTML('beforeend', `
-        <div class="allergy-row" data-index="${index}">
-            <div class="row g-2 align-items-center">
-                <div class="col-md-5">
-                    <input type="text" name="allergies[${index}][allergen]" class="form-control" placeholder="Tên chất gây dị ứng">
-                </div>
-                <div class="col-md-3">
-                    <select name="allergies[${index}][severity]" class="form-select">
-                        <option value="">Mức độ</option>
-                        <option value="Nhẹ">Nhẹ</option>
-                        <option value="Vừa">Vừa</option>
-                        <option value="Nặng">Nặng</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <input type="text" name="allergies[${index}][reaction]" class="form-control" placeholder="Phản ứng">
-                </div>
-                <div class="col-md-1 text-center">
-                    <button type="button" class="row-delete-btn" onclick="this.closest('.allergy-row').remove()">✕</button>
-                </div>
-            </div>
-        </div>`);
-    }
-
-    function addDiagnosis() {
-        document.getElementById('diagnosisContainer').insertAdjacentHTML('beforeend', `
-        <div class="diagnosis-row">
-            <div class="row g-2">
-                <div class="col-md-5">
-                    <input type="text" name="diagnoses[${di}][diagnosis_name]" class="form-control" placeholder="Tên chẩn đoán *" required>
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="diagnoses[${di}][icd_code]" class="form-control" placeholder="Mã ICD">
-                </div>
-                <div class="col-md-3">
-                    <select name="diagnoses[${di}][diagnosis_type]" class="form-select">
-                        <option value="primary">Chính</option>
-                        <option value="secondary">Phụ</option>
-                        <option value="complication">Biến chứng</option>
-                    </select>
-                </div>
-                <div class="col-md-1 text-center">
-                    <button type="button" class="row-delete-btn" onclick="this.closest('.diagnosis-row').remove()">✕</button>
-                </div>
-            </div>
-        </div>`);
-        di++;
-    }
-
-    function addRx() {
-        document.getElementById('rxContainer').insertAdjacentHTML('beforeend', `
-        <div class="rx-row">
-            <div class="row g-2">
-                <div class="col-md-3">
-                    <input type="text" name="prescriptions[${ri}][drug_name]" class="form-control" placeholder="Tên thuốc *" required>
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="prescriptions[${ri}][dosage]" class="form-control" placeholder="Liều dùng">
-                </div>
-                <div class="col-md-2">
-                    <input type="number" name="prescriptions[${ri}][quantity]" class="form-control" placeholder="Số lượng" value="1" min="1">
-                </div>
-                <div class="col-md-2">
-                    <input type="number" name="prescriptions[${ri}][duration_days]" class="form-control" placeholder="Số ngày" value="30" min="1">
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="prescriptions[${ri}][instructions]" class="form-control" placeholder="Hướng dẫn">
-                </div>
-                <div class="col-md-1 text-center">
-                    <button type="button" class="row-delete-btn" onclick="this.closest('.rx-row').remove()">✕</button>
-                </div>
-            </div>
-        </div>`);
-        ri++;
-    }
-
-    function addOrder() {
-        document.getElementById('orderContainer').insertAdjacentHTML('beforeend', `
-        <div class="order-row">
-            <div class="row g-2">
-                <div class="col-md-2">
-                    <select name="orders[${oi}][order_type]" class="form-select">
-                        <option value="lab">🧪 Xét nghiệm</option>
-                        <option value="imaging">🩻 Hình ảnh</option>
-                        <option value="other">📋 Khác</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <input type="text" name="orders[${oi}][order_name]" class="form-control" placeholder="Tên xét nghiệm *" required>
-                </div>
-                <div class="col-md-5">
-                    <input type="text" name="orders[${oi}][description]" class="form-control" placeholder="Mô tả">
-                </div>
-                <div class="col-md-1 text-center">
-                    <button type="button" class="row-delete-btn" onclick="this.closest('.order-row').remove()">✕</button>
-                </div>
-            </div>
-        </div>`);
-        oi++;
-    }
-
-    // ── Validation trước khi submit ───────────────────────────────────
-
-    document.getElementById('medicalRecordForm')?.addEventListener('submit', function(e) {
-        let errors = [];
-
-        // 1. Lý do khám
-        const chiefComplaint = document.querySelector('[name="chief_complaint"]');
-        if (!chiefComplaint?.value.trim()) {
-            errors.push('⚠️ Vui lòng nhập lý do đến khám / triệu chứng');
-            chiefComplaint?.classList.add('is-invalid');
-        } else {
-            chiefComplaint?.classList.remove('is-invalid');
-        }
-
-        // 2. Loại khám
-        const visitType = document.querySelector('[name="visit_type"]');
-        if (!visitType?.value) {
-            errors.push('⚠️ Vui lòng chọn loại khám');
-            visitType?.classList.add('is-invalid');
-        } else {
-            visitType?.classList.remove('is-invalid');
-        }
-
-        // 3. Chỉ số sinh tồn
-        const vitals = {
-            'vitals[blood_pressure]': 'huyết áp',
-            'vitals[heart_rate]': 'nhịp tim',
-            'vitals[temperature]': 'nhiệt độ',
-            'vitals[spo2]': 'SpO2',
-            'vitals[weight]': 'cân nặng',
-        };
-        for (const [name, label] of Object.entries(vitals)) {
-            const el = document.querySelector(`[name="${name}"]`);
-            if (!el?.value) {
-                errors.push(`⚠️ Vui lòng nhập ${label}`);
-                el?.classList.add('is-invalid');
-            } else {
-                el?.classList.remove('is-invalid');
-            }
-        }
-
-        // 4. Chẩn đoán (ít nhất 1)
-        const diagInputs = document.querySelectorAll('[name*="diagnoses"][name*="[diagnosis_name]"]');
-        let hasValidDiagnosis = false;
-        diagInputs.forEach(input => {
-            if (input.value.trim()) {
-                hasValidDiagnosis = true;
-                input.classList.remove('is-invalid');
-            } else {
-                input.classList.add('is-invalid');
-            }
-        });
-        if (!hasValidDiagnosis) {
-            errors.push('⚠️ Vui lòng thêm ít nhất 1 chẩn đoán');
-        }
-
-        // 5. Dị ứng — nếu có severity/reaction phải có allergen
-        document.querySelectorAll('.allergy-row').forEach((row, idx) => {
-            const allergen = row.querySelector('[name*="[allergen]"]');
-            const severity = row.querySelector('[name*="[severity]"]');
-            const reaction = row.querySelector('[name*="[reaction]"]');
-            if ((severity?.value || reaction?.value) && !allergen?.value) {
-                errors.push(`⚠️ Dị ứng #${idx + 1}: Vui lòng nhập tên chất gây dị ứng`);
-                allergen?.classList.add('is-invalid');
-            }
-        });
-
-        // 6. Đơn thuốc — nếu có tên thuốc phải có liều dùng + hướng dẫn
-        document.querySelectorAll('.rx-row').forEach((row, idx) => {
-            const drugName = row.querySelector('[name*="[drug_name]"]');
-            const dosage = row.querySelector('[name*="[dosage]"]');
-            const instructions = row.querySelector('[name*="[instructions]"]');
-            if (drugName?.value) {
-                if (!dosage?.value) {
-                    errors.push(`⚠️ Thuốc #${idx + 1}: Vui lòng nhập liều dùng`);
-                    dosage?.classList.add('is-invalid');
-                }
-                if (!instructions?.value) {
-                    errors.push(`⚠️ Thuốc #${idx + 1}: Vui lòng nhập hướng dẫn sử dụng`);
-                    instructions?.classList.add('is-invalid');
-                }
-            }
-        });
-
-        // 7. Chỉ định — order_type là select có sẵn giá trị nên không cần check
-        // (chỉ check order_name nếu muốn)
-
-        if (errors.length > 0) {
-            e.preventDefault();
-            alert('⚠️ Vui lòng kiểm tra lại:\n\n' + errors.join('\n'));
-            const firstError = document.querySelector('.is-invalid');
-            firstError?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-            return false;
+    // 3. Chẩn đoán (ít nhất 1)
+    const diagSelects = document.querySelectorAll('[name*="diagnoses"][name*="[diagnosis_name]"]:not([disabled])');
+    let hasValidDiagnosis = false;
+    diagSelects.forEach(select => {
+        if (select.value && select.value !== 'other') {
+            hasValidDiagnosis = true;
         }
     });
-
-    // Real-time: xóa is-invalid khi người dùng nhập
-    document.addEventListener('input', function(e) {
-        if (e.target.matches('input, select, textarea') && e.target.value.trim()) {
-            e.target.classList.remove('is-invalid');
+    const diagCustoms = document.querySelectorAll('[name*="diagnoses"][name*="[diagnosis_name_custom]"]');
+    diagCustoms.forEach(input => {
+        if (input.value.trim() && input.style.display !== 'none') {
+            hasValidDiagnosis = true;
         }
     });
+    if (!hasValidDiagnosis) {
+        errors.push('⚠️ Vui lòng thêm ít nhất 1 chẩn đoán');
+    }
+
+    if (errors.length > 0) {
+        e.preventDefault();
+        alert('⚠️ Vui lòng kiểm tra lại:\n\n' + errors.join('\n'));
+        const firstError = document.querySelector('.is-invalid');
+        firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+});
+
+// Real-time validation
+document.addEventListener('input', function(e) {
+    if (e.target.matches('input, select, textarea') && e.target.value.trim()) {
+        e.target.classList.remove('is-invalid');
+    }
+});
 </script>
 @endpush

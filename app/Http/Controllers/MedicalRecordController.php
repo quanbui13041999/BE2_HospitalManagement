@@ -124,7 +124,15 @@ class MedicalRecordController extends Controller
             }
         }
 
-        return view('medical-records.create', compact('appointment', 'record'));
+        // ========== THÊM CODE NÀY ==========
+        // Lấy danh sách bệnh nhân (role_id = 3)
+        $patients = \App\Models\User::where('role_id', 3)->get();
+
+        // Lấy danh sách bác sĩ (role_id = 2)
+        $doctors = \App\Models\User::where('role_id', 2)->get();
+        // ==================================
+
+        return view('medical-records.create', compact('appointment', 'record', 'patients', 'doctors'));
     }
 
     public function store(StoreMedicalRecordRequest $request): RedirectResponse
@@ -256,7 +264,7 @@ class MedicalRecordController extends Controller
         // Kiểm tra quyền: chỉ Doctor (role_id=2) hoặc Admin (role_id=1)
         $isDoctor = ($user->role_id == 2 || $user->role == 'doctor');
         $isAdmin = ($user->role_id == 1 || $user->role == 'admin');
-        
+
         if (!$isDoctor && !$isAdmin) {
             return response()->json(['error' => 'Bạn không có quyền cập nhật kết quả!'], 403);
         }
@@ -267,7 +275,7 @@ class MedicalRecordController extends Controller
             ]);
 
             $order = MedicalOrder::where('record_id', $recordId)->findOrFail($orderId);
-            
+
             // Kiểm tra quyền với record (bác sĩ chỉ sửa được của mình)
             $record = MedicalRecord::findOrFail($recordId);
             if (!$isAdmin && $record->doctor_id !== $user->user_id) {
@@ -275,7 +283,7 @@ class MedicalRecordController extends Controller
             }
 
             $order->result_note   = $request->result;
-$order->result_status = 'Có kết quả';
+            $order->result_status = 'Có kết quả';
             $order->save();
 
             return response()->json([
@@ -303,14 +311,14 @@ $order->result_status = 'Có kết quả';
 
         $isDoctor = ($user->role_id == 2 || $user->role == 'doctor');
         $isAdmin = ($user->role_id == 1 || $user->role == 'admin');
-        
+
         if (!$isDoctor && !$isAdmin) {
             return response()->json(['error' => 'Bạn không có quyền xóa kết quả!'], 403);
         }
 
         try {
             $order = MedicalOrder::where('record_id', $recordId)->findOrFail($orderId);
-            
+
             $record = MedicalRecord::findOrFail($recordId);
             if (!$isAdmin && $record->doctor_id !== $user->user_id) {
                 return response()->json(['error' => 'Bạn không có quyền xóa kết quả của hồ sơ này!'], 403);
