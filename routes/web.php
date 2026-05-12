@@ -217,8 +217,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 
 
 
-Route::get('/bac-si', function () {
-    return view('welcome');
-})->name('doctors.index');
+
 
 
