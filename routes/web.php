@@ -214,6 +214,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 // ROUTE BÁC SĨ (tạm thời)
 // ============================================================
 
+
+
+
 Route::get('/bac-si', function () {
     return view('welcome');
 })->name('doctors.index');
