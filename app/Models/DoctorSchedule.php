@@ -2,18 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 class DoctorSchedule extends Model
 {
-    use HasFactory;
-
-    protected $table = 'doctorschedules';
+    protected $table      = 'doctor_schedules';
     protected $primaryKey = 'schedule_id';
-    public $timestamps = false;
-
-    const STATUSES = ['Hoạt động', 'Tạm dừng', 'Đã huỷ'];
+    public    $timestamps = true;
 
     protected $fillable = [
         'doctor_id',
@@ -23,27 +20,90 @@ class DoctorSchedule extends Model
         'end_time',
         'slot_duration',
         'max_slot',
-        'status',
+        'status',   // active | blocked | full
         'note',
     ];
 
     protected $casts = [
-        'work_date' => 'date',
-        'start_time' => 'string',
-        'end_time' => 'string',
-        'max_slot' => 'integer',
+        'work_date'     => 'date',
+        'max_slot'      => 'integer',
         'slot_duration' => 'integer',
     ];
 
-    public function doctor()
+    // ─── Relationships ────────────────────────────────────────────────────────
+
+    public function doctor(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        // ĐÚNG: RoomService.php -> $item->doctor->full_name
-        return $this->belongsTo(User::class, 'doctor_id', 'user_id');
+        return $this->belongsTo(Doctor::class, 'doctor_id', 'doctor_id');
     }
 
-    public function room()
+    public function appointments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        // ĐÚNG: RoomService.php -> $item->room->room_code
-        return $this->belongsTo(Room::class, 'room_id', 'room_id');
+        return $this->hasMany(Appointment::class, 'schedule_id', 'schedule_id');
     }
-}   
+
+    // ─── Scopes ───────────────────────────────────────────────────────────────
+
+    /** Chỉ lấy lịch còn hiệu lực (chưa bị block) */
+    public function scopeActive(Builder $q): Builder
+    {
+        return $q->where('status', 'active');
+    }
+
+    /** Lịch trong khoảng ngày */
+    public function scopeBetweenDates(Builder $q, string $from, string $to): Builder
+    {
+        return $q->whereBetween('work_date', [$from, $to]);
+    }
+
+    /** Lịch của 1 bác sĩ */
+    public function scopeForDoctor(Builder $q, int $doctorId): Builder
+    {
+        return $q->where('doctor_id', $doctorId);
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Đây là ca sáng nếu start_time < 12:00
+     */
+    public function isMorning(): bool
+    {
+        return $this->start_time < '12:00:00';
+    }
+
+    /**
+     * Tổng số slot có thể đặt trong 1 ca
+     */
+    public function totalSlots(): int
+    {
+        [$sh, $sm] = explode(':', $this->start_time);
+        [$eh, $em] = explode(':', $this->end_time);
+        $minutes = ($eh * 60 + $em) - ($sh * 60 + $sm);
+
+        return max(0, (int) floor($minutes / $this->slot_duration));
+    }
+
+    /**
+     * Số slot còn trống (chưa bị đặt hoặc giữ chỗ)
+     */
+    public function availableSlots(): int
+    {
+        $booked = $this->appointments()
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->count();
+
+        return max(0, $this->max_slot - $booked);
+    }
+
+    /**
+     * Lấy tất cả appointment chưa hoàn thành / chưa huỷ của lịch này
+     */
+    public function activeAppointments()
+    {
+        return $this->appointments()
+            ->with('user')
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->get();
+    }
+}

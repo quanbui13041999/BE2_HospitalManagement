@@ -67,6 +67,14 @@ class Doctor extends Model
     {
         return $q->where('department_id', $id);
     }
+
+    public function sameDepDoctors()
+    {
+        return Doctor::with('department')
+            ->where('department_id', $this->department_id)
+            ->where('doctor_id', '!=', $this->doctor_id)
+            ->get();
+    }
     
     public function scopeWithReviewStats($q)
     {
