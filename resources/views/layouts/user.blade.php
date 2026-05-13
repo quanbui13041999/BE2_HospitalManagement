@@ -43,18 +43,24 @@
             <div class="collapse navbar-collapse" id="navbarUser">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('home') }}">
+                        <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
                             <i class="bi bi-house-door"></i> Trang chủ
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('user.services.index') }}">
+                        <a class="nav-link {{ request()->routeIs('user.services.index') ? 'active' : '' }}" href="{{ route('user.services.index') }}">
                             <i class="bi bi-clipboard2-pulse"></i> Dịch vụ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('news.*') ? 'active' : '' }}" href="{{ route('news.index') }}">
+                            <i class="bi bi-newspaper"></i> Bản tin
                         </a>
                     </li>
                     @auth
                     <li class="nav-item">
-                        <a class="nav-link" href="/lich-hen"> <i class="bi bi-calendar-check"></i> Lịch hẹn
+                        <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen"> 
+                            <i class="bi bi-calendar-check"></i> Lịch hẹn
                         </a>
                     </li>
                     <li class="nav-item dropdown">
@@ -62,30 +68,27 @@
                             <i class="bi bi-person-circle"></i> {{ Auth::user()->full_name ?? Auth::user()->name ?? 'User' }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            {{-- Tạm thời comment link Hồ sơ cá nhân cho đến khi có route --}}
-                           
-                                <li><a class="dropdown-item" href="{{ route('profile.show') }}">Hồ sơ cá nhân</a>
+                            <li><a class="dropdown-item" href="{{ route('profile.show') }}">Hồ sơ cá nhân</a></li>
+                            @if(Auth::user()->role_id == 1)
+                                <li><a class="dropdown-item" href="{{ route('admin.dashboard') }}">Dashboard</a></li>
+                            @endif
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item">Đăng xuất</button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
-                    <li>
-                        <hr class="dropdown-divider">
+                    @else
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('login') }}">Đăng nhập</a>
                     </li>
-                   
-                    <li>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="dropdown-item">Đăng xuất</button>
-                        </form>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('register') }}">Đăng ký</a>
                     </li>
-                </ul>
-                </li>
-                @else
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('login') }}">Đăng nhập</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('register') }}">Đăng ký</a>
-                </li>
-                @endauth
+                    @endauth
                 </ul>
             </div>
         </div>

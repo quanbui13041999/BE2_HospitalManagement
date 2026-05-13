@@ -92,6 +92,67 @@
             color: #000 !important;
         }
 
+        .news-fixed-nav-wrap {
+            position: fixed;
+            top: 1rem;
+            left: clamp(1.5rem, 4vw, 4rem);
+            right: clamp(1.5rem, 4vw, 4rem);
+            z-index: 999;
+        }
+
+        .news-fixed-nav {
+            border-radius: 0.75rem;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.62);
+        }
+
+        .weather-widget {
+            margin-top: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.85rem;
+            color: #fff;
+            padding: 0.7rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(0, 0, 0, 0.42);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+        }
+
+        .hero-weather-wrap {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .weather-icon {
+            width: 2.35rem;
+            height: 2.35rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            font-size: 1.25rem;
+        }
+
+        .weather-temp {
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .weather-desc {
+            color: #d1d5db;
+            font-size: 0.78rem;
+            margin-top: 0.2rem;
+        }
+
         .news-calm-bg {
             background:
                 radial-gradient(circle at 16% 12%, rgba(14, 165, 233, 0.18), transparent 30%),
@@ -190,6 +251,40 @@
             color: #7dd3fc !important;
         }
 
+        #news-list .pagination {
+            justify-content: center;
+            gap: 0.35rem;
+        }
+
+        #news-list ul.pagination li.page-item .page-link {
+            background: #f8fafc !important;
+            border-color: rgba(148, 163, 184, 0.4) !important;
+            color: #0f172a !important;
+            min-width: 2.4rem;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        #news-list ul.pagination li.page-item .page-link:hover {
+            background: #38bdf8 !important;
+            border-color: #38bdf8 !important;
+            color: #082f49 !important;
+        }
+
+        #news-list ul.pagination li.page-item.active .page-link {
+            background: #334155 !important;
+            border-color: #e0f2fe !important;
+            color: #ffffff !important;
+            font-weight: 700;
+        }
+
+        #news-list ul.pagination li.page-item.disabled .page-link {
+            background: #f8fafc !important;
+            border-color: rgba(148, 163, 184, 0.34) !important;
+            color: #64748b !important;
+            opacity: 1;
+        }
+
         body {
             background: #0f172a;
         }
@@ -249,6 +344,9 @@
             .hero-tag-col {
                 justify-content: flex-end !important;
             }
+            .hero-weather-wrap {
+                justify-content: flex-end;
+            }
         }
     </style>
 
@@ -260,9 +358,9 @@
 
         <div class="hero-overlay">
             {{-- Navbar --}}
-            <div style="padding-top: 1.5rem;">
-                <nav class="liquid-glass" style="border-radius: 0.75rem; padding: 0.5rem 1rem; display: flex; align-items: center; justify-content: space-between;">
-                    <span style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.04em; color: #fff;">VEX</span>
+            <div class="news-fixed-nav-wrap">
+                <nav class="liquid-glass news-fixed-nav">
+                    <span style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.04em; color: #fff;">HOPITAL</span>
                     
                     <div class="hidden md:flex items-center gap-8 text-sm">
                         @php $navLinks = ['Trang chủ' => 'home', 'Dịch vụ' => 'user.services.index', 'Bản tin' => 'news.index', 'Đặt lịch' => 'appointments.create']; @endphp
@@ -289,6 +387,7 @@
                             <p style="font-size: clamp(1rem, 1.5vw, 1.125rem); color: #d1d5db; margin-bottom: 1.25rem; max-width: 520px;">
                                 Chúng tôi đồng hành cùng cộng đồng để kiến tạo những giá trị y tế bền vững cho tương lai.
                             </p>
+
                         </div>
 
                         <div id="buttons-fade" class="fade-in-element" style="display: flex; flex-wrap: wrap; gap: 1rem;">
@@ -303,6 +402,16 @@
 
                     <div class="hero-tag-col flex items-end justify-start lg:justify-end">
                         <div id="tag-fade" class="fade-in-element">
+                            <div class="hero-weather-wrap">
+                                <div id="weather-widget" class="weather-widget" aria-live="polite">
+                                    <span id="weather-icon" class="weather-icon">--</span>
+                                    <div>
+                                        <div id="weather-temp" class="weather-temp">Đang tải...</div>
+                                        <div id="weather-desc" class="weather-desc">Thời tiết hiện tại</div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="liquid-glass" style="border: 1px solid rgba(255,255,255,0.2); padding: 0.75rem 1.5rem; border-radius: 0.75rem; display: inline-block;">
                                 <span style="font-size: clamp(1.125rem, 2vw, 1.5rem); font-weight: 300; color: #fff; white-space: nowrap;">
                                     Investing. Building. Advisory.
@@ -438,6 +547,79 @@
         setTimeout(() => subheading.classList.add('visible'), 800);
         setTimeout(() => buttons.classList.add('visible'), 1200);
         setTimeout(() => tag.classList.add('visible'), 1400);
+
+        const weatherIcon = document.getElementById('weather-icon');
+        const weatherTemp = document.getElementById('weather-temp');
+        const weatherDesc = document.getElementById('weather-desc');
+        const fallbackLocation = { latitude: 10.8231, longitude: 106.6297, label: 'TP.HCM' };
+
+        const weatherLabels = {
+            0: ['Nắng đẹp', '☀️'],
+            1: ['Ít mây', '🌤️'],
+            2: ['Mây rải rác', '⛅'],
+            3: ['Nhiều mây', '☁️'],
+            45: ['Sương mù', '🌫️'],
+            48: ['Sương mù đóng băng', '🌫️'],
+            51: ['Mưa phùn nhẹ', '🌦️'],
+            53: ['Mưa phùn', '🌦️'],
+            55: ['Mưa phùn dày', '🌧️'],
+            61: ['Mưa nhẹ', '🌧️'],
+            63: ['Mưa vừa', '🌧️'],
+            65: ['Mưa lớn', '⛈️'],
+            80: ['Mưa rào nhẹ', '🌦️'],
+            81: ['Mưa rào', '🌧️'],
+            82: ['Mưa rào mạnh', '⛈️'],
+            95: ['Dông', '⛈️'],
+            96: ['Dông kèm mưa đá', '⛈️'],
+            99: ['Dông kèm mưa đá mạnh', '⛈️']
+        };
+
+        const renderWeather = (current, label) => {
+            const code = current.weather_code;
+            const [description, icon] = weatherLabels[code] || ['Thời tiết hiện tại', '🌡️'];
+            weatherIcon.textContent = icon;
+            weatherTemp.textContent = `${Math.round(current.temperature_2m)}°C`;
+            weatherDesc.textContent = `${description} tại ${label}`;
+        };
+
+        const loadWeather = async ({ latitude, longitude, label }) => {
+            const params = new URLSearchParams({
+                latitude,
+                longitude,
+                current: 'temperature_2m,weather_code',
+                timezone: 'auto'
+            });
+            const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+
+            if (!response.ok) {
+                throw new Error('Weather request failed');
+            }
+
+            const data = await response.json();
+            renderWeather(data.current, label);
+        };
+
+        const loadFallbackWeather = () => {
+            loadWeather(fallbackLocation).catch(() => {
+                weatherIcon.textContent = '🌡️';
+                weatherTemp.textContent = '--°C';
+                weatherDesc.textContent = 'Không tải được thời tiết';
+            });
+        };
+
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => loadWeather({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    label: 'vị trí của bạn'
+                }).catch(loadFallbackWeather),
+                loadFallbackWeather,
+                { timeout: 5000, maximumAge: 600000 }
+            );
+        } else {
+            loadFallbackWeather();
+        }
     });
 </script>
 @endsection

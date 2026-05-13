@@ -123,30 +123,50 @@ class NewsController extends Controller
         $recipients = User::where('role_id', 3)
             ->whereNotNull('email')
             ->where('email', '!=', '')
-            ->pluck('email');
+            ->pluck('email')
+            ->map(fn ($email) => strtolower(trim($email)))
+            ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->reject(fn ($email) => preg_match('/^(a+|test|demo|fake|example)@/i', $email))
+            ->unique()
+            ->values();
 
         if ($recipients->isEmpty()) {
             return back()->with('warning', 'Chưa có bệnh nhân nào có email để gửi thông báo.');
         }
 
-        try {
-            foreach ($recipients as $email) {
-                Mail::to($email)->send(new NewsPublishedMail($article));
-            }
-        } catch (Exception $e) {
-            Log::warning('Failed to send news published email', [
-                'news_id' => $article->news_id,
-                'error' => $e->getMessage(),
-            ]);
+        $sentCount = 0;
+        $failedEmails = [];
 
+        foreach ($recipients as $email) {
+            try {
+                Mail::to($email)->send(new NewsPublishedMail($article));
+                $sentCount++;
+            } catch (Exception $e) {
+                $failedEmails[] = $email;
+
+                Log::warning('Failed to send news published email', [
+                    'news_id' => $article->news_id,
+                    'email' => $email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($sentCount === 0) {
             return back()->with(
                 'warning',
-                'Không gửi được email. Vui lòng kiểm tra cấu hình SMTP/MAIL_PASSWORD trong file .env.'
+                'Không gửi được email nào. Vui lòng kiểm tra danh sách email bệnh nhân và cấu hình SMTP.'
             );
         }
 
         $article->update(['email_sent' => 1]);
 
-        return back()->with('success', 'Đã gửi email thông báo thành công cho ' . $recipients->count() . ' bệnh nhân.');
+        $message = 'Đã gửi email thông báo thành công cho ' . $sentCount . ' bệnh nhân.';
+
+        if (count($failedEmails) > 0) {
+            $message .= ' Bỏ qua ' . count($failedEmails) . ' email lỗi.';
+        }
+
+        return back()->with('success', $message);
     }
 }
