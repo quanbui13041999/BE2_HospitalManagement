@@ -16,6 +16,8 @@ use App\Http\Controllers\HealthBackgroundController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\NewsController;
+use App\Http\Controllers\Admin\NewsController as AdminNewsController;
 
 // ============================================================
 // TRANG CHỦ & AUTH
@@ -202,6 +204,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::post('/lookup', [BhytController::class, 'lookup'])->name('lookup');
         Route::post('/apply',  [BhytController::class, 'apply'])->name('apply');
     });
+});
+
+// ============================================================
+// BẢN TIN BỆNH VIỆN
+// ============================================================
+
+// Public routes
+Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
+
+// Admin routes
+Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
+    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
+    Route::patch('news/{id}/toggle', [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
+    Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
 });
 
 // ============================================================
