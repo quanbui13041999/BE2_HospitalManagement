@@ -16,6 +16,8 @@ use App\Http\Controllers\HealthBackgroundController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Admin\ChatRoomController;
 
 // ============================================================
 // TRANG CHỦ & AUTH
@@ -209,3 +211,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 // ============================================================
 
 Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
+
+// =============================================
+// CHAT CSKH – Patient Routes
+// =============================================
+Route::middleware(['auth'])->prefix('chat')->name('chat.')->group(function () {
+    Route::post('/room',              [ChatController::class, 'getOrCreateRoom'])->name('room');
+    Route::get('/messages/{roomId}',  [ChatController::class, 'getMessages'])->name('messages');
+    Route::post('/send',              [ChatController::class, 'sendMessage'])->name('send');
+});
+
+// =============================================
+// CHAT CSKH – Admin/Staff Routes
+// =============================================
+Route::middleware(['auth', 'role:1,2'])->prefix('admin/chatroom')->name('admin.chatroom.')->group(function () {
+    Route::get('/',                         [ChatRoomController::class, 'index'])->name('index');
+    Route::get('/list',                     [ChatRoomController::class, 'listJson'])->name('list');
+    Route::get('/{roomId}/messages',        [ChatRoomController::class, 'getMessages'])->name('messages');
+    Route::post('/{roomId}/send',           [ChatRoomController::class, 'sendMessage'])->name('send');
+    Route::post('/{roomId}/close',          [ChatRoomController::class, 'closeRoom'])->name('close');
+});
