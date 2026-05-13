@@ -237,7 +237,7 @@
                     <div class="col-md-4">
                         <label class="form-label">Nhịp tim (bpm) <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="number" name="vitals[heart_rate]" class="form-control" step="0.1"
+                            <input type="number" name="vitals[heart_rate]" class="form-control" step="0.1" placeholder="Bình thường: 60 - 100 bpm"
                                 value="{{ old('vitals.heart_rate', $v?->heart_rate) }}">
                             <select name="vitals[hr_status]" class="form-select" style="max-width:90px">
                                 <option value="normal" {{ ($v?->hr_status ?? 'normal') === 'normal' ? 'selected' : '' }}>✓</option>
@@ -250,7 +250,7 @@
                     <div class="col-md-4">
                         <label class="form-label">Nhiệt độ (°C) <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="number" name="vitals[temperature]" class="form-control" step="0.1"
+                            <input type="number" name="vitals[temperature]" class="form-control" step="0.1" placeholder="Bình thường: 36.5 - 37.5 °C"
                                 value="{{ old('vitals.temperature', $v?->temperature) }}">
                             <select name="vitals[temp_status]" class="form-select" style="max-width:90px">
                                 <option value="normal" {{ ($v?->temp_status ?? 'normal') === 'normal' ? 'selected' : '' }}>✓</option>
@@ -262,20 +262,20 @@
 
                     <div class="col-md-3">
                         <label class="form-label">SpO2 (%) <span class="text-danger">*</span></label>
-                        <input type="number" name="vitals[spo2]" class="form-control" step="0.1"
+                        <input type="number" name="vitals[spo2]" class="form-control" step="0.1"placeholder="Bình thường: 95 - 100 %"
                             value="{{ old('vitals.spo2', $v?->spo2) }}">
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label">Cân nặng (kg) <span class="text-danger">*</span></label>
-                        <input type="number" name="vitals[weight]" class="form-control" step="0.1"
+                        <input type="number" name="vitals[weight]" class="form-control" step="1"
                             value="{{ old('vitals.weight', $v?->weight) }}">
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">Đường huyết (mmol/L)</label>
                         <div class="input-group">
-                            <input type="number" name="vitals[blood_sugar]" class="form-control" step="0.01"
+                            <input type="number" name="vitals[blood_sugar]" class="form-control" step="0.01" placeholder="Bình thường: 3.9 - 7.8 mmol/L"
                                 value="{{ old('vitals.blood_sugar', $v?->blood_sugar) }}">
                             <select name="vitals[sugar_status]" class="form-select" style="max-width:90px">
                                 <option value="normal" {{ ($v?->sugar_status ?? 'normal') === 'normal' ? 'selected' : '' }}>✓</option>

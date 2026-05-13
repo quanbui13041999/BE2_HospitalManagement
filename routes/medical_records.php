@@ -16,16 +16,16 @@ Route::prefix('medical-records')
         Route::put('/{id}', [MedicalRecordController::class, 'update'])->name('update');
         Route::delete('/{id}', [MedicalRecordController::class, 'destroy'])->name('destroy');
         Route::get('/{id}/print', [MedicalRecordController::class, 'print'])->name('print');
-        
+
         // File đính kèm
         Route::post('/{id}/attachments', [MedicalRecordController::class, 'uploadAttachment'])->name('attachments.upload');
         Route::delete('/{recordId}/attachments/{attachmentId}', [MedicalRecordController::class, 'deleteAttachment'])->name('attachments.destroy');
-        
+
         // Kết quả xét nghiệm (chỉ Doctor/Admin)
         Route::put('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'updateOrderResult'])->name('orders.update-result');
         Route::delete('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'deleteOrderResult'])->name('orders.delete-result');
     });
-    // routes/web.php
+// routes/web.php
 Route::middleware('auth')
     ->prefix('bac-si')
     ->name('doctor.')

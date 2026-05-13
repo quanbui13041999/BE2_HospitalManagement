@@ -442,7 +442,7 @@
 
 {{-- ── Top breadcrumb ─────────────────────────────────────── --}}
 <div class="record-topbar">
-    <a href="{{ route('medical-records.index') }}">hồ_sơ_bệnh_án.info</a>
+    <a href="{{ route('medical-records.index') }}">Danh sách Phiếu khám</a>
     <span class="sep">—</span>
     <span>Phiếu khám: {{ $record->record_code }}</span>
     <span class="sep">—</span>
@@ -450,16 +450,20 @@
     <span class="sep">—</span>
     <span>{{ $record->exam_date->format('d/m/Y') }}</span>
 
-     {{-- Chỉ hiển thị nút [In], [Sửa], [Xóa] khi là Admin hoặc Doctor --}}
+    {{-- Chỉ hiển thị nút [In], [Sửa], [Xóa] khi là Admin hoặc Doctor --}}
     @php
-        $user = Auth::user();
-        $isAdmin = ($user->role_id == 1 || $user->role == 'admin');
-        $isDoctor = ($user->role_id == 2 || $user->role == 'doctor');
-        $canEdit = ($isAdmin || $isDoctor);
+    $user = Auth::user();
+    $isAdmin = ($user->role_id == 1 || $user->role == 'admin');
+    $isDoctor = ($user->role_id == 2 || $user->role == 'doctor');
+    $canEdit = ($isAdmin || $isDoctor);
     @endphp
 
     @if($canEdit)
     <div class="ms-auto d-flex gap-2">
+        <a href="{{ url('/bac-si/lich-hen') }}"
+            class="btn btn-sm btn-outline-warning">
+            ← Lịch Khám
+        </a>
         <a href="{{ route('medical-records.print', $record->record_id) }}"
             target="_blank" class="btn btn-sm btn-outline-secondary">
             🖨️ In
@@ -680,8 +684,8 @@
         <div class="mr-card-header">🔬 CHỈ ĐỊNH XÉT NGHIỆM / HÌNH ẢNH</div>
         <div class="order-list">
             @php
-                $canEdit = in_array(Auth::user()->role_id ?? 0, [1, 2])
-                        || in_array(Auth::user()->role ?? '', ['admin', 'doctor']);
+            $canEdit = in_array(Auth::user()->role_id ?? 0, [1, 2])
+            || in_array(Auth::user()->role ?? '', ['admin', 'doctor']);
             @endphp
 
             @forelse($record->medicalOrders as $order)
@@ -694,45 +698,46 @@
                         <div class="order-name">{{ $order->order_name }}</div>
                         <div class="order-desc">{{ $order->description }}</div>
 
-                        {{-- KẾT QUẢ --}}
-                        <div style="margin-top:8px" id="result_area_{{ $order->order_id }}">
-                            @if($canEdit)
-                                @if(empty($order->result_note))
-                                    {{-- Chưa có → nút vàng --}}
-                                    <button type="button"
-                                        onclick="showResultInput({{ $order->order_id }}, {{ $record->record_id }}, '')"
-                                        style="padding:3px 14px;border:1px dashed #f39c12;border-radius:20px;
-                                               background:#fffbf0;color:#f39c12;font-size:12px;cursor:pointer">
-                                        ⏳ Chờ kết quả — Click để thêm
-                                    </button>
-                                @else
-                                    {{-- Đã có → hiển thị + nút sửa --}}
-                                    <span style="font-size:12px;color:#666">📊 Kết quả:</span>
-                                    <span style="background:#e8f5e9;padding:3px 10px;border-radius:20px;
-                                                 font-size:12px;color:#27ae60;margin:0 6px">
-                                        {{ $order->result_note }}
-                                    </span>
-                                    <button type="button"
-                                        onclick="showResultInput({{ $order->order_id }}, {{ $record->record_id }}, '{{ addslashes($order->result_note) }}')"
-                                        style="padding:2px 8px;border:1px solid #ddd;border-radius:15px;
-                                               background:none;font-size:11px;cursor:pointer">
-                                        ✏️ Sửa
-                                    </button>
-                                @endif
-                            @else
-                                {{-- Bệnh nhân chỉ xem --}}
-                                <span style="font-size:12px;color:#666">📊 Kết quả:</span>
-                                @if(!empty($order->result_note))
-                                    <span style="background:#e8f5e9;padding:3px 10px;border-radius:20px;
-                                                 font-size:12px;color:#27ae60;margin-left:6px">
-                                        {{ $order->result_note }}
-                                    </span>
-                                @else
-                                    <span style="font-size:11px;color:#f39c12;margin-left:6px">⏳ Chờ kết quả</span>
-                                @endif
-                            @endif
-                        </div>
-                        {{-- end kết quả --}}
+                       {{-- KẾT QUẢ --}}
+<div style="margin-top:8px" id="result_area_{{ $order->order_id }}">
+    @if($canEdit)
+        @if(empty($order->result_note))
+            <button type="button"
+                onclick="showResultDropdown({{ $order->order_id }}, {{ $record->record_id }}, '')"
+                class="btn btn-sm btn-warning">
+                ⏳ Chờ kết quả — Click để chọn
+            </button>
+        @else
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-size:12px;color:#666">📊 Kết quả:</span>
+                <span style="background:#d4edda;padding:4px 12px;border-radius:20px; font-size:12px;color:#155724;">
+                    {{ $order->result_note }}
+                </span>
+                <button type="button"
+    class="btn-edit-result btn btn-sm btn-outline-primary"
+    data-order-id="{{ $order->order_id }}"
+    data-record-id="{{ $record->record_id }}"
+    data-note="{{ $order->result_note }}">
+    ✏️ Sửa
+</button>
+                <button type="button"
+                    onclick="deleteResult({{ $order->order_id }}, {{ $record->record_id }})"
+                    class="btn btn-sm btn-outline-danger">
+                    🗑 Xóa
+                </button>
+            </div>
+        @endif
+    @else
+        <span style="font-size:12px;color:#666">📊 Kết quả:</span>
+        @if(!empty($order->result_note))
+            <span style="background:#d4edda;padding:4px 12px;border-radius:20px; font-size:12px;color:#155724;margin-left:6px">
+                {{ $order->result_note }}
+            </span>
+        @else
+            <span style="font-size:11px;color:#f39c12;margin-left:6px">⏳ Chờ kết quả</span>
+        @endif
+    @endif
+</div>
 
                     </div>
                 </div>
@@ -816,6 +821,7 @@
                 });
                 const data = await res.json();
                 if (data.success) appendAttachment(data.attachment);
+                else alert('Lỗi: ' + (data.error || 'Không thể upload'));
             } catch (e) {
                 alert('Lỗi khi tải lên: ' + file.name);
             }
@@ -853,6 +859,7 @@
         });
         const data = await res.json();
         if (data.success) document.getElementById(`att-${attId}`)?.remove();
+        else alert('Lỗi: ' + (data.error || 'Không thể xóa'));
     }
 
     // Drag & drop upload
@@ -878,58 +885,293 @@
     }
 
     // ========== XỬ LÝ KẾT QUẢ XÉT NGHIỆM ==========
-    
-   // ── Thêm / Sửa kết quả xét nghiệm ───────────────────────────────
-function showResultInput(orderId, recordId, currentValue) {
+
+   const resultOptions = {
+    'lab': [
+        { value: 'Bình thường', label: '✅ Bình thường' },
+        { value: 'Bất thường', label: '⚠️ Bất thường' },
+        { value: 'Âm tính', label: '🔴 Âm tính (-)' },
+        { value: 'Dương tính', label: '🟢 Dương tính (+)' },
+        { value: 'Tăng cao', label: '📈 Tăng cao' },
+        { value: 'Giảm thấp', label: '📉 Giảm thấp' }
+    ],
+    'imaging': [
+        { value: 'Bình thường', label: '✅ Bình thường' },
+        { value: 'Bất thường', label: '⚠️ Phát hiện bất thường' },
+        { value: 'Cần chụp lại', label: '🔄 Cần chụp lại' },
+        { value: 'Có tổn thương', label: '🎯 Có tổn thương' },
+        { value: 'Không tổn thương', label: '✅ Không tổn thương' }
+    ],
+    'default': [
+        { value: 'Bình thường', label: '✅ Bình thường' },
+        { value: 'Bất thường', label: '⚠️ Bất thường' },
+        { value: 'Đã hoàn thành', label: '✔️ Đã hoàn thành' }
+    ]
+};
+
+// Render lại khu vực kết quả sau khi lưu thành công (không reload)
+function renderResultSaved(orderId, recordId, resultValue) {
     const area = document.getElementById(`result_area_${orderId}`);
+    if (!area) return;
     area.innerHTML = `
-        <span style="font-size:12px;color:#666">📊 Kết quả:</span>
-        <input type="text" id="ri_${orderId}" class="form-control form-control-sm"
-               style="width:220px;display:inline-block;margin:0 6px"
-               placeholder="Nhập kết quả..." value="${currentValue}">
-        <button class="btn btn-sm btn-success" onclick="saveResult(${orderId},${recordId})">💾 Lưu</button>
-        <button class="btn btn-sm btn-secondary" onclick="location.reload()">Hủy</button>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="font-size:12px;color:#666">📊 Kết quả:</span>
+            <span style="background:#d4edda;padding:4px 12px;border-radius:20px;font-size:12px;color:#155724;">
+                ${resultValue}
+            </span>
+            <button type="button"
+                class="btn btn-sm btn-outline-primary"
+                onclick="showResultDropdown(${orderId}, ${recordId}, '${resultValue.replace(/'/g, "\\'")}')">
+                ✏️ Sửa
+            </button>
+            <button type="button"
+                onclick="deleteResult(${orderId}, ${recordId})"
+                class="btn btn-sm btn-outline-danger">
+                🗑 Xóa
+            </button>
+        </div>
     `;
-    document.getElementById(`ri_${orderId}`)?.focus();
 }
 
+// Render lại khu vực khi chưa có kết quả
+function renderResultEmpty(orderId, recordId) {
+    const area = document.getElementById(`result_area_${orderId}`);
+    if (!area) return;
+    area.innerHTML = `
+        <button type="button"
+            onclick="showResultDropdown(${orderId}, ${recordId}, '')"
+            class="btn btn-sm btn-warning">
+            ⏳ Chờ kết quả — Click để chọn
+        </button>
+    `;
+}
 
-    // Hiển thị input để sửa kết quả
-    function editResult(button, orderId, recordId, currentResult) {
-        const container = button.parentElement;
-        // Escape quotes để tránh lỗi JavaScript
-        const escapedResult = currentResult.replace(/['"]/g, '\\"');
-        
-        const inputHtml = `
-            <span style="font-size:12px; color:#666;">📊 Kết quả:</span>
-            <input type="text" id="result_input_${orderId}" class="form-control form-control-sm" 
-                   style="width:200px; display:inline-block; margin:0 8px;" 
-                   value="${escapedResult}">
-            <button type="button" class="btn btn-sm btn-success" onclick="saveResult(${orderId}, ${recordId})">💾 Lưu</button>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="cancelResult(this, ${orderId})">Hủy</button>
-        `;
-        
-        container.innerHTML = inputHtml;
-        document.getElementById(`result_input_${orderId}`).focus();
+// Hiển thị dropdown chọn kết quả
+function showResultDropdown(orderId, recordId, currentValue) {
+    const area = document.getElementById(`result_area_${orderId}`);
+    if (!area) return;
+
+    const orderItem = area.closest('.order-item');
+    const orderIcon = orderItem?.querySelector('.order-icon')?.innerText || '';
+    let orderType = 'default';
+    if (orderIcon.includes('🔬')) orderType = 'lab';
+    else if (orderIcon.includes('🩻')) orderType = 'imaging';
+
+    const options = resultOptions[orderType] || resultOptions.default;
+
+    let optionsHtml = '';
+    // Chỉ thêm option placeholder khi chưa có giá trị
+    if (!currentValue) {
+        optionsHtml += `<option value="">-- Chọn kết quả --</option>`;
     }
+    options.forEach(opt => {
+        const selected = (currentValue === opt.value) ? 'selected' : '';
+        optionsHtml += `<option value="${opt.value}" ${selected}>${opt.label}</option>`;
+    });
+    optionsHtml += `<option value="other">✏️ Nhập kết quả khác...</option>`;
 
-   async function saveResult(orderId, recordId) {
-    const input  = document.getElementById(`ri_${orderId}`);
-    const result = input?.value.trim();
-    if (!result) { alert('Vui lòng nhập kết quả!'); return; }
+    area.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size:12px; color:#666;">📊 Kết quả:</span>
+            <select id="result_select_${orderId}"
+                    class="form-select form-select-sm"
+                    style="width: 220px; display: inline-block;">
+                ${optionsHtml}
+            </select>
+            <button type="button" class="btn btn-sm btn-success"
+                    onclick="saveResultFromSelect(${orderId}, ${recordId}, '${currentValue.replace(/'/g, "\\'")}')">
+                💾 Lưu
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary"
+                    onclick="cancelResult(${orderId}, ${recordId}, '${currentValue.replace(/'/g, "\\'")}')">
+                Hủy
+            </button>
+        </div>
+    `;
+
+    const select = document.getElementById(`result_select_${orderId}`);
+    if (select) {
+        select.addEventListener('change', function() {
+            if (this.value === 'other') {
+                showManualInput(orderId, recordId, currentValue);
+            }
+        });
+    }
+}
+
+// Hiển thị input nhập tay
+function showManualInput(orderId, recordId, currentValue) {
+    const area = document.getElementById(`result_area_${orderId}`);
+    if (!area) return;
+
+    const escaped = (currentValue || '').replace(/'/g, "\\'");
+
+    area.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size:12px; color:#666;">📊 Kết quả:</span>
+            <input type="text" id="result_input_${orderId}"
+                class="form-control form-control-sm"
+                style="width: 250px; display: inline-block;"
+                placeholder="Nhập kết quả xét nghiệm..."
+                value="${currentValue || ''}">
+            <button type="button" class="btn btn-sm btn-success"
+                    onclick="saveResultFromInput(${orderId}, ${recordId}, '${escaped}')">
+                💾 Lưu
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary"
+                    onclick="cancelResult(${orderId}, ${recordId}, '${escaped}')">
+                🔙 Quay lại
+            </button>
+        </div>
+    `;
+
+    document.getElementById(`result_input_${orderId}`)?.focus();
+}
+
+// Lưu từ dropdown select
+function saveResultFromSelect(orderId, recordId, originalValue) {
+    const select = document.getElementById(`result_select_${orderId}`);
+    if (!select) return;
+
+    const result = select.value;
+    if (!result || result === 'other') {
+        // Highlight select thay vì alert
+        select.style.borderColor = 'red';
+        select.focus();
+        return;
+    }
+    select.style.borderColor = '';
+    saveResultData(orderId, recordId, result, originalValue);
+}
+
+// Lưu từ input nhập tay
+function saveResultFromInput(orderId, recordId, originalValue) {
+    const input = document.getElementById(`result_input_${orderId}`);
+    if (!input) return;
+
+    const result = input.value.trim();
+    if (!result) {
+        input.style.borderColor = 'red';
+        input.focus();
+        return;
+    }
+    input.style.borderColor = '';
+    saveResultData(orderId, recordId, result, originalValue);
+}
+
+// Gửi API lưu kết quả
+async function saveResultData(orderId, recordId, result, originalValue) {
+    const url = `/medical-records/${recordId}/orders/${orderId}/result`;
+
+    // Hiển thị trạng thái đang lưu
+    const area = document.getElementById(`result_area_${orderId}`);
+    if (area) {
+        const saveBtn = area.querySelector('.btn-success');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Đang lưu...';
+        }
+    }
 
     try {
-        const res  = await fetch(`/medical-records/${recordId}/orders/${orderId}/result`, {
-            method : 'PUT',
-            headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN':CSRF },
-            body   : JSON.stringify({ result })
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ result: result })
         });
-        const data = await res.json();
-        if (data.success) location.reload();
-        else alert('Lỗi: ' + (data.error || 'Không thể lưu'));
-    } catch (err) {
-        alert('Có lỗi: ' + err.message);
+
+        const data = await response.json();
+
+        if (data.success) {
+            // ✅ Lưu thành công: render lại UI, không alert, không reload
+            renderResultSaved(orderId, recordId, result);
+        } else {
+            // ❌ Thất bại: hiện thông báo nhỏ inline, không alert
+            if (area) {
+                const saveBtn = area.querySelector('.btn-success');
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '💾 Lưu';
+                }
+                // Hiện lỗi inline
+                let errEl = area.querySelector('.save-error');
+                if (!errEl) {
+                    errEl = document.createElement('span');
+                    errEl.className = 'save-error';
+                    errEl.style.cssText = 'color:red;font-size:12px;';
+                    area.querySelector('div').appendChild(errEl);
+                }
+                errEl.textContent = '❌ ' + (data.error || 'Không thể lưu');
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        if (area) {
+            const saveBtn = area.querySelector('.btn-success');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Lưu';
+            }
+        }
     }
 }
+
+// Hủy: khôi phục về trạng thái ban đầu (không reload)
+function cancelResult(orderId, recordId, originalValue) {
+    if (originalValue) {
+        // Có kết quả cũ → render lại badge + nút Sửa/Xóa
+        renderResultSaved(orderId, recordId, originalValue);
+    } else {
+        // Chưa có kết quả → render lại nút "Chờ kết quả"
+        renderResultEmpty(orderId, recordId);
+    }
+}
+
+// Xóa kết quả
+async function deleteResult(orderId, recordId) {
+    if (!confirm('Bạn có chắc muốn xóa kết quả này?')) return;
+
+    const url = `/medical-records/${recordId}/orders/${orderId}/result`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': CSRF,
+                'Accept': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            renderResultEmpty(orderId, recordId);
+        } else {
+            console.error('Xóa thất bại:', data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// Gắn sự kiện cho nút Sửa
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-edit-result').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const orderId = this.getAttribute('data-order-id');
+            const recordId = this.getAttribute('data-record-id');
+            const note = this.getAttribute('data-note') || '';
+            if (orderId && recordId) {
+                showResultDropdown(orderId, recordId, note);
+            }
+        });
+    });
+});
 </script>
 @endpush

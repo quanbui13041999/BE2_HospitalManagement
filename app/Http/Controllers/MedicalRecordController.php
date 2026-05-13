@@ -33,18 +33,46 @@ class MedicalRecordController extends Controller
                 ->with('error', 'Vui lòng đăng nhập để xem hồ sơ!');
         }
 
+        // Lấy filters từ request
+        $filters = [
+            'search' => $request->search,
+            'visit_type' => $request->visit_type,
+            'status' => $request->status,
+            'date_from' => $request->date_from,
+            'date_to' => $request->date_to,
+            'sort_by' => $request->get('sort_by', 'exam_date'),
+            'sort_order' => $request->get('sort_order', 'desc'),
+            'per_page' => $request->get('per_page', 10),
+        ];
+
+        // Lấy records dựa trên role
         if ($user->role_id === 3) {
-            $records = $this->service->getPatientRecords($user->user_id);
+            // Bệnh nhân: xem hồ sơ của mình
+            $records = $this->service->getPatientRecords($user->user_id, $filters);
         } else {
             $patientId = $request->query('patient_id');
             if ($patientId) {
-                $records = $this->service->getPatientRecords((int) $patientId);
+                // Xem hồ sơ của bệnh nhân cụ thể (bác sĩ hoặc admin)
+                $records = $this->service->getPatientRecords((int) $patientId, $filters);
+            } elseif ($user->role_id === 2) {
+                // Bác sĩ: xem hồ sơ mình tạo
+                $records = $this->service->getDoctorRecords($user->user_id, $filters);
             } else {
-                $records = $this->service->getDoctorRecords($user->user_id);
+                // Admin: xem tất cả
+                $records = $this->service->getAllRecords($filters);
             }
         }
 
-        return view('medical-records.index', compact('records'));
+        // Lấy danh sách loại khám cho dropdown
+        $visitTypes = $this->service->getVisitTypes($user->user_id, $user->role_id);
+
+        // Lấy danh sách trạng thái
+        $statuses = $this->service->getStatuses();
+
+        // Thống kê (tùy chọn)
+        $statistics = $this->service->getStatistics($user->user_id, $user->role_id);
+
+        return view('medical-records.index', compact('records', 'visitTypes', 'statuses', 'statistics'));
     }
 
     // ── SHOW ──────────────────────────────────────────────────────
@@ -286,10 +314,14 @@ class MedicalRecordController extends Controller
             $order->result_status = 'Có kết quả';
             $order->save();
 
+            $order->result_note   = $request->result;
+            $order->result_status = 'Có kết quả';
+            $order->save();
+
             return response()->json([
                 'success' => true,
-                'result' => $order->result,
-                'result_date' => $order->result_date->format('d/m/Y H:i')
+                'result_note' => $order->result_note,
+                // Bỏ result_date vì không cần và có thể null
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['error' => 'Dữ liệu không hợp lệ!'], 422);
@@ -324,9 +356,9 @@ class MedicalRecordController extends Controller
                 return response()->json(['error' => 'Bạn không có quyền xóa kết quả của hồ sơ này!'], 403);
             }
 
-            $order->result = null;
-            $order->result_date = null;
-            $order->status = 'pending';
+            // ✅ Đúng - khớp với DB
+            $order->result_note   = null;
+            $order->result_status = null;
             $order->save();
 
             return response()->json(['success' => true]);
@@ -448,5 +480,80 @@ class MedicalRecordController extends Controller
         }
 
         return round($bytes, 2) . ' ' . $units[$i];
+    }
+    // Thêm vào cuối class MedicalRecordController
+    /**
+     * Xuất danh sách ra Excel (tùy chọn)
+     */
+    public function export(Request $request)
+    {
+        // Kiểm tra quyền
+        $user = Auth::user();
+        if (!$user || !in_array($user->role_id, [1, 2])) {
+            return redirect()->route('medical-records.index')
+                ->with('error', 'Bạn không có quyền xuất dữ liệu!');
+        }
+
+        // Lấy dữ liệu theo bộ lọc hiện tại
+        $query = MedicalRecord::with(['patient', 'doctor', 'diagnoses']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('record_code', 'like', "%{$search}%")
+                    ->orWhere('patient_name', 'like', "%{$search}%")
+                    ->orWhere('doctor_name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('visit_type')) {
+            $query->where('visit_type', $request->visit_type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('exam_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('exam_date', '<=', $request->date_to);
+        }
+
+        if ($user->role_id === 2) {
+            $query->where('doctor_id', $user->user_id);
+        } elseif ($user->role_id === 3) {
+            $query->where('patient_id', $user->user_id);
+        }
+
+        $records = $query->orderBy('exam_date', 'desc')->get();
+
+        // Xuất CSV đơn giản
+        $fileName = 'danh-sach-phieu-kham-' . date('Y-m-d') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$fileName\"",
+        ];
+
+        $callback = function () use ($records) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Mã phiếu', 'Bệnh nhân', 'Bác sĩ', 'Ngày khám', 'Loại khám', 'Trạng thái']);
+
+            foreach ($records as $record) {
+                fputcsv($file, [
+                    $record->record_code,
+                    $record->patient_name,
+                    $record->doctor_name,
+                    $record->exam_date->format('d/m/Y'),
+                    $record->visit_type,
+                    $record->status ?? 'Chưa xác định'
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

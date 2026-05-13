@@ -1,24 +1,27 @@
 @extends('layouts.app')
-@section('title', 'Lịch Hẹn Bệnh Nhân')
+@section('title', 'Lịch Khám Bệnh Nhân')
 
 @section('content')
 <div style="max-width:1100px;margin:24px auto;padding:0 16px">
 
   {{-- Header --}}
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h5 class="fw-bold mb-1" >🩺 Lịch Hẹn Bệnh Nhân</h5>
-      <small class="text-muted">Bác sĩ Khám : {{ $doctor->full_name }}</small>
-      <a href="{{ url('/') }}"
-                            class="d-inline-block text-decoration-none px-4 py-2 rounded shadow-sm border"
-                            style="background-color: #edffec; color: #28a745; font-weight: 600; transition: all 0.3s ease; border-color: #d4edda !important;">
-                            <i class="bi bi-house-door-fill me-1">Trang chủ</i> 
-                        </a>
-    </div>
-    <a href="{{ route('medical-records.create') }}" class="btn btn-primary btn-sm">
-      + Tạo hồ sơ mới
-    </a>
+  <div>
+    <h5 class="fw-bold mb-1">🩺 Lịch Khám Bệnh Nhân</h5>
+    <small class="text-muted">Bác sĩ Khám : {{ $doctor->full_name }}</small>
   </div>
+
+  <div class="d-flex align-items-center gap-2">
+      <a href="{{ route('medical-records.index') }}" class="btn btn-primary btn-sm">
+    Danh Sách phiếu khám
+    </a>
+    <a href="{{ url('/') }}"
+       class="btn btn-warning btn-sm">
+      <i class="bi bi-house-door-fill"></i> Trang chủ
+    </a>
+  
+  </div>
+</div>
 
   {{-- Stats --}}
   <div class="row g-3 mb-4">
@@ -72,7 +75,7 @@
             <div class="fw-semibold">{{ $apt->user->full_name ?? '—' }}</div>
             <small class="text-muted">{{ $apt->user->phone ?? '' }}</small>
           </td>
-          <td>{{ $apt->service->name ?? '—' }}</td>
+          <td>{{ $apt->service->service_name ?? '—' }}</td>
           <td>
             <div class="fw-semibold">
               {{ \Carbon\Carbon::parse($apt->appointment_time)->format('H:i') }}

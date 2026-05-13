@@ -207,5 +207,5 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 // ============================================================
 // ROUTE BÁC SĨ (tạm thời)
 // ============================================================
-
+require_once "medical_records.php";
 Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');

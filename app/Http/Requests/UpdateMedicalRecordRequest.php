@@ -91,8 +91,8 @@ class UpdateMedicalRecordRequest extends FormRequest
             'vitals.blood_pressure.required'      => 'Vui lòng nhập huyết áp.',
             'vitals.heart_rate.required'          => 'Vui lòng nhập nhịp tim.',
             'vitals.temperature.required'         => 'Vui lòng nhập nhiệt độ.',
-            'vitals.temperature.min'              => 'Nhiệt độ phải từ 30°C đến 42°C.',
-            'vitals.temperature.max'              => 'Nhiệt độ phải từ 30°C đến 42°C.',
+            'vitals.temperature.min'              => 'Nhiệt độ phải từ 34°C đến 36°C.',
+            'vitals.temperature.max'              => 'Nhiệt độ phải từ 37.5°C đến 40°C.',
             'vitals.spo2.required'                => 'Vui lòng nhập chỉ số SpO2.',
             'vitals.weight.required'              => 'Vui lòng nhập cân nặng.',
             

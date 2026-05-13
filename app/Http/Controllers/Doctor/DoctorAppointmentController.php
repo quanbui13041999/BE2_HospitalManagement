@@ -26,7 +26,7 @@ class DoctorAppointmentController extends Controller
             'medicalRecord',
         ])
             ->forDoctor($doctor->doctor_id) // scope JOIN doctorschedules, doctor_id trong DoctorSchedules là doctor_id
-            ->select('appointments.*');      // tránh conflict cột
+            ->select('appointments.*');     
 
         if ($date) {
             $query->whereDate('appointments.appointment_time', $date);
