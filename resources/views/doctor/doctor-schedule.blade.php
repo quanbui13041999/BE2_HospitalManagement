@@ -166,7 +166,7 @@
                     </svg>
                     Đặt lịch khám
                 </a>
-                <a href="{{ route('user.appointments.index') }}"
+                <a href="{{ route('appointments.index') }}"
                     class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -190,6 +190,8 @@
                     </svg>
                     Lịch làm việc
                 </a>
+                @auth
+                @if(auth()->user()->is_admin ?? false)
                 <a href="{{ route('admin.dashboard') }}" class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -197,6 +199,8 @@
                     </svg>
                     Thống kê
                 </a>
+                @endif
+                @endauth
             </div>
         </div>
     </nav>
