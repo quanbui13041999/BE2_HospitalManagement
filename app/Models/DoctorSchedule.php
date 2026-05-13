@@ -8,9 +8,9 @@ use Carbon\Carbon;
 
 class DoctorSchedule extends Model
 {
-    protected $table      = 'doctor_schedules';
+    protected $table      = 'doctorschedules';
     protected $primaryKey = 'schedule_id';
-    public    $timestamps = true;
+    public    $timestamps = false;
 
     protected $fillable = [
         'doctor_id',

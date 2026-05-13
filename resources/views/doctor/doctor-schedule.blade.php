@@ -158,22 +158,6 @@
     <nav class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex gap-1 overflow-x-auto">
-                <a href="{{ route('appointments.create') }}"
-                    class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    Đặt lịch khám
-                </a>
-                <a href="{{ route('appointments.index') }}"
-                    class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    Lịch hẹn của tôi
-                </a>
                 <a href="{{ route('doctors.index') }}"
                     class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,6 +195,11 @@
             <p class="text-gray-500 text-sm">Thiết lập lịch lặp lại và quản lý ngày nghỉ cho bác sĩ</p>
         </div>
 
+        @php
+            $doctors = \App\Models\Doctor::where('status', 1)->orderBy('full_name')->get();
+            $hasDoctors = $doctors->isNotEmpty();
+        @endphp
+
         <!-- Doctor selector -->
         <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex items-center gap-4">
             <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,12 +208,15 @@
             </svg>
             <span class="text-sm font-medium text-gray-700 whitespace-nowrap">Bác sĩ:</span>
             <select id="doctor-select" onchange="onDoctorChange()"
-                class="flex-1 max-w-sm px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="1">BS. Nguyễn Văn An — Tim mạch</option>
-                <option value="2">TS.BS. Trần Thị Bình — Nội tiết</option>
-                <option value="3">BS. Lê Hoàng Cường — Da liễu</option>
-                <option value="4">TS.BS. Phạm Thị Dung — Tim mạch</option>
-                <option value="5">BS. Võ Minh Em — Nhi khoa</option>
+                class="flex-1 max-w-sm px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {{ $hasDoctors ? '' : 'disabled' }}>
+                @if($hasDoctors)
+                    @foreach($doctors as $doctor)
+                        <option value="{{ $doctor->doctor_id }}">{{ $doctor->full_name }}</option>
+                    @endforeach
+                @else
+                    <option value="">Không có bác sĩ</option>
+                @endif
             </select>
         </div>
 
@@ -543,6 +535,7 @@
             const options = {
                 method,
                 headers: {
+                    'Accept': 'application/json',
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': getAuthToken(),
                 }
@@ -550,9 +543,22 @@
             if (data) options.body = JSON.stringify(data);
             try {
                 const res = await fetch(url, options);
-                const json = await res.json();
+                const text = await res.text();
+                let json = null;
+                if (text) {
+                    try {
+                        json = JSON.parse(text);
+                    } catch (parseErr) {
+                        if (!res.ok) {
+                            showToast(`Lỗi máy chủ: ${res.status}`, 'error');
+                            return null;
+                        }
+                        throw parseErr;
+                    }
+                }
+
                 if (!res.ok) {
-                    showToast(json.message || `Lỗi ${res.status}`, 'error');
+                    showToast(json?.message || `Lỗi ${res.status}`, 'error');
                     return null;
                 }
                 return json;
@@ -590,6 +596,11 @@
 
         function onDoctorChange() {
             updatePreview();
+            const doctorId = parseInt(document.getElementById('doctor-select').value, 10);
+            if (!doctorId || Number.isNaN(doctorId)) {
+                showToast('Vui lòng chọn bác sĩ hợp lệ.', 'error');
+                return;
+            }
             loadDayOffs();
             loadRecurringSchedules();
         }
@@ -681,7 +692,10 @@
             const aOn = document.getElementById('afternoon-enabled').checked;
             if (!mOn && !aOn) return showToast('Bật ít nhất 1 ca khám (sáng hoặc chiều)', 'error');
 
-            const doctorId = parseInt(document.getElementById('doctor-select').value);
+            const doctorId = parseInt(document.getElementById('doctor-select').value, 10);
+            if (!doctorId || Number.isNaN(doctorId)) {
+                return showToast('Vui lòng chọn bác sĩ hợp lệ trước khi lưu.', 'error');
+            }
             const data = {
                 doctor_id: doctorId,
                 room_id: 3,
@@ -757,7 +771,10 @@
             if (!start) return showToast('Vui lòng chọn ngày nghỉ', 'error');
             const end = rangeOn ? document.getElementById('dayoff-end').value : null;
             const reason = document.getElementById('dayoff-reason').value;
-            const doctorId = parseInt(document.getElementById('doctor-select').value);
+            const doctorId = parseInt(document.getElementById('doctor-select').value, 10);
+            if (!doctorId || Number.isNaN(doctorId)) {
+                return showToast('Vui lòng chọn bác sĩ hợp lệ trước khi lưu ngày nghỉ.', 'error');
+            }
 
             const data = {
                 doctor_id: doctorId,
@@ -802,7 +819,10 @@
         }
 
         async function loadDayOffs() {
-            const doctorId = parseInt(document.getElementById('doctor-select').value);
+            const doctorId = parseInt(document.getElementById('doctor-select').value, 10);
+            if (!doctorId || Number.isNaN(doctorId)) {
+                return;
+            }
             const res = await apiCall('GET', `/day-off/${doctorId}`);
             if (res?.success) {
                 dayOffs = (res.data || []).flatMap(group =>
@@ -823,7 +843,10 @@
         }
 
         async function loadRecurringSchedules() {
-            const doctorId = parseInt(document.getElementById('doctor-select').value);
+            const doctorId = parseInt(document.getElementById('doctor-select').value, 10);
+            if (!doctorId || Number.isNaN(doctorId)) {
+                return;
+            }
             await apiCall('GET', `/recurring/${doctorId}?per_page=100`);
         }
 
