@@ -205,6 +205,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 });
 
 // ============================================================
+// ROUTE BÁC SĨ (Doctor Schedule Management)
+// ============================================================
+
+Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function () {
+    // Quản lý lịch làm việc
+    Route::get('/', function () {
+        return view('doctor.doctor-schedule');
+    })->name('schedule');
+});
+
+// ============================================================
 // ROUTE BÁC SĨ (tạm thời)
 // ============================================================
 

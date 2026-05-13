@@ -129,16 +129,27 @@
 
     <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center h-16 gap-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">MediBook</h1>
+                        <p class="text-xs text-gray-500">Hệ thống đặt lịch thông minh</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-xl font-bold text-gray-900">MediBook</h1>
-                    <p class="text-xs text-gray-500">Hệ thống đặt lịch thông minh</p>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-gray-600">{{ Auth::user()->name ?? 'Bác sĩ' }}</span>
+                    <form action="{{ route('logout') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="text-sm text-gray-500 hover:text-red-600 transition">
+                            Đăng xuất
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -147,7 +158,7 @@
     <nav class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex gap-1 overflow-x-auto">
-                <a href="index.html"
+                <a href="{{ route('appointments.create') }}"
                     class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -155,7 +166,7 @@
                     </svg>
                     Đặt lịch khám
                 </a>
-                <a href="my-appointment.html"
+                <a href="{{ route('user.appointments.index') }}"
                     class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -163,7 +174,7 @@
                     </svg>
                     Lịch hẹn của tôi
                 </a>
-                <a href="doctor-dashboard.html"
+                <a href="{{ route('doctors.index') }}"
                     class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -171,7 +182,7 @@
                     </svg>
                     Bác sĩ
                 </a>
-                <a href="doctor-schedule.html"
+                <a href="{{ route('doctor.schedule') }}"
                     class="nav-link active flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -179,8 +190,7 @@
                     </svg>
                     Lịch làm việc
                 </a>
-                <a href="admin.html"
-                    class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
+                <a href="{{ route('admin.dashboard') }}" class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
