@@ -203,7 +203,8 @@ class MedicalRecordController extends Controller
         try {
             $record = $this->service->getRecordDetail($id);
 
-            if ($record->doctor_id !== $user->user_id && $user->role !== 'admin') {
+            $isAdmin = ($user->role_id == 1 || $user->role === 'admin');
+            if ($record->doctor_id !== $user->user_id && !$isAdmin) {
                 return redirect()->route('medical-records.index')
                     ->with('error', 'Bạn không có quyền chỉnh sửa hồ sơ này!');
             }
@@ -227,7 +228,8 @@ class MedicalRecordController extends Controller
         try {
             $record = MedicalRecord::findOrFail($id);
 
-            if ($record->doctor_id !== $user->user_id && $user->role !== 'admin') {
+            $isAdmin = ($user->role_id == 1 || $user->role === 'admin');
+            if ($record->doctor_id !== $user->user_id && !$isAdmin) {
                 return redirect()->route('medical-records.index')
                     ->with('error', 'Bạn không có quyền cập nhật hồ sơ này!');
             }
@@ -258,7 +260,8 @@ class MedicalRecordController extends Controller
         try {
             $record = MedicalRecord::findOrFail($id);
 
-            if ($record->doctor_id !== $user->user_id && $user->role !== 'admin') {
+            $isAdmin = ($user->role_id == 1 || $user->role === 'admin');
+            if ($record->doctor_id !== $user->user_id && !$isAdmin) {
                 return redirect()->route('medical-records.index')
                     ->with('error', 'Bạn không có quyền xóa hồ sơ này!');
             }
@@ -314,9 +317,7 @@ class MedicalRecordController extends Controller
             $order->result_status = 'Có kết quả';
             $order->save();
 
-            $order->result_note   = $request->result;
-            $order->result_status = 'Có kết quả';
-            $order->save();
+
 
             return response()->json([
                 'success' => true,
@@ -380,6 +381,14 @@ class MedicalRecordController extends Controller
             return response()->json(['error' => 'Vui lòng đăng nhập!'], 401);
         }
 
+        // ✅ Kiểm tra quyền đúng cách
+        $isAdmin  = in_array($user->role_id ?? 0, [1]) || $user->role === 'admin';
+        $isDoctor = in_array($user->role_id ?? 0, [2]) || $user->role === 'doctor';
+
+        if (!$isAdmin && !$isDoctor) {
+            return response()->json(['error' => 'Không có quyền upload!'], 403);
+        }
+
         try {
             $request->validate([
                 'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx',
@@ -387,8 +396,9 @@ class MedicalRecordController extends Controller
 
             $record = MedicalRecord::findOrFail($id);
 
-            if ($record->doctor_id !== $user->user_id && $user->role !== 'admin') {
-                return response()->json(['error' => 'Bạn không có quyền upload file cho hồ sơ này!'], 403);
+            // ✅ Bác sĩ chỉ upload cho hồ sơ của mình, admin upload tất cả
+            if (!$isAdmin && $record->doctor_id !== $user->user_id) {
+                return response()->json(['error' => 'Bạn không có quyền upload cho hồ sơ này!'], 403);
             }
 
             $attachment = $this->service->uploadAttachment($record, $request->file('file'));
@@ -408,9 +418,6 @@ class MedicalRecordController extends Controller
         }
     }
 
-    /**
-     * Xóa file đính kèm
-     */
     public function deleteAttachment(int $recordId, int $attachmentId): JsonResponse|RedirectResponse
     {
         $user = Auth::user();
@@ -419,12 +426,19 @@ class MedicalRecordController extends Controller
             return response()->json(['error' => 'Vui lòng đăng nhập!'], 401);
         }
 
+        $isAdmin  = in_array($user->role_id ?? 0, [1]) || $user->role === 'admin';
+        $isDoctor = in_array($user->role_id ?? 0, [2]) || $user->role === 'doctor';
+
+        if (!$isAdmin && !$isDoctor) {
+            return response()->json(['error' => 'Không có quyền!'], 403);
+        }
+
         try {
             $attachment = MedicalAttachment::where('record_id', $recordId)->findOrFail($attachmentId);
+            $record     = MedicalRecord::findOrFail($recordId);
 
-            $record = MedicalRecord::findOrFail($recordId);
-            if ($record->doctor_id !== $user->user_id && $user->role !== 'admin') {
-                return response()->json(['error' => 'Bạn không có quyền xóa file này!'], 403);
+            if (!$isAdmin && $record->doctor_id !== $user->user_id) {
+                return response()->json(['error' => 'Không có quyền xóa file này!'], 403);
             }
 
             $this->service->deleteAttachment($attachment);
@@ -434,7 +448,6 @@ class MedicalRecordController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-
     // ── PRINT / EXPORT ────────────────────────────────────────────
 
     /**

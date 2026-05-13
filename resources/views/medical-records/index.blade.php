@@ -11,7 +11,11 @@
         <a href="{{ route('medical-records.create') }}" class="btn btn-primary btn-sm">
             + Tạo phiếu khám mới
         </a>
+        
     @endif
+      <a href="{{ url('/') }}" class="btn btn-warning btn-sm">
+            <i class="bi bi-house-door-fill"></i> Trang chủ
+</a>
 </div>
 
 @if(session('success'))
