@@ -676,6 +676,7 @@
                 @auth
                 <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
                 <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
+                <li><a href="{{ route('doctor.schedule') }}">Lịch làm việc</a></li>
                 @endauth
                 <li><a href="{{ route('doctors.index') }}">Bác sĩ</a></li>
                 <li><a href="{{ route('user.services.index') }}">Khoa phòng</a></li>
