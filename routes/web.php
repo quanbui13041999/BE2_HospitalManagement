@@ -18,7 +18,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\ChatRoomController;
-use App\Http\Controllers\Admin\NewsController;
 
 // ============================================================
 // TRANG CHỦ & AUTH
