@@ -219,6 +219,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::post('/lookup', [BhytController::class, 'lookup'])->name('lookup');
         Route::post('/apply',  [BhytController::class, 'apply'])->name('apply');
     });
+
+    // --------------------------------------------------------
+    // Thống kê bác sĩ & Doanh thu
+    // --------------------------------------------------------
+    Route::get('/doctor-statistics', [\App\Http\Controllers\Admin\DoctorStatisticController::class, 'index'])->name('doctor-statistics.index');
+    Route::get('/revenue', [\App\Http\Controllers\Admin\RevenueController::class, 'index'])->name('revenue.index');
+
+    // --------------------------------------------------------
+    // Quản lý tiêm chủng
+    // --------------------------------------------------------
+    Route::resource('vaccines', \App\Http\Controllers\Admin\VaccineController::class);
+    Route::resource('vaccination-records', \App\Http\Controllers\Admin\VaccinationRecordController::class);
+
 });
 
 // ============================================================
