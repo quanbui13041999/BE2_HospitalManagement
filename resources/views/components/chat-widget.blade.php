@@ -1,5 +1,7 @@
 {{-- Chat Widget - Messenger Style Dark Theme --}}
-<div id="chat-widget" style="position:fixed; bottom:24px; right:24px; z-index:9999; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<div id="chat-widget" 
+     data-user-id="{{ Auth::id() ?? 0 }}"
+     style="position:fixed; bottom:24px; right:24px; z-index:9999; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
 
     {{-- Nút mở/đóng chat (Messenger Bubble) --}}
     <button id="chat-toggle-btn" onclick="toggleChat()"
@@ -93,12 +95,14 @@
         #chat-messages::-webkit-scrollbar-thumb { background: #3e4042; border-radius: 10px; }
         
         .msg-bubble {
-            max-width: 75%;
-            padding: 8px 12px;
+            max-width: 85%;
+            width: fit-content;
+            padding: 8px 14px;
             font-size: 15px;
-            line-height: 1.4;
-            word-break: break-word;
+            line-height: 1.5;
+            word-wrap: break-word;
             position: relative;
+            white-space: pre-wrap;
         }
         .msg-left {
             background: #3e4042;
@@ -111,7 +115,21 @@
             color: #fff;
             border-radius: 18px;
             align-self: flex-end;
+            position: relative;
         }
+        .recall-btn {
+            position: absolute;
+            left: -25px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #b0b3b8;
+            cursor: pointer;
+            font-size: 14px;
+            display: none;
+            padding: 5px;
+        }
+        .msg-right:hover .recall-btn { display: block; }
+        .recall-btn:hover { color: #ef4444; }
         .msg-time {
             font-size: 11px;
             color: #b0b3b8;
@@ -127,6 +145,7 @@ let chatRoomId = null;
 let chatOpen = false;
 let lastMessageId = 0;
 let pollInterval = null;
+const currentUserId = document.getElementById('chat-widget').dataset.userId;
 
 // Theo dõi thay đổi input để đổi icon send sang like
 document.getElementById('chat-input').addEventListener('input', function() {
@@ -185,6 +204,9 @@ async function loadMessages(afterId = 0) {
         const res = await fetch(url);
         const data = await res.json();
         if (data.success && data.messages.length > 0) {
+            // Xóa các tin nhắn tạm trước khi nạp tin nhắn thực từ server
+            document.querySelectorAll('.msg-temp').forEach(el => el.remove());
+            
             data.messages.forEach(appendMessage);
             lastMessageId = Math.max(lastMessageId, ...data.messages.map(m => m.message_id));
             scrollToBottom();
@@ -195,7 +217,7 @@ async function loadMessages(afterId = 0) {
 function appendMessage(msg) {
     const container = document.getElementById('chat-messages');
     const group = document.createElement('div');
-    group.className = 'msg-group';
+    group.className = 'msg-group' + (String(msg.message_id).startsWith('temp-') ? ' msg-temp' : '');
     group.style.cssText = `display:flex; align-items:flex-end; gap:8px; margin-bottom:8px; ${msg.is_mine ? 'flex-direction:row-reverse;' : 'flex-direction:row;'}`;
 
     // Avatar cho người gửi (chỉ hiện cho đối phương)
@@ -207,13 +229,21 @@ function appendMessage(msg) {
     }
 
     const contentBox = document.createElement('div');
-    contentBox.style.cssText = `display:flex; flex-direction:column; align-items:${msg.is_mine ? 'flex-end' : 'flex-start'}; max-width:75%;`;
+    contentBox.style.cssText = `display:flex; flex-direction:column; align-items:${msg.is_mine ? 'flex-end' : 'flex-start'}; flex:1; overflow:hidden;`;
 
     const bubble = document.createElement('div');
     bubble.className = `msg-bubble ${msg.is_mine ? 'msg-right' : 'msg-left'}`;
     if (msg.is_ai) bubble.style.background = '#4e4f50';
 
-    bubble.innerHTML = escapeHtml(msg.message_text);
+    bubble.textContent = msg.message_text;
+    
+    if (msg.is_mine && !String(msg.message_id).startsWith('temp-')) {
+        const recall = document.createElement('i');
+        recall.className = 'bi bi-arrow-counterclockwise recall-btn';
+        recall.title = 'Thu hồi tin nhắn';
+        recall.onclick = () => recallChatMessage(msg.message_id, group);
+        bubble.appendChild(recall);
+    }
 
     const time = document.createElement('div');
     time.className = 'msg-time';
@@ -228,8 +258,22 @@ function appendMessage(msg) {
 async function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim() || '👍';
-    if (!chatRoomId) return;
+    if (!chatRoomId || !text) return;
     
+    // Optimistic UI: Hiện tin nhắn ngay lập tức
+    const tempMsg = {
+        message_id: 'temp-' + Date.now(),
+        sender_id: currentUserId,
+        sender_name: 'Bạn',
+        message_text: text,
+        is_mine: true,
+        sent_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        is_ai: false
+    };
+    appendMessage(tempMsg);
+    scrollToBottom();
+
+    // Reset input
     input.value = '';
     input.style.height = 'auto';
     document.getElementById('chat-send-btn').innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i>';
@@ -243,8 +287,10 @@ async function sendChatMessage() {
             },
             body: JSON.stringify({ room_id: chatRoomId, message_text: text })
         });
-        await loadMessages(lastMessageId);
-    } catch (e) {}
+        // Không cần gọi loadMessages ngay vì polling sẽ lo việc đồng bộ ID thực
+    } catch (e) {
+        console.error("Send failed", e);
+    }
 }
 
 function startPolling() {
@@ -262,13 +308,22 @@ function handleChatKey(e) {
     }
 }
 
-function scrollToBottom() {
-    const el = document.getElementById('chat-messages');
-    el.scrollTop = el.scrollHeight;
+async function recallChatMessage(msgId, element) {
+    if (!confirm('Bạn muốn thu hồi tin nhắn này?')) return;
+    try {
+        const res = await fetch(`/chat/messages/${msgId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+        });
+        const data = await res.json();
+        if (data.success) {
+            element.remove();
+        }
+    } catch (e) {}
 }
 
-function escapeHtml(text) {
-    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-               .replace(/\n/g,'<br>');
+function scrollToBottom() {
+    const el = document.getElementById('chat-messages');
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
 }
 </script>

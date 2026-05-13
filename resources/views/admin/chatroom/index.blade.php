@@ -48,11 +48,19 @@
                     <div id="chat-patient-name" style="font-weight:700;font-size:15px;color:#1e293b;"></div>
                     <div id="chat-room-status" style="font-size:12px;color:#64748b;margin-top:2px;"></div>
                 </div>
-                <button onclick="closeCurrentRoom()"
-                    style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;
-                           padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;">
-                    ✕ Đóng phòng
-                </button>
+                <div style="display:flex; gap:8px;">
+                    <button onclick="closeCurrentRoom()"
+                        style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;
+                               padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;">
+                        ✕ Đóng phòng
+                    </button>
+                    <button onclick="deleteCurrentRoom()"
+                        style="background:#f1f5f9;color:#64748b;border:none;border-radius:8px;
+                               padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;"
+                        title="Xóa vĩnh viễn phòng này">
+                        🗑️ Xóa
+                    </button>
+                </div>
             </div>
 
             {{-- Tin nhắn --}}
@@ -78,6 +86,18 @@
         </div>
     </div>
 </div>
+<style>
+    .admin-msg-bubble:hover .del-msg-btn { display: flex; }
+    .del-msg-btn {
+        display: none; position: absolute; top: -8px; 
+        width: 18px; height: 18px; background: #ef4444; color: #fff; 
+        border-radius: 50%; align-items: center; justify-content: center;
+        font-size: 10px; cursor: pointer; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    /* Sửa lại CSS động dựa trên vị trí bubble */
+    .admin-msg-group[style*="align-items: flex-start"] .del-msg-btn { right: -8px; left: auto; }
+    .admin-msg-group[style*="align-items: flex-end"] .del-msg-btn { left: -8px; right: auto; }
+</style>
 
 <script>
 let currentRoomId = null;
@@ -186,14 +206,17 @@ function appendAdminMessage(msg) {
 
     div.innerHTML = `
         ${senderLabel}
-        <div style="background:${isPatient ? '#fff' : (msg.is_ai ? '#7c3aed' : '#1d4ed8')};
+        <div class="admin-msg-bubble" style="background:${isPatient ? '#fff' : (msg.is_ai ? '#7c3aed' : '#1d4ed8')};
                     color:${isPatient ? '#1e293b' : '#fff'};
                     padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.5;
-                    box-shadow:0 1px 4px rgba(0,0,0,0.08); word-break:break-word;">
+                    box-shadow:0 1px 4px rgba(0,0,0,0.08); word-break:break-word; position:relative;">
             ${escapeHtml(msg.message_text)}
+            <button onclick="deleteAdminMessage(${msg.message_id}, this.closest('.admin-msg-group'))" 
+                    class="del-msg-btn" title="Xóa tin nhắn">✕</button>
         </div>
         <span style="font-size:11px;color:#94a3b8;margin-top:3px;">${msg.sent_at}</span>
     `;
+    div.className = 'admin-msg-group';
     container.appendChild(div);
 }
 
@@ -226,6 +249,34 @@ async function closeCurrentRoom() {
         document.getElementById('chat-room-status').textContent = 'Trạng thái: Đóng';
         clearInterval(adminPollInterval);
         await loadRooms();
+    } catch(e) {}
+}
+
+async function deleteCurrentRoom() {
+    if (!currentRoomId || !confirm('Xác nhận xóa vĩnh viễn phòng chat này và toàn bộ tin nhắn?')) return;
+    try {
+        await fetch(`/admin/chatroom/${currentRoomId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+        });
+        currentRoomId = null;
+        document.getElementById('chat-area').style.display = 'none';
+        document.getElementById('no-room-selected').style.display = 'flex';
+        await loadRooms();
+    } catch(e) {}
+}
+
+async function deleteAdminMessage(msgId, element) {
+    if (!confirm('Xóa tin nhắn này?')) return;
+    try {
+        const res = await fetch(`/admin/chatroom/messages/${msgId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+        });
+        const data = await res.json();
+        if (data.success) {
+            element.remove();
+        }
     } catch(e) {}
 }
 

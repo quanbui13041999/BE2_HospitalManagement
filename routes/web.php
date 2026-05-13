@@ -18,6 +18,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\ChatRoomController;
+use App\Http\Controllers\Admin\NewsController;
 
 // ============================================================
 // TRANG CHỦ & AUTH
@@ -219,6 +220,7 @@ Route::middleware(['auth'])->prefix('chat')->name('chat.')->group(function () {
     Route::post('/room',              [ChatController::class, 'getOrCreateRoom'])->name('room');
     Route::get('/messages/{roomId}',  [ChatController::class, 'getMessages'])->name('messages');
     Route::post('/send',              [ChatController::class, 'sendMessage'])->name('send');
+    Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall');
 });
 
 // =============================================
@@ -230,4 +232,6 @@ Route::middleware(['auth', 'role:1,2'])->prefix('admin/chatroom')->name('admin.c
     Route::get('/{roomId}/messages',        [ChatRoomController::class, 'getMessages'])->name('messages');
     Route::post('/{roomId}/send',           [ChatRoomController::class, 'sendMessage'])->name('send');
     Route::post('/{roomId}/close',          [ChatRoomController::class, 'closeRoom'])->name('close');
+    Route::delete('/{roomId}',              [ChatRoomController::class, 'deleteRoom'])->name('delete');
+    Route::delete('/messages/{messageId}',  [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
 });

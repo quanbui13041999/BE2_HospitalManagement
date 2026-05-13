@@ -153,4 +153,26 @@ class ChatController extends Controller
 
         return response()->json(['success' => true, 'message_id' => $message->message_id]);
     }
+
+    /**
+     * Thu hồi tin nhắn (Patient)
+     * DELETE /chat/messages/{messageId}
+     */
+    public function recallMessage(int $messageId): \Illuminate\Http\JsonResponse
+    {
+        $userId = Auth::id();
+        $message = ChatMessage::where('message_id', $messageId)
+            ->where('sender_id', $userId) // Chỉ được thu hồi tin nhắn của chính mình
+            ->firstOrFail();
+
+        // Kiểm tra xem phòng có còn đang mở không
+        $room = ChatRoom::where('room_id', $message->room_id)
+            ->where('user_id', $userId)
+            ->where('status', 'Mở')
+            ->firstOrFail();
+
+        $message->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

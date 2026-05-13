@@ -91,6 +91,10 @@
            class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
             <i class="bi bi-credit-card"></i> Thanh toán
         </a>
+        <a href="{{ route('admin.news.index') }}"
+           class="nav-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">
+            <i class="bi bi-newspaper"></i> Quản lý Bản tin
+        </a>
 
         <div class="nav-section">Hỗ trợ</div>
         @if(Auth::user()->role_id == 1 || Auth::user()->role_id == 2)

@@ -148,4 +148,30 @@ class ChatRoomController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    /**
+     * Xóa hoàn toàn phòng chat và tin nhắn liên quan
+     * DELETE /admin/chatroom/{roomId}
+     */
+    public function deleteRoom(int $roomId): \Illuminate\Http\JsonResponse
+    {
+        $room = ChatRoom::findOrFail($roomId);
+        // Xóa tất cả tin nhắn trong phòng trước (nếu database không dùng Cascade delete)
+        ChatMessage::where('room_id', $roomId)->delete();
+        $room->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Xóa một tin nhắn bất kỳ (Admin)
+     * DELETE /admin/chatroom/messages/{messageId}
+     */
+    public function deleteMessage(int $messageId): \Illuminate\Http\JsonResponse
+    {
+        $message = ChatMessage::findOrFail($messageId);
+        $message->delete();
+
+        return response()->json(['success' => true]);
+    }
 }
