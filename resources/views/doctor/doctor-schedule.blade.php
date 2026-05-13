@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Quản lý lịch làm việc - MediBook</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -519,7 +520,33 @@
     </main>
 
     <script>
-        // ===== STATE =====
+        // ===== API CONFIG =====
+        const API_BASE = '/api/v1/schedules';
+        const getAuthToken = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        async function apiCall(method, endpoint, data = null) {
+            const url = `${API_BASE}${endpoint}`;
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getAuthToken(),
+                }
+            };
+            if (data) options.body = JSON.stringify(data);
+            try {
+                const res = await fetch(url, options);
+                const json = await res.json();
+                if (!res.ok) {
+                    showToast(json.message || `Lỗi ${res.status}`, 'error');
+                    return null;
+                }
+                return json;
+            } catch (err) {
+                showToast(`Lỗi kết nối: ${err.message}`, 'error');
+                return null;
+            }
+        }
         let applyWeeks = 2;
         let rangeOn = false;
         let selectedDayOffType = 'sick';
@@ -547,7 +574,11 @@
             if (t === 'dayoff') renderDayOffList();
         }
 
-        function onDoctorChange() { updatePreview(); renderDayOffList(); }
+        function onDoctorChange() {
+            updatePreview();
+            loadDayOffs();
+            loadRecurringSchedules();
+        }
 
         // ===== RECURRING =====
         function selectWeeks(btn) {
@@ -627,15 +658,36 @@
                 `<strong>${totalDays} ngày làm việc</strong> · <strong>${totalSlots} slot khám</strong> trong ${applyWeeks} tuần · Mỗi slot ${dur} phút · Tối đa ${maxPt} bệnh nhân/slot`;
         }
 
-        function saveRecurring() {
+        async function saveRecurring() {
             const days = getCheckedDays();
             if (!days.length) return showToast('Chọn ít nhất 1 ngày làm việc', 'error');
-            const mC = parseInt(document.getElementById('slot-duration').value);
+            const dur = parseInt(document.getElementById('slot-duration').value);
+            const maxSlot = parseInt(document.getElementById('max-slot').value);
             const mOn = document.getElementById('morning-enabled').checked;
             const aOn = document.getElementById('afternoon-enabled').checked;
             if (!mOn && !aOn) return showToast('Bật ít nhất 1 ca khám (sáng hoặc chiều)', 'error');
-            const doc = document.getElementById('doctor-select').options[document.getElementById('doctor-select').selectedIndex].text.split('—')[0].trim();
-            showToast(`✅ Đã lưu lịch ${applyWeeks} tuần cho ${doc}`);
+
+            const doctorId = parseInt(document.getElementById('doctor-select').value);
+            const data = {
+                doctor_id: doctorId,
+                room_id: 3,
+                days_of_week: days,
+                morning_enabled: mOn,
+                morning_start: mOn ? document.getElementById('morning-start').value : '08:00',
+                morning_end: mOn ? document.getElementById('morning-end').value : '12:00',
+                afternoon_enabled: aOn,
+                afternoon_start: aOn ? document.getElementById('afternoon-start').value : '13:30',
+                afternoon_end: aOn ? document.getElementById('afternoon-end').value : '17:00',
+                slot_duration: dur,
+                max_slot: maxSlot,
+                apply_weeks: applyWeeks
+            };
+
+            const res = await apiCall('POST', '/recurring', data);
+            if (res?.success) {
+                showToast(`✅ ${res.message}`, 'success');
+                setTimeout(() => loadRecurringSchedules(), 500);
+            }
         }
 
         // ===== DAY OFF FORM =====
@@ -691,15 +743,26 @@
             if (!start) return showToast('Vui lòng chọn ngày nghỉ', 'error');
             const end = rangeOn ? document.getElementById('dayoff-end').value : null;
             const reason = document.getElementById('dayoff-reason').value;
-            const affected = parseInt(document.getElementById('affected-count').textContent) || 0;
-            const typeInfo = { sick: { icon: '🤒', label: 'Bệnh / đột xuất', color: 'red' }, leave: { icon: '🏖️', label: 'Nghỉ phép', color: 'green' }, conference: { icon: '🎓', label: 'Hội nghị', color: 'purple' } };
-            const t = typeInfo[selectedDayOffType];
-            dayOffs.unshift({ id: nextId++, type: selectedDayOffType, icon: t.icon, label: t.label, color: t.color, date: start, endDate: end, session: selectedSession, reason, affected });
-            renderDayOffList();
-            document.getElementById('dayoff-start').value = '';
-            document.getElementById('dayoff-reason').value = '';
-            const dateLabel = end ? `${start} → ${end}` : start;
-            showToast(`✅ Đã block lịch ${dateLabel}${affected > 0 ? `. Đã gửi email cho ${affected} BN.` : ''}`);
+            const doctorId = parseInt(document.getElementById('doctor-select').value);
+
+            const data = {
+                doctor_id: doctorId,
+                type: selectedDayOffType,
+                date: start,
+                end_date: end,
+                session: selectedSession,
+                reason: reason
+            };
+
+            apiCall('POST', '/day-off', data).then(res => {
+                if (res?.success) {
+                    showToast(`✅ ${res.message}`, 'success');
+                    document.getElementById('dayoff-start').value = '';
+                    document.getElementById('dayoff-end').value = '';
+                    document.getElementById('dayoff-reason').value = '';
+                    setTimeout(() => loadDayOffs(), 500);
+                }
+            });
         }
 
         // ===== DAY-OFF LIST =====
@@ -715,9 +778,39 @@
         }
 
         function deleteDayOff(id) {
-            dayOffs = dayOffs.filter(d => d.id !== id);
-            renderDayOffList();
-            showToast('Đã xoá ngày nghỉ. Slot đã được mở lại.', 'error');
+            if (!confirm('Mở lại lịch này? Bệnh nhân sẽ có thể đặt lại.')) return;
+            apiCall('DELETE', `/day-off/${id}`).then(res => {
+                if (res?.success) {
+                    showToast('✅ Đã mở lại lịch', 'success');
+                    setTimeout(() => loadDayOffs(), 300);
+                }
+            });
+        }
+
+        async function loadDayOffs() {
+            const doctorId = parseInt(document.getElementById('doctor-select').value);
+            const res = await apiCall('GET', `/day-off/${doctorId}`);
+            if (res?.success) {
+                dayOffs = (res.data || []).flatMap(group =>
+                    group.sessions.map(sess => ({
+                        id: sess.schedule_id,
+                        type: sess.note?.match(/\[(.*?)\]/)?.[1] || 'leave',
+                        date: group.date,
+                        reason: sess.note?.replace(/\[.*?\]\s*/, '') || '',
+                        affected: 0,
+                        session: sess.start_time < '12:00:00' ? 'morning' : (sess.start_time >= '12:00:00' && sess.start_time < '17:00:00' ? 'afternoon' : 'all'),
+                        icon: { sick: '🤒', leave: '🏖️', conference: '🎓' }[sess.note?.match(/\[(.*?)\]/)?.[1] || 'leave'] || '📋',
+                        label: { sick: 'Bệnh / đột xuất', leave: 'Nghỉ phép', conference: 'Hội nghị' }[sess.note?.match(/\[(.*?)\]/)?.[1] || 'leave'] || 'Nghỉ',
+                        color: { sick: 'red', leave: 'green', conference: 'purple' }[sess.note?.match(/\[(.*?)\]/)?.[1] || 'leave'] || 'gray',
+                    }))
+                );
+                renderDayOffList();
+            }
+        }
+
+        async function loadRecurringSchedules() {
+            const doctorId = parseInt(document.getElementById('doctor-select').value);
+            await apiCall('GET', `/recurring/${doctorId}?per_page=100`);
         }
 
         function renderDayOffList() {
@@ -766,10 +859,9 @@
             document.getElementById('dayoff-end').min = today;
             document.getElementById('dayoff-start').addEventListener('change', e => {
                 document.getElementById('dayoff-end').min = e.target.value;
-                document.getElementById('affected-count').textContent = Math.floor(Math.random() * 6);
             });
             updatePreview();
-            renderDayOffList();
+            loadDayOffs();
         });
     </script>
 </body>
