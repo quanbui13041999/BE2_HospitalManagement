@@ -8,6 +8,7 @@ use App\Mail\AppointmentRescheduleMail;
 use App\Mail\DoctorDayOffNotification;
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\DoctorDayOff;
 use App\Models\DoctorSchedule;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -52,6 +53,18 @@ class DayOffService
             &$blockedCount, &$affectedCount, &$emailsSent
         ) {
             foreach ($dates as $date) {
+                // Tạo / ghi nhận ngày nghỉ trong bảng DoctorDaysOff
+                DoctorDayOff::firstOrCreate(
+                    [
+                        'doctor_id' => $doctorId,
+                        'off_date'  => $date,
+                    ],
+                    [
+                        'reason'     => $reason ?: $type,
+                        'created_at' => now(),
+                    ]
+                );
+
                 // Lấy các schedule của bác sĩ trong ngày đó
                 /** @var EloquentCollection<int, DoctorSchedule> $schedules */
                 $schedules = DoctorSchedule::forDoctor($doctorId)
@@ -74,11 +87,13 @@ class DayOffService
                     $affected = $schedule->activeAppointments();
 
                     foreach ($affected as $appt) {
-                        // Đổi trạng thái appointment sang 'cancelled'
-                        $appt->update([
-                            'status'        => 'cancelled',
-                            'cancel_reason' => "Bác sĩ nghỉ ({$type}): {$reason}",
-                        ]);
+                        // Đổi trạng thái appointment sang 'Bác sĩ nghỉ'
+                        DB::table('appointments')
+                            ->where('appointment_id', $appt->appointment_id)
+                            ->update([
+                                'status'        => 'Bác sĩ nghỉ',
+                                'cancel_reason' => "{$type}: {$reason}",
+                            ]);
                         $affectedCount++;
 
                         // Gợi ý slot thay thế từ bác sĩ cùng khoa
@@ -87,17 +102,16 @@ class DayOffService
                             $appt->appointment_time
                         );
 
-                        // Gửi email hỏi bệnh nhân
+                        // Gửi email hỏi bệnh nhân ngay lập tức
                         if ($appt->user && $appt->user->email) {
-                            Mail::to($appt->user->email)
-                                ->queue(new AppointmentRescheduleMail(
-                                    patient:      $appt->user,
-                                    appointment:  $appt,
-                                    doctor:       $doctor,
-                                    reason:       $reason,
-                                    type:         $type,
-                                    alternatives: $alternatives,
-                                ));
+                            Mail::to($appt->user->email)->send(new AppointmentRescheduleMail(
+                                patient:      $appt->user,
+                                appointment:  $appt,
+                                doctor:       $doctor,
+                                reason:       $reason,
+                                type:         $type,
+                                alternatives: $alternatives,
+                            ));
                             $emailsSent++;
                         }
                     }
@@ -106,14 +120,13 @@ class DayOffService
 
             // ── Gửi email thông báo cho bác sĩ nếu có lịch khám bị ảnh hưởng ──
             if ($affectedCount > 0 && $doctor->user && $doctor->user->email) {
-                Mail::to($doctor->user->email)
-                    ->queue(new DoctorDayOffNotification(
-                        doctor: $doctor,
-                        data: array_merge($data, [
-                            'blocked_schedules' => $blockedCount,
-                            'affected_appointments' => $affectedCount,
-                        ]),
-                    ));
+                Mail::to($doctor->user->email)->send(new DoctorDayOffNotification(
+                    doctor: $doctor,
+                    data: array_merge($data, [
+                        'blocked_schedules' => $blockedCount,
+                        'affected_appointments' => $affectedCount,
+                    ]),
+                ));
             }
         });
 
@@ -158,7 +171,20 @@ class DayOffService
     public function cancel(int $scheduleId): bool
     {
         $schedule = DoctorSchedule::findOrFail($scheduleId);
-        $schedule->update(['status' => 'active', 'note' => null]);
+        $schedule->update(['status' => 'Hoạt động', 'note' => null]);
+
+        // Nếu không còn ca bị block cùng ngày thì xoá bản ghi DoctorDayOff.
+        $blockedExists = DoctorSchedule::where('doctor_id', $schedule->doctor_id)
+            ->where('work_date', $schedule->work_date)
+            ->where('status', 'blocked')
+            ->exists();
+
+        if (!$blockedExists) {
+            DoctorDayOff::where('doctor_id', $schedule->doctor_id)
+                ->where('off_date', $schedule->work_date)
+                ->delete();
+        }
+
         return true;
     }
 

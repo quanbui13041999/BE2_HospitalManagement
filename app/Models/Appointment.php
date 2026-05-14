@@ -9,7 +9,7 @@ class Appointment extends Model
 {
     protected $table      = 'Appointments';
     protected $primaryKey = 'appointment_id';
-    public    $timestamps = true;
+    public    $timestamps = false;
 
     protected $fillable = [
         'user_id', 'schedule_id', 'service_id',

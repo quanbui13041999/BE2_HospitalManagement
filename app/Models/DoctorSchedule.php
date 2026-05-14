@@ -47,7 +47,7 @@ class DoctorSchedule extends Model
     /** Chỉ lấy lịch còn hiệu lực (chưa bị block) */
     public function scopeActive(Builder $q): Builder
     {
-        return $q->where('status', 'active');
+        return $q->whereIn('status', ['active', 'Hoạt động']);
     }
 
     /** Lịch trong khoảng ngày */
@@ -90,7 +90,7 @@ class DoctorSchedule extends Model
     public function availableSlots(): int
     {
         $booked = $this->appointments()
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereIn('status', ['pending', 'confirmed', 'Chờ xác nhận', 'Đã xác nhận'])
             ->count();
 
         return max(0, $this->max_slot - $booked);
@@ -103,7 +103,7 @@ class DoctorSchedule extends Model
     {
         return $this->appointments()
             ->with('user')
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereIn('status', ['pending', 'confirmed', 'Chờ xác nhận', 'Đã xác nhận'])
             ->get();
     }
 }
