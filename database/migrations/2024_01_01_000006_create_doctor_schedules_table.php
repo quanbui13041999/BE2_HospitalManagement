@@ -22,7 +22,7 @@ return new class extends Migration {
             $table->unique(['doctor_id', 'work_date', 'start_time'], 'UQ_DoctorSchedules');
 
             $table->foreign('doctor_id')
-                  ->references('user_id')->on('Users')
+                  ->references('doctor_id')->on('Doctors')
                   ->onUpdate('cascade')->onDelete('cascade');
 
             $table->foreign('room_id')
@@ -33,6 +33,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('DoctorSchedules');
+        Schema::dropIfExists('doctor_schedules');
     }
 };
