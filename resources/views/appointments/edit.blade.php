@@ -43,6 +43,7 @@
         <a href="{{ route('home') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🏠 Trang chủ</a>
         <a href="{{ route('appointments.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📋 Lịch hẹn</a>
         <a href="{{ route('appointments.create') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">✨ Đặt lịch mới</a>
+        <a href="{{ route('news.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📰 Bản tin</a>
     </div>
     <div class="flex items-center gap-3">
         @auth
