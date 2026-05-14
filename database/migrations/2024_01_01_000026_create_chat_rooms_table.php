@@ -20,7 +20,7 @@ return new class extends Migration {
                   ->onUpdate('cascade')->onDelete('cascade');
 
             $table->foreign('doctor_id')
-                  ->references('doctor_id')->on('Doctors')
+                  ->references('user_id')->on('Users')
                   ->onUpdate('cascade')->onDelete('set null');
         });
     }

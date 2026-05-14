@@ -164,10 +164,53 @@ class DocumentController extends Controller
         return $disk->download($document->file_path, $document->doc_name);
     }
 
-    private function authorizeDocument(MedicalDocument $document): void
-    {
-        if ($document->user_id !== Auth::id()) {
-            abort(403);
-        }
+   private function authorizeDocument(MedicalDocument $document): void
+{
+    $user = Auth::user();
+    $isDoctor = in_array($user->role_id ?? 0, [1, 2]);
+
+    // Bác sĩ/Admin được xem tất cả
+    if ($isDoctor) return;
+
+    // Bệnh nhân chỉ xem của mình
+    if ($document->user_id !== $user->user_id) {
+        abort(403);
     }
+}
+    // 👉 Bác sĩ/Admin xem tài liệu của bệnh nhân cụ thể
+public function indexPatient(Request $request, int $patientId): \Illuminate\View\View
+{
+    $user = Auth::user();
+    $isDoctor = in_array($user->role_id ?? 0, [1, 2]);
+
+    if (!$isDoctor) {
+        abort(403, 'Không có quyền xem tài liệu này');
+    }
+
+    $keyword  = $request->input('search');
+    $category = $request->input('category');
+    $period   = $request->input('period');
+
+    $documents = MedicalDocument::where('user_id', $patientId)
+        ->latest('uploaded_at')
+        ->search($keyword)
+        ->ofCategory($category)
+        ->ofPeriod($period)
+        ->paginate(self::PER_PAGE)
+        ->withQueryString();
+
+    $stats = [
+        'total' => MedicalDocument::where('user_id', $patientId)->count(),
+        'total_size' => '—',
+        'categoryCounts' => collect(MedicalDocument::categories())
+            ->mapWithKeys(fn($cat, $key) => [
+                $key => MedicalDocument::where('user_id', $patientId)
+                            ->where('doc_type', $key)->count()
+            ])->toArray(),
+    ];
+
+    $patient = \App\Models\User::findOrFail($patientId);
+
+    return view('documents.index', compact('documents', 'stats', 'patient'));
+}
 }

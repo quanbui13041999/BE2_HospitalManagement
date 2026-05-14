@@ -28,7 +28,7 @@ return new class extends Migration {
                   ->onUpdate('cascade')->onDelete('cascade');
 
             $table->foreign('schedule_id')
-                  ->references('schedule_id')->on('DoctorSchedules')
+                  ->references('schedule_id')->on('doctor_schedules')
                   ->onUpdate('cascade')->onDelete('cascade');
 
             $table->foreign('service_id')

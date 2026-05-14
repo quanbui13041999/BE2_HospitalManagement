@@ -13,6 +13,8 @@ class User extends Authenticatable
     protected $primaryKey = 'user_id';
     public $timestamps    = false;
 
+    
+
     protected $fillable = [
         'full_name',
         'email',
@@ -96,15 +98,33 @@ class User extends Authenticatable
         return $this->hasMany(MedicalDocument::class, 'user_id', 'user_id');
     }
 
+    // ── Accessors ──
+    public function getIsAdminAttribute()
+    {
+        return $this->isAdmin();
+    }
+
+    public function getIsDoctorAttribute()
+    {
+        return $this->isDoctor();
+    }
+
+    public function getIsPatientAttribute()
+    {
+        return $this->isPatient();
+    }
+
     // ── Helpers ──
     public function isAdmin()
     {
         return $this->role_id === 1;
     }
+
     public function isDoctor()
     {
         return $this->role_id === 2;
     }
+
     public function isPatient()
     {
         return $this->role_id === 3;
