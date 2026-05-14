@@ -12,6 +12,27 @@
     {{-- Bootstrap Icons --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
+    {{-- Google Fonts: Inter --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <style>
+        .navbar .navbar-collapse {
+            visibility: visible !important;
+        }
+    </style>
+
     @stack('styles')
 </head>
 
@@ -28,18 +49,52 @@
             <div class="collapse navbar-collapse" id="navbarUser">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('home') }}">
+                        <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
                             <i class="bi bi-house-door"></i> Trang chủ
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('user.services.index') }}">
+                        <a class="nav-link {{ request()->routeIs('user.services.index') ? 'active' : '' }}" href="{{ route('user.services.index') }}">
                             <i class="bi bi-clipboard2-pulse"></i> Dịch vụ
                         </a>
                     </li>
                     @auth
                     <li class="nav-item">
-                        <a class="nav-link" href="/lich-hen"> <i class="bi bi-calendar-check"></i> Lịch hẹn
+                        <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen"> 
+                            <i class="bi bi-calendar-check"></i> Lịch hẹn
+                        </a>
+                    </li>
+                    @php
+                    $user = Auth::user();
+                    $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
+                    $demoLink = '#';
+                    $demoText = 'Demo';
+                    $demoIcon = 'bi-star';
+                    $demoClass = 'btn-outline-secondary';
+
+                    if ($roleId == 2 || ($user->role == 'doctor')) {
+                    $demoLink = route('doctor.appointments.index');
+                    $demoText = 'Demo BS';
+                    $demoIcon = 'bi-stethoscope';
+                    $demoClass = 'btn-outline-primary';
+                    } elseif ($roleId == 3 || ($user->role == 'patient')) {
+                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
+                    $demoText = 'Demo Bệnh án';
+                    $demoIcon = 'bi-file-medical';
+                    $demoClass = 'btn-outline-success';
+                    } elseif ($roleId == 1 || ($user->role == 'admin')) {
+                    $demoLink = route('admin.dashboard');
+                    $demoText = 'Demo Admin';
+                    $demoIcon = 'bi-speedometer2';
+                    $demoClass = 'btn-outline-warning';
+                    }
+                    @endphp
+
+                    <li class="nav-item me-2">
+                        <a class="nav-link {{ $demoClass }}"
+                            href="{{ $demoLink }}"
+                            style="border-radius: 20px; padding: 5px 15px; border-width: 1px; border-style: solid;">
+                            <i class="bi {{ $demoIcon }}"></i> {{ $demoText }}
                         </a>
                     </li>
                     <li class="nav-item dropdown">
@@ -47,30 +102,27 @@
                             <i class="bi bi-person-circle"></i> {{ Auth::user()->full_name ?? Auth::user()->name ?? 'User' }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            {{-- Tạm thời comment link Hồ sơ cá nhân cho đến khi có route --}}
-                           
-                                <li><a class="dropdown-item" href="{{ route('profile.show') }}">Hồ sơ cá nhân</a>
+                            <li><a class="dropdown-item" href="{{ route('profile.show') }}">Hồ sơ cá nhân</a></li>
+                            @if(Auth::user()->role_id == 1)
+                                <li><a class="dropdown-item" href="{{ route('admin.dashboard') }}">Dashboard</a></li>
+                            @endif
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item">Đăng xuất</button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
-                    <li>
-                        <hr class="dropdown-divider">
+                    @else
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('login') }}">Đăng nhập</a>
                     </li>
-                   
-                    <li>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="dropdown-item">Đăng xuất</button>
-                        </form>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('register') }}">Đăng ký</a>
                     </li>
-                </ul>
-                </li>
-                @else
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('login') }}">Đăng nhập</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('register') }}">Đăng ký</a>
-                </li>
-                @endauth
+                    @endauth
                 </ul>
             </div>
         </div>
@@ -111,6 +163,10 @@
     {{-- Scripts --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @stack('scripts')
+
+    @auth
+        @include('components.chat-widget')
+    @endauth
 </body>
 
 </html>
