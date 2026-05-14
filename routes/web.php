@@ -15,6 +15,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HealthBackgroundController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DoctorScheduleController;
 use App\Http\Controllers\DocumentController;
 
 use App\Http\Controllers\NewsController;
@@ -273,6 +274,24 @@ Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function 
     Route::get('/', function () {
         return view('doctor.doctor-schedule');
     })->name('schedule');
+});
+
+Route::prefix('api/v1')->middleware('auth')->group(function () {
+    Route::prefix('schedules')->group(function () {
+        // ─── Recurring Schedule ───────────────────────────────────────
+        Route::post('recurring/preview', [DoctorScheduleController::class, 'recurringPreview']);
+        Route::post('recurring', [DoctorScheduleController::class, 'storeRecurring']);
+        Route::get('recurring/{doctorId}', [DoctorScheduleController::class, 'indexRecurring']);
+        Route::delete('recurring/{scheduleId}', [DoctorScheduleController::class, 'destroyRecurring']);
+
+        // ─── Day-Off (Block + Email) ──────────────────────────────────
+        Route::post('day-off', [DoctorScheduleController::class, 'storeDayOff']);
+        Route::get('day-off/{doctorId}', [DoctorScheduleController::class, 'indexDayOff']);
+        Route::delete('day-off/{scheduleId}', [DoctorScheduleController::class, 'destroyDayOff']);
+
+        // ─── Utility ──────────────────────────────────────────────────
+        Route::get('doctors', [DoctorScheduleController::class, 'listDoctors']);
+    });
 });
 
 // ============================================================
