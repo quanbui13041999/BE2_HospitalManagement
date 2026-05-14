@@ -3,7 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\BhytCard;
-use App\Models\Invoice;
+use App\Models\Payment;
 use Illuminate\Support\Collection;
 
 class BhytRepository
@@ -13,8 +13,7 @@ class BhytRepository
      */
     public function findByCardNumber(string $cardNumber): ?BhytCard
     {
-        return BhytCard::with('patient')
-            ->where('card_number', strtoupper($cardNumber))
+        return BhytCard::with('user')->where('card_number', strtoupper($cardNumber))
             ->first();
     }
 
@@ -23,8 +22,7 @@ class BhytRepository
      */
     public function expiringSoon(int $days = 60): Collection
     {
-        return BhytCard::with('patient')
-            ->where('status', 'Còn hạn')
+        return BhytCard::with('user')->where('status', 'Còn hạn')
             ->where('expiry_date', '<=', now()->addDays($days)->toDateString())
             ->orderBy('expiry_date')
             ->get();
@@ -41,30 +39,33 @@ class BhytRepository
     /**
      * Lấy hóa đơn chưa áp dụng BHYT cho bệnh nhân.
      */
-    public function pendingInvoice(int $patientId): ?Invoice
+    public function pendingInvoice(int $patientId): ?Payment
     {
-        return Invoice::with(['items.service'])
-            ->where('patient_id', $patientId)
-            ->where('bhyt_applied', false)
-            ->where('status', 'Chờ thanh toán')
-            ->latest()
+        return Payment::with(['items', 'appointment.user'])
+            ->whereHas('appointment', function ($query) use ($patientId) {
+                $query->where('user_id', $patientId);
+            })
+            ->whereNull('insurance_id')
+            ->where('status', 'Chưa thanh toán')
+            ->orderBy('payment_id', 'desc')
             ->first();
     }
 
     /**
      * Áp dụng BHYT vào hóa đơn: tính giảm trừ và cập nhật tổng.
      */
-    public function applyBhytToInvoice(Invoice $invoice, float $coverageRate): array
+    public function applyBhytToInvoice(Payment $payment, BhytCard $card): array
     {
-        $items        = $invoice->items;
-        $totalOriginal = $items->sum('subtotal');
+        $items        = $payment->items;
+        $totalOriginal = $payment->subtotal ?? $items->sum('subtotal') ?? 0;
+        
+        $coverageRate = $card->coverage_rate;
         $bhytPays     = round($totalOriginal * $coverageRate / 100);
         $patientPays  = $totalOriginal - $bhytPays;
 
-        $invoice->update([
-            'bhyt_applied'    => true,
-            'bhyt_coverage'   => $coverageRate,
-            'bhyt_amount'     => $bhytPays,
+        $payment->update([
+            'insurance_id'    => $card->card_id,
+            'discount_amount' => $bhytPays,
             'total_amount'    => $patientPays,
         ]);
 
