@@ -16,8 +16,13 @@ use App\Http\Controllers\HealthBackgroundController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
+
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Admin\ChatRoomController;
+
 
 // ============================================================
 // TRANG CHỦ & AUTH
@@ -263,3 +268,26 @@ Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(
 Route::get('/bac-si', function () {return view('welcome');})->name('doctors.index');
 require_once "medical_records.php";
 Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
+
+// =============================================
+// CHAT CSKH – Patient Routes
+// =============================================
+Route::middleware(['auth'])->prefix('chat')->name('chat.')->group(function () {
+    Route::post('/room',              [ChatController::class, 'getOrCreateRoom'])->name('room');
+    Route::get('/messages/{roomId}',  [ChatController::class, 'getMessages'])->name('messages');
+    Route::post('/send',              [ChatController::class, 'sendMessage'])->name('send');
+    Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall');
+});
+
+// =============================================
+// CHAT CSKH – Admin/Staff Routes
+// =============================================
+Route::middleware(['auth', 'role:1,2'])->prefix('admin/chatroom')->name('admin.chatroom.')->group(function () {
+    Route::get('/',                         [ChatRoomController::class, 'index'])->name('index');
+    Route::get('/list',                     [ChatRoomController::class, 'listJson'])->name('list');
+    Route::get('/{roomId}/messages',        [ChatRoomController::class, 'getMessages'])->name('messages');
+    Route::post('/{roomId}/send',           [ChatRoomController::class, 'sendMessage'])->name('send');
+    Route::post('/{roomId}/close',          [ChatRoomController::class, 'closeRoom'])->name('close');
+    Route::delete('/{roomId}',              [ChatRoomController::class, 'deleteRoom'])->name('delete');
+    Route::delete('/messages/{messageId}',  [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
+});
