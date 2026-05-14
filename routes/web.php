@@ -13,6 +13,10 @@ use App\Http\Controllers\User\PaymentController as UserPaymentController;
 use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HealthBackgroundController;
+use App\Http\Controllers\EmergencyContactController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DocumentController;
 
 // ============================================================
 // TRANG CHỦ & AUTH
@@ -54,61 +58,38 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/appointments/timeslots',  [AppointmentController::class, 'timeslots'])->name('appointments.timeslots');
     Route::get('/api/appointments/queue-info', [AppointmentController::class, 'getQueueInfo'])->name('appointments.queue-info');
 
-    // Lịch sử + dời/hủy lịch hẹn
+    // Lịch sử + dời/hủy lịch hẹn (Route chính)
     Route::prefix('lich-hen')->name('user.appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
+    });
+
+    // ALIAS: Route cũ cho tương thích với view
+    Route::prefix('lich-hen')->name('appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
+        Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
+        Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
     });
 
     // --------------------------------------------------------
     // THANH TOÁN (User)
-    // Prefix: /payments  |  Name prefix: user.payments.
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
-
-        // !! Đặt /history TRƯỚC /{paymentId} để tránh conflict !!
-        Route::get('/history', [UserPaymentController::class, 'history'])
-            ->name('history');
-
-        // Trang chọn phương thức thanh toán cho 1 lịch hẹn
-        Route::get('/appointment/{appointmentId}', [UserPaymentController::class, 'show'])
-            ->name('show');
-
-        // Khởi tạo giao dịch (POST từ form chọn phương thức)
-        Route::post('/store', [UserPaymentController::class, 'store'])
-            ->name('store');
-
-        // Trang quét QR
-        Route::get('/{paymentId}/qr', [UserPaymentController::class, 'qr'])
-            ->name('qr');
-
-        // Trang giả lập cổng thanh toán (ATM / MoMo / ZaloPay)
-        Route::get('/{paymentId}/gateway', [UserPaymentController::class, 'gateway'])
-            ->name('gateway');
-
-        // Xác nhận thanh toán thành công
-        Route::post('/{paymentId}/confirm', [UserPaymentController::class, 'confirm'])
-            ->name('confirm');
-
-        // Hủy / thất bại
-        // GET  → dùng cho link "Hủy giao dịch" trong gateway.blade.php
-        // POST → dùng cho fetch() trong qr.blade.php (timeout / nút hủy)
-        Route::get('/{paymentId}/fail',  [UserPaymentController::class, 'fail'])
-            ->name('fail');
-        Route::post('/{paymentId}/fail', [UserPaymentController::class, 'fail'])
-            ->name('fail.post');
-
-        // Trang kết quả / biên lai
-        Route::get('/{paymentId}/success', [UserPaymentController::class, 'success'])
-            ->name('success');
+        Route::get('/history', [UserPaymentController::class, 'history'])->name('history');
+        Route::get('/appointment/{appointmentId}', [UserPaymentController::class, 'show'])->name('show');
+        Route::post('/store', [UserPaymentController::class, 'store'])->name('store');
+        Route::get('/{paymentId}/qr', [UserPaymentController::class, 'qr'])->name('qr');
+        Route::get('/{paymentId}/gateway', [UserPaymentController::class, 'gateway'])->name('gateway');
+        Route::post('/{paymentId}/confirm', [UserPaymentController::class, 'confirm'])->name('confirm');
+        Route::get('/{paymentId}/fail', [UserPaymentController::class, 'fail'])->name('fail');
+        Route::post('/{paymentId}/fail', [UserPaymentController::class, 'fail'])->name('fail.post');
+        Route::get('/{paymentId}/success', [UserPaymentController::class, 'success'])->name('success');
     });
 
-    // --------------------------------------------------------
     // Đánh giá bác sĩ
-    // --------------------------------------------------------
     Route::get('/reviews/check',           [ReviewsDoctorController::class, 'checkCanReview'])->name('reviews.check');
     Route::post('/reviews',                [ReviewsDoctorController::class, 'store'])->name('reviews.store');
     Route::put('/reviews/{review}',        [ReviewsDoctorController::class, 'update'])->name('reviews.update');
@@ -124,6 +105,35 @@ Route::middleware('auth')->group(function () {
 
     // Trang chủ sau khi đăng nhập
     Route::get('/trangchu', [HomeController::class, 'index'])->name('Home.trangchu');
+
+    // Health Background
+    Route::get('/health-background', [HealthBackgroundController::class, 'index'])->name('health.index');
+    Route::post('/health-background', [HealthBackgroundController::class, 'store'])->name('health.store');
+
+    // Liên hệ khẩn cấp
+    Route::get('/lien-he-khan-cap', [EmergencyContactController::class, 'index'])->name('emergency-contacts.index');
+    Route::post('/lien-he-khan-cap', [EmergencyContactController::class, 'store'])->name('emergency-contacts.store');
+
+    // Profile
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/',          [ProfileController::class, 'show'])->name('show');
+        Route::get('/edit',      [ProfileController::class, 'edit'])->name('edit');
+        Route::put('/update',    [ProfileController::class, 'update'])->name('update');
+        Route::get('/password',  [ProfileController::class, 'editPassword'])->name('password.edit');
+        Route::put('/password',  [ProfileController::class, 'updatePassword'])->name('password.update');
+        Route::delete('/avatar', [ProfileController::class, 'deleteAvatar'])->name('avatar.delete');
+    });
+
+    // Tài liệu y khoa
+    Route::prefix('tai-lieu')->name('documents.')->group(function () {
+        Route::get('/',                      [DocumentController::class, 'index'])->name('index');
+        Route::post('/',                     [DocumentController::class, 'store'])->name('store');
+        Route::get('/{document}/view',       [DocumentController::class, 'show'])->name('show');
+        Route::get('/{document}/download',   [DocumentController::class, 'download'])->name('download');
+        Route::get('/{document}/edit',       [DocumentController::class, 'edit'])->name('edit');
+        Route::put('/{document}',            [DocumentController::class, 'update'])->name('update');
+        Route::delete('/{document}',         [DocumentController::class, 'destroy'])->name('destroy');
+    });
 });
 
 // ============================================================
@@ -211,6 +221,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         // Đánh dấu thất bại
         Route::post('/{paymentId}/fail', [PaymentController::class, 'fail'])->name('fail');
     });
+    
     // --------------------------------------------------------
     // Quản lý BHYT
     // --------------------------------------------------------
