@@ -5,6 +5,7 @@
 namespace App\Services;
 
 use App\Mail\AppointmentRescheduleMail;
+use App\Mail\DoctorDayOffNotification;
 use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
@@ -42,12 +43,12 @@ class DayOffService
         $emailsSent    = 0;
 
         // Bác sĩ cùng khoa để gợi ý
-        $doctor       = Doctor::with('department')->findOrFail($doctorId);
+        $doctor       = Doctor::with('department', 'user')->findOrFail($doctorId);
         $alterDoctors = $doctor->sameDepDoctors();
 
         DB::transaction(function () use (
             $doctorId, $session, $reason, $type, $dates,
-            $doctor, $alterDoctors,
+            $doctor, $alterDoctors, $data,
             &$blockedCount, &$affectedCount, &$emailsSent
         ) {
             foreach ($dates as $date) {
@@ -101,6 +102,18 @@ class DayOffService
                         }
                     }
                 }
+            }
+
+            // ── Gửi email thông báo cho bác sĩ nếu có lịch khám bị ảnh hưởng ──
+            if ($affectedCount > 0 && $doctor->user && $doctor->user->email) {
+                Mail::to($doctor->user->email)
+                    ->queue(new DoctorDayOffNotification(
+                        doctor: $doctor,
+                        data: array_merge($data, [
+                            'blocked_schedules' => $blockedCount,
+                            'affected_appointments' => $affectedCount,
+                        ]),
+                    ));
             }
         });
 

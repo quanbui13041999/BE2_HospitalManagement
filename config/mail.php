@@ -67,6 +67,17 @@ return [
             'transport' => 'resend',
         ],
 
+        'brevo' => [
+            'transport' => 'smtp',
+            'scheme' => 'tls',
+            'host' => 'smtp-relay.brevo.com',
+            'port' => 587,
+            'username' => env('MAIL_USERNAME'),
+            'password' => env('MAIL_PASSWORD'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN'),
+        ],
+
         'sendmail' => [
             'transport' => 'sendmail',
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
