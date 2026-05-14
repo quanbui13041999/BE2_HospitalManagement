@@ -243,11 +243,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 // ============================================================
 // ROUTE BÁC SĨ (tạm thời)
 // ============================================================
-
-<<<<<<< HEAD
-Route::get('/bac-si', function () {
-    return view('welcome');
-})->name('doctors.index');
-=======
+Route::get('/bac-si', function () {return view('welcome');})->name('doctors.index');
+require_once "medical_records.php";
 Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
->>>>>>> origin/master
