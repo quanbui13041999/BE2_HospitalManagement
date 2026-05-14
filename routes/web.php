@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function () {
     // Lịch sử + dời/hủy lịch hẹn (Route chính)
     Route::prefix('lich-hen')->name('user.appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/bac-si-nghi', [AppointmentController::class, 'doctorOff'])->name('doctor-off');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
@@ -75,6 +76,7 @@ Route::middleware('auth')->group(function () {
     // ALIAS: Route cũ cho tương thích với view
     Route::prefix('lich-hen')->name('appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/bac-si-nghi', [AppointmentController::class, 'doctorOff'])->name('doctor-off');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
@@ -260,6 +262,17 @@ Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(
     Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
     Route::patch('news/{id}/toggle', [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
     Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
+});
+
+// ============================================================
+// ROUTE BÁC SĨ (Doctor Schedule Management)
+// ============================================================
+
+Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function () {
+    // Quản lý lịch làm việc
+    Route::get('/', function () {
+        return view('doctor.doctor-schedule');
+    })->name('schedule');
 });
 
 // ============================================================
