@@ -10,7 +10,6 @@ use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\ServiceController as UserServiceController;
 use App\Http\Controllers\User\PaymentController as UserPaymentController;
-use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HealthBackgroundController;
@@ -22,7 +21,7 @@ use App\Http\Controllers\DocumentController;
 // TRANG CHỦ & AUTH
 // ============================================================
 
-Route::get('/', [UserServiceController::class, 'index'])->name('home');
+Route::get('/', [HomeController::class, 'welcome'])->name('home');
 
 Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
 Route::get('/register',  [AuthController::class, 'showRegister'])->name('register');
@@ -75,7 +74,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // --------------------------------------------------------
-    // THANH TOÁN (User)
+    // THANH TOÁN (Users)
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
         Route::get('/history', [UserPaymentController::class, 'history'])->name('history');
@@ -95,10 +94,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/reviews/{review}',        [ReviewsDoctorController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}',     [ReviewsDoctorController::class, 'destroy'])->name('reviews.destroy');
     Route::post('/reviews/{review}/reply', [ReviewsDoctorController::class, 'reply'])->name('reviews.reply');
-
-    // Xem tiền sử bệnh
-    Route::get('/tiensu',  [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
-    Route::post('/tiensu', [tiensucontroler::class, 'luutiensu'])->name('tiensu.store');
 
     // Thẻ thành viên
     Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
@@ -249,6 +244,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 // ROUTE BÁC SĨ (tạm thời)
 // ============================================================
 
+<<<<<<< HEAD
 Route::get('/bac-si', function () {
     return view('welcome');
 })->name('doctors.index');
+=======
+Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
+>>>>>>> origin/master
