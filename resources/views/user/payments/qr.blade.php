@@ -1,0 +1,187 @@
+{{-- resources/views/user/payments/qr.blade.php --}}
+@extends('layouts.user')
+
+@section('title', 'Quét mã QR thanh toán')
+
+@push('styles')
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
+    .gw-page {
+        font-family: 'Be Vietnam Pro', sans-serif;
+        background: #f0f4f8;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+
+    .gw-card {
+        background: #fff;
+        border-radius: 20px;
+        max-width: 480px;
+        width: 100%;
+        overflow: hidden;
+        box-shadow: 0 16px 48px rgba(0,0,0,.1);
+    }
+
+    .gw-header {
+        padding: 1.5rem 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: linear-gradient(135deg, #0369a1, #075985);
+    }
+
+    .gw-logo {
+        width: 48px; height: 48px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+        background: rgba(255,255,255,.2);
+    }
+
+    .gw-header-info h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        margin: 0 0 .2rem;
+    }
+
+    .gw-header-info p {
+        font-size: .82rem;
+        color: rgba(255,255,255,.75);
+        margin: 0;
+    }
+
+    .gw-body { padding: 2rem; text-align: center; }
+
+    .amount-display {
+        text-align: center;
+        padding: 1.5rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        margin-bottom: 1.75rem;
+    }
+
+    .amount-label { font-size: .8rem; color: #94a3b8; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .amount-value { font-size: 2.2rem; font-weight: 800; color: #1e293b; margin: .25rem 0; letter-spacing: -.03em; }
+    .amount-ref { font-size: .78rem; color: #94a3b8; }
+
+    .qr-container {
+        display: inline-block;
+        padding: 1rem;
+        background: #fff;
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+    }
+
+    .qr-image {
+        width: 250px;
+        height: 250px;
+    }
+
+    .instruction {
+        font-size: .95rem;
+        color: #475569;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-pay {
+        width: 100%;
+        padding: 1rem;
+        border: none;
+        border-radius: 12px;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #fff;
+        cursor: pointer;
+        transition: all .2s;
+        margin-top: .25rem;
+        background: #10b981;
+    }
+
+    .btn-pay:hover { transform: translateY(-1px); }
+
+    .demo-notice {
+        background: #fffbeb;
+        border: 1.5px solid #fde68a;
+        border-radius: 10px;
+        padding: .75rem 1rem;
+        font-size: .82rem;
+        color: #92400e;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: .5rem;
+        text-align: left;
+    }
+</style>
+@endpush
+
+@section('content')
+<div class="gw-page">
+    <div class="gw-card">
+
+        {{-- Header --}}
+        <div class="gw-header">
+            <div class="gw-logo">📱</div>
+            <div class="gw-header-info">
+                <h2>Quét mã QR (VietQR)</h2>
+                <p>Bệnh viện Đặt Khám Online</p>
+            </div>
+        </div>
+
+        <div class="gw-body">
+            {{-- Demo notice --}}
+            <div class="demo-notice">
+                ⚠️ <span>Đây là môi trường <strong>demo</strong>. Mã QR này dùng API để hiển thị. Nhấn "Xác nhận thanh toán thành công" để mô phỏng quét QR xong.</span>
+            </div>
+
+            <div class="amount-display">
+                <div class="amount-label">Số tiền cần thanh toán</div>
+                <div class="amount-value">{{ number_format($totalAmount, 0, ',', '.') }}đ</div>
+                <div class="amount-ref">Mã GD: {{ $payment->transaction_ref }}</div>
+            </div>
+
+            <div class="qr-container">
+                {{-- Dùng API tạo QR ảnh để tránh lỗi QrCode not found --}}
+                <img src="https://quickchart.io/qr?text={{ urlencode($qrContent) }}&size=300" alt="Mã QR thanh toán" class="qr-image">
+            </div>
+
+            <p class="instruction">
+                Sử dụng App ngân hàng hoặc ví điện tử (MoMo, ZaloPay, Viettel Money...) hỗ trợ VietQR để quét mã.
+            </p>
+
+            <form id="confirmForm" action="{{ route('user.payments.confirm', $payment->payment_id) }}" method="POST">
+                @csrf
+                <input type="hidden" name="ref" value="{{ $payment->transaction_ref }}">
+                <button type="submit" class="btn-pay">
+                    ✓ Giả lập đã quét QR thành công
+                </button>
+            </form>
+
+            <div style="text-align:center;margin-top:1.5rem">
+                <a href="{{ route('user.payments.fail', $payment->payment_id) }}"
+                   style="font-size:.82rem;color:#94a3b8;text-decoration:none"
+                   onclick="return confirm('Hủy giao dịch này?')">
+                   Hủy giao dịch
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+    document.getElementById('confirmForm').addEventListener('submit', function (e) {
+        const btn = this.querySelector('button');
+        btn.disabled = true;
+        btn.textContent = 'Đang xử lý...';
+    });
+</script>
+@endpush

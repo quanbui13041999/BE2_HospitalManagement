@@ -2,39 +2,52 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * Model ánh xạ tới bảng insurancecards trong database.
- * Dùng chung với InsuranceCard - chỉ cần 1 trong 2.
- */
 class BhytCard extends Model
 {
-    protected $table      = 'insurancecards';   // ← trỏ đúng bảng thực tế
+    use HasFactory;
+
+    protected $table = 'insurancecards';
     protected $primaryKey = 'insurance_id';
-    public    $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
-        'user_id',
+        'patient_id',
         'card_number',
-        'provider',
-        'issued_date',
+        'issue_date',
         'expiry_date',
-        'discount_pct',
+        'coverage_rate',
         'status',
+        'notes',
     ];
 
     protected $casts = [
-        'issued_date'  => 'date',
-        'expiry_date'  => 'date',
-        'discount_pct' => 'float',
+        'issued_date' => 'date',
+        'expiry_date' => 'date',
+        'discount_pct' => 'integer',
     ];
 
-    /**
-     * Relationship đúng: insurancecards.user_id → users.user_id
-     */
-    public function user()
+    // Relationships
+    public function patient()
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+
+    // Accessors for compatibility with existing code
+    public function getPatientIdAttribute()
+    {
+        return $this->user_id;
+    }
+
+    public function getCoverageRateAttribute()
+    {
+        return $this->discount_pct;
+    }
+
+    public function getIssueDateAttribute()
+    {
+        return $this->issued_date;
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Services\Admin;
 
 use App\Models\BhytCard;
-use App\Models\Invoice;
+use App\Models\Payment;
 use App\Repositories\BhytRepository;
 
 class BhytService
@@ -68,23 +68,23 @@ class BhytService
             return null;
         }
 
-        $invoice = Invoice::find($invoiceId);
+        $payment = Payment::with('appointment')->find($invoiceId);
 
-        if (!$invoice || $invoice->patient_id !== $card->patient_id) {
+        if (!$payment || $payment->appointment->user_id !== $card->patient_id) {
             return null;
         }
 
-        if ($invoice->bhyt_applied) {
+        if ($payment->insurance_id !== null) {
             // Đã áp dụng rồi, trả về thông tin hiện tại
             return [
                 'already_applied' => true,
-                'coverage_rate'   => $invoice->bhyt_coverage,
-                'bhyt_amount'     => $invoice->bhyt_amount,
-                'patient_pays'    => $invoice->total_amount,
+                'coverage_rate'   => $card->coverage_rate,
+                'bhyt_amount'     => $payment->discount_amount,
+                'patient_pays'    => $payment->total_amount,
             ];
         }
 
-        return $this->repo->applyBhytToInvoice($invoice, $card->coverage_rate);
+        return $this->repo->applyBhytToInvoice($payment, $card);
     }
 
     // ----------------------------------------------------------------
