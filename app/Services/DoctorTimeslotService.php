@@ -44,9 +44,20 @@ class DoctorTimeslotService
      */
     private function isDayOff(int $doctorId, string $workDate): bool
     {
-        return DB::table('doctordaysoff')
+        $activeScheduleCount = DB::table('doctorschedules')
             ->where('doctor_id', $doctorId)
-            ->where('off_date', $workDate)
+            ->where('work_date', $workDate)
+            ->whereIn('status', ['active', 'Hoạt động'])
+            ->count();
+
+        if ($activeScheduleCount > 0) {
+            return false;
+        }
+
+        return DB::table('doctorschedules')
+            ->where('doctor_id', $doctorId)
+            ->where('work_date', $workDate)
+            ->where('status', 'blocked')
             ->exists();
     }
 
@@ -58,7 +69,7 @@ class DoctorTimeslotService
         return DB::table('doctorschedules')
             ->where('doctor_id', $doctorId)
             ->where('work_date', $workDate)
-            ->where('status', 'Hoạt động')
+            ->whereIn('status', ['active', 'Hoạt động'])
             ->select(
                 'schedule_id',
                 'start_time',

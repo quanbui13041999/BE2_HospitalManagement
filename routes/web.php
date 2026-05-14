@@ -10,7 +10,6 @@ use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\ServiceController as UserServiceController;
 use App\Http\Controllers\User\PaymentController as UserPaymentController;
-use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HealthBackgroundController;
@@ -18,11 +17,18 @@ use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
 
+use App\Http\Controllers\NewsController;
+use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Admin\ChatRoomController;
+
+
 // ============================================================
 // TRANG CHỦ & AUTH
 // ============================================================
 
-Route::get('/', [UserServiceController::class, 'index'])->name('home');
+Route::get('/', [HomeController::class, 'welcome'])->name('home');
 
 Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
 Route::get('/register',  [AuthController::class, 'showRegister'])->name('register');
@@ -61,6 +67,7 @@ Route::middleware('auth')->group(function () {
     // Lịch sử + dời/hủy lịch hẹn (Route chính)
     Route::prefix('lich-hen')->name('user.appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/bac-si-nghi', [AppointmentController::class, 'doctorOff'])->name('doctor-off');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
@@ -69,13 +76,14 @@ Route::middleware('auth')->group(function () {
     // ALIAS: Route cũ cho tương thích với view
     Route::prefix('lich-hen')->name('appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/bac-si-nghi', [AppointmentController::class, 'doctorOff'])->name('doctor-off');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
     });
 
     // --------------------------------------------------------
-    // THANH TOÁN (User)
+    // THANH TOÁN (Users)
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
         Route::get('/history', [UserPaymentController::class, 'history'])->name('history');
@@ -95,10 +103,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/reviews/{review}',        [ReviewsDoctorController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}',     [ReviewsDoctorController::class, 'destroy'])->name('reviews.destroy');
     Route::post('/reviews/{review}/reply', [ReviewsDoctorController::class, 'reply'])->name('reviews.reply');
-
-    // Xem tiền sử bệnh
-    Route::get('/tiensu',  [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
-    Route::post('/tiensu', [tiensucontroler::class, 'luutiensu'])->name('tiensu.store');
 
     // Thẻ thành viên
     Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
@@ -246,9 +250,57 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 });
 
 // ============================================================
-// ROUTE BÁC SĨ (tạm thời)
+// BẢN TIN BỆNH VIỆN
 // ============================================================
 
-Route::get('/bac-si', function () {
-    return view('welcome');
-})->name('doctors.index');
+// Public routes
+Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
+
+// Admin routes
+Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
+    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
+    Route::patch('news/{id}/toggle', [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
+    Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
+});
+
+// ============================================================
+// ROUTE BÁC SĨ (Doctor Schedule Management)
+// ============================================================
+
+Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function () {
+    // Quản lý lịch làm việc
+    Route::get('/', function () {
+        return view('doctor.doctor-schedule');
+    })->name('schedule');
+});
+
+// ============================================================
+// ROUTE BÁC SĨ (tạm thời)
+// ============================================================
+Route::get('/bac-si', function () {return view('welcome');})->name('doctors.index');
+require_once "medical_records.php";
+Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
+
+// =============================================
+// CHAT CSKH – Patient Routes
+// =============================================
+Route::middleware(['auth'])->prefix('chat')->name('chat.')->group(function () {
+    Route::post('/room',              [ChatController::class, 'getOrCreateRoom'])->name('room');
+    Route::get('/messages/{roomId}',  [ChatController::class, 'getMessages'])->name('messages');
+    Route::post('/send',              [ChatController::class, 'sendMessage'])->name('send');
+    Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall');
+});
+
+// =============================================
+// CHAT CSKH – Admin/Staff Routes
+// =============================================
+Route::middleware(['auth', 'role:1,2'])->prefix('admin/chatroom')->name('admin.chatroom.')->group(function () {
+    Route::get('/',                         [ChatRoomController::class, 'index'])->name('index');
+    Route::get('/list',                     [ChatRoomController::class, 'listJson'])->name('list');
+    Route::get('/{roomId}/messages',        [ChatRoomController::class, 'getMessages'])->name('messages');
+    Route::post('/{roomId}/send',           [ChatRoomController::class, 'sendMessage'])->name('send');
+    Route::post('/{roomId}/close',          [ChatRoomController::class, 'closeRoom'])->name('close');
+    Route::delete('/{roomId}',              [ChatRoomController::class, 'deleteRoom'])->name('delete');
+    Route::delete('/messages/{messageId}',  [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
+});

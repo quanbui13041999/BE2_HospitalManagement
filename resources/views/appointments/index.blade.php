@@ -6,10 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Lịch Khám Của Tôi – HospitalBooking</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <style>
+        /* (toàn bộ CSS giữ nguyên như file của bạn) */
         * {
             margin: 0;
             padding: 0;
@@ -46,7 +45,6 @@
             --radius-input: 16px;
         }
 
-        /* Topbar mới – trắng sáng, hiện đại */
         .topbar {
             background: var(--white);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 0 rgba(0, 0, 0, 0.03);
@@ -169,7 +167,6 @@
             color: var(--primary-dark);
         }
 
-        /* Breadcrumb */
         .breadcrumb-bar {
             padding: 14px 32px;
             font-size: 0.75rem;
@@ -191,14 +188,12 @@
             margin: 0 6px;
         }
 
-        /* Layout chính */
         .page {
             max-width: 1280px;
             margin: 24px auto 48px;
             padding: 0 28px;
         }
 
-        /* Page header */
         .page-header {
             display: flex;
             align-items: center;
@@ -258,7 +253,6 @@
             box-shadow: 0 12px 22px -6px rgba(15, 82, 186, 0.4);
         }
 
-        /* Alert */
         .alert-success {
             background: #ecfdf5;
             border-left: 4px solid #10b981;
@@ -272,7 +266,6 @@
             color: #065f46;
         }
 
-        /* Stats row */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -319,7 +312,6 @@
             color: #ef4444;
         }
 
-        /* Card table */
         .card {
             background: var(--white);
             border-radius: 28px;
@@ -348,7 +340,6 @@
             margin-top: 4px;
         }
 
-        /* Table styles */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -389,7 +380,6 @@
             vertical-align: middle;
         }
 
-        /* Doctor cell */
         .doctor-cell {
             display: flex;
             align-items: center;
@@ -416,7 +406,6 @@
             color: var(--gray-800);
         }
 
-        /* Date & time */
         .date-cell .date {
             font-weight: 700;
             color: var(--gray-800);
@@ -431,7 +420,6 @@
             margin-top: 4px;
         }
 
-        /* Badges */
         .badge {
             display: inline-flex;
             align-items: center;
@@ -490,7 +478,6 @@
             background: var(--gray-400);
         }
 
-        /* Actions */
         .actions {
             display: flex;
             align-items: center;
@@ -538,7 +525,6 @@
             transform: translateY(-1px);
         }
 
-        /* Empty state */
         .empty-state {
             padding: 60px 20px;
             text-align: center;
@@ -557,7 +543,6 @@
             color: var(--gray-500);
         }
 
-        /* Modal */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -677,7 +662,6 @@
             transform: translateY(-1px);
         }
 
-        /* Footer */
         .footer {
             background: var(--white);
             border-top: 1px solid var(--gray-200);
@@ -693,7 +677,34 @@
             text-decoration: none;
         }
 
-        /* Responsive */
+        .review-summary {
+            font-size: 0.75rem;
+            flex: 1;
+            min-width: 150px;
+            padding: 8px 12px;
+            background: var(--gray-50);
+            border-radius: 12px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .review-summary-stars {
+            color: #f59e0b;
+            margin-bottom: 4px;
+        }
+
+        .review-summary-comment {
+            color: var(--gray-600);
+            margin-top: 2px;
+            display: block;
+        }
+
+        .review-summary-reply {
+            color: var(--gray-400);
+            margin-top: 2px;
+            font-style: italic;
+            display: block;
+        }
+
         @media (max-width: 860px) {
             .stats-row {
                 grid-template-columns: repeat(2, 1fr);
@@ -739,7 +750,7 @@
 
 <body>
 
-    {{-- TOPBAR HIỆN ĐẠI --}}
+    {{-- TOPBAR --}}
     <nav class="topbar">
         <a href="{{ route('home') }}" class="topbar-brand">
             <div class="logo-icon">
@@ -752,23 +763,22 @@
                 <div class="brand-sub">Đặt lịch thông minh</div>
             </div>
         </a>
-
         <div class="topbar-center">
             <a href="{{ route('home') }}">🏠 Trang chủ</a>
             <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
             <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
+            <a href="{{ route('news.index') }}">📰 Bản tin</a>
         </div>
-
-        <div class="topbar-right">
+        <div class="topbar-right" style="display:flex;align-items:center;gap:10px;">
             @auth
-                <div class="user-pill">
-                    <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
-                    <span class="user-name">{{ auth()->user()->name ?? 'Người dùng' }}</span>
-                </div>
-                <form method="POST" action="{{ route('logout') }}" style="margin:0">
-                    @csrf
-                    <button type="submit" class="btn-logout">Đăng xuất</button>
-                </form>
+            <div class="user-pill">
+                <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
+                <span class="user-name">{{ auth()->user()->name ?? 'Người dùng' }}</span>
+            </div>
+            <form method="POST" action="{{ route('logout') }}" style="margin:0">
+                @csrf
+                <button type="submit" class="btn-logout">Đăng xuất</button>
+            </form>
             @endauth
         </div>
     </nav>
@@ -777,11 +787,10 @@
     <div class="breadcrumb-bar">
         <a href="{{ route('home') }}">Trang chủ</a>
         <span class="sep">›</span>
-        <span style="color: var(--gray-600); font-weight: 500;">Lịch hẹn của tôi</span>
+        <span style="color:var(--gray-600);font-weight:500;">Lịch hẹn của tôi</span>
     </div>
 
     <div class="page">
-
         <div class="page-header">
             <div class="page-header-left">
                 <div class="page-header-icon">
@@ -807,20 +816,20 @@
         </div>
 
         @if(session('success'))
-            <div class="alert-success">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                    <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-                {{ session('success') }}
-            </div>
+        <div class="alert-success">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            {{ session('success') }}
+        </div>
         @endif
 
         @php
-            $total = $appointments->count();
-            $pending = $appointments->where('status', 'Chờ xác nhận')->count();
-            $confirmed = $appointments->where('status', 'Đã xác nhận')->count();
-            $done = $appointments->where('status', 'Hoàn thành')->count();
+        $total = $appointments->count();
+        $pending = $appointments->where('status', 'Chờ xác nhận')->count();
+        $confirmed = $appointments->where('status', 'Đã xác nhận')->count();
+        $done = $appointments->where('status', 'Hoàn thành')->count();
         @endphp
 
         <div class="stats-row">
@@ -838,7 +847,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-label">Hoàn thành</div>
-                <div class="stat-num" style="color: var(--gray-500);">{{ $done }}</div>
+                <div class="stat-num" style="color:var(--gray-500);">{{ $done }}</div>
             </div>
         </div>
 
@@ -849,7 +858,7 @@
                     <div class="card-top-sub">Hiển thị {{ $total }} lịch hẹn của bạn</div>
                 </div>
             </div>
-            <div style="overflow-x: auto;">
+            <div style="overflow-x:auto;">
                 <table>
                     <thead>
                         <tr>
@@ -862,178 +871,203 @@
                     </thead>
                     <tbody>
                         @forelse($appointments as $item)
-                            <tr>
-                                <td>
-                                    <div class="doctor-cell">
-                                        @php
-                                            $words = explode(' ', trim($item->doctor_name));
-                                            $initials = count($words) >= 2
-                                                ? strtoupper(mb_substr($words[count($words) - 2], 0, 1) . mb_substr($words[count($words) - 1], 0, 1))
-                                                : strtoupper(mb_substr($item->doctor_name, 0, 2));
-                                        @endphp
-                                        <div class="avatar">{{ $initials }}</div>
-                                        <div>
-                                            <div class="doctor-name">BS. {{ $item->doctor_name }}</div>
-                                            <div style="font-size:.7rem;color:var(--gray-400)">{{ $item->department_name }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>{{ $item->service_name ?? '—' }}</td>
-                                <td>
-                                    <div class="date-cell">
-                                        <div class="date">
-                                            {{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}
-                                        </div>
-                                        <div class="time">
-                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <polyline points="12 6 12 12 16 14" />
-                                            </svg>
-                                            {{ \Carbon\Carbon::parse($item->start_time)->format('H:i') }}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
+                        <tr>
+                            {{-- CỘT BÁC SĨ --}}
+                            <td>
+                                <div class="doctor-cell">
                                     @php
-                                        $statusMap = [
-                                            'Chờ xác nhận' => 'badge-pending',
-                                            'Đã xác nhận' => 'badge-confirmed',
-                                            'Đã hủy' => 'badge-cancelled',
-                                            'Dời lịch' => 'badge-cancelled',
-                                            'Đã khám' => 'badge-done',
-                                            'Hoàn thành' => 'badge-done',
-                                        ];
-                                        $badgeClass = $statusMap[$item->status] ?? 'badge-pending';
+                                    $words = explode(' ', trim($item->doctor_name));
+                                    $initials = count($words) >= 2
+                                    ? strtoupper(mb_substr($words[count($words)-2],0,1).mb_substr($words[count($words)-1],0,1))
+                                    : strtoupper(mb_substr($item->doctor_name,0,2));
                                     @endphp
-                                    <span class="badge {{ $badgeClass }}">
-                                        <span class="badge-dot"></span>
-                                        {{ $item->status }}
-                                    </span>
-                                </td>
-                                <td>
-                                    @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
-                                        <div class="actions">
-                                            <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
-                                                ...Dời lịch
-                                            </a>
-                                            <button type="button" onclick="openModal(this)"
-                                                data-action="{{ route('appointments.cancel', $item->appointment_id) }}"
-                                                class="btn-cancel">
-                                                ...Huỷ
-                                            </button>
-                                        </div>
+                                    <div class="avatar">{{ $initials }}</div>
+                                    <div>
+                                        <div class="doctor-name">BS. {{ $item->doctor_name }}</div>
+                                        <div style="font-size:.7rem;color:var(--gray-400)">{{ $item->department_name }}</div>
+                                    </div>
+                                </div>
+                            </td>
 
-                                    @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
-                                        @php
-                                            $reviewCreatedAt = \Carbon\Carbon::parse($item->review_created_at ?? null);
-                                            $canEdit = $item->review_created_at &&
-                                                $reviewCreatedAt->diffInHours(now()) <= 24;
-                                            $isAdmin = auth()->user()->role === 'admin';
-                                            $isDoctor = auth()->user()->role === 'doctor';
-                                        @endphp
+                            {{-- CỘT DỊCH VỤ --}}
+                            <td>{{ $item->service_name ?? '—' }}</td>
 
-                                        <div class="actions" style="flex-wrap:wrap">
-                                            @if($item->review_id ?? null)
+                            {{-- CỘT NGÀY KHÁM --}}
+                            <td>
+                                <div class="date-cell">
+                                    <div class="date">{{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}</div>
+                                    <div class="time">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <polyline points="12 6 12 12 16 14" />
+                                        </svg>
+                                        {{ \Carbon\Carbon::parse($item->start_time)->format('H:i') }}
+                                    </div>
+                                </div>
+                            </td>
 
-                                                {{-- Hiển thị nội dung đánh giá --}}
-                                                <div class="review-summary">
-                                                    <div class="review-summary-stars">
-                                                        @for($i = 1; $i <= 5; $i++)
-                                                            <span
-                                                                style="color:{{ $i <= $item->review_rating ? '#f59e0b' : '#d1d5db' }}">★</span>
-                                                        @endfor
-                                                    </div>
-                                                    @if($item->review_comment)
-                                                        <div class="review-summary-comment">
-                                                            {{ Str::limit($item->review_comment, 40) }}
-                                                        </div>
-                                                    @endif
-                                                    @if($item->doctor_reply)
-                                                        <div class="review-summary-reply">
-                                                            💬 {{ Str::limit($item->doctor_reply, 30) }}
-                                                        </div>
-                                                    @endif
-                                                </div>
+                            {{-- CỘT TRẠNG THÁI --}}
+                            <td>
+                                @php
+                                $statusMap = [
+                                'Chờ xác nhận' => 'badge-pending',
+                                'Đã xác nhận' => 'badge-confirmed',
+                                'Đã hủy' => 'badge-cancelled',
+                                'Dời lịch' => 'badge-cancelled',
+                                'Đã khám' => 'badge-done',
+                                'Hoàn thành' => 'badge-done',
+                                ];
+                                $badgeClass = $statusMap[$item->status] ?? 'badge-pending';
+                                @endphp
+                                <span class="badge {{ $badgeClass }}">
+                                    <span class="badge-dot"></span>
+                                    {{ $item->status }}
+                                </span>
+                            </td>
 
-                                                {{-- Sửa: user trong 24h hoặc admin --}}
-                                                @if($canEdit || $isAdmin)
-                                                                    <button type="button" class="btn-edit" onclick="openReviewModal({
-                                                        appointmentId : {{ $item->appointment_id }},
-                                                        doctorId      : {{ $item->doctor_id }},
-                                                        doctorName    : '{{ addslashes($item->doctor_name) }}',
-                                                        deptName      : '{{ addslashes($item->department_name) }}',
-                                                        workDate      : '{{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}',
-                                                        avatarUrl     : '',
-                                                        storeUrl      : '{{ route('reviews.store') }}',
-                                                        existing      : {
-                                                            reviewId  : {{ $item->review_id }},
-                                                            rating    : {{ $item->review_rating ?? 0 }},
-                                                            comment   : '{{ addslashes($item->review_comment ?? '') }}',
-                                                            updateUrl : '{{ route('reviews.update', $item->review_id ?? 0) }}'
-                                                        }
-                                                    })">✏️ Sửa</button>
-                                                @endif
+                            {{-- CỘT THAO TÁC --}}
+                            <td>
+                                @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
+                                {{-- Dời / Huỷ --}}
+                                <div class="actions">
+                                    <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
+                                        📅 Dời lịch
+                                    </a>
+                                    <button type="button" class="btn-cancel"
+                                        onclick="openModal(this)"
+                                        data-action="{{ route('appointments.cancel', $item->appointment_id) }}">
+                                        ✕ Huỷ
+                                    </button>
+                                </div>
 
-                                                {{-- Xóa: chính user hoặc admin --}}
-                                                @if($canEdit || $isAdmin)
-                                                    <button type="button" class="btn-cancel"
-                                                        onclick="openDeleteReviewModal('{{ route('reviews.destroy', $item->review_id ?? 0) }}')">
-                                                        🗑 Xóa
-                                                    </button>
-                                                @endif
+                                @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
+                                @php
+                                // ← FIX: dùng ?? null để tránh Undefined property
+                                $rawReviewDate = $item->review_created_at ?? null;
+                                $reviewCreatedAt = $rawReviewDate ? \Carbon\Carbon::parse($rawReviewDate) : null;
+                                $canEdit = !empty($rawReviewDate)
+                                && $reviewCreatedAt && $reviewCreatedAt->diffInHours(now()) <= 24;
+                                    $isAdmin=auth()->user()->role === 'admin';
+                                    $isDoctor = auth()->user()->role === 'doctor';
+                                    @endphp
 
-                                                {{-- Trả lời: chỉ doctor hoặc admin --}}
-                                                @if($isAdmin || $isDoctor)
-                                                                <button type="button" class="btn-edit"
-                                                                    style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0" onclick="openReplyModal({
-                                                        replyUrl      : '{{ route('reviews.reply', $item->review_id ?? 0) }}',
-                                                        stars         : {{ $item->review_rating ?? 0 }},
-                                                        comment       : '{{ addslashes($item->review_comment ?? '') }}',
-                                                        userName      : '{{ addslashes(auth()->user()->full_name ?? auth()->user()->name ?? '') }}',
-                                                        existingReply : '{{ addslashes($item->doctor_reply ?? '') }}'
-                                                    })">
-                                                                    💬 {{ $item->doctor_reply ? 'Sửa phản hồi' : 'Trả lời' }}
-                                                                </button>
-                                                @endif
-
-                                            @else
-                                                                    {{-- Chưa đánh giá --}}
-                                                                    <button type="button" class="btn-edit btn-review" onclick="openReviewModal({
-                                                    appointmentId : {{ $item->appointment_id }},
-                                                    doctorId      : {{ $item->doctor_id }},
-                                                    doctorName    : '{{ addslashes($item->doctor_name) }}',
-                                                    deptName      : '{{ addslashes($item->department_name) }}',
-                                                    workDate      : '{{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}',
-                                                    avatarUrl     : '',
-                                                    storeUrl      : '{{ route('reviews.store') }}',
-                                                    existing      : null
-                                                })">⭐ Đánh giá</button>
+                                    <div class="actions" style="flex-wrap:wrap">
+                                        @if(!empty($item->review_id))
+                                        {{-- Đã có đánh giá: hiển thị tóm tắt --}}
+                                        <div class="review-summary">
+                                            <div class="review-summary-stars">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                    <span style="color:{{ $i <= ($item->review_rating ?? 0) ? '#f59e0b' : '#d1d5db' }}">★</span>
+                                                    @endfor
+                                            </div>
+                                            @if($item->review_comment ?? null)
+                                            <div class="review-summary-comment">
+                                                {{ Str::limit($item->review_comment, 40) }}
+                                            </div>
+                                            @endif
+                                            @if($item->doctor_reply ?? null)
+                                            <div class="review-summary-reply">
+                                                💬 {{ Str::limit($item->doctor_reply, 30) }}
+                                            </div>
                                             @endif
                                         </div>
 
-                                    @else
-                                        <span style="font-size:.75rem;color:var(--gray-400)">—</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5">
-                                    <div class="empty-state">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                            <rect x="3" y="4" width="18" height="18" rx="2" />
-                                            <line x1="16" y1="2" x2="16" y2="6" />
-                                            <line x1="8" y1="2" x2="8" y2="6" />
-                                            <line x1="3" y1="10" x2="21" y2="10" />
-                                        </svg>
-                                        <p>Bạn chưa có lịch khám nào.</p>
-                                        <a href="{{ route('appointments.create') }}" class="btn-book-new"
-                                            style="margin-top:16px;display:inline-flex;">Đặt lịch ngay</a>
+                                        {{-- Sửa đánh giá: trong 24h hoặc admin --}}
+                                        @if($canEdit || $isAdmin)
+                                        @php
+                                        $reviewEditData = [
+                                        'appointmentId' => $item->appointment_id,
+                                        'doctorId' => $item->doctor_id,
+                                        'doctorName' => $item->doctor_name,
+                                        'deptName' => $item->department_name,
+                                        'workDate' => \Carbon\Carbon::parse($item->work_date)->format('d/m/Y'),
+                                        'avatarUrl' => '',
+                                        'storeUrl' => route('reviews.store'),
+                                        'existing' => [
+                                        'reviewId' => $item->review_id,
+                                        'rating' => $item->review_rating ?? 0,
+                                        'comment' => $item->review_comment ?? '',
+                                        'updateUrl' => route('reviews.update', $item->review_id ?? 0),
+                                        ],
+                                        ];
+                                        @endphp
+                                        <button type="button" class="btn-edit"
+                                            data-review='@json($reviewEditData)'
+                                            onclick="openReviewModal(JSON.parse(this.dataset.review))">
+                                            ✏️ Sửa
+                                        </button>
+                                        @endif
+
+                                        {{-- Xoá đánh giá --}}
+                                        @if($canEdit || $isAdmin)
+                                        <button type="button" class="btn-cancel"
+                                            data-destroy-url="{{ route('reviews.destroy', $item->review_id ?? 0) }}"
+                                            onclick="openDeleteReviewModal(this.dataset.destroyUrl)">
+                                            🗑 Xóa
+                                        </button>
+                                        @endif
+
+                                        {{-- Trả lời: doctor hoặc admin --}}
+                                        @if($isAdmin || $isDoctor)
+                                        @php
+                                        $replyData = [
+                                        'replyUrl' => route('reviews.reply', $item->review_id ?? 0),
+                                        'stars' => $item->review_rating ?? 0,
+                                        'comment' => $item->review_comment ?? '',
+                                        'userName' => auth()->user()->full_name ?? auth()->user()->name ?? '',
+                                        'existingReply' => $item->doctor_reply ?? '',
+                                        ];
+                                        @endphp
+                                        <button type="button" class="btn-edit"
+                                            style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0"
+                                            data-reply='@json($replyData)'
+                                            onclick="openReplyModal(JSON.parse(this.dataset.reply))">
+                                            💬 {{ ($item->doctor_reply ?? null) ? 'Sửa phản hồi' : 'Trả lời' }}
+                                        </button>
+                                        @endif
+
+                                        @else
+                                        {{-- Chưa đánh giá --}}
+                                        @php
+                                        $newReviewData = [
+                                        'appointmentId' => $item->appointment_id,
+                                        'doctorId' => $item->doctor_id,
+                                        'doctorName' => $item->doctor_name,
+                                        'deptName' => $item->department_name,
+                                        'workDate' => \Carbon\Carbon::parse($item->work_date)->format('d/m/Y'),
+                                        'avatarUrl' => '',
+                                        'storeUrl' => route('reviews.store'),
+                                        'existing' => null,
+                                        ];
+                                        @endphp
+                                        <button type="button" class="btn-edit btn-review"
+                                            data-review='@json($newReviewData)'
+                                            onclick="openReviewModal(JSON.parse(this.dataset.review))">
+                                            ⭐ Đánh giá
+                                        </button>
+                                        @endif
                                     </div>
-                                </td>
-                            </tr>
+
+                                    @else
+                                    <span style="font-size:.75rem;color:var(--gray-400)">—</span>
+                                    @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                                        <line x1="16" y1="2" x2="16" y2="6" />
+                                        <line x1="8" y1="2" x2="8" y2="6" />
+                                        <line x1="3" y1="10" x2="21" y2="10" />
+                                    </svg>
+                                    <p>Bạn chưa có lịch khám nào.</p>
+                                    <a href="{{ route('appointments.create') }}" class="btn-book-new" style="margin-top:16px;display:inline-flex;">Đặt lịch ngay</a>
+                                </div>
+                            </td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -1042,11 +1076,11 @@
     </div>
 
     <footer class="footer">
-        © {{ date('Y') }} HospitalBooking · Nền tảng đặt lịch khám hiện đại · <a href="#">Chính sách bảo mật</a>
-        &nbsp;·&nbsp; <a href="#">Hỗ trợ</a>
+        © {{ date('Y') }} HospitalBooking · Nền tảng đặt lịch khám hiện đại ·
+        <a href="#">Chính sách bảo mật</a> &nbsp;·&nbsp; <a href="#">Hỗ trợ</a>
     </footer>
 
-    {{-- Modal hủy lịch --}}
+    {{-- Modal huỷ lịch --}}
     <div class="modal-overlay" id="cancelModal">
         <div class="modal">
             <div class="modal-icon">
@@ -1068,21 +1102,22 @@
             </form>
         </div>
     </div>
+
     @include('appointments.reviews')
+
     <script>
         function openModal(button) {
-            const action = button.getAttribute('data-action');
-            document.getElementById('cancelForm').action = action;
+            document.getElementById('cancelForm').action = button.getAttribute('data-action');
             document.getElementById('cancelModal').classList.add('active');
         }
+
         function closeModal() {
             document.getElementById('cancelModal').classList.remove('active');
         }
-        document.getElementById('cancelModal').addEventListener('click', function (e) {
+        document.getElementById('cancelModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
     </script>
-
 </body>
 
 </html>
