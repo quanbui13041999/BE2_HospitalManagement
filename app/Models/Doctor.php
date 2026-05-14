@@ -15,6 +15,17 @@ class Doctor extends Model
         'experience', 'price', 'avatar_url', 'bio', 'status',
     ];
 
+
+    public function user()
+    {
+        // Doctor.user_id → users.user_id
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+
+
+
+    
+
     public function department()
     {
         return $this->belongsTo(Department::class, 'department_id', 'department_id');
@@ -66,6 +77,14 @@ class Doctor extends Model
     public function scopeByDepartment($q, $id)
     {
         return $q->where('department_id', $id);
+    }
+
+    public function sameDepDoctors()
+    {
+        return Doctor::with('department')
+            ->where('department_id', $this->department_id)
+            ->where('doctor_id', '!=', $this->doctor_id)
+            ->get();
     }
     
     public function scopeWithReviewStats($q)
