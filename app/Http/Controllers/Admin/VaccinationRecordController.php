@@ -18,8 +18,40 @@ class VaccinationRecordController extends Controller
 
     public function index(Request $request)
     {
-        $records = $this->recordService->getPaginatedRecords($request->status, 15);
-        return view('admin.vaccination_records.index', compact('records'));
+        // Get upcoming schedules
+        $upcomingSchedules = VaccinationRecord::with(['user', 'vaccine'])
+            ->where('status', 'Chưa tiêm')
+            ->whereNotNull('next_dose_date')
+            ->orderBy('next_dose_date', 'asc')
+            ->get();
+
+        // Get selected patient
+        $selectedPatientId = $request->patient_id;
+        if (!$selectedPatientId && $upcomingSchedules->count() > 0) {
+            $selectedPatientId = $upcomingSchedules->first()->user_id;
+        }
+
+        $selectedPatient = null;
+        $patientRecords = collect();
+        if ($selectedPatientId) {
+            $selectedPatient = User::find($selectedPatientId);
+            $patientRecords = VaccinationRecord::with(['vaccine', 'doctor'])
+                ->where('user_id', $selectedPatientId)
+                ->orderBy('administered_at', 'desc')
+                ->orderBy('next_dose_date', 'asc')
+                ->get();
+        }
+
+        $vaccines = Vaccine::where('status', 1)->get();
+        $patients = User::where('role_id', 3)->get(); // For dropdown or selection if needed
+
+        return view('admin.vaccination_records.index', compact(
+            'upcomingSchedules',
+            'selectedPatient',
+            'patientRecords',
+            'vaccines',
+            'patients'
+        ));
     }
 
     public function create()

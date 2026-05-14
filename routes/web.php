@@ -8,7 +8,7 @@ use App\Http\Controllers\Admin\BhytController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
-use App\Http\Controllers\User\ServiceController as UserServiceController;
+use App\Http\Controllers\ServiceController as UserServiceController;
 use App\Http\Controllers\User\PaymentController as UserPaymentController;
 use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController;

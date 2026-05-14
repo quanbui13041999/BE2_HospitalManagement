@@ -9,11 +9,11 @@ class DoctorStatisticController extends Controller
 {
     public function __construct(protected DoctorStatisticService $statisticService) {}
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
         // Delegate querying to Service
-        $statistics = $this->statisticService->getDoctorStatistics();
+        $data = $this->statisticService->getDashboardData($request);
 
-        return view('admin.doctor_statistics.index', compact('statistics'));
+        return view('admin.doctor_statistics.index', $data);
     }
 }

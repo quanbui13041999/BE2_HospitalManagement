@@ -53,6 +53,7 @@
                             <td class="text-center">
                                 <span class="badge bg-info text-dark">{{ $vaccine->doses_required }} mũi</span>
                             </td>
+
                             <td class="text-center">
                                 @if($vaccine->status)
                                     <span class="badge bg-success-subtle text-success">Sẵn sàng</span>

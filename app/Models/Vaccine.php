@@ -11,6 +11,8 @@ class Vaccine extends Model
     protected $fillable = ['vaccine_name','description','manufacturer','doses_required','status'];
     protected $casts    = ['status' => 'boolean', 'doses_required' => 'integer'];
 
+
+
     public function records() { return $this->hasMany(VaccinationRecord::class, 'vaccine_id', 'vaccine_id'); }
 }
 

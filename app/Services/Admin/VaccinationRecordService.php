@@ -3,6 +3,8 @@
 namespace App\Services\Admin;
 
 use App\Models\VaccinationRecord;
+use App\Models\Vaccine;
+use Illuminate\Support\Facades\DB;
 
 class VaccinationRecordService
 {
@@ -25,7 +27,11 @@ class VaccinationRecordService
      */
     public function createRecord(array $data)
     {
-        return VaccinationRecord::create($data);
+        return DB::transaction(function () use ($data) {
+            $record = VaccinationRecord::create($data);
+
+            return $record;
+        });
     }
 
     /**
@@ -33,7 +39,11 @@ class VaccinationRecordService
      */
     public function updateRecord(VaccinationRecord $record, array $data)
     {
-        return $record->update($data);
+        return DB::transaction(function () use ($record, $data) {
+            $record->update($data);
+
+            return $record;
+        });
     }
 
     /**
@@ -41,6 +51,10 @@ class VaccinationRecordService
      */
     public function deleteRecord(VaccinationRecord $record)
     {
-        return $record->delete();
+        return DB::transaction(function () use ($record) {
+
+            return $record->delete();
+        });
     }
+
 }

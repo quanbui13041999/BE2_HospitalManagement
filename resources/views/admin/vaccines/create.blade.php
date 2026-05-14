@@ -35,6 +35,8 @@
                         <input type="number" name="doses_required" class="form-control @error('doses_required') is-invalid @enderror" value="{{ old('doses_required', 1) }}" min="1" required>
                         @error('doses_required') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
+
+
                     
                     <div class="col-md-12">
                         <label class="form-label fw-semibold">Mô tả</label>

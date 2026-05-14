@@ -37,6 +37,8 @@
                         @error('doses_required') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     
+
+                    
                     <div class="col-md-12">
                         <label class="form-label fw-semibold">Mô tả</label>
                         <textarea name="description" class="form-control @error('description') is-invalid @enderror" rows="3">{{ old('description', $vaccine->description) }}</textarea>
