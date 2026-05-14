@@ -2,13 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DoctorSchedule extends Model
 {
-    protected $table = 'DoctorSchedules';
+    use HasFactory;
+
+    protected $table = 'doctorschedules';
     protected $primaryKey = 'schedule_id';
     public $timestamps = false;
+
+    const STATUSES = ['Hoạt động', 'Tạm dừng', 'Đã huỷ'];
 
     protected $fillable = [
         'doctor_id',
@@ -24,36 +29,21 @@ class DoctorSchedule extends Model
 
     protected $casts = [
         'work_date' => 'date',
+        'start_time' => 'string',
+        'end_time' => 'string',
+        'max_slot' => 'integer',
+        'slot_duration' => 'integer',
     ];
-
-    const STATUSES = ['Hoạt động', 'Tạm dừng', 'Đã huỷ'];
 
     public function doctor()
     {
-        return $this->belongsTo(Doctor::class, 'doctor_id', 'doctor_id');
+        // DoctorSchedule.doctor_id references Doctors.doctor_id
+        return $this->belongsTo(\App\Models\Doctor::class, 'doctor_id', 'doctor_id');
     }
 
     public function room()
     {
+        // ĐÚNG: RoomService.php -> $item->room->room_code
         return $this->belongsTo(Room::class, 'room_id', 'room_id');
     }
-
-    public function appointments()
-    {
-        return $this->hasMany(Appointment::class, 'schedule_id', 'schedule_id');
-    }
-
-    // Số slot đã đặt (không tính huỷ / dời)
-    public function getBookedSlotsAttribute(): int
-    {
-        return $this->appointments()
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-            ->count();
-    }
-
-    // Số slot còn trống
-    public function getRemainingSlotAttribute(): int
-    {
-        return max(0, $this->max_slot - $this->booked_slots);
-    }
-}
+}   

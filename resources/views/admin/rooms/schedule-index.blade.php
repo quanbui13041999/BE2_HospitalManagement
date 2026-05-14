@@ -1,7 +1,7 @@
 {{-- resources/views/admin/rooms/schedule-index.blade.php --}}
 @extends('layouts.admin')
 
-@section('title', 'Phân bổ ca làm việc')
+@section('title', 'Phân bổ Ca làm việc')
 
 @section('content')
 <div class="container-fluid">
@@ -9,7 +9,7 @@
         <h4 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Phân bổ Ca làm việc</h4>
         <div class="d-flex gap-2">
             <form method="GET" class="d-flex gap-2">
-                <input type="date" name="date" class="form-control" value="{{ $date }}" style="width:180px">
+                <input type="date" name="date" class="form-control" value="{{ $date ?? date('Y-m-d') }}" style="width:180px">
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-search"></i> Xem
                 </button>
@@ -36,7 +36,7 @@
     {{-- Thanh điều hướng ngày --}}
     <div class="d-flex justify-content-center align-items-center gap-3 mb-4">
         @php
-            $dateObj  = \Carbon\Carbon::parse($date);
+            $dateObj = \Carbon\Carbon::parse($date ?? date('Y-m-d'));
             $prevDate = $dateObj->copy()->subDay()->toDateString();
             $nextDate = $dateObj->copy()->addDay()->toDateString();
         @endphp
@@ -58,10 +58,10 @@
 
     {{-- Thống kê nhanh --}}
     @php
-        $totalSchedules = $rooms->sum(fn($r) => $r->schedules->count());
-        $totalSlots     = $rooms->sum(fn($r) => $r->schedules->sum('max_slot'));
-        $totalBooked    = $rooms->sum(fn($r) => $r->schedules->sum('booked_slots'));
-        $roomsInUse     = $rooms->filter(fn($r) => $r->schedules->isNotEmpty())->count();
+        $totalSchedules = isset($rooms) ? $rooms->sum(fn($r) => $r->schedules->count()) : 0;
+        $totalSlots     = isset($rooms) ? $rooms->sum(fn($r) => $r->schedules->sum('max_slot')) : 0;
+        $totalBooked    = isset($rooms) ? $rooms->sum(fn($r) => $r->schedules->sum('booked_slots')) : 0;
+        $roomsInUse     = isset($rooms) ? $rooms->filter(fn($r) => $r->schedules->isNotEmpty())->count() : 0;
     @endphp
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
@@ -99,8 +99,9 @@
     </div>
 
     {{-- Lưới phòng --}}
+    @if(isset($rooms) && $rooms->count() > 0)
     <div class="row g-3">
-        @forelse($rooms as $room)
+        @foreach($rooms as $room)
         @php
             $statusColors = [
                 'Trống'        => 'success',
@@ -117,6 +118,9 @@
                     <div>
                         <span class="fw-bold">{{ $room->room_name ?? $room->room_code }}</span>
                         <span class="badge bg-info-subtle text-info ms-2">{{ $room->room_type }}</span>
+                        @if($room->department)
+                            <div class="small text-muted">{{ $room->department->department_name }}</div>
+                        @endif
                     </div>
                     <span class="badge bg-{{ $roomColor }}">{{ $room->status }}</span>
                 </div>
@@ -158,7 +162,7 @@
                         </div>
                         <div class="small text-muted mb-2">
                             <i class="bi bi-person-badge me-1"></i>
-                            {{ $schedule->doctor->full_name }}
+                            {{ $schedule->doctor->full_name ?? '—' }}
                         </div>
                         {{-- Thanh tiến độ slot --}}
                         <div class="d-flex justify-content-between small mb-1">
@@ -168,6 +172,11 @@
                         <div class="progress" style="height:6px">
                             <div class="progress-bar bg-{{ $barColor }}" style="width:{{ $pct }}%"></div>
                         </div>
+                        @if($schedule->note)
+                        <div class="small text-muted mt-1">
+                            <i class="bi bi-chat"></i> {{ $schedule->note }}
+                        </div>
+                        @endif
                     </div>
                     @empty
                     <div class="p-3 text-center text-muted small">
@@ -183,11 +192,13 @@
                 </div>
             </div>
         </div>
-        @empty
-        <div class="col-12">
-            <div class="alert alert-info text-center">Không có phòng nào trong hệ thống.</div>
-        </div>
-        @endforelse
+        @endforeach
     </div>
+    @else
+    <div class="alert alert-info text-center">
+        <i class="bi bi-info-circle me-2"></i>
+        Không có phòng nào trong hệ thống. Vui lòng <a href="{{ route('admin.rooms.create') }}">thêm phòng</a> trước khi phân bổ ca.
+    </div>
+    @endif
 </div>
 @endsection

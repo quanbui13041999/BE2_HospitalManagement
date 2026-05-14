@@ -38,6 +38,15 @@
 
 /* ── Lịch sử ────────────────────────────────────────────────── */
 .hist-old { text-decoration:line-through; color:#90A4AE; }
+
+/* ── Delete modal ───────────────────────────────────────────── */
+.delete-modal-icon { width:64px; height:64px; background:#FEE2E2; border-radius:50%;
+                     display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+
+/* ── Action buttons ─────────────────────────────────────────── */
+.btn-action { width:32px; height:32px; padding:0; display:inline-flex; align-items:center;
+              justify-content:center; border-radius:8px; font-size:14px; transition:.15s; }
+.btn-action:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,.12); }
 </style>
 @endpush
 
@@ -59,9 +68,17 @@
 
     {{-- Alert ───────────────────────────────────────────────────── --}}
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill flex-shrink-0"></i>
+            <span>{{ session('success') }}</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+            <span>{{ session('error') }}</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
         </div>
     @endif
 
@@ -92,11 +109,16 @@
                 <form method="GET" class="row g-2 align-items-end">
                     <input type="hidden" name="tab" value="services">
                     <div class="col-md-4">
-                        <input type="text" name="search" class="form-control"
-                               placeholder="Tìm mã / tên dịch vụ..."
-                               value="{{ request('search') }}">
+                        <label class="form-label form-label-sm fw-semibold text-muted mb-1">Tìm kiếm</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" name="search" class="form-control border-start-0"
+                                   placeholder="Tìm mã / tên dịch vụ..."
+                                   value="{{ request('search') }}">
+                        </div>
                     </div>
                     <div class="col-md-3">
+                        <label class="form-label form-label-sm fw-semibold text-muted mb-1">Khoa</label>
                         <select name="department_id" class="form-select" onchange="this.form.submit()">
                             <option value="">Tất cả khoa</option>
                             @foreach($departments as $dept)
@@ -108,17 +130,18 @@
                         </select>
                     </div>
                     <div class="col-md-2">
+                        <label class="form-label form-label-sm fw-semibold text-muted mb-1">Trạng thái</label>
                         <select name="status" class="form-select" onchange="this.form.submit()">
-                            <option value="">Tất cả trạng thái</option>
+                            <option value="">Tất cả</option>
                             <option value="active"   {{ request('status') === 'active'   ? 'selected' : '' }}>Đang hoạt động</option>
                             <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Tạm ngưng</option>
                         </select>
                     </div>
                     <div class="col-md-3 d-flex gap-2">
-                        <button type="submit" class="btn btn-outline-primary flex-fill">
+                        <button type="submit" class="btn btn-primary flex-fill">
                             <i class="bi bi-search me-1"></i>Tìm
                         </button>
-                        <a href="{{ route('admin.services.index') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('admin.services.index') }}" class="btn btn-outline-secondary" title="Xoá bộ lọc">
                             <i class="bi bi-x-lg"></i>
                         </a>
                     </div>
@@ -133,15 +156,15 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3">Mã DV</th>
+                                <th class="ps-3" style="width:100px">Mã DV</th>
                                 <th>Tên dịch vụ</th>
                                 <th>Khoa</th>
-                                <th class="text-center">Thời lượng</th>
-                                <th class="text-end">Giá thường</th>
-                                <th class="text-end">Giá BHYT</th>
-                                <th class="text-end">Giá VIP</th>
-                                <th class="text-center">Trạng thái</th>
-                                <th class="text-center">Thao tác</th>
+                                <th class="text-center" style="width:100px">Thời lượng</th>
+                                <th class="text-end" style="width:120px">Giá thường</th>
+                                <th class="text-end" style="width:120px">Giá BHYT</th>
+                                <th class="text-end" style="width:120px">Giá VIP</th>
+                                <th class="text-center" style="width:130px">Trạng thái</th>
+                                <th class="text-center" style="width:130px">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -194,25 +217,38 @@
                                     @endif
                                 </td>
                                 <td class="text-center">
-                                    <div class="btn-group btn-group-sm">
+                                    <div class="d-flex gap-1 justify-content-center">
+                                        {{-- Xem --}}
                                         <a href="{{ route('admin.services.show', $service) }}"
-                                           class="btn btn-outline-info" title="Xem chi tiết">
+                                           class="btn btn-action btn-outline-info"
+                                           title="Xem chi tiết" data-bs-toggle="tooltip">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {{-- Sửa --}}
                                         <a href="{{ route('admin.services.edit', $service) }}"
-                                           class="btn btn-outline-primary" title="Sửa">
+                                           class="btn btn-action btn-outline-primary"
+                                           title="Sửa" data-bs-toggle="tooltip">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        {{-- Toggle trạng thái --}}
                                         <form method="POST"
                                               action="{{ route('admin.services.toggle-status', $service) }}"
                                               class="d-inline">
                                             @csrf @method('PATCH')
                                             <button type="submit"
-                                                    class="btn btn-outline-{{ $service->status ? 'warning' : 'success' }}"
-                                                    title="{{ $service->status ? 'Tạm ngưng' : 'Kích hoạt' }}">
-                                                <i class="bi bi-{{ $service->status ? 'eye-slash' : 'eye' }}"></i>
+                                                    class="btn btn-action btn-outline-{{ $service->status ? 'warning' : 'success' }}"
+                                                    title="{{ $service->status ? 'Tạm ngưng' : 'Kích hoạt' }}"
+                                                    data-bs-toggle="tooltip">
+                                                <i class="bi bi-{{ $service->status ? 'pause-circle' : 'play-circle' }}"></i>
                                             </button>
                                         </form>
+                                        {{-- Xoá --}}
+                                        <button type="button"
+                                                class="btn btn-action btn-outline-danger"
+                                                title="Xoá dịch vụ" data-bs-toggle="tooltip"
+                                                onclick="confirmDelete({{ $service->service_id }}, '{{ addslashes($service->service_name) }}', '{{ addslashes($service->service_code) }}')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -400,7 +436,6 @@
                     </table>
                 </div>
             </div>
-            {{-- Chỉ hiện phân trang khi priceHistory là Paginator (có bảng thật) --}}
             @if(method_exists($priceHistory, 'hasPages') && $priceHistory->hasPages())
             <div class="card-footer">
                 {{ $priceHistory->appends(['tab' => 'history'])->links() }}
@@ -411,8 +446,49 @@
 
 </div>
 
+{{-- ═══════════════════════════════════════════════════════════════
+     MODAL XÁC NHẬN XOÁ DỊCH VỤ
+═══════════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="deleteServiceModal" tabindex="-1" aria-labelledby="deleteServiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="delete-modal-icon mb-3">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-3"></i>
+                </div>
+                <h5 class="fw-bold mb-1" id="deleteServiceModalLabel">Xác nhận xoá dịch vụ</h5>
+                <p class="text-muted small mb-3">
+                    Bạn có chắc muốn xoá dịch vụ
+                    <strong id="deleteServiceName" class="text-dark"></strong>?<br>
+                    <span class="text-danger">Toàn bộ bảng giá liên quan cũng sẽ bị xoá và không thể khôi phục.</span>
+                </p>
+
+                <div class="alert alert-warning py-2 px-3 text-start small mb-3" id="deleteWarningBlock">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <span id="deleteWarningText"></span>
+                </div>
+
+                <form id="deleteServiceForm" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-outline-secondary px-4"
+                                data-bs-dismiss="modal">
+                            <i class="bi bi-x me-1"></i>Huỷ
+                        </button>
+                        <button type="submit" class="btn btn-danger px-4">
+                            <i class="bi bi-trash me-1"></i>Xoá dịch vụ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
+/* ── Tab switching ─────────────────────────────────────────── */
 function switchTab(name, event) {
     document.querySelectorAll('.svc-tab-btn').forEach(b => b.classList.remove('active'));
     event.currentTarget.classList.add('active');
@@ -423,6 +499,24 @@ function switchTab(name, event) {
     url.searchParams.set('tab', name);
     window.history.replaceState({}, '', url);
 }
+
+/* ── Delete confirmation ───────────────────────────────────── */
+function confirmDelete(serviceId, serviceName, serviceCode) {
+    document.getElementById('deleteServiceName').textContent = serviceName + ' (' + serviceCode + ')';
+    document.getElementById('deleteServiceForm').action =
+        '{{ url("admin/services") }}/' + serviceId;
+    document.getElementById('deleteWarningBlock').style.display = 'none';
+
+    // Hiển thị modal
+    const modal = new bootstrap.Modal(document.getElementById('deleteServiceModal'));
+    modal.show();
+}
+
+/* ── Tooltips ─────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+    const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipEls.forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover' }));
+});
 </script>
 @endpush
 @endsection
