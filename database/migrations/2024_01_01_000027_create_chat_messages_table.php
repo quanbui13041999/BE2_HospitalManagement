@@ -7,26 +7,21 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('ChatMessages', function (Blueprint $table) {
+        Schema::create('chatmessages', function (Blueprint $table) {
             $table->increments('message_id');
             $table->unsignedInteger('room_id');
-            $table->unsignedInteger('sender_id');
-            $table->string('message_text', 2000)->nullable();
+            $table->unsignedInteger('sender_id')->nullable();
+            $table->text('message_text');
             $table->boolean('is_read')->default(false);
+            $table->boolean('is_ai')->default(false); // Merged from 2026 migration
             $table->dateTime('sent_at')->useCurrent();
 
-            $table->foreign('room_id')
-                  ->references('room_id')->on('ChatRooms')
-                  ->onUpdate('cascade')->onDelete('cascade');
-
-            $table->foreign('sender_id')
-                  ->references('user_id')->on('Users')
-                  ->onUpdate('cascade')->onDelete('cascade');
+            $table->foreign('room_id')->references('room_id')->on('chatrooms')->onDelete('cascade');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('ChatMessages');
+        Schema::dropIfExists('chatmessages');
     }
 };
