@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentConfirmed;
-use App\Mail\AppointmentRescheduled;
+use App\Mail\AppointmentRescheduleMail;
 use App\Models\Appointment;
 use App\Models\DoctorSchedule;
 use App\Models\User;
@@ -94,7 +94,7 @@ class AppointmentService
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -123,7 +123,7 @@ class AppointmentService
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -324,7 +324,7 @@ class AppointmentService
                 DB::raw('COUNT(*) as total'),
                 DB::raw("SUM(CASE WHEN status IN ('Chờ xác nhận','Đã xác nhận') AND appointment_time >= NOW() THEN 1 ELSE 0 END) as upcoming"),
                 DB::raw("SUM(CASE WHEN status = 'Đã khám' THEN 1 ELSE 0 END) as completed"),
-                DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch') THEN 1 ELSE 0 END) as cancelled")
+                DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch','Bác sĩ nghỉ') THEN 1 ELSE 0 END) as cancelled")
             )
             ->first();
     }
@@ -374,7 +374,7 @@ class AppointmentService
         } elseif ($status === 'completed') {
             $query->where('appointments.status', 'Đã khám');
         } elseif ($status === 'cancelled') {
-            $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch']);
+            $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch', 'Bác sĩ nghỉ']);
         }
 
         return $query->orderBy('doctorschedules.work_date', $sort === 'asc' ? 'asc' : 'desc')
@@ -427,7 +427,7 @@ class AppointmentService
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -695,23 +695,18 @@ class AppointmentService
     private function sendAppointmentRescheduleEmail(int $appointmentId, int $userId): void
     {
         try {
-            $appointment = DB::table('appointments')
-                ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
-                ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
-                ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
-                ->where('appointments.appointment_id', $appointmentId)
-                ->select(
-                    'appointments.*',
-                    'doctors.full_name as doctor_name',
-                    'departments.department_name'
-                )
-                ->first();
-
+            $appointment = Appointment::with('schedule.doctor.department')->find($appointmentId);
             $user = User::find($userId);
+
             if ($user && $user->email && $appointment) {
-                Mail::to($user->email)->send(
-                    new AppointmentRescheduled($user, $appointment)
-                );
+                Mail::to($user->email)->send(new AppointmentRescheduleMail(
+                    patient: $user,
+                    appointment: $appointment,
+                    doctor: $appointment->schedule->doctor ?? null,
+                    reason: $appointment->cancel_reason ?? '',
+                    type: 'leave',
+                    alternatives: [],
+                ));
             }
         } catch (Exception $e) {
             Log::warning('Failed to send appointment rescheduled email', [
