@@ -26,16 +26,7 @@
     }
 
     /* ── Top breadcrumb bar ──────────────────────────────────── */
-    .record-topbar {
-        background: #fff;
-        border-bottom: 1px solid var(--border);
-        padding: 10px 24px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: var(--text-muted);
-    }
+  
 
     .record-topbar a {
         color: var(--primary);
@@ -430,11 +421,78 @@
         transition: border-color .2s, background .2s;
         margin-top: 10px;
     }
+.upload-zone:hover {
+    border-color: var(--primary);
+    background: #f0f7ff;
+}
 
-    .upload-zone:hover {
-        border-color: var(--primary);
-        background: #f0f7ff;
-    }
+/* ── New topbar styles ─────────────────────────────────── */
+
+
+
+.record-topbar {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 1rem;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    gap: 12px;
+}
+
+.topbar-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;        /* không xuống dòng */
+    gap: 6px;
+    font-size: 13px;
+    color: #6b7280;
+    overflow: hidden;
+    min-width: 0;
+}
+.topbar-breadcrumb a { color: #2563eb; text-decoration: none; font-weight: 500; white-space: nowrap; }
+.topbar-breadcrumb span { white-space: nowrap; }
+.topbar-breadcrumb .ti { font-size: 12px; color: #d1d5db; flex-shrink: 0; }
+
+.topbar-chip {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #111827;
+    white-space: nowrap;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;           /* không bị co lại */
+}
+
+.topbar-btn-group { display: flex; align-items: center; gap: 6px; }
+.topbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.topbar-btn.btn-back  { border-color: #fcd34d; color: #92400e; background: #fffbeb; }
+.topbar-btn.btn-print { color: #6b7280; }
+.topbar-btn.btn-edit  { border-color: #93c5fd; color: #1d4ed8; background: #eff6ff; }
+.topbar-btn.btn-delete{ border-color: #fca5a5; color: #b91c1c; background: #fef2f2; }
 </style>
 @endpush
 
@@ -442,47 +500,43 @@
 
 {{-- ── Top breadcrumb ─────────────────────────────────────── --}}
 <div class="record-topbar">
-    <a href="{{ route('medical-records.index') }}">Danh sách Phiếu khám</a>
-    <span class="sep">—</span>
-    <span>Phiếu khám: {{ $record->record_code }}</span>
-    <span class="sep">—</span>
-    <span>BS. {{ $record->doctor_name }}</span>
-    <span class="sep">—</span>
-    <span>{{ $record->exam_date->format('d/m/Y') }}</span>
-    <span class="sep">—</span>
-    <a href="{{ route('health.patient.show', $record->patient_id) }}">
-        Tiền sử bệnh án
-    </a>
-    <span class="sep">—</span>
-    <a href="{{ route('documents.patient.index', $record->patient_id) }}">
-        Tài liệu y khoa
-    </a>
-    {{-- Chỉ hiển thị nút [In], [Sửa], [Xóa] khi là Admin hoặc Doctor --}}
+    <div class="topbar-breadcrumb">
+        <a href="{{ route('medical-records.index') }}">Danh sách Phiếu khám</a>
+        <i class="ti ti-chevron-right"></i>
+        <span class="topbar-chip">{{ $record->record_code }}</span>
+        <i class="ti ti-chevron-right"></i>
+        <span>BS. {{ $record->doctor_name }}</span>
+        <i class="ti ti-chevron-right"></i>
+        <span>{{ $record->exam_date->format('d/m/Y') }}</span>
+        <i class="ti ti-chevron-right"></i>
+        <a href="{{ route('health.patient.show', $record->patient_id) }}">Tiền sử bệnh án</a>
+        <i class="ti ti-chevron-right"></i>
+        <a href="{{ route('documents.patient.index', $record->patient_id) }}">Tài liệu y khoa</a>
+    </div>
+
     @php
-    $user = Auth::user();
-    $isAdmin = ($user->role_id == 1 || $user->role == 'admin');
-    $isDoctor = ($user->role_id == 2 || $user->role == 'doctor');
-    $canEdit = ($isAdmin || $isDoctor);
+        $user = Auth::user();
+        $canEdit = in_array($user->role_id ?? 0, [1,2])
+                || in_array($user->role ?? '', ['admin','doctor']);
     @endphp
 
     @if($canEdit)
-    <div class="ms-auto d-flex gap-2">
-        <a href="{{ url('/bac-si/lich-hen') }}"
-            class="btn btn-sm btn-outline-warning">
-            ← Lịch Khám
+    <div class="topbar-actions">
+        <a href="{{ url('/bac-si/lich-hen') }}" class="topbar-btn btn-back">
+            <i class="ti ti-calendar-event"></i> Lịch khám
         </a>
-        <a href="{{ route('medical-records.print', $record->record_id) }}"
-            target="_blank" class="btn btn-sm btn-outline-secondary">
-            🖨️ In
+        <a href="{{ route('medical-records.print', $record->record_id) }}" target="_blank" class="topbar-btn btn-print">
+            <i class="ti ti-printer"></i> In
         </a>
-        <a href="{{ route('medical-records.edit', $record->record_id) }}"
-            class="btn btn-sm btn-outline-primary">
-            ✏️ Chỉnh sửa
+        <a href="{{ route('medical-records.edit', $record->record_id) }}" class="topbar-btn btn-edit">
+            <i class="ti ti-edit"></i> Chỉnh sửa
         </a>
         <form action="{{ route('medical-records.destroy', $record->record_id) }}"
-            method="POST" onsubmit="return confirm('Xác nhận xóa hồ sơ này?')">
+            method="POST" onsubmit="return confirm('Xác nhận xóa hồ sơ này?')" style="display:inline;margin:0">
             @csrf @method('DELETE')
-            <button class="btn btn-sm btn-outline-danger">🗑️ Xóa</button>
+            <button type="submit" class="topbar-btn btn-delete">
+                <i class="ti ti-trash"></i> Xóa
+            </button>
         </form>
     </div>
     @endif
