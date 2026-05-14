@@ -20,12 +20,17 @@ class Doctor extends Model
         'bio',
         'status',
     ];
+
+
     public function user()
     {
         // Doctor.user_id → users.user_id
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
+
+
+    
 
     public function department()
     {
