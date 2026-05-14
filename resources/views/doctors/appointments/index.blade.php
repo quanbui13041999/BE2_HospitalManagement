@@ -90,21 +90,26 @@
               {{ $apt->statusIcon() }} {{ $apt->status }}
             </span>
           </td>
-          <td>
-            @if($apt->medicalRecord)
-              <a href="{{ route('medical-records.show', $apt->medicalRecord->record_id) }}"
-                 class="btn btn-sm btn-outline-primary">
-                📄 Xem hồ sơ
-              </a>
-            @elseif(in_array($apt->status, ['Chờ xác nhận', 'Đã xác nhận']))
-              <a href="{{ route('medical-records.create', ['appointment_id' => $apt->appointment_id]) }}"
-                 class="btn btn-sm btn-success">
-                🩺 Khám bệnh
-              </a>
-            @else
-              <span class="text-muted small">—</span>
-            @endif
-          </td>
+   <td>
+    @php
+        $record = $apt->medicalRecord;
+        $myRecord = $record && $record->doctor_id == Auth::id();
+    @endphp
+
+    @if($myRecord)
+        <a href="{{ route('medical-records.show', $record->record_id) }}"
+           class="btn btn-sm btn-outline-primary">
+            📄 Xem hồ sơ
+        </a>
+    @elseif(in_array($apt->status, ['Chờ xác nhận', 'Đã xác nhận']))
+        <a href="{{ route('medical-records.create', ['appointment_id' => $apt->appointment_id]) }}"
+           class="btn btn-sm btn-success">
+            🩺 Khám bệnh
+        </a>
+    @else
+        <span class="text-muted small">—</span>
+    @endif
+</td>
         </tr>
         @empty
         <tr>
