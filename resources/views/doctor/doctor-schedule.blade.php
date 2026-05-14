@@ -139,11 +139,12 @@
                     </div>
                     <div>
                         <h1 class="text-xl font-bold text-gray-900">MediBook</h1>
-                        <p class="text-xs text-gray-500">Hệ thống đặt lịch thông minh</p>
+                        <p class="text-xs text-gray-500">Quản lý bác sĩ</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
-                    <span class="text-sm text-gray-600">{{ Auth::user()->name ?? 'Bác sĩ' }}</span>
+                   {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
+                </a>
                     <form action="{{ route('logout') }}" method="POST" class="inline">
                         @csrf
                         <button type="submit" class="text-sm text-gray-500 hover:text-red-600 transition">
@@ -164,7 +165,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    Bác sĩ
+                    {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
                 </a>
                 <a href="{{ route('doctor.schedule') }}"
                     class="nav-link active flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
@@ -196,7 +197,12 @@
         </div>
 
         @php
-            $doctors = \App\Models\Doctor::where('status', 1)->orderBy('full_name')->get();
+            $user = auth()->user();
+            if ($user?->isDoctor && $user->doctor) {
+                $doctors = collect([$user->doctor->load('department')]);
+            } else {
+                $doctors = \App\Models\Doctor::where('status', 1)->orderBy('full_name')->get();
+            }
             $hasDoctors = $doctors->isNotEmpty();
         @endphp
 
@@ -534,6 +540,7 @@
             const url = `${API_BASE}${endpoint}`;
             const options = {
                 method,
+                credentials: 'same-origin',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
