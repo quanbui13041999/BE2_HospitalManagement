@@ -24,17 +24,35 @@ class BhytCard extends Model
     ];
 
     protected $casts = [
-        'issue_date' => 'date',
+        'issued_date' => 'date',
         'expiry_date' => 'date',
-        'coverage_rate' => 'integer',
+        'discount_pct' => 'integer',
     ];
 
     // Relationships
     public function patient()
     {
-        return $this->belongsTo(User::class, 'patient_id', 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
-    // ĐÚNG theo BhytRepository.php -> với('patient')
-    // ĐÚNG theo BhytService.php -> $card->patient_id
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+
+    // Accessors for compatibility with existing code
+    public function getPatientIdAttribute()
+    {
+        return $this->user_id;
+    }
+
+    public function getCoverageRateAttribute()
+    {
+        return $this->discount_pct;
+    }
+
+    public function getIssueDateAttribute()
+    {
+        return $this->issued_date;
+    }
 }

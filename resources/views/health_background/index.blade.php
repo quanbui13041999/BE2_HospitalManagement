@@ -27,7 +27,6 @@
                 </div>
             </div>
         </div>
-
         <form action="{{ route('health.store') }}" method="POST">
             @csrf
             <div class="row g-4">
@@ -87,9 +86,8 @@
                             </div>
                         </div>
                         <a href="{{ url('/') }}"
-                            class="d-inline-block text-decoration-none px-4 py-2 rounded shadow-sm border"
-                            style="background-color: #edffec; color: #28a745; font-weight: 600; transition: all 0.3s ease; border-color: #d4edda !important;">
-                            <i class="bi bi-house-door-fill me-1">Trang chủ</i> 
+                            class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-house-door-fill me-1"></i> Trang chủ
                         </a>
                     </div>
                 </div>
@@ -116,16 +114,68 @@
                             $selectedDiseases = old('chronic_diseases', $healthData->chronic_diseases ?? []);
                             @endphp
                             <div class="row g-2">
-                                <div class="col-12">
+                                <div class="col-6">
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="TĂNG HUYẾT ÁP" id="check1"
                                             {{ in_array('TĂNG HUYẾT ÁP', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check1">TĂNG HUYẾT ÁP</label>
                                     </div>
-                                    <div class="form-check p-2 border rounded border-light-subtle">
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="TUỘT HUYẾT ÁP" id="check2"
                                             {{ in_array('TUỘT HUYẾT ÁP', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check2">TUỘT HUYẾT ÁP</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="ĐÁI THÁO ĐƯỜNG" id="check3"
+                                            {{ in_array('ĐÁI THÁO ĐƯỜNG', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check3">ĐÁI THÁO ĐƯỜNG</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="TIM MẠCH" id="check4"
+                                            {{ in_array('TIM MẠCH', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check4">TIM MẠCH</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="MỠ MÁU CAO" id="check5"
+                                            {{ in_array('MỠ MÁU CAO', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check5">MỠ MÁU CAO</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="BỆNH THẬN MÃN" id="check6"
+                                            {{ in_array('BỆNH THẬN MÃN', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check6">BỆNH THẬN MÃN</label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="BỆNH PHỔI MÃN TÍNH (COPD)" id="check7"
+                                            {{ in_array('BỆNH PHỔI MÃN TÍNH (COPD)', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check7">COPD</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="HEN SUYỄN" id="check8"
+                                            {{ in_array('HEN SUYỄN', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check8">HEN SUYỄN</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="VIÊM LOÉT DẠ DÀY" id="check9"
+                                            {{ in_array('VIÊM LOÉT DẠ DÀY', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check9">VIÊM LOÉT DẠ DÀY</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="GAN NHIỄM MỠ" id="check10"
+                                            {{ in_array('GAN NHIỄM MỠ', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check10">GAN NHIỄM MỠ</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="VIÊM KHỚP" id="check11"
+                                            {{ in_array('VIÊM KHỚP', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check11">VIÊM KHỚP</label>
+                                    </div>
+                                    <div class="form-check p-2 border rounded border-light-subtle mb-2">
+                                        <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="LOÃNG XƯƠNG" id="check12"
+                                            {{ in_array('LOÃNG XƯƠNG', $selectedDiseases) ? 'checked' : '' }}>
+                                        <label class="form-check-label ms-2" for="check12">LOÃNG XƯƠNG</label>
                                     </div>
                                 </div>
                             </div>

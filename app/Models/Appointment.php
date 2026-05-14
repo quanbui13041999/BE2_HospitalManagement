@@ -131,11 +131,19 @@ class Appointment extends Model
     public function scopeForDoctor($query, int $doctorId)
     {
         return $query
-            ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
-            ->where('doctorschedules.doctor_id', $doctorId);
+            ->join('doctor_schedules', 'appointments.schedule_id', '=', 'doctor_schedules.schedule_id')
+            ->where('doctor_schedules.doctor_id', $doctorId);
     }
 
     // ── Helpers ────────────────────────────────────────────────────
+
+    public function getAppointmentTimeEndAttribute()
+    {
+        if (!$this->schedule) return $this->appointment_time;
+        $start = \Carbon\Carbon::parse($this->appointment_time);
+        return $start->copy()->addMinutes($this->schedule->slot_duration);
+    }
+
     public function canCancel(): bool
     {
         if (!in_array($this->status, ['Chờ xác nhận', 'Đã xác nhận'])) return false;

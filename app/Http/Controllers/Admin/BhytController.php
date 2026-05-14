@@ -45,7 +45,7 @@ class BhytController extends Controller
     public function apply(Request $request)
     {
         $request->validate([
-            'invoice_id'  => 'required|exists:Invoices,invoice_id',
+            'invoice_id'  => 'required|exists:payments,payment_id',
             'card_number' => 'required|string',
         ]);
 
