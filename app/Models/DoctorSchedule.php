@@ -8,9 +8,9 @@ use Carbon\Carbon;
 
 class DoctorSchedule extends Model
 {
-    protected $table      = 'doctorschedules';
+    protected $table = 'doctorschedules';
     protected $primaryKey = 'schedule_id';
-    public    $timestamps = false;
+    public $timestamps = false;
 
     protected $fillable = [
         'doctor_id',
@@ -25,8 +25,8 @@ class DoctorSchedule extends Model
     ];
 
     protected $casts = [
-        'work_date'     => 'date',
-        'max_slot'      => 'integer',
+        'work_date' => 'date',
+        'max_slot' => 'integer',
         'slot_duration' => 'integer',
     ];
 
@@ -34,12 +34,8 @@ class DoctorSchedule extends Model
 
     public function doctor(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-<<<<<<< HEAD
-        return $this->belongsTo(Doctor::class, 'doctor_id', 'doctor_id');
-=======
         // DoctorSchedule.doctor_id references Doctors.doctor_id
         return $this->belongsTo(\App\Models\Doctor::class, 'doctor_id', 'doctor_id');
->>>>>>> master
     }
 
     public function appointments(): \Illuminate\Database\Eloquent\Relations\HasMany
