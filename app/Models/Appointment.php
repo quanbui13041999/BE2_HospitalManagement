@@ -131,8 +131,8 @@ class Appointment extends Model
     public function scopeForDoctor($query, int $doctorId)
     {
         return $query
-            ->join('doctor_schedules', 'appointments.schedule_id', '=', 'doctor_schedules.schedule_id')
-            ->where('doctor_schedules.doctor_id', $doctorId);
+            ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
+            ->where('doctorschedules.doctor_id', $doctorId);
     }
 
     // ── Helpers ────────────────────────────────────────────────────
