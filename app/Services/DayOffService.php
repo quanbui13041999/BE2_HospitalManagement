@@ -9,6 +9,7 @@ use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -51,9 +52,10 @@ class DayOffService
         ) {
             foreach ($dates as $date) {
                 // Lấy các schedule của bác sĩ trong ngày đó
+                /** @var EloquentCollection<int, DoctorSchedule> $schedules */
                 $schedules = DoctorSchedule::forDoctor($doctorId)
+                    ->active()
                     ->where('work_date', $date)
-                    ->where('status', 'active')
                     ->get();
 
                 // Lọc theo buổi nếu cần
@@ -172,8 +174,11 @@ class DayOffService
      *
      * Quy ước: ca sáng → start_time < '12:00:00'
      *           ca chiều → start_time >= '12:00:00'
+     *
+     * @param  EloquentCollection<int, DoctorSchedule>  $schedules
+     * @return EloquentCollection<int, DoctorSchedule>
      */
-    private function filterBySession(Collection $schedules, string $session): Collection
+    private function filterBySession(EloquentCollection $schedules, string $session): EloquentCollection
     {
         return match ($session) {
             'morning'   => $schedules->filter(fn ($s) => $s->start_time < '12:00:00'),

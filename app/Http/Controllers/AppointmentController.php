@@ -102,8 +102,8 @@ class AppointmentController extends Controller
     public function index(Request $request)
     {
         $userId = Auth::id();
-        $status = $request->get('status', 'all');
-        $sort = $request->get('sort', 'desc');
+        $status = $request->input('status', 'all');
+        $sort = $request->input('sort', 'desc');
 
         $counts = $this->appointmentService->getUserAppointmentStats($userId);
         $appointments = $this->appointmentService->getUserAppointments($userId, $status, $sort);
