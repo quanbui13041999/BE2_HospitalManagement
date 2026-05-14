@@ -220,7 +220,7 @@
   <div class="body">
 
     <p style="font-size:14px; color:#374151; margin-bottom:20px;">
-      Xin chào <strong>{{ $patient->name }}</strong>,<br><br>
+      Xin chào <strong>{{ $patient->full_name ?? $patient->name ?? 'Quý khách' }}</strong>,<br><br>
       Chúng tôi xin thông báo lịch hẹn của bạn bên dưới đã bị <strong style="color:#dc2626;">huỷ</strong>
       do bác sĩ phụ trách có lịch nghỉ đột xuất. Chúng tôi thành thật xin lỗi vì sự bất tiện này.
     </p>
