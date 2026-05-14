@@ -51,7 +51,6 @@ class RecurringScheduleService
             // Lấy sẵn danh sách (work_date, start_time) đã có để check trùng
             $existing = DoctorSchedule::forDoctor($doctorId)
                 ->betweenDates($start->toDateString(), $end->toDateString())
-                ->whereIn('status', ['active', 'blocked'])
                 ->get(['work_date', 'start_time'])
                 ->map(fn ($s) => $s->work_date->toDateString() . '|' . $s->start_time)
                 ->flip(); // flip → dùng làm lookup O(1)
@@ -74,7 +73,7 @@ class RecurringScheduleService
                                 'end_time'      => $session['end'],
                                 'slot_duration' => $duration,
                                 'max_slot'      => $maxSlot,
-                                'status'        => 'active',
+                                'status'        => 'Hoạt động',
                                 'note'          => $session['label'], // "Sáng" | "Chiều"
                             ]);
                             $newSchedules->push($schedule);
@@ -137,20 +136,23 @@ class RecurringScheduleService
     private function buildSessions(array $data): array
     {
         $sessions = [];
+
         if (!empty($data['morning_enabled'])) {
             $sessions[] = [
                 'label' => 'Sáng',
-                'start' => $data['morning_start'],
-                'end'   => $data['morning_end'],
+                'start' => Carbon::parse($data['morning_start'])->format('H:i:s'),
+                'end'   => Carbon::parse($data['morning_end'])->format('H:i:s'),
             ];
         }
+
         if (!empty($data['afternoon_enabled'])) {
             $sessions[] = [
                 'label' => 'Chiều',
-                'start' => $data['afternoon_start'],
-                'end'   => $data['afternoon_end'],
+                'start' => Carbon::parse($data['afternoon_start'])->format('H:i:s'),
+                'end'   => Carbon::parse($data['afternoon_end'])->format('H:i:s'),
             ];
         }
+
         return $sessions;
     }
 

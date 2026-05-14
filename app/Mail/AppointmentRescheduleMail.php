@@ -5,30 +5,23 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
 
-class AppointmentRescheduleMail extends Mailable implements ShouldQueue
+class AppointmentRescheduleMail extends Mailable
 {
     use Queueable, SerializesModels;
-
-    // Queue riêng cho email — tránh tranh resource với job khác
-    public string $queue   = 'mail';
-    // Retry 3 lần nếu Brevo API lỗi tạm thời
-    public int    $tries   = 3;
-    public array  $backoff = [60, 120, 300]; // giây giữa các lần retry
 
     public function __construct(
         public readonly object $patient,
         public readonly object $appointment,
-        public readonly object $doctor,
-        public readonly string $reason,
-        public readonly string $type,
-        public readonly array  $alternatives,
+        public readonly ?object $doctor = null,
+        public readonly string $reason = '',
+        public readonly string $type = 'leave',
+        public readonly array  $alternatives = [],
     ) {
     }
 
@@ -58,16 +51,25 @@ class AppointmentRescheduleMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        $doctor = $this->doctor ?? (object) [
+            'full_name' => $this->appointment->doctor_name ?? 'Bác sĩ',
+            'department' => (object) [
+                'department_name' => $this->appointment->department_name ?? '',
+            ],
+        ];
+
         return new Content(
             view: 'emails.appointment-reschedule',
             with: [
                 'patient'      => $this->patient,
                 'appointment'  => $this->appointment,
-                'doctor'       => $this->doctor,
+                'doctor'       => $doctor,
                 'reason'       => $this->reason,
                 'typeLabel'    => $this->typeLabel(),
                 'alternatives' => $this->alternatives,
-                'bookingUrl'   => config('app.url') . '/appointments/create',
+                'bookingUrl'   => route('appointments.create'),
+                'rescheduleUrl' => route('appointments.edit', ['id' => $this->appointment->appointment_id]),
+                'doctorOffUrl' => route('appointments.doctor-off', ['id' => $this->appointment->appointment_id]),
             ],
         );
     }

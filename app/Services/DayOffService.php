@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class DayOffService
@@ -42,6 +43,8 @@ class DayOffService
         $blockedCount  = 0;
         $affectedCount = 0;
         $emailsSent    = 0;
+        $pendingEmails = [];
+        $doctorNotification = null;
 
         // Bác sĩ cùng khoa để gợi ý
         $doctor       = Doctor::with('department', 'user')->findOrFail($doctorId);
@@ -50,7 +53,7 @@ class DayOffService
         DB::transaction(function () use (
             $doctorId, $session, $reason, $type, $dates,
             $doctor, $alterDoctors, $data,
-            &$blockedCount, &$affectedCount, &$emailsSent
+            &$blockedCount, &$affectedCount, &$pendingEmails, &$doctorNotification
         ) {
             foreach ($dates as $date) {
                 // Tạo / ghi nhận ngày nghỉ trong bảng DoctorDaysOff
@@ -65,12 +68,20 @@ class DayOffService
                     ]
                 );
 
-                // Lấy các schedule của bác sĩ trong ngày đó
+                // Lấy các schedule của bác sĩ trong ngày đó - tìm tất cả không phải chỉ active
+                // vì schedule có thể có các status khác ngoài 'active', 'Hoạt động'
                 /** @var EloquentCollection<int, DoctorSchedule> $schedules */
                 $schedules = DoctorSchedule::forDoctor($doctorId)
-                    ->active()
                     ->where('work_date', $date)
+                    ->whereNotIn('status', ['blocked', 'Đã hủy'])
                     ->get();
+
+                Log::info('Day-off: Found all non-blocked schedules', [
+                    'doctor_id' => $doctorId,
+                    'date' => $date,
+                    'schedule_count' => $schedules->count(),
+                    'statuses' => $schedules->pluck('status')->unique()->toArray(),
+                ]);
 
                 // Lọc theo buổi nếu cần
                 $toBlock = $this->filterBySession($schedules, $session);
@@ -82,19 +93,39 @@ class DayOffService
                         'note'   => "[{$type}] {$reason}",
                     ]);
                     $blockedCount++;
+                    
+                    Log::info('Day-off: Schedule blocked', [
+                        'schedule_id' => $schedule->schedule_id,
+                        'work_date' => $schedule->work_date,
+                    ]);
 
                     // ── Xử lý appointment bị ảnh hưởng ─────────────────────
                     $affected = $schedule->activeAppointments();
+                    
+                    Log::info('Day-off: Affected appointments found', [
+                        'schedule_id' => $schedule->schedule_id,
+                        'affected_count' => $affected->count(),
+                    ]);
 
                     foreach ($affected as $appt) {
                         // Đổi trạng thái appointment sang 'Bác sĩ nghỉ'
-                        DB::table('appointments')
-                            ->where('appointment_id', $appt->appointment_id)
+                        $updated = Appointment::where('appointment_id', $appt->appointment_id)
                             ->update([
                                 'status'        => 'Bác sĩ nghỉ',
                                 'cancel_reason' => "{$type}: {$reason}",
                             ]);
-                        $affectedCount++;
+                        
+                        if ($updated) {
+                            $affectedCount++;
+                            Log::info('Day-off: Appointment updated', [
+                                'appointment_id' => $appt->appointment_id,
+                                'status' => 'Bác sĩ nghỉ',
+                            ]);
+                        } else {
+                            Log::warning('Day-off: Failed to update appointment', [
+                                'appointment_id' => $appt->appointment_id,
+                            ]);
+                        }
 
                         // Gợi ý slot thay thế từ bác sĩ cùng khoa
                         $alternatives = $this->findAlternativeSlots(
@@ -102,39 +133,118 @@ class DayOffService
                             $appt->appointment_time
                         );
 
-                        // Gửi email hỏi bệnh nhân ngay lập tức
                         if ($appt->user && $appt->user->email) {
-                            Mail::to($appt->user->email)->send(new AppointmentRescheduleMail(
-                                patient:      $appt->user,
-                                appointment:  $appt,
-                                doctor:       $doctor,
-                                reason:       $reason,
-                                type:         $type,
-                                alternatives: $alternatives,
-                            ));
-                            $emailsSent++;
+                            $pendingEmails[] = [
+                                'email'        => $appt->user->email,
+                                'patient'      => $appt->user,
+                                'appointment'  => $appt,
+                                'doctor'       => $doctor,
+                                'reason'       => $reason,
+                                'type'         => $type,
+                                'alternatives' => $alternatives,
+                            ];
                         }
                     }
                 }
             }
 
-            // ── Gửi email thông báo cho bác sĩ nếu có lịch khám bị ảnh hưởng ──
+            // Prepare notification email for doctor after commit
             if ($affectedCount > 0 && $doctor->user && $doctor->user->email) {
-                Mail::to($doctor->user->email)->send(new DoctorDayOffNotification(
-                    doctor: $doctor,
-                    data: array_merge($data, [
-                        'blocked_schedules' => $blockedCount,
-                        'affected_appointments' => $affectedCount,
-                    ]),
-                ));
+                $doctorNotification = [
+                    'email' => $doctor->user->email,
+                    'mail'  => new DoctorDayOffNotification(
+                        doctor: $doctor,
+                        data: array_merge($data, [
+                            'blocked_schedules'    => $blockedCount,
+                            'affected_appointments' => $affectedCount,
+                        ]),
+                    ),
+                ];
             }
         });
 
+        Log::info('Day-off: Sending patient reschedule emails', [
+            'total_pending' => count($pendingEmails),
+        ]);
+
+        foreach ($pendingEmails as $item) {
+            try {
+                Mail::to($item['email'])->send(new AppointmentRescheduleMail(
+                    patient:      $item['patient'],
+                    appointment:  $item['appointment'],
+                    doctor:       $item['doctor'],
+                    reason:       $item['reason'],
+                    type:         $item['type'],
+                    alternatives: $item['alternatives'],
+                ));
+                $emailsSent++;
+                Log::info('Day-off: Reschedule email sent', [
+                    'email' => $item['email'],
+                    'appointment_id' => $item['appointment']->appointment_id ?? null,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Failed to send day-off reschedule email', [
+                    'email' => $item['email'],
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+        }
+
+        if ($doctorNotification) {
+            try {
+                Mail::to($doctorNotification['email'])->send($doctorNotification['mail']);
+                Log::info('Day-off: Doctor notification sent', [
+                    'email' => $doctorNotification['email'],
+                    'affected_count' => $affectedCount,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Failed to send day-off notification to doctor', [
+                    'email' => $doctorNotification['email'],
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+        }
+
+        Log::info('Day-off process completed', [
+            'blocked_schedules' => $blockedCount,
+            'affected_appointments' => $affectedCount,
+            'emails_sent' => $emailsSent,
+        ]);
+
         return [
-            'blocked_schedules'    => $blockedCount,
-            'affected_appointments'=> $affectedCount,
-            'emails_sent'          => $emailsSent,
+            'blocked_schedules'     => $blockedCount,
+            'affected_appointments' => $affectedCount,
+            'emails_sent'           => $emailsSent,
         ];
+    }
+
+    /**
+     * Ước lượng số appointment bị ảnh hưởng bởi yêu cầu nghỉ của bác sĩ.
+     *
+     * Có thể dùng để hiển thị trước khi chốt ngày nghỉ.
+     */
+    public function estimateAffectedAppointments(array $data): int
+    {
+        $doctorId = $data['doctor_id'];
+        $session  = $data['session'];
+        $dates    = $this->buildDateRange($data['date'], $data['end_date'] ?? null);
+
+        $count = 0;
+        foreach ($dates as $date) {
+            $schedules = DoctorSchedule::forDoctor($doctorId)
+                ->active()
+                ->where('work_date', $date)
+                ->get();
+
+            $toBlock = $this->filterBySession($schedules, $session);
+            foreach ($toBlock as $schedule) {
+                $count += $schedule->activeAppointments()->count();
+            }
+        }
+
+        return $count;
     }
 
     /**

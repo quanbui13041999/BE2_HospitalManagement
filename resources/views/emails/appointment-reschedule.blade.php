@@ -297,8 +297,18 @@
 
     <!-- CTA -->
     <div class="cta-wrap">
+      <a href="{{ $doctorOffUrl }}" class="cta-btn">
+        📣 Xem xác nhận bác sĩ đã nghỉ
+      </a>
+    </div>
+    <div class="cta-wrap" style="margin-top:12px;">
+      <a href="{{ $rescheduleUrl }}" class="cta-btn">
+        🔄 Dời lịch hẹn cũ
+      </a>
+    </div>
+    <div class="cta-wrap" style="margin-top:12px;">
       <a href="{{ $bookingUrl }}" class="cta-btn">
-        📆 Đặt lịch mới ngay
+        📆 Đặt lịch mới
       </a>
     </div>
 
