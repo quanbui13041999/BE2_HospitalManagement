@@ -37,8 +37,8 @@ class DoctorSchedule extends Model
 
     public function doctor()
     {
-        // ĐÚNG: RoomService.php -> $item->doctor->full_name
-        return $this->belongsTo(User::class, 'doctor_id', 'user_id');
+        // DoctorSchedule.doctor_id references Doctors.doctor_id
+        return $this->belongsTo(\App\Models\Doctor::class, 'doctor_id', 'doctor_id');
     }
 
     public function room()

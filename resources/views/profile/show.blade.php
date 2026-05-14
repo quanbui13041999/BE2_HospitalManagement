@@ -39,13 +39,19 @@
                 <span class="role-chip role-{{ $user->role_id }}">
                     @switch($user->role_id)
                     @case(1)
-                    ✦ Quản trị viên
+                    ✦ ADmin
                     @break
                     @case(2)
-                    ◈ Nhân viên
+                    ◈ Bác sĩ
+                    @break
+                     @case(3)
+                    ◈ Bệnh nhân
+                    @break
+                     @case(4)
+                    ◈ Lễ Tân
                     @break
                     @default
-                    ○ Người dùng
+                    ○ Dược sĩ
                     @endswitch
                 </span>
             </div>
