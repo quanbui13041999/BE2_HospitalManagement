@@ -14,20 +14,11 @@ class Doctor extends Model
         'user_id', 'full_name', 'department_id',
         'experience', 'price', 'avatar_url', 'bio', 'status',
     ];
-<<<<<<< HEAD
-
     public function user()
     {
+        // Doctor.user_id → users.user_id
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
-
-=======
-public function user()
-{
-    // Doctor.user_id → users.user_id
-    return $this->belongsTo(User::class, 'user_id', 'user_id');
-}
->>>>>>> master
     public function department()
     {
         return $this->belongsTo(Department::class, 'department_id', 'department_id');
