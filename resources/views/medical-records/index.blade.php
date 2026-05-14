@@ -8,10 +8,12 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0">📁 Danh Sách Phiếu Khám</h5>
     @if(auth()->user()->role === 'doctor' || auth()->user()->user_type === 'doctor' || auth()->user()->isDoctor())
-        <a href="{{ route('medical-records.create') }}" class="btn btn-primary btn-sm">
-            + Tạo phiếu khám mới
-        </a>
+       
+        
     @endif
+      <a href="{{ url('/') }}" class="btn btn-warning btn-sm">
+            <i class="bi bi-house-door-fill"></i> Trang chủ
+</a>
 </div>
 
 @if(session('success'))

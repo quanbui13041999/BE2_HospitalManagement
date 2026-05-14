@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\HealthBackgroundController;
+use App\Http\Controllers\DocumentController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('medical-records')
@@ -36,3 +38,13 @@ Route::middleware('auth')
         )
             ->name('appointments.index');
     });
+    // Bác sĩ xem tiền sử & tài liệu của bệnh nhân
+Route::middleware('auth')->group(function () {
+    Route::get('/health/patient/{patientId}', 
+        [HealthBackgroundController::class, 'showPatient'])
+        ->name('health.patient.show');
+
+    Route::get('/documents/patient/{patientId}', 
+        [DocumentController::class, 'indexPatient'])
+        ->name('documents.patient.index');
+});

@@ -26,16 +26,7 @@
     }
 
     /* ── Top breadcrumb bar ──────────────────────────────────── */
-    .record-topbar {
-        background: #fff;
-        border-bottom: 1px solid var(--border);
-        padding: 10px 24px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: var(--text-muted);
-    }
+  
 
     .record-topbar a {
         color: var(--primary);
@@ -430,11 +421,78 @@
         transition: border-color .2s, background .2s;
         margin-top: 10px;
     }
+.upload-zone:hover {
+    border-color: var(--primary);
+    background: #f0f7ff;
+}
 
-    .upload-zone:hover {
-        border-color: var(--primary);
-        background: #f0f7ff;
-    }
+/* ── New topbar styles ─────────────────────────────────── */
+
+
+
+.record-topbar {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 1rem;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    gap: 12px;
+}
+
+.topbar-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;        /* không xuống dòng */
+    gap: 6px;
+    font-size: 13px;
+    color: #6b7280;
+    overflow: hidden;
+    min-width: 0;
+}
+.topbar-breadcrumb a { color: #2563eb; text-decoration: none; font-weight: 500; white-space: nowrap; }
+.topbar-breadcrumb span { white-space: nowrap; }
+.topbar-breadcrumb .ti { font-size: 12px; color: #d1d5db; flex-shrink: 0; }
+
+.topbar-chip {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #111827;
+    white-space: nowrap;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;           /* không bị co lại */
+}
+
+.topbar-btn-group { display: flex; align-items: center; gap: 6px; }
+.topbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.topbar-btn.btn-back  { border-color: #fcd34d; color: #92400e; background: #fffbeb; }
+.topbar-btn.btn-print { color: #6b7280; }
+.topbar-btn.btn-edit  { border-color: #93c5fd; color: #1d4ed8; background: #eff6ff; }
+.topbar-btn.btn-delete{ border-color: #fca5a5; color: #b91c1c; background: #fef2f2; }
 </style>
 @endpush
 
@@ -442,40 +500,43 @@
 
 {{-- ── Top breadcrumb ─────────────────────────────────────── --}}
 <div class="record-topbar">
-    <a href="{{ route('medical-records.index') }}">Danh sách Phiếu khám</a>
-    <span class="sep">—</span>
-    <span>Phiếu khám: {{ $record->record_code }}</span>
-    <span class="sep">—</span>
-    <span>BS. {{ $record->doctor_name }}</span>
-    <span class="sep">—</span>
-    <span>{{ $record->exam_date->format('d/m/Y') }}</span>
+    <div class="topbar-breadcrumb">
+        <a href="{{ route('medical-records.index') }}">Danh sách Phiếu khám</a>
+        <i class="ti ti-chevron-right"></i>
+        <span class="topbar-chip">{{ $record->record_code }}</span>
+        <i class="ti ti-chevron-right"></i>
+        <span>BS. {{ $record->doctor_name }}</span>
+        <i class="ti ti-chevron-right"></i>
+        <span>{{ $record->exam_date->format('d/m/Y') }}</span>
+        <i class="ti ti-chevron-right"></i>
+        <a href="{{ route('health.patient.show', $record->patient_id) }}">Tiền sử bệnh án</a>
+        <i class="ti ti-chevron-right"></i>
+        <a href="{{ route('documents.patient.index', $record->patient_id) }}">Tài liệu y khoa</a>
+    </div>
 
-    {{-- Chỉ hiển thị nút [In], [Sửa], [Xóa] khi là Admin hoặc Doctor --}}
     @php
-    $user = Auth::user();
-    $isAdmin = ($user->role_id == 1 || $user->role == 'admin');
-    $isDoctor = ($user->role_id == 2 || $user->role == 'doctor');
-    $canEdit = ($isAdmin || $isDoctor);
+        $user = Auth::user();
+        $canEdit = in_array($user->role_id ?? 0, [1,2])
+                || in_array($user->role ?? '', ['admin','doctor']);
     @endphp
 
     @if($canEdit)
-    <div class="ms-auto d-flex gap-2">
-        <a href="{{ url('/bac-si/lich-hen') }}"
-            class="btn btn-sm btn-outline-warning">
-            ← Lịch Khám
+    <div class="topbar-actions">
+        <a href="{{ url('/bac-si/lich-hen') }}" class="topbar-btn btn-back">
+            <i class="ti ti-calendar-event"></i> Lịch khám
         </a>
-        <a href="{{ route('medical-records.print', $record->record_id) }}"
-            target="_blank" class="btn btn-sm btn-outline-secondary">
-            🖨️ In
+        <a href="{{ route('medical-records.print', $record->record_id) }}" target="_blank" class="topbar-btn btn-print">
+            <i class="ti ti-printer"></i> In
         </a>
-        <a href="{{ route('medical-records.edit', $record->record_id) }}"
-            class="btn btn-sm btn-outline-primary">
-            ✏️ Chỉnh sửa
+        <a href="{{ route('medical-records.edit', $record->record_id) }}" class="topbar-btn btn-edit">
+            <i class="ti ti-edit"></i> Chỉnh sửa
         </a>
         <form action="{{ route('medical-records.destroy', $record->record_id) }}"
-            method="POST" onsubmit="return confirm('Xác nhận xóa hồ sơ này?')">
+            method="POST" onsubmit="return confirm('Xác nhận xóa hồ sơ này?')" style="display:inline;margin:0">
             @csrf @method('DELETE')
-            <button class="btn btn-sm btn-outline-danger">🗑️ Xóa</button>
+            <button type="submit" class="topbar-btn btn-delete">
+                <i class="ti ti-trash"></i> Xóa
+            </button>
         </form>
     </div>
     @endif
@@ -665,6 +726,11 @@
                 <div>
                     <div class="rx-name">{{ $rx->drug_name }}</div>
                     <div class="rx-dose">{{ $rx->dosage }}</div>
+                    @if($rx->quantity)
+                    <div class="rx-dose" style="color:#1a6fb3;">
+                        Số lượng: <strong>{{ $rx->quantity }}</strong>
+                    </div>
+                    @endif
                     @if($rx->instructions)
                     <div class="rx-inst">{{ $rx->instructions }}</div>
                     @endif
@@ -698,46 +764,46 @@
                         <div class="order-name">{{ $order->order_name }}</div>
                         <div class="order-desc">{{ $order->description }}</div>
 
-                       {{-- KẾT QUẢ --}}
-<div style="margin-top:8px" id="result_area_{{ $order->order_id }}">
-    @if($canEdit)
-        @if(empty($order->result_note))
-            <button type="button"
-                onclick="showResultDropdown({{ $order->order_id }}, {{ $record->record_id }}, '')"
-                class="btn btn-sm btn-warning">
-                ⏳ Chờ kết quả — Click để chọn
-            </button>
-        @else
-            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <span style="font-size:12px;color:#666">📊 Kết quả:</span>
-                <span style="background:#d4edda;padding:4px 12px;border-radius:20px; font-size:12px;color:#155724;">
-                    {{ $order->result_note }}
-                </span>
-                <button type="button"
-    class="btn-edit-result btn btn-sm btn-outline-primary"
-    data-order-id="{{ $order->order_id }}"
-    data-record-id="{{ $record->record_id }}"
-    data-note="{{ $order->result_note }}">
-    ✏️ Sửa
-</button>
-                <button type="button"
-                    onclick="deleteResult({{ $order->order_id }}, {{ $record->record_id }})"
-                    class="btn btn-sm btn-outline-danger">
-                    🗑 Xóa
-                </button>
-            </div>
-        @endif
-    @else
-        <span style="font-size:12px;color:#666">📊 Kết quả:</span>
-        @if(!empty($order->result_note))
-            <span style="background:#d4edda;padding:4px 12px;border-radius:20px; font-size:12px;color:#155724;margin-left:6px">
-                {{ $order->result_note }}
-            </span>
-        @else
-            <span style="font-size:11px;color:#f39c12;margin-left:6px">⏳ Chờ kết quả</span>
-        @endif
-    @endif
-</div>
+                        {{-- KẾT QUẢ --}}
+                        <div style="margin-top:8px" id="result_area_{{ $order->order_id }}">
+                            @if($canEdit)
+                            @if(empty($order->result_note))
+                            <button type="button"
+                                onclick="showResultDropdown({{ $order->order_id }}, {{ $record->record_id }}, '')"
+                                class="btn btn-sm btn-warning">
+                                ⏳ Chờ kết quả — Click để chọn
+                            </button>
+                            @else
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <span style="font-size:12px;color:#666">📊 Kết quả:</span>
+                                <span style="background:#d4edda;padding:4px 12px;border-radius:20px; font-size:12px;color:#155724;">
+                                    {{ $order->result_note }}
+                                </span>
+                                <button type="button"
+                                    class="btn-edit-result btn btn-sm btn-outline-primary"
+                                    data-order-id="{{ $order->order_id }}"
+                                    data-record-id="{{ $record->record_id }}"
+                                    data-note="{{ $order->result_note }}">
+                                    ✏️ Sửa
+                                </button>
+                                <button type="button"
+                                    onclick="deleteResult({{ $order->order_id }}, {{ $record->record_id }})"
+                                    class="btn btn-sm btn-outline-danger">
+                                    🗑 Xóa
+                                </button>
+                            </div>
+                            @endif
+                            @else
+                            <span style="font-size:12px;color:#666">📊 Kết quả:</span>
+                            @if(!empty($order->result_note))
+                            <span style="background:#d4edda;padding:4px 12px;border-radius:20px; font-size:12px;color:#155724;margin-left:6px">
+                                {{ $order->result_note }}
+                            </span>
+                            @else
+                            <span style="font-size:11px;color:#f39c12;margin-left:6px">⏳ Chờ kết quả</span>
+                            @endif
+                            @endif
+                        </div>
 
                     </div>
                 </div>
@@ -886,34 +952,73 @@
 
     // ========== XỬ LÝ KẾT QUẢ XÉT NGHIỆM ==========
 
-   const resultOptions = {
-    'lab': [
-        { value: 'Bình thường', label: '✅ Bình thường' },
-        { value: 'Bất thường', label: '⚠️ Bất thường' },
-        { value: 'Âm tính', label: '🔴 Âm tính (-)' },
-        { value: 'Dương tính', label: '🟢 Dương tính (+)' },
-        { value: 'Tăng cao', label: '📈 Tăng cao' },
-        { value: 'Giảm thấp', label: '📉 Giảm thấp' }
-    ],
-    'imaging': [
-        { value: 'Bình thường', label: '✅ Bình thường' },
-        { value: 'Bất thường', label: '⚠️ Phát hiện bất thường' },
-        { value: 'Cần chụp lại', label: '🔄 Cần chụp lại' },
-        { value: 'Có tổn thương', label: '🎯 Có tổn thương' },
-        { value: 'Không tổn thương', label: '✅ Không tổn thương' }
-    ],
-    'default': [
-        { value: 'Bình thường', label: '✅ Bình thường' },
-        { value: 'Bất thường', label: '⚠️ Bất thường' },
-        { value: 'Đã hoàn thành', label: '✔️ Đã hoàn thành' }
-    ]
-};
+    const resultOptions = {
+        'lab': [{
+                value: 'Bình thường',
+                label: '✅ Bình thường'
+            },
+            {
+                value: 'Bất thường',
+                label: '⚠️ Bất thường'
+            },
+            {
+                value: 'Âm tính',
+                label: '🔴 Âm tính (-)'
+            },
+            {
+                value: 'Dương tính',
+                label: '🟢 Dương tính (+)'
+            },
+            {
+                value: 'Tăng cao',
+                label: '📈 Tăng cao'
+            },
+            {
+                value: 'Giảm thấp',
+                label: '📉 Giảm thấp'
+            }
+        ],
+        'imaging': [{
+                value: 'Bình thường',
+                label: '✅ Bình thường'
+            },
+            {
+                value: 'Bất thường',
+                label: '⚠️ Phát hiện bất thường'
+            },
+            {
+                value: 'Cần chụp lại',
+                label: '🔄 Cần chụp lại'
+            },
+            {
+                value: 'Có tổn thương',
+                label: '🎯 Có tổn thương'
+            },
+            {
+                value: 'Không tổn thương',
+                label: '✅ Không tổn thương'
+            }
+        ],
+        'default': [{
+                value: 'Bình thường',
+                label: '✅ Bình thường'
+            },
+            {
+                value: 'Bất thường',
+                label: '⚠️ Bất thường'
+            },
+            {
+                value: 'Đã hoàn thành',
+                label: '✔️ Đã hoàn thành'
+            }
+        ]
+    };
 
-// Render lại khu vực kết quả sau khi lưu thành công (không reload)
-function renderResultSaved(orderId, recordId, resultValue) {
-    const area = document.getElementById(`result_area_${orderId}`);
-    if (!area) return;
-    area.innerHTML = `
+    // Render lại khu vực kết quả sau khi lưu thành công (không reload)
+    function renderResultSaved(orderId, recordId, resultValue) {
+        const area = document.getElementById(`result_area_${orderId}`);
+        if (!area) return;
+        area.innerHTML = `
         <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span style="font-size:12px;color:#666">📊 Kết quả:</span>
             <span style="background:#d4edda;padding:4px 12px;border-radius:20px;font-size:12px;color:#155724;">
@@ -931,46 +1036,46 @@ function renderResultSaved(orderId, recordId, resultValue) {
             </button>
         </div>
     `;
-}
+    }
 
-// Render lại khu vực khi chưa có kết quả
-function renderResultEmpty(orderId, recordId) {
-    const area = document.getElementById(`result_area_${orderId}`);
-    if (!area) return;
-    area.innerHTML = `
+    // Render lại khu vực khi chưa có kết quả
+    function renderResultEmpty(orderId, recordId) {
+        const area = document.getElementById(`result_area_${orderId}`);
+        if (!area) return;
+        area.innerHTML = `
         <button type="button"
             onclick="showResultDropdown(${orderId}, ${recordId}, '')"
             class="btn btn-sm btn-warning">
             ⏳ Chờ kết quả — Click để chọn
         </button>
     `;
-}
-
-// Hiển thị dropdown chọn kết quả
-function showResultDropdown(orderId, recordId, currentValue) {
-    const area = document.getElementById(`result_area_${orderId}`);
-    if (!area) return;
-
-    const orderItem = area.closest('.order-item');
-    const orderIcon = orderItem?.querySelector('.order-icon')?.innerText || '';
-    let orderType = 'default';
-    if (orderIcon.includes('🔬')) orderType = 'lab';
-    else if (orderIcon.includes('🩻')) orderType = 'imaging';
-
-    const options = resultOptions[orderType] || resultOptions.default;
-
-    let optionsHtml = '';
-    // Chỉ thêm option placeholder khi chưa có giá trị
-    if (!currentValue) {
-        optionsHtml += `<option value="">-- Chọn kết quả --</option>`;
     }
-    options.forEach(opt => {
-        const selected = (currentValue === opt.value) ? 'selected' : '';
-        optionsHtml += `<option value="${opt.value}" ${selected}>${opt.label}</option>`;
-    });
-    optionsHtml += `<option value="other">✏️ Nhập kết quả khác...</option>`;
 
-    area.innerHTML = `
+    // Hiển thị dropdown chọn kết quả
+    function showResultDropdown(orderId, recordId, currentValue) {
+        const area = document.getElementById(`result_area_${orderId}`);
+        if (!area) return;
+
+        const orderItem = area.closest('.order-item');
+        const orderIcon = orderItem?.querySelector('.order-icon')?.innerText || '';
+        let orderType = 'default';
+        if (orderIcon.includes('🔬')) orderType = 'lab';
+        else if (orderIcon.includes('🩻')) orderType = 'imaging';
+
+        const options = resultOptions[orderType] || resultOptions.default;
+
+        let optionsHtml = '';
+        // Chỉ thêm option placeholder khi chưa có giá trị
+        if (!currentValue) {
+            optionsHtml += `<option value="">-- Chọn kết quả --</option>`;
+        }
+        options.forEach(opt => {
+            const selected = (currentValue === opt.value) ? 'selected' : '';
+            optionsHtml += `<option value="${opt.value}" ${selected}>${opt.label}</option>`;
+        });
+        optionsHtml += `<option value="other">✏️ Nhập kết quả khác...</option>`;
+
+        area.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span style="font-size:12px; color:#666;">📊 Kết quả:</span>
             <select id="result_select_${orderId}"
@@ -989,24 +1094,24 @@ function showResultDropdown(orderId, recordId, currentValue) {
         </div>
     `;
 
-    const select = document.getElementById(`result_select_${orderId}`);
-    if (select) {
-        select.addEventListener('change', function() {
-            if (this.value === 'other') {
-                showManualInput(orderId, recordId, currentValue);
-            }
-        });
+        const select = document.getElementById(`result_select_${orderId}`);
+        if (select) {
+            select.addEventListener('change', function() {
+                if (this.value === 'other') {
+                    showManualInput(orderId, recordId, currentValue);
+                }
+            });
+        }
     }
-}
 
-// Hiển thị input nhập tay
-function showManualInput(orderId, recordId, currentValue) {
-    const area = document.getElementById(`result_area_${orderId}`);
-    if (!area) return;
+    // Hiển thị input nhập tay
+    function showManualInput(orderId, recordId, currentValue) {
+        const area = document.getElementById(`result_area_${orderId}`);
+        if (!area) return;
 
-    const escaped = (currentValue || '').replace(/'/g, "\\'");
+        const escaped = (currentValue || '').replace(/'/g, "\\'");
 
-    area.innerHTML = `
+        area.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span style="font-size:12px; color:#666;">📊 Kết quả:</span>
             <input type="text" id="result_input_${orderId}"
@@ -1025,153 +1130,155 @@ function showManualInput(orderId, recordId, currentValue) {
         </div>
     `;
 
-    document.getElementById(`result_input_${orderId}`)?.focus();
-}
-
-// Lưu từ dropdown select
-function saveResultFromSelect(orderId, recordId, originalValue) {
-    const select = document.getElementById(`result_select_${orderId}`);
-    if (!select) return;
-
-    const result = select.value;
-    if (!result || result === 'other') {
-        // Highlight select thay vì alert
-        select.style.borderColor = 'red';
-        select.focus();
-        return;
+        document.getElementById(`result_input_${orderId}`)?.focus();
     }
-    select.style.borderColor = '';
-    saveResultData(orderId, recordId, result, originalValue);
-}
 
-// Lưu từ input nhập tay
-function saveResultFromInput(orderId, recordId, originalValue) {
-    const input = document.getElementById(`result_input_${orderId}`);
-    if (!input) return;
+    // Lưu từ dropdown select
+    function saveResultFromSelect(orderId, recordId, originalValue) {
+        const select = document.getElementById(`result_select_${orderId}`);
+        if (!select) return;
 
-    const result = input.value.trim();
-    if (!result) {
-        input.style.borderColor = 'red';
-        input.focus();
-        return;
-    }
-    input.style.borderColor = '';
-    saveResultData(orderId, recordId, result, originalValue);
-}
-
-// Gửi API lưu kết quả
-async function saveResultData(orderId, recordId, result, originalValue) {
-    const url = `/medical-records/${recordId}/orders/${orderId}/result`;
-
-    // Hiển thị trạng thái đang lưu
-    const area = document.getElementById(`result_area_${orderId}`);
-    if (area) {
-        const saveBtn = area.querySelector('.btn-success');
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.textContent = '⏳ Đang lưu...';
+        const result = select.value;
+        if (!result || result === 'other') {
+            // Highlight select thay vì alert
+            select.style.borderColor = 'red';
+            select.focus();
+            return;
         }
+        select.style.borderColor = '';
+        saveResultData(orderId, recordId, result, originalValue);
     }
 
-    try {
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': CSRF,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ result: result })
-        });
+    // Lưu từ input nhập tay
+    function saveResultFromInput(orderId, recordId, originalValue) {
+        const input = document.getElementById(`result_input_${orderId}`);
+        if (!input) return;
 
-        const data = await response.json();
+        const result = input.value.trim();
+        if (!result) {
+            input.style.borderColor = 'red';
+            input.focus();
+            return;
+        }
+        input.style.borderColor = '';
+        saveResultData(orderId, recordId, result, originalValue);
+    }
 
-        if (data.success) {
-            // ✅ Lưu thành công: render lại UI, không alert, không reload
-            renderResultSaved(orderId, recordId, result);
-        } else {
-            // ❌ Thất bại: hiện thông báo nhỏ inline, không alert
+    // Gửi API lưu kết quả
+    async function saveResultData(orderId, recordId, result, originalValue) {
+        const url = `/medical-records/${recordId}/orders/${orderId}/result`;
+
+        // Hiển thị trạng thái đang lưu
+        const area = document.getElementById(`result_area_${orderId}`);
+        if (area) {
+            const saveBtn = area.querySelector('.btn-success');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '⏳ Đang lưu...';
+            }
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    result: result
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // ✅ Lưu thành công: render lại UI, không alert, không reload
+                renderResultSaved(orderId, recordId, result);
+            } else {
+                // ❌ Thất bại: hiện thông báo nhỏ inline, không alert
+                if (area) {
+                    const saveBtn = area.querySelector('.btn-success');
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = '💾 Lưu';
+                    }
+                    // Hiện lỗi inline
+                    let errEl = area.querySelector('.save-error');
+                    if (!errEl) {
+                        errEl = document.createElement('span');
+                        errEl.className = 'save-error';
+                        errEl.style.cssText = 'color:red;font-size:12px;';
+                        area.querySelector('div').appendChild(errEl);
+                    }
+                    errEl.textContent = '❌ ' + (data.error || 'Không thể lưu');
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
             if (area) {
                 const saveBtn = area.querySelector('.btn-success');
                 if (saveBtn) {
                     saveBtn.disabled = false;
                     saveBtn.textContent = '💾 Lưu';
                 }
-                // Hiện lỗi inline
-                let errEl = area.querySelector('.save-error');
-                if (!errEl) {
-                    errEl = document.createElement('span');
-                    errEl.className = 'save-error';
-                    errEl.style.cssText = 'color:red;font-size:12px;';
-                    area.querySelector('div').appendChild(errEl);
-                }
-                errEl.textContent = '❌ ' + (data.error || 'Không thể lưu');
-            }
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        if (area) {
-            const saveBtn = area.querySelector('.btn-success');
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.textContent = '💾 Lưu';
             }
         }
     }
-}
 
-// Hủy: khôi phục về trạng thái ban đầu (không reload)
-function cancelResult(orderId, recordId, originalValue) {
-    if (originalValue) {
-        // Có kết quả cũ → render lại badge + nút Sửa/Xóa
-        renderResultSaved(orderId, recordId, originalValue);
-    } else {
-        // Chưa có kết quả → render lại nút "Chờ kết quả"
-        renderResultEmpty(orderId, recordId);
-    }
-}
-
-// Xóa kết quả
-async function deleteResult(orderId, recordId) {
-    if (!confirm('Bạn có chắc muốn xóa kết quả này?')) return;
-
-    const url = `/medical-records/${recordId}/orders/${orderId}/result`;
-
-    try {
-        const response = await fetch(url, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': CSRF,
-                'Accept': 'application/json'
-            }
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            renderResultEmpty(orderId, recordId);
+    // Hủy: khôi phục về trạng thái ban đầu (không reload)
+    function cancelResult(orderId, recordId, originalValue) {
+        if (originalValue) {
+            // Có kết quả cũ → render lại badge + nút Sửa/Xóa
+            renderResultSaved(orderId, recordId, originalValue);
         } else {
-            console.error('Xóa thất bại:', data.error);
+            // Chưa có kết quả → render lại nút "Chờ kết quả"
+            renderResultEmpty(orderId, recordId);
         }
-    } catch (error) {
-        console.error('Error:', error);
     }
-}
 
-// Gắn sự kiện cho nút Sửa
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.btn-edit-result').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const orderId = this.getAttribute('data-order-id');
-            const recordId = this.getAttribute('data-record-id');
-            const note = this.getAttribute('data-note') || '';
-            if (orderId && recordId) {
-                showResultDropdown(orderId, recordId, note);
+    // Xóa kết quả
+    async function deleteResult(orderId, recordId) {
+        if (!confirm('Bạn có chắc muốn xóa kết quả này?')) return;
+
+        const url = `/medical-records/${recordId}/orders/${orderId}/result`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': CSRF,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                renderResultEmpty(orderId, recordId);
+            } else {
+                console.error('Xóa thất bại:', data.error);
             }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    // Gắn sự kiện cho nút Sửa
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.btn-edit-result').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = this.getAttribute('data-order-id');
+                const recordId = this.getAttribute('data-record-id');
+                const note = this.getAttribute('data-note') || '';
+                if (orderId && recordId) {
+                    showResultDropdown(orderId, recordId, note);
+                }
+            });
         });
     });
-});
 </script>
 @endpush
