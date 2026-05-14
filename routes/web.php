@@ -17,6 +17,13 @@ use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
 
+use App\Http\Controllers\NewsController;
+use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Admin\ChatRoomController;
+
+
 // ============================================================
 // TRANG CHỦ & AUTH
 // ============================================================
@@ -60,6 +67,7 @@ Route::middleware('auth')->group(function () {
     // Lịch sử + dời/hủy lịch hẹn (Route chính)
     Route::prefix('lich-hen')->name('user.appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/bac-si-nghi', [AppointmentController::class, 'doctorOff'])->name('doctor-off');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
@@ -68,6 +76,7 @@ Route::middleware('auth')->group(function () {
     // ALIAS: Route cũ cho tương thích với view
     Route::prefix('lich-hen')->name('appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/bac-si-nghi', [AppointmentController::class, 'doctorOff'])->name('doctor-off');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
@@ -77,7 +86,6 @@ Route::middleware('auth')->group(function () {
     // THANH TOÁN (Users)
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
-
         Route::get('/history', [UserPaymentController::class, 'history'])->name('history');
         Route::get('/appointment/{appointmentId}', [UserPaymentController::class, 'show'])->name('show');
         Route::post('/store', [UserPaymentController::class, 'store'])->name('store');
@@ -142,7 +150,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         return view('admin.dashboard');
     })->name('dashboard');
 
-    // Quản lý DỊCH VỤ
+    // --------------------------------------------------------
+    // Quản lý DỊCH VỤ (CRUD + bảng giá)
+    // --------------------------------------------------------
     Route::prefix('services')->name('services.')->group(function () {
         Route::get('/',               [AdminServiceController::class, 'index'])->name('index');
         Route::get('/create',         [AdminServiceController::class, 'create'])->name('create');
@@ -153,18 +163,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::delete('/{service}',   [AdminServiceController::class, 'destroy'])->name('destroy');
         Route::patch('/{service}/toggle-status', [AdminServiceController::class, 'toggleStatus'])->name('toggle-status');
 
+        // Bảng giá (nested)
         Route::post('/{service}/prices',           [AdminServiceController::class, 'storePrice'])->name('prices.store');
         Route::put('/{service}/prices/{price}',    [AdminServiceController::class, 'updatePrice'])->name('prices.update');
         Route::delete('/{service}/prices/{price}', [AdminServiceController::class, 'destroyPrice'])->name('prices.destroy');
     });
 
+    // --------------------------------------------------------
     // Quản lý PHÒNG KHÁM + LỊCH TRỰC
+    // --------------------------------------------------------
     Route::prefix('rooms')->name('rooms.')->group(function () {
 
+        // Lịch tuần
         Route::get('/weekly',          [RoomController::class, 'weeklySchedule'])->name('weekly');
         Route::get('/weekly/{roomId}', [RoomController::class, 'weeklySchedule'])->name('weekly.room');
         Route::get('/weekly-ajax',     [RoomController::class, 'weeklyScheduleAjax'])->name('weekly.ajax');
 
+        // Quản lý ca trực
         Route::prefix('schedule')->name('schedule.')->group(function () {
             Route::get('/all',             [RoomController::class, 'scheduleAll'])->name('all');
             Route::get('/',                [RoomController::class, 'scheduleIndex'])->name('index');
@@ -176,6 +191,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
             Route::get('/check-conflict',  [RoomController::class, 'checkConflict'])->name('check-conflict');
         });
 
+        // CRUD phòng (đặt SAU prefix để tránh conflict)
         Route::get('/',            [RoomController::class, 'index'])->name('index');
         Route::get('/create',      [RoomController::class, 'create'])->name('create');
         Route::post('/',           [RoomController::class, 'store'])->name('store');
@@ -187,25 +203,104 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 
     // THANH TOÁN (Admin)
     Route::prefix('payments')->name('payments.')->group(function () {
+
+        // Danh sách giao dịch
         Route::get('/', [PaymentController::class, 'index'])->name('index');
+
+        // Trang thanh toán hóa đơn (checkout)
         Route::get('/checkout/{invoiceId}', [PaymentController::class, 'checkout'])->name('checkout');
+
+        // Chi tiết giao dịch theo paymentId
         Route::get('/{paymentId}', [PaymentController::class, 'show'])->name('show');
+
+        // Tạo giao dịch
         Route::post('/store', [PaymentController::class, 'store'])->name('store');
+
+        // Trang QR
         Route::get('/{paymentId}/qr', [PaymentController::class, 'qr'])->name('qr');
+
+        // Xác nhận thanh toán
         Route::post('/{paymentId}/confirm', [PaymentController::class, 'confirm'])->name('confirm');
+
+        // Đánh dấu thất bại
         Route::post('/{paymentId}/fail', [PaymentController::class, 'fail'])->name('fail');
     });
-
+    
+    // --------------------------------------------------------
     // Quản lý BHYT
+    // --------------------------------------------------------
     Route::prefix('bhyt')->name('bhyt.')->group(function () {
         Route::get('/',        [BhytController::class, 'index'])->name('index');
         Route::post('/lookup', [BhytController::class, 'lookup'])->name('lookup');
         Route::post('/apply',  [BhytController::class, 'apply'])->name('apply');
     });
+
+    // --------------------------------------------------------
+    // Thống kê bác sĩ & Doanh thu
+    // --------------------------------------------------------
+    Route::get('/doctor-statistics', [\App\Http\Controllers\Admin\DoctorStatisticController::class, 'index'])->name('doctor-statistics.index');
+    Route::get('/revenue', [\App\Http\Controllers\Admin\RevenueController::class, 'index'])->name('revenue.index');
+
+    // --------------------------------------------------------
+    // Quản lý tiêm chủng
+    // --------------------------------------------------------
+    Route::resource('vaccines', \App\Http\Controllers\Admin\VaccineController::class);
+    Route::resource('vaccination-records', \App\Http\Controllers\Admin\VaccinationRecordController::class);
+
+});
+
+// ============================================================
+// BẢN TIN BỆNH VIỆN
+// ============================================================
+
+// Public routes
+Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
+
+// Admin routes
+Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
+    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
+    Route::patch('news/{id}/toggle', [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
+    Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
+});
+
+// ============================================================
+// ROUTE BÁC SĨ (Doctor Schedule Management)
+// ============================================================
+
+Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function () {
+    // Quản lý lịch làm việc
+    Route::get('/', function () {
+        return view('doctor.doctor-schedule');
+    })->name('schedule');
 });
 
 // ============================================================
 // ROUTE BÁC SĨ (tạm thời)
 // ============================================================
+Route::get('/bac-si', function () {return view('welcome');})->name('doctors.index');
 require_once "medical_records.php";
 Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
+
+// =============================================
+// CHAT CSKH – Patient Routes
+// =============================================
+Route::middleware(['auth'])->prefix('chat')->name('chat.')->group(function () {
+    Route::post('/room',              [ChatController::class, 'getOrCreateRoom'])->name('room');
+    Route::get('/messages/{roomId}',  [ChatController::class, 'getMessages'])->name('messages');
+    Route::post('/send',              [ChatController::class, 'sendMessage'])->name('send');
+    Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall');
+});
+
+// =============================================
+// CHAT CSKH – Admin/Staff Routes
+// =============================================
+Route::middleware(['auth', 'role:1,2'])->prefix('admin/chatroom')->name('admin.chatroom.')->group(function () {
+    Route::get('/',                         [ChatRoomController::class, 'index'])->name('index');
+    Route::get('/list',                     [ChatRoomController::class, 'listJson'])->name('list');
+    Route::get('/{roomId}/messages',        [ChatRoomController::class, 'getMessages'])->name('messages');
+    Route::post('/{roomId}/send',           [ChatRoomController::class, 'sendMessage'])->name('send');
+    Route::post('/{roomId}/close',          [ChatRoomController::class, 'closeRoom'])->name('close');
+    Route::delete('/{roomId}',              [ChatRoomController::class, 'deleteRoom'])->name('delete');
+    Route::delete('/messages/{messageId}',  [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
+});
