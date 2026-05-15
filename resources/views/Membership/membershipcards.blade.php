@@ -62,12 +62,8 @@
                     <span style="color: #2ecc71;">🎉 Bạn đã đạt cấp độ thành viên cao nhất!</span>
                     @else
                     @php
-                    $nextTier = 'Bạc';
-                    $nextAmount = 5000000;
-                    if ($membership->getRawOriginal('tier') == 'Bạc') { $nextTier = 'Vàng'; $nextAmount = 10000000; }
-                    elseif ($membership->getRawOriginal('tier') == 'Vàng') { $nextTier = 'Kim Cương'; $nextAmount = 25000000; }
-
-                    $needAmount = max(0, $nextAmount - ($membership->attributes['total_spent'] ?? 0));
+                    $nextTier = $membership->next_tier;
+                    $needAmount = $membership->remaining_to_next_tier;
                     @endphp
 
                     @if($needAmount > 0)
