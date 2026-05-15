@@ -13,20 +13,28 @@ class MembershipController extends Controller
         $user = Auth::user();
 
         if (!$user) {
-            return redirect()->route('login')
-                ->with('error', 'Vui lòng đăng nhập!');
+            return redirect()->route('login')->with('error', 'Vui lòng đăng nhập!');
         }
 
-        // 👉 luôn đảm bảo có membership
+        // 1. Lấy hoặc tạo mới membership
         $membership = MembershipCard::firstOrCreate(
             ['user_id' => $user->user_id],
             [
                 'points' => 0,
-                'card_number' => 'Chưa có thẻ'
+                'total_spent' => 0,
+                'tier' => 'Đồng',
+                'card_number' => 'MB-' . now()->format('Ymd') . '-' . str_pad((string) $user->user_id, 6, '0', STR_PAD_LEFT),
+                'expiry_date' => now()->addYear()->toDateString(),
             ]
         );
 
-        // 👉 data phụ (có thể sau này lấy từ DB)
+        // 2. ĐOẠN ĐỒNG BỘ: Kiểm tra nếu hạng thực tế (qua accessor) khác với hạng lưu trong DB thô
+        // $membership->tier là chữ được tính toán từ thuộc tính Accessor (chữ "Vàng")
+        if ($membership->getRawOriginal('tier') !== $membership->tier) {
+            $membership->tier = $membership->tier; // Gán lại hạng đúng
+            $membership->save(); // Lưu lại vào Database
+        }
+
         $extraData = [
             'visit_count' => 48,
             'pending_points' => 200,
@@ -34,10 +42,6 @@ class MembershipController extends Controller
             'saved_money' => '890k'
         ];
 
-        return view('Membership.membershipcards', compact(
-            'user',
-            'membership',
-            'extraData'
-        ));
+        return view('Membership.membershipcards', compact('user', 'membership', 'extraData'));
     }
 }
