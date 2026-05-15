@@ -14,14 +14,14 @@
             <p class="text-muted small mb-0">Thống kê doanh thu phòng khám năm {{ $year }}</p>
         </div>
         <div class="d-flex gap-2">
-            <form method="GET" action="{{ route('revenue.index') }}" class="d-flex align-items-center gap-2">
+            <form method="GET" action="{{ route('admin.revenue.index') }}" class="d-flex align-items-center gap-2">
                 <select name="year" class="form-select" onchange="this.form.submit()">
                     @for($i = date('Y') - 5; $i <= date('Y'); $i++)
                         <option value="{{ $i }}" {{ $year == $i ? 'selected' : '' }}>Năm {{ $i }}</option>
                     @endfor
                 </select>
             </form>
-            <a href="{{ route('payments.index') }}" class="btn btn-outline-primary">
+            <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-primary">
                 <i class="bi bi-receipt me-1"></i>Lịch sử thanh toán
             </a>
         </div>
@@ -81,7 +81,7 @@
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history text-warning me-2"></i>Giao dịch gần đây</h6>
-            <a href="{{ route('payments.index') }}" class="small text-decoration-none">Xem tất cả</a>
+            <a href="{{ route('admin.payments.index') }}" class="small text-decoration-none">Xem tất cả</a>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">

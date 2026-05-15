@@ -18,13 +18,15 @@ class RevenueService
         // Khởi tạo query cho các giao dịch thành công
         $successfulPayments = Payment::whereIn('status', ['Thành công', 'Đã thanh toán']);
 
-        // Tổng quan doanh thu
-        $totalRevenue = (clone $successfulPayments)->sum('total_amount');
-        $totalTransactions = (clone $successfulPayments)->count();
+        // Khởi tạo query cho các giao dịch thành công trong năm
+        $yearQuery = (clone $successfulPayments)->whereYear('payment_date', $year);
+
+        // Tổng quan doanh thu theo năm
+        $totalRevenue = (clone $yearQuery)->sum('total_amount');
+        $totalTransactions = (clone $yearQuery)->count();
 
         // Biểu đồ doanh thu theo tháng trong năm
-        $revenueByMonth = (clone $successfulPayments)
-            ->whereYear('payment_date', $year)
+        $revenueByMonth = (clone $yearQuery)
             ->selectRaw('MONTH(payment_date) as month, SUM(total_amount) as total')
             ->groupBy('month')
             ->orderBy('month')
@@ -37,8 +39,8 @@ class RevenueService
             $monthlyData[] = $revenueByMonth[$i] ?? 0;
         }
 
-        // Tỷ lệ phương thức thanh toán
-        $methods = (clone $successfulPayments)
+        // Tỷ lệ phương thức thanh toán theo năm
+        $methods = (clone $yearQuery)
             ->selectRaw('method, COUNT(*) as count')
             ->groupBy('method')
             ->pluck('count', 'method')
