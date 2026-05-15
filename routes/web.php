@@ -194,9 +194,7 @@ require_once "medical_records.php";
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
-    Route::get('/', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
     // --------------------------------------------------------
     // Quản lý DỊCH VỤ (CRUD + bảng giá)
