@@ -99,6 +99,10 @@
            class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
             <i class="bi bi-credit-card"></i> Thanh toán
         </a>
+        <a href="{{ route('admin.news.index') }}"
+           class="nav-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">
+            <i class="bi bi-newspaper"></i> Bản tin
+        </a>
 
         <div class="nav-section">Thống kê & Y tế</div>
         <a href="{{ route('admin.revenue.index') }}"
