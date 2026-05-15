@@ -47,6 +47,10 @@ class HospitalNews extends Model
             return asset('images/news-default.jpg');
         }
 
+        if (filter_var($this->thumbnail, FILTER_VALIDATE_URL)) {
+            return $this->thumbnail;
+        }
+
         if (str_starts_with($this->thumbnail, 'uploads/news/')) {
             return asset($this->thumbnail);
         }
