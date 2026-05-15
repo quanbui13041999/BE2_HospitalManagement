@@ -174,10 +174,15 @@ class PaymentService
         $updated = $this->repo->confirmPayment($paymentId, $ref);
         
         if ($updated) {
-            // Lấy payment để cập nhật appointment
-            $payment = Payment::with('appointment')->find($paymentId);
-            if ($payment && $payment->appointment) {
-                $payment->appointment->update(['status' => 'Đã thanh toán']);
+            // Đánh dấu lịch hẹn và hóa đơn đã thanh toán
+            $payment = Payment::with(['appointment', 'invoice'])->find($paymentId);
+            if ($payment) {
+                if ($payment->appointment) {
+                    $payment->appointment->update(['status' => 'Đã thanh toán']);
+                }
+                if ($payment->invoice) {
+                    $payment->invoice->update(['status' => 'Đã thanh toán']);
+                }
             }
         }
         
