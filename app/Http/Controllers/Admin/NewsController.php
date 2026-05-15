@@ -179,16 +179,26 @@ class NewsController extends Controller
         $filename = uniqid('news_', true) . '.' . $file->getClientOriginalExtension();
         $file->move($directory, $filename);
 
-        return 'uploads/news/' . $filename;
+        return asset('uploads/news/' . $filename);
     }
 
     private function deleteThumbnail(?string $thumbnail): void
     {
-        if (! $thumbnail || ! str_starts_with($thumbnail, 'uploads/news/')) {
+        if (! $thumbnail) {
             return;
         }
 
-        $path = public_path($thumbnail);
+        $relativePath = $thumbnail;
+
+        if (filter_var($thumbnail, FILTER_VALIDATE_URL)) {
+            $relativePath = ltrim(parse_url($thumbnail, PHP_URL_PATH) ?: '', '/');
+        }
+
+        if (! str_starts_with($relativePath, 'uploads/news/')) {
+            return;
+        }
+
+        $path = public_path($relativePath);
 
         if (is_file($path)) {
             unlink($path);
