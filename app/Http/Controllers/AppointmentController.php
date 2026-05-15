@@ -88,7 +88,8 @@ class AppointmentController extends Controller
             );
 
             return redirect()->route('appointments.index')
-                ->with('success', $result['message']);
+                ->with('success', $result['message'])
+                ->with('appointment_id', $result['appointment_id']);
         } catch (\Exception $e) {
             return back()
                 ->withErrors(['msg' => $e->getMessage()])

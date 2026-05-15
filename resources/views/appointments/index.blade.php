@@ -525,6 +525,44 @@
             transform: translateY(-1px);
         }
 
+        .btn-pay {
+            background: #065f46;
+            color: white;
+            border-color: #065f46;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(6, 95, 70, 0.2);
+        }
+
+        .btn-pay:hover {
+            background: #047857;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(6, 95, 70, 0.3);
+            color: white;
+        }
+
+        .payment-status {
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .payment-unpaid {
+            color: #dc2626;
+        }
+
+        .payment-paid {
+            color: #059669;
+        }
+
         .empty-state {
             padding: 60px 20px;
             text-align: center;
@@ -822,6 +860,15 @@
                 <polyline points="22 4 12 14.01 9 11.01" />
             </svg>
             {{ session('success') }}
+            @if(session('appointment_id'))
+                <a href="{{ route('user.payments.show', session('appointment_id')) }}" class="btn-pay" style="margin-left: auto; padding: 8px 20px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <rect x="2" y="5" width="20" height="14" rx="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                    </svg>
+                    Thanh toán ngay
+                </a>
+            @endif
         </div>
         @endif
 
@@ -923,13 +970,25 @@
                                     <span class="badge-dot"></span>
                                     {{ $item->status }}
                                 </span>
+                                @if(!in_array($item->status, ['Đã hủy', 'Dời lịch', 'Bác sĩ nghỉ']))
+                                    @if($item->payment_status)
+                                        <span class="payment-status payment-paid">✓ Đã thanh toán</span>
+                                    @else
+                                        <span class="payment-status payment-unpaid">✗ Chưa thanh toán</span>
+                                    @endif
+                                @endif
                             </td>
 
                             {{-- CỘT THAO TÁC --}}
                             <td>
                                 @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
                                 {{-- Dời / Huỷ --}}
-                                <div class="actions">
+                                 <div class="actions">
+                                    @if(empty($item->payment_status))
+                                        <a href="{{ route('user.payments.show', $item->appointment_id) }}" class="btn-pay">
+                                            💳 Thanh toán
+                                        </a>
+                                    @endif
                                     <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
                                         📅 Dời lịch
                                     </a>
