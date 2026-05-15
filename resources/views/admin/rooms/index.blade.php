@@ -716,7 +716,7 @@
                 document.getElementById('weeklyLoading').style.display = 'block';
                 document.getElementById('weeklyScheduleContainer').style.opacity = '0.3';
 
-                fetch('/admin/rooms/weekly-ajax?room_id=' + roomId + '&week_start=' + currentWeekStart)
+                fetch('{{ route('admin.rooms.weekly.ajax') }}?room_id=' + roomId + '&week_start=' + currentWeekStart)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {

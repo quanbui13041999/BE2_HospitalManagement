@@ -34,6 +34,29 @@ class DoctorScheduleController extends Controller
         private readonly DayOffService            $dayOffService,
     ) {}
 
+    /**
+     * Kiểm tra quyền truy cập cho doctor_id.
+     * Admin: tất cả
+     * Doctor: chỉ doctor_id của mình
+     */
+    private function canAccessDoctor(int $doctorId): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->isAdmin) {
+            return true;
+        }
+
+        if ($user->isDoctor) {
+            return $user->doctor?->doctor_id === $doctorId;
+        }
+
+        return false;
+    }
+
     // =========================================================================
     // A. RECURRING SCHEDULE
     // =========================================================================
@@ -46,7 +69,17 @@ class DoctorScheduleController extends Controller
      */
     public function recurringPreview(StoreRecurringScheduleRequest $request): JsonResponse
     {
-        $preview = $this->recurringService->preview($request->validated());
+        $data = $request->validated();
+        $doctorId = $data['doctor_id'];
+
+        if (!$this->canAccessDoctor($doctorId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền xem lịch cho bác sĩ này.',
+            ], 403);
+        }
+
+        $preview = $this->recurringService->preview($data);
 
         return response()->json([
             'success' => true,
@@ -64,7 +97,17 @@ class DoctorScheduleController extends Controller
      */
     public function storeRecurring(StoreRecurringScheduleRequest $request): JsonResponse
     {
-        $result = $this->recurringService->generate($request->validated());
+        $data = $request->validated();
+        $doctorId = $data['doctor_id'];
+
+        if (!$this->canAccessDoctor($doctorId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền tạo lịch cho bác sĩ này.',
+            ], 403);
+        }
+
+        $result = $this->recurringService->generate($data);
 
         return response()->json([
             'success' => true,
@@ -87,6 +130,13 @@ class DoctorScheduleController extends Controller
      */
     public function indexRecurring(Request $request, int $doctorId): JsonResponse
     {
+        if (!$this->canAccessDoctor($doctorId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền xem lịch của bác sĩ này.',
+            ], 403);
+        }
+
         $from    = $request->input('from', now()->toDateString());
         $to      = $request->input('to', now()->addWeeks(4)->toDateString());
         $perPage = $request->integer('per_page', 20);
@@ -112,6 +162,13 @@ class DoctorScheduleController extends Controller
     public function destroyRecurring(int $scheduleId): JsonResponse
     {
         $schedule = DoctorSchedule::findOrFail($scheduleId);
+
+        if (!$this->canAccessDoctor($schedule->doctor_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền xoá lịch của bác sĩ này.',
+            ], 403);
+        }
 
         // Kiểm tra còn appointment không
         $hasActive = $schedule->activeAppointments()->isNotEmpty();
@@ -148,7 +205,17 @@ class DoctorScheduleController extends Controller
      */
     public function storeDayOff(StoreDayOffRequest $request): JsonResponse
     {
-        $result = $this->dayOffService->process($request->validated());
+        $data = $request->validated();
+        $doctorId = $data['doctor_id'];
+
+        if (!$this->canAccessDoctor($doctorId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền đăng ký nghỉ cho bác sĩ này.',
+            ], 403);
+        }
+
+        $result = $this->dayOffService->process($data);
 
         $msg = "Đã block {$result['blocked_schedules']} ca khám.";
         if ($result['affected_appointments'] > 0) {
@@ -170,6 +237,13 @@ class DoctorScheduleController extends Controller
      */
     public function indexDayOff(int $doctorId): JsonResponse
     {
+        if (!$this->canAccessDoctor($doctorId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền xem ngày nghỉ của bác sĩ này.',
+            ], 403);
+        }
+
         // Kiểm tra bác sĩ tồn tại
         Doctor::findOrFail($doctorId);
 
@@ -191,6 +265,15 @@ class DoctorScheduleController extends Controller
      */
     public function destroyDayOff(int $scheduleId): JsonResponse
     {
+        $schedule = DoctorSchedule::findOrFail($scheduleId);
+
+        if (!$this->canAccessDoctor($schedule->doctor_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền mở lại lịch của bác sĩ này.',
+            ], 403);
+        }
+
         $this->dayOffService->cancel($scheduleId);
 
         return response()->json([
@@ -207,13 +290,32 @@ class DoctorScheduleController extends Controller
      * GET /api/v1/schedules/doctors
      *
      * Danh sách bác sĩ để dropdown chọn trên UI.
+     * Admin: tất cả bác sĩ
+     * Doctor: chỉ mình
      */
     public function listDoctors(): JsonResponse
     {
-        $doctors = Doctor::with('department')
-            ->where('status', 1)
-            ->orderBy('full_name')
-            ->get(['doctor_id', 'full_name', 'department_id', 'avatar_url']);
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền xem danh sách bác sĩ.',
+            ], 403);
+        }
+
+        if ($user->isAdmin) {
+            $doctors = Doctor::with('department')
+                ->where('status', 1)
+                ->orderBy('full_name')
+                ->get(['doctor_id', 'full_name', 'department_id', 'avatar_url']);
+        } elseif ($user->isDoctor && $user->doctor) {
+            $doctors = collect([$user->doctor->load('department')]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền xem danh sách bác sĩ.',
+            ], 403);
+        }
 
         return response()->json([
             'success' => true,

@@ -25,6 +25,18 @@ return new class extends Migration {
             $table->foreign('user_id')
                   ->references('user_id')->on('users')
                   ->onUpdate('cascade')->onDelete('cascade');
+
+            $table->foreign('schedule_id')
+                  ->references('schedule_id')->on('doctorschedules')
+                  ->onUpdate('cascade')->onDelete('cascade');
+
+            $table->foreign('service_id')
+                  ->references('service_id')->on('services')
+                  ->onUpdate('cascade')->onDelete('set null');
+
+            $table->foreign('rescheduled_from')
+                  ->references('appointment_id')->on('appointments')
+                  ->onUpdate('cascade')->onDelete('set null');
         });
     }
 

@@ -43,14 +43,25 @@ class VaccinationRecordController extends Controller
         }
 
         $vaccines = Vaccine::where('status', 1)->get();
-        $patients = User::where('role_id', 3)->get(); // For dropdown or selection if needed
+        
+        // Search patients
+        $search = $request->input('search');
+        $patientsQuery = User::where('role_id', 3);
+        if ($search) {
+            $patientsQuery->where(function($q) use ($search) {
+                $q->where('full_name', 'like', "%$search%")
+                  ->orWhere('phone', 'like', "%$search%");
+            });
+        }
+        $patients = $patientsQuery->limit(20)->get();
 
         return view('admin.vaccination_records.index', compact(
             'upcomingSchedules',
             'selectedPatient',
             'patientRecords',
             'vaccines',
-            'patients'
+            'patients',
+            'search'
         ));
     }
 
