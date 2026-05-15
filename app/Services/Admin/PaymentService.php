@@ -67,8 +67,19 @@ class PaymentService
      */
     public function initiatePayment(array $data): array
     {
+        $invoice = Invoice::findOrFail($data['invoice_id']);
+        
         $ref     = strtoupper(Str::random(12));
-        $payment = $this->repo->createPayment(array_merge($data, ['transaction_ref' => $ref]));
+        
+        // Map invoice data to what the repository/model expects
+        $paymentData = [
+            'appointment_id'  => $invoice->appointment_id,
+            'payment_method'  => $data['payment_method'],
+            'amount'          => $data['amount'],
+            'transaction_ref' => $ref,
+        ];
+
+        $payment = $this->repo->createPayment($paymentData);
 
         $result = ['payment' => $payment, 'ref' => $ref];
 
@@ -90,10 +101,15 @@ class PaymentService
         $updated = $this->repo->confirmPayment($paymentId, $ref);
 
         if ($updated) {
-            // Đánh dấu hóa đơn đã thanh toán
-            $payment = Payment::find($paymentId);
-            if ($payment && $payment->invoice) {
-                $payment->invoice->update(['status' => 'Đã thanh toán']);
+            // Đánh dấu hóa đơn và lịch hẹn đã thanh toán
+            $payment = Payment::with(['invoice', 'appointment'])->find($paymentId);
+            if ($payment) {
+                if ($payment->invoice) {
+                    $payment->invoice->update(['status' => 'Đã thanh toán']);
+                }
+                if ($payment->appointment) {
+                    $payment->appointment->update(['status' => 'Đã thanh toán']);
+                }
             }
         }
 
@@ -124,7 +140,7 @@ class PaymentService
             'HOSPITAL|%s|%d|%s',
             $payment->transaction_ref,
             (int) ($payment->total_amount ?? 0),
-            'Thanh toan hoa don ' . ($payment->invoice_id ?? '')
+            'Thanh toan hoa don ' . ($payment->invoice?->invoice_number ?? '')
         );
     }
 }
