@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('doctor_schedules', function (Blueprint $table) {
+        Schema::create('doctorschedules', function (Blueprint $table) {
             $table->increments('schedule_id');
             $table->unsignedInteger('doctor_id');
             $table->unsignedInteger('room_id')->nullable();
@@ -22,17 +22,17 @@ return new class extends Migration {
             $table->unique(['doctor_id', 'work_date', 'start_time'], 'UQ_DoctorSchedules');
 
             $table->foreign('doctor_id')
-                  ->references('doctor_id')->on('Doctors')
+                  ->references('doctor_id')->on('doctors')
                   ->onUpdate('cascade')->onDelete('cascade');
 
             $table->foreign('room_id')
-                  ->references('room_id')->on('Rooms')
+                  ->references('room_id')->on('rooms')
                   ->onUpdate('cascade')->onDelete('set null');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('doctor_schedules');
+        Schema::dropIfExists('doctorschedules');
     }
 };
