@@ -341,10 +341,16 @@ class AppointmentService
             ->join('users', 'appointments.user_id', '=', 'users.user_id')
             ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
             ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
+            ->leftJoin('payments', function($join) {
+                $join->on('appointments.appointment_id', '=', 'payments.appointment_id')
+                    ->whereIn('payments.status', ['Thành công', 'Đã thanh toán']);
+            })
             ->leftJoin('reviews', 'appointments.appointment_id', '=', 'reviews.appointment_id')
             ->where('appointments.user_id', $userId)
             ->select(
                 'appointments.*',
+                'payments.status as payment_status',
+                'payments.payment_id',
                 'doctorschedules.work_date',
                 'doctorschedules.start_time',
                 'doctorschedules.end_time',
