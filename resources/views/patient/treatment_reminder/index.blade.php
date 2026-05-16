@@ -141,7 +141,8 @@
                                     <span class="btn-confirm" style="background:#d1fae5;color:var(--success);">✓ Đã uống</span>
                                 @else
                                     <button class="btn-confirm"
-                                            onclick="confirmReminder({{ $reminder->reminder_id }}, this)">
+                                            data-reminder-id="{{ $reminder->reminder_id }}"
+                                            onclick="confirmReminder(this)">
                                         Đánh dấu đã uống
                                     </button>
                                 @endif
@@ -208,7 +209,8 @@
 <script src="https://unpkg.com/feather-icons"></script>
 <script>
 // Xác nhận đã uống thuốc
-async function confirmReminder(id, btn) {
+async function confirmReminder(btn) {
+    const id = btn.dataset.reminderId;
     btn.disabled = true;
     btn.textContent = 'Đang xử lý...';
     try {

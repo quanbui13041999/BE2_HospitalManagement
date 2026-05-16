@@ -1,7 +1,7 @@
 @component('mail::message')
-# ⏰ Nhắc nhở điều trị
+# Nhắc nhở điều trị
 
-Chào **{{ $reminder->user->full_name }}**,
+Chào **{{ $patient?->full_name ?? 'bạn' }}**,
 
 Đây là nhắc nhở lịch điều trị của bạn:
 

@@ -117,6 +117,10 @@
            class="nav-link {{ request()->routeIs('admin.vaccination-records.*') ? 'active' : '' }}">
             <i class="bi bi-patch-check"></i> Tiêm chủng
         </a>
+        <a href="{{ route('admin.treatment.index') }}"
+           class="nav-link {{ request()->routeIs('admin.treatment.*') ? 'active' : '' }}">
+            <i class="bi bi-alarm"></i> Nhắc nhở tuân thủ
+        </a>
 
         <div class="nav-section">Hỗ trợ</div>
         @if(Auth::user()->role_id == 1 || Auth::user()->role_id == 2)

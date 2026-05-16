@@ -23,9 +23,14 @@ class TreatmentReminderMail extends Mailable
 
     public function content(): Content
     {
+        $patient = $this->reminder->medicalRecord?->patient ?? $this->reminder->user;
+
         return new Content(
             markdown: 'emails.treatment_reminder',
-            with: ['reminder' => $this->reminder],
+            with: [
+                'reminder' => $this->reminder,
+                'patient' => $patient,
+            ],
         );
     }
 }

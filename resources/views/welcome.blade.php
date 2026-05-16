@@ -684,6 +684,9 @@
                 <li><a href="{{ route('news.index') }}">Bản tin</a></li>
                 <li><a href="{{ route('doctors.index') }}">Bác sĩ</a></li>
                 <li><a href="{{ route('user.services.index') }}">Khoa phòng</a></li>
+                @auth
+                <li><a href="{{ route('treatment.index') }}">Tuân thủ điều trị</a></li>
+                @endauth
             </ul>
 
             <div class="nav-cta">
