@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class DoctorDayOff extends Model
 {
-    protected $table = 'DoctorDaysOff';
+    protected $table = 'doctordaysoff';
     protected $primaryKey = 'day_off_id';
     public $timestamps = false;
 
