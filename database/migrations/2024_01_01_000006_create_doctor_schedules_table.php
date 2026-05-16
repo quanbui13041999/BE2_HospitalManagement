@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('doctor_schedules', function (Blueprint $table) {
+        Schema::create('doctorschedules', function (Blueprint $table) {
             $table->increments('schedule_id');
             $table->unsignedInteger('doctor_id');
             $table->unsignedInteger('room_id')->nullable();
@@ -33,6 +33,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('doctor_schedules');
+        Schema::dropIfExists('doctorschedules');
     }
 };
