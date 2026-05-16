@@ -284,3 +284,28 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::delete('/messages/{messageId}',  [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
     });
 });
+
+// ============================================================
+// HỆ THỐNG NHẮC NHỞ TUÂN THỦ ĐIỀU TRỊ
+// ============================================================
+
+// ── PATIENT ──────────────────────────────────────────────
+Route::middleware(['auth'])->prefix('treatment')->name('treatment.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'index'])->name('index');
+    Route::post('/confirm/{reminder}', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'confirm'])->name('confirm');
+    Route::post('/instruction/toggle', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'toggleInstruction'])->name('instruction.toggle');
+    Route::get('/report', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'report'])->name('report');
+});
+
+// ── ADMIN ─────────────────────────────────────────────────
+Route::middleware(['auth', 'is_admin'])->prefix('admin/treatment-reminders')->name('admin.treatment.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'store'])->name('store');
+    Route::get('/{user}/show', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'show'])->name('show');
+    Route::get('/{reminder}/edit', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'edit'])->name('edit');
+    Route::put('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'update'])->name('update');
+    Route::delete('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'destroy'])->name('destroy');
+    Route::post('/generate/{record}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'generateFromRecord'])->name('generate');
+    Route::get('/compliance-report', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'complianceReport'])->name('compliance');
+});

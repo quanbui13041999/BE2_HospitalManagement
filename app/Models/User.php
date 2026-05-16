@@ -97,6 +97,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(MedicalDocument::class, 'user_id', 'user_id');
     }
+    public function treatmentHomeInstructions()
+    {
+        return $this->hasMany(TreatmentHomeInstruction::class, 'user_id', 'user_id');
+    }
+    public function treatmentConfirmations()
+    {
+        return $this->hasMany(TreatmentConfirmation::class, 'user_id', 'user_id');
+    }
 
     // ── Accessors ──
     public function getIsAdminAttribute()
@@ -133,7 +141,7 @@ class User extends Authenticatable
     /**
      * Tạo thông báo cho user
      */
-    public function notify(string $type, string $title, string $content, int $refId = null, string $refType = null)
+    public function notify(string $type, string $title, string $content, ?int $refId = null, ?string $refType = null)
     {
         return $this->notifications()->create([
             'notif_type' => $type,
@@ -149,7 +157,7 @@ class User extends Authenticatable
     /**
      * Ghi log hoạt động
      */
-    public function logActivity(string $action, string $ipAddress = null)
+    public function logActivity(string $action, ?string $ipAddress = null)
     {
         return $this->activityLogs()->create([
             'action' => $action,
