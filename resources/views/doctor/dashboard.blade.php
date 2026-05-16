@@ -1041,14 +1041,20 @@
     <div style="max-width:72rem;margin:0 auto;padding:0 1rem">
         <div style="display:flex;align-items:center;justify-content:space-between;height:64px">
             <div style="display:flex;align-items:center;gap:12px">
-                <div style="width:40px;height:40px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <div
+                    style="width:40px;height:40px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
                     <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                 </div>
                 <div>
-                    <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0">MediBook</h1>
+                    <a href="{{ route('home') }}" class="active">
+                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0;text-decoration:none;">
+                            MediBook
+                        </h1>
+                    </a>
+
                     <p style="font-size:.75rem;color:#6b7280;margin:0">Quản lý bác sĩ</p>
                 </div>
             </div>
@@ -1058,7 +1064,8 @@
                 </span>
                 <form action="{{ route('logout') }}" method="POST" style="display:inline">
                     @csrf
-                    <button type="submit" style="font-size:.875rem;color:#6b7280;background:none;border:none;cursor:pointer;font-family:inherit"
+                    <button type="submit"
+                        style="font-size:.875rem;color:#6b7280;background:none;border:none;cursor:pointer;font-family:inherit"
                         onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#6b7280'">
                         Đăng xuất
                     </button>
@@ -1088,16 +1095,16 @@
                 Lịch làm việc
             </a>
             @auth
-            @if(auth()->user()->is_admin ?? false)
-            <a href="{{ route('admin.dashboard') }}"
-                style="display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:.875rem;font-weight:500;white-space:nowrap;text-decoration:none;color:#6b7280;border-bottom:2px solid transparent">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                </svg>
-                Thống kê
-            </a>
-            @endif
+                @if(auth()->user()->is_admin ?? false)
+                    <a href="{{ route('admin.dashboard') }}"
+                        style="display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:.875rem;font-weight:500;white-space:nowrap;text-decoration:none;color:#6b7280;border-bottom:2px solid transparent">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                        </svg>
+                        Thống kê
+                    </a>
+                @endif
             @endauth
         </div>
     </div>
@@ -1547,8 +1554,8 @@
         function renderAppointments(el, list, isToday) {
             if (!list.length) {
                 el.innerHTML = `<div class="empty">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    Không có lịch hẹn nào</div>`;
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            Không có lịch hẹn nào</div>`;
                 return;
             }
             el.innerHTML = list.map((a, i) => {
@@ -1558,22 +1565,22 @@
                 const canFinish = isToday && ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'].includes(a.status);
                 const canCancel = ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'].includes(a.status);
                 return `
-                <div class="apt-row" id="apt-${a.id}">
-                    <div class="apt-queue">${a.queue_number || (i + 1)}</div>
-                    <div class="apt-info">
-                        <div class="apt-name">${escHtml(a.patient_name || '—')} ${statusBadge(a.status)}</div>
-                        <div class="apt-sub">${escHtml(a.service_name || '')}${IS_ADMIN && a.doctor_name ? ' · ' + escHtml(a.doctor_name) : ''}</div>
-                        <div class="apt-meta">
-                            ${timeStr}
-                            ${a.patient_phone ? `<span>📞 ${escHtml(a.patient_phone)}</span>` : ''}
-                            ${a.note ? `<span title="${escHtml(a.note)}">📝 Ghi chú</span>` : ''}
-                        </div>
-                    </div>
-                    <div class="apt-actions">
-                        ${canFinish ? `<button class="btn btn-green btn-sm" onclick="doComplete(${a.id},this)">✓ Hoàn thành</button>` : ''}
-                        ${canCancel ? `<button class="btn btn-red btn-sm"   onclick="openCancelModal(${a.id})">✕ Hủy</button>` : ''}
-                    </div>
-                </div>`;
+                        <div class="apt-row" id="apt-${a.id}">
+                            <div class="apt-queue">${a.queue_number || (i + 1)}</div>
+                            <div class="apt-info">
+                                <div class="apt-name">${escHtml(a.patient_name || '—')} ${statusBadge(a.status)}</div>
+                                <div class="apt-sub">${escHtml(a.service_name || '')}${IS_ADMIN && a.doctor_name ? ' · ' + escHtml(a.doctor_name) : ''}</div>
+                                <div class="apt-meta">
+                                    ${timeStr}
+                                    ${a.patient_phone ? `<span>📞 ${escHtml(a.patient_phone)}</span>` : ''}
+                                    ${a.note ? `<span title="${escHtml(a.note)}">📝 Ghi chú</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="apt-actions">
+                                ${canFinish ? `<button class="btn btn-green btn-sm" onclick="doComplete(${a.id},this)">✓ Hoàn thành</button>` : ''}
+                                ${canCancel ? `<button class="btn btn-red btn-sm"   onclick="openCancelModal(${a.id})">✕ Hủy</button>` : ''}
+                            </div>
+                        </div>`;
             }).join('');
         }
 
@@ -1612,46 +1619,46 @@
         function renderReviews(el, list) {
             if (!list.length) {
                 el.innerHTML = `<div class="empty">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-                    Chưa có đánh giá nào</div>`;
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                            Chưa có đánh giá nào</div>`;
                 return;
             }
             el.innerHTML = list.map(r => {
                 const hasReply = !!r.doctor_reply;
                 const avatarHtml = r.patient_avatar ? `<img src="/storage/${r.patient_avatar}" alt="">` : initials(r.patient_name);
                 return `
-                <div class="review-card" id="rv-${r.id}">
-                    <div class="review-header">
-                        <div class="review-patient">
-                            <div class="review-avatar">${avatarHtml}</div>
-                            <div>
-                                <div class="review-name">${escHtml(r.patient_name || 'Ẩn danh')}</div>
-                                <div class="review-date">${r.created_at || ''}${IS_ADMIN && r.doctor_name ? ' · ' + escHtml(r.doctor_name) : ''}</div>
+                        <div class="review-card" id="rv-${r.id}">
+                            <div class="review-header">
+                                <div class="review-patient">
+                                    <div class="review-avatar">${avatarHtml}</div>
+                                    <div>
+                                        <div class="review-name">${escHtml(r.patient_name || 'Ẩn danh')}</div>
+                                        <div class="review-date">${r.created_at || ''}${IS_ADMIN && r.doctor_name ? ' · ' + escHtml(r.doctor_name) : ''}</div>
+                                    </div>
+                                </div>
+                                <span class="stars" title="${r.rating}/5">${stars(r.rating)} (${r.rating}/5)</span>
                             </div>
-                        </div>
-                        <span class="stars" title="${r.rating}/5">${stars(r.rating)} (${r.rating}/5)</span>
-                    </div>
-                    <div class="review-comment">${r.comment ? escHtml(r.comment) : '<em style="color:var(--c-muted)">Không có bình luận</em>'}</div>
+                            <div class="review-comment">${r.comment ? escHtml(r.comment) : '<em style="color:var(--c-muted)">Không có bình luận</em>'}</div>
 
-                    ${hasReply ? `
-                    <div class="reply-box" id="reply-display-${r.id}">
-                        <div class="reply-label">💬 Phản hồi của bác sĩ <span style="font-weight:400;color:var(--c-muted)">${r.doctor_reply_updated_at || ''}</span></div>
-                        <div id="reply-text-${r.id}">${escHtml(r.doctor_reply)}</div>
-                        <div style="margin-top:8px;display:flex;gap:8px">
-                            <button class="btn btn-ghost btn-sm" onclick="showReplyForm(${r.id},'${escapeJs(r.doctor_reply)}')">✏️ Sửa</button>
-                            ${IS_ADMIN ? `<button class="btn btn-ghost btn-sm" style="color:var(--c-red)" onclick="doDeleteReply(${r.id})">🗑 Xóa</button>` : ''}
-                        </div>
-                    </div>` : ''}
+                            ${hasReply ? `
+                            <div class="reply-box" id="reply-display-${r.id}">
+                                <div class="reply-label">💬 Phản hồi của bác sĩ <span style="font-weight:400;color:var(--c-muted)">${r.doctor_reply_updated_at || ''}</span></div>
+                                <div id="reply-text-${r.id}">${escHtml(r.doctor_reply)}</div>
+                                <div style="margin-top:8px;display:flex;gap:8px">
+                                    <button class="btn btn-ghost btn-sm" onclick="showReplyForm(${r.id},'${escapeJs(r.doctor_reply)}')">✏️ Sửa</button>
+                                    ${IS_ADMIN ? `<button class="btn btn-ghost btn-sm" style="color:var(--c-red)" onclick="doDeleteReply(${r.id})">🗑 Xóa</button>` : ''}
+                                </div>
+                            </div>` : ''}
 
-                    <div id="reply-form-${r.id}" class="reply-form" style="${hasReply ? 'display:none' : ''}">
-                        <textarea id="reply-input-${r.id}" placeholder="Nhập phản hồi của bạn...">${hasReply ? escHtml(r.doctor_reply) : ''}</textarea>
-                        <div class="reply-form-actions">
-                            ${hasReply ? `<button class="btn btn-ghost btn-sm" onclick="hideReplyForm(${r.id})">Hủy</button>` : ''}
-                            <button class="btn btn-outline btn-sm" onclick="doReply(${r.id})">💬 Gửi phản hồi</button>
-                        </div>
-                    </div>
-                    ${!hasReply ? `<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="showReplyForm(${r.id})">+ Thêm phản hồi</button>` : ''}
-                </div>`;
+                            <div id="reply-form-${r.id}" class="reply-form" style="${hasReply ? 'display:none' : ''}">
+                                <textarea id="reply-input-${r.id}" placeholder="Nhập phản hồi của bạn...">${hasReply ? escHtml(r.doctor_reply) : ''}</textarea>
+                                <div class="reply-form-actions">
+                                    ${hasReply ? `<button class="btn btn-ghost btn-sm" onclick="hideReplyForm(${r.id})">Hủy</button>` : ''}
+                                    <button class="btn btn-outline btn-sm" onclick="doReply(${r.id})">💬 Gửi phản hồi</button>
+                                </div>
+                            </div>
+                            ${!hasReply ? `<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="showReplyForm(${r.id})">+ Thêm phản hồi</button>` : ''}
+                        </div>`;
             }).join('');
         }
 
@@ -1716,48 +1723,48 @@
                 // serialize for edit button safely
                 const json = encodeURIComponent(JSON.stringify(d));
                 return `
-                <tr>
-                    <td>
-                        <div class="doc-name-cell">
-                            <div class="doc-avatar">${avatar}</div>
-                            <div>
-                                <div class="doc-name">${escHtml(d.full_name)}</div>
-                                <div class="doc-id">ID #${d.doctor_id}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>${escHtml(d.department_name || '—')}</td>
-                    <td>${d.experience ?? 0} năm</td>
-                    <td class="doc-price">${d.price ? vnd(d.price) : '—'}</td>
-                    <td>
-                        <span class="stars" style="font-size:.8rem">${stars(Math.round(d.avg_rating ?? 0))}</span>
-                        <span style="font-size:.74rem;color:var(--c-muted);margin-left:4px">
-                            ${d.avg_rating ? Number(d.avg_rating).toFixed(1) : '—'} (${d.total_reviews ?? 0})
-                        </span>
-                    </td>
-                    <td>
-                        <span class="status-pill ${on ? 'on' : 'off'}">
-                            <span class="status-dot ${on ? 'on' : 'off'}"></span>
-                            ${on ? 'Hoạt động' : 'Tạm ngưng'}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="doc-action-cell">
-                            <button class="btn btn-ghost btn-sm btn-icon" title="Chỉnh sửa"
-                                onclick="openDoctorModal(JSON.parse(decodeURIComponent('${json}')))">
-                                <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                            </button>
-                            <button class="btn btn-ghost btn-sm btn-icon" title="Xóa" style="color:var(--c-red)"
-                                onclick="openDeleteModal(${d.doctor_id}, '${escapeJs(d.full_name)}')">
-                                <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>`;
+                        <tr>
+                            <td>
+                                <div class="doc-name-cell">
+                                    <div class="doc-avatar">${avatar}</div>
+                                    <div>
+                                        <div class="doc-name">${escHtml(d.full_name)}</div>
+                                        <div class="doc-id">ID #${d.doctor_id}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${escHtml(d.department_name || '—')}</td>
+                            <td>${d.experience ?? 0} năm</td>
+                            <td class="doc-price">${d.price ? vnd(d.price) : '—'}</td>
+                            <td>
+                                <span class="stars" style="font-size:.8rem">${stars(Math.round(d.avg_rating ?? 0))}</span>
+                                <span style="font-size:.74rem;color:var(--c-muted);margin-left:4px">
+                                    ${d.avg_rating ? Number(d.avg_rating).toFixed(1) : '—'} (${d.total_reviews ?? 0})
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-pill ${on ? 'on' : 'off'}">
+                                    <span class="status-dot ${on ? 'on' : 'off'}"></span>
+                                    ${on ? 'Hoạt động' : 'Tạm ngưng'}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="doc-action-cell">
+                                    <button class="btn btn-ghost btn-sm btn-icon" title="Chỉnh sửa"
+                                        onclick="openDoctorModal(JSON.parse(decodeURIComponent('${json}')))">
+                                        <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="btn btn-ghost btn-sm btn-icon" title="Xóa" style="color:var(--c-red)"
+                                        onclick="openDeleteModal(${d.doctor_id}, '${escapeJs(d.full_name)}')">
+                                        <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
             }).join('');
         }
 

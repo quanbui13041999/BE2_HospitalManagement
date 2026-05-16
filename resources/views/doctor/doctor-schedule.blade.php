@@ -138,7 +138,9 @@
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-900">MediBook</h1>
+                        <a href="{{ route('home') }}" class="active">
+                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0">MediBook</h1>
+                    </a>
                         <p class="text-xs text-gray-500">Quản lý bác sĩ</p>
                     </div>
                 </div>
