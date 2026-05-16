@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
             DB::connection()->getPdo()->exec('SET FOREIGN_KEY_CHECKS=1');
         }
 
+        $this->repairMembershipCardsSchema();
         $this->seedMedicalDetailBaseline();
         $this->createDoctorRatingsView();
     }
@@ -187,6 +188,17 @@ class DatabaseSeeder extends Seeder
             'created_at' => '2026-05-14 03:18:03',
             'updated_at' => '2026-05-14 03:18:03',
         ]);
+    }
+
+    private function repairMembershipCardsSchema(): void
+    {
+        if (! DB::getSchemaBuilder()->hasTable('membershipcards')) {
+            return;
+        }
+
+        if (! DB::getSchemaBuilder()->hasColumn('membershipcards', 'total_spent')) {
+            DB::statement('ALTER TABLE membershipcards ADD total_spent DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER points');
+        }
     }
 
     private function createDoctorRatingsView(): void

@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->string('card_number', 50)->unique();
             $table->string('tier', 30)->default('Thường');
             $table->integer('points')->default(0);
+            $table->decimal('total_spent', 12, 2)->default(0);
             $table->decimal('discount_pct', 5, 2)->default(0);
             $table->date('issue_date')->useCurrent();
             $table->date('expiry_date')->nullable();
