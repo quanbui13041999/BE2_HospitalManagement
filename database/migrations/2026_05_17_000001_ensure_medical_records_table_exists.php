@@ -24,8 +24,7 @@ return new class extends Migration
             $table->unsignedInteger('appointment_id')->nullable()->comment('FK appointments.appointment_id');
             $table->date('exam_date');
             $table->time('exam_time')->nullable();
-            $table->enum('visit_type', ['Tai kham', 'Kham moi', 'Cap cuu', 'Tái khám', 'Khám mới', 'Cấp cứu'])
-                ->default('Kham moi');
+            $table->string('visit_type', 30)->default('Kham moi');
             $table->string('status', 30)->default('completed');
             $table->text('status_note')->nullable();
             $table->string('chief_complaint', 1000)->nullable()->comment('Ly do den kham');
