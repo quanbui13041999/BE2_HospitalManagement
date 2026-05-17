@@ -135,10 +135,10 @@ class ChatController extends Controller
                 // Gọi Gemini AI trả lời
                 $aiReply = $this->gemini->generateReply($roomId, trim($request->message_text));
 
-                // Lưu tin nhắn AI với sender_id = 0 (system AI user)
+                // Lưu tin nhắn AI không gắn với user thật để không vi phạm khóa ngoại.
                 ChatMessage::create([
                     'room_id'      => $roomId,
-                    'sender_id'    => 0, // System AI user
+                    'sender_id'    => null,
                     'message_text' => $aiReply,
                     'is_read'      => 0,
                     'sent_at'      => now()->addSecond(),

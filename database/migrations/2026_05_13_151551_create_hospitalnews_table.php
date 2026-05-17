@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('hospitalnews')) {
+        if (!Schema::hasTable('hospitalnews') && !Schema::hasTable('HospitalNews')) {
             Schema::create('hospitalnews', function (Blueprint $table) {
                 $table->increments('news_id');
                 $table->string('title');
@@ -27,8 +27,10 @@ return new class extends Migration
                 $table->foreign('author_id')->references('user_id')->on('users')->onDelete('cascade');
             });
         } else {
-            Schema::table('hospitalnews', function (Blueprint $table) {
-                if (!Schema::hasColumn('hospitalnews', 'email_sent')) {
+            $tableName = Schema::hasTable('hospitalnews') ? 'hospitalnews' : 'HospitalNews';
+
+            Schema::table($tableName, function (Blueprint $table) use ($tableName) {
+                if (!Schema::hasColumn($tableName, 'email_sent')) {
                     $table->tinyInteger('email_sent')->default(0)->after('is_published');
                 }
             });

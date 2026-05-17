@@ -680,7 +680,7 @@
                 
                 @endauth
                 <li><a href="{{ route('news.index') }}">Bản tin</a></li>
-                @if (Auth::user()->isDoctor || Auth::user()->is_admin)
+                @if (Auth::check() && (Auth::user()->isDoctor || Auth::user()->is_admin))
                 <li><a href="{{ route('doctor.dashboard') }}">Quản lý bác sĩ</a></li>
                 @endif
                 <li><a href="{{ route('user.services.index') }}">Khoa phòng</a></li>

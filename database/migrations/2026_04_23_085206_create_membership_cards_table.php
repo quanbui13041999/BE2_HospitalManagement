@@ -11,16 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::create('membershipcards', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Liên kết với bảng users
-        $table->string('card_number')->unique(); // Ví dụ: 4PM-2025-08412
-        $table->string('tier')->default('Đồng'); // Đồng, Bạc, Vàng, Kim Cương
-        $table->decimal('total_spent', 15, 2)->default(0); // Tổng chi tiêu
-        $table->integer('points')->default(0); // Điểm tích lũy hiện tại
-        $table->date('expiry_date'); // Hạn thẻ
-        $table->timestamps();
-    });
+        if (Schema::hasTable('membershipcards') || Schema::hasTable('MembershipCards')) {
+            return;
+        }
+
+        Schema::create('membershipcards', function (Blueprint $table) {
+            $table->increments('card_id');
+            $table->unsignedInteger('user_id')->unique();
+            $table->string('card_number', 50)->unique();
+            $table->string('tier', 30)->default('Đồng');
+            $table->integer('points')->default(0);
+            $table->decimal('discount_pct', 5, 2)->default(0);
+            $table->date('issue_date')->useCurrent();
+            $table->date('expiry_date')->nullable();
+            $table->boolean('status')->default(true);
+
+            $table->foreign('user_id')
+                ->references('user_id')->on('users')
+                ->onUpdate('cascade')->onDelete('cascade');
+        });
     }
 
     /**

@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('ChatMessages', function (Blueprint $table) {
             $table->increments('message_id');
             $table->unsignedInteger('room_id');
-            $table->unsignedInteger('sender_id');
+            $table->unsignedInteger('sender_id')->nullable();
             $table->string('message_text', 2000)->nullable();
             $table->boolean('is_read')->default(false);
             $table->dateTime('sent_at')->useCurrent();

@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('emergency_contacts')) {
+            return;
+        }
+
         Schema::create('emergency_contacts', function (Blueprint $table) {
             $table->id();
  
             // Liên kết với bảng users (bệnh nhân)
-            $table->foreignId('user_id')
-                  ->constrained('users')
-                  ->onDelete('cascade');
+            $table->unsignedInteger('user_id');
  
             // Thứ tự ưu tiên: 1, 2, 3
             $table->unsignedTinyInteger('priority')->default(1);
@@ -36,6 +38,7 @@ return new class extends Migration
  
             // Mỗi user chỉ có tối đa 3 liên hệ với priority khác nhau
             $table->unique(['user_id', 'priority']);
+            $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
         });
     }
 

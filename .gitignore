@@ -19,6 +19,8 @@
 /storage/*.key
 /storage/pail
 /vendor
+/hospitalbookingdb
+/hospitalbookingdb-journal
 _ide_helper.php
 Homestead.json
 Homestead.yaml

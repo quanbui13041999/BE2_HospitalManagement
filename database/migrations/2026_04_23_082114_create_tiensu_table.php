@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('tiensu', function (Blueprint $table) {
             $table->id();
-            // Khóa ngoại: Nếu bảng users dùng 'id' làm khóa chính, hãy dùng id thay cho user_id ở references
-            $table->unsignedBigInteger('user_id'); 
+            $table->unsignedInteger('user_id'); 
 
             // Nhóm máu & Thông tin cơ bản
             $table->string('blood_group', 5)->nullable(); // Đổi nhommau -> blood_group cho đồng bộ chuyên môn
@@ -33,8 +32,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            // Ràng buộc khóa ngoại: Sửa lại tham chiếu đến cột 'id' của bảng 'users'
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
         });
     }
 
