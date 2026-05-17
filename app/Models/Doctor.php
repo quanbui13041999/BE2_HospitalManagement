@@ -6,14 +6,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class Doctor extends Model
 {
-    protected $table = 'Doctors';
+    protected $table = 'doctors';
     protected $primaryKey = 'doctor_id';
     public $timestamps = false;
 
     protected $fillable = [
-        'user_id', 'full_name', 'department_id',
-        'experience', 'price', 'avatar_url', 'bio', 'status',
+        'user_id',
+        'full_name',
+        'department_id',
+        'experience',
+        'price',
+        'avatar_url',
+        'bio',
+        'status',
     ];
+
 
     public function user()
     {
@@ -21,7 +28,10 @@ class Doctor extends Model
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
+
+
     
+
     public function department()
     {
         return $this->belongsTo(Department::class, 'department_id', 'department_id');
@@ -82,7 +92,7 @@ class Doctor extends Model
             ->where('doctor_id', '!=', $this->doctor_id)
             ->get();
     }
-    
+
     public function scopeWithReviewStats($q)
     {
         return $q->leftJoinSub(
@@ -92,12 +102,12 @@ class Doctor extends Model
             '=',
             'doctors.doctor_id'
         )->addSelect(
-            'doctors.*',
-            \Illuminate\Support\Facades\DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
-            \Illuminate\Support\Facades\DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
-        );
+                'doctors.*',
+                \Illuminate\Support\Facades\DB::raw('COALESCE(rv.avg_rating, 0) as avg_rating'),
+                \Illuminate\Support\Facades\DB::raw('COALESCE(rv.total_reviews, 0) as total_reviews')
+            );
     }
-    
+
     public static function getReviewStatsQuery()
     {
         return \Illuminate\Support\Facades\DB::table('reviews')
