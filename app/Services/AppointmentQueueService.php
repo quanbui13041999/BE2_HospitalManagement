@@ -29,18 +29,20 @@ class AppointmentQueueService
         // Get all appointments for this specific time slot
         $appointments = $this->getAppointmentsInQueue($scheduleId, $appointmentTime);
 
-        // If no appointment_id provided, use total count 
+        // If no appointment_id provided, use total count
+        // (queue position at the end of current list)
         if ($currentAppointmentId === null) {
-            $queueNumber = $appointments->count() + 1;
-            $peopleAhead = max(0, $appointments->count());
+            $peopleAhead = $appointments->count();
+            $queueNumber = $peopleAhead + 1;
         } else {
-            // Calculate exact queue position: count appointments created BEFORE current appointment in same time slot
-            $appointmentsBeforeCurrent = $appointments->filter(function($apt) use ($currentAppointmentId) {
-                return $apt->appointment_id < $currentAppointmentId;
+            // Calculate exact queue position: count appointments created BEFORE current appointment
+            $appointmentsBeforeCurrent = $appointments->filter(function ($apt) use ($currentAppointmentId) {
+                return (int) $apt->appointment_id < (int) $currentAppointmentId;
             });
             $peopleAhead = $appointmentsBeforeCurrent->count();
             $queueNumber = $peopleAhead + 1;
         }
+
 
         $estimatedWaitMinutes = $this->calculateEstimatedWaitTime($peopleAhead, $schedule->slot_duration);
 

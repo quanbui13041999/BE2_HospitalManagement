@@ -3,19 +3,23 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class DoctorTimeslotService
 {
+    // Thêm constants (trong cùng file service hoặc trong model)
+    private const STATUS_ACTIVE = 'active';
+    private const STATUS_BLOCKED = 'blocked';
+    
+    private const APPOINTMENT_CANCELLED = ['Đã hủy', 'Dời lịch'];
+    private const APPOINTMENT_HOLD_SLOT = 'Giữ slot';
+    
     /**
      * Get available timeslots for a doctor on a specific date
-     * 
-     * @param int $doctorId
-     * @param string $workDate (format: Y-m-d)
-     * @return array ['day_off' => bool, 'slots' => array]
      */
     public function getTimeslots(int $doctorId, string $workDate): array
     {
-        // Check if doctor has day off
+        // Check if doctor has day off - ĐÃ SỬA LỖI
         if ($this->isDayOff($doctorId, $workDate)) {
             return ['day_off' => true, 'slots' => []];
         }
@@ -27,7 +31,7 @@ class DoctorTimeslotService
             return ['day_off' => false, 'slots' => []];
         }
 
-        // Get all bookings for these schedules
+        // Get all bookings for these schedules - ĐÃ SỬA LỖI GIỮ SLOT
         $bookings = $this->getBookings($schedules);
 
         // Generate available slots from schedules
@@ -40,25 +44,23 @@ class DoctorTimeslotService
     }
 
     /**
-     * Check if doctor has day off on specified date
+     * Check if doctor has day off on specified date - ĐÃ SỬA
      */
     private function isDayOff(int $doctorId, string $workDate): bool
     {
-        $activeScheduleCount = DB::table('doctorschedules')
+        // Có lịch active -> không phải ngày nghỉ
+        $hasActiveSchedule = DB::table('doctorschedules')
             ->where('doctor_id', $doctorId)
             ->where('work_date', $workDate)
-            ->whereIn('status', ['active', 'Hoạt động'])
-            ->count();
-
-        if ($activeScheduleCount > 0) {
+            ->where('status', self::STATUS_ACTIVE)
+            ->exists();
+        
+        if ($hasActiveSchedule) {
             return false;
         }
-
-        return DB::table('doctorschedules')
-            ->where('doctor_id', $doctorId)
-            ->where('work_date', $workDate)
-            ->where('status', 'blocked')
-            ->exists();
+        
+        // Không có lịch active -> ngày nghỉ (kể cả có blocked hay không)
+        return true;
     }
 
     /**
@@ -69,7 +71,7 @@ class DoctorTimeslotService
         return DB::table('doctorschedules')
             ->where('doctor_id', $doctorId)
             ->where('work_date', $workDate)
-            ->whereIn('status', ['active', 'Hoạt động'])
+            ->where('status', self::STATUS_ACTIVE) // Đã sửa: chỉ lấy active
             ->select(
                 'schedule_id',
                 'start_time',
@@ -83,10 +85,7 @@ class DoctorTimeslotService
     }
 
     /**
-     * Get all bookings for given schedules
-     * Groups by schedule_id and appointment_time
-     * 
-     * @return array Keyed by schedule_id, containing appointment_time => booked_count
+     * Get all bookings for given schedules - ĐÃ SỬA LỖI GIỮ SLOT
      */
     private function getBookings(array $schedules): array
     {
@@ -103,11 +102,19 @@ class DoctorTimeslotService
                 DB::raw('COUNT(*) as booked_count')
             )
             ->whereIn('schedule_id', $scheduleIds)
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+            ->whereNotIn('status', self::APPOINTMENT_CANCELLED)
+            ->where(function($query) {
+                // Chỉ tính slot 'Giữ slot' nếu chưa hết hạn
+                $query->where('status', '!=', self::APPOINTMENT_HOLD_SLOT)
+                      ->orWhere(function($q) {
+                          $q->where('status', self::APPOINTMENT_HOLD_SLOT)
+                            ->where('slot_hold_expire', '>', now());
+                      });
+            })
             ->groupBy('schedule_id', 'appointment_time')
             ->get();
 
-        // Transform to nested array: [schedule_id][appointment_time] => booked_count
+        // Transform to nested array
         $bookingMap = [];
         foreach ($bookings as $booking) {
             if (!isset($bookingMap[$booking->schedule_id])) {
@@ -121,7 +128,6 @@ class DoctorTimeslotService
 
     /**
      * Generate individual time slots from schedules
-     * Each slot represents an available appointment time
      */
     private function generateSlots(array $schedules, array $bookings): array
     {
@@ -132,6 +138,11 @@ class DoctorTimeslotService
             $maxSlot = (int) $schedule->max_slot;
             $duration = (int) $schedule->slot_duration;
 
+            // Kiểm tra duration hợp lệ
+            if ($duration <= 0) {
+                continue;
+            }
+
             // Parse start and end times
             [$startHour, $startMin] = array_map('intval', explode(':', $schedule->start_time));
             [$endHour, $endMin] = array_map('intval', explode(':', $schedule->end_time));
@@ -140,18 +151,15 @@ class DoctorTimeslotService
             $currentHour = $startHour;
             $currentMin = $startMin;
 
-            // Generate slots from start to end time
+            // Generate slots
             while ($currentHour * 60 + $currentMin + $duration <= $endMinutesTotal) {
-                // Format current time
                 $timeStr = sprintf('%02d:%02d', $currentHour, $currentMin);
-
-                // Calculate end time of this slot
+                
                 $slotEndMinutesTotal = $currentHour * 60 + $currentMin + $duration;
                 $slotEndHour = intdiv($slotEndMinutesTotal, 60);
                 $slotEndMin = $slotEndMinutesTotal % 60;
                 $endTimeStr = sprintf('%02d:%02d', $slotEndHour, $slotEndMin);
 
-                // Get booking count for this slot
                 $booked = $bookings[$scheduleId][$timeStr] ?? 0;
                 $isBooked = ($booked >= $maxSlot);
 
@@ -174,5 +182,20 @@ class DoctorTimeslotService
         }
 
         return $slots;
+    }
+    
+    // TÙY CHỌN: Thêm cache nếu cần (chỉ thêm nếu thấy chậm)
+    public function getTimeslotsWithCache(int $doctorId, string $workDate): array
+    {
+        $cacheKey = "timeslots_{$doctorId}_{$workDate}";
+        
+        return Cache::remember($cacheKey, now()->addMinutes(5), function() use ($doctorId, $workDate) {
+            return $this->getTimeslots($doctorId, $workDate);
+        });
+    }
+    
+    public function clearCache(int $doctorId, string $workDate): void
+    {
+        Cache::forget("timeslots_{$doctorId}_{$workDate}");
     }
 }
