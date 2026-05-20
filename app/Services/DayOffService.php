@@ -180,8 +180,6 @@ class DayOffService
 
         foreach ($pendingEmails as $item) {
             try {
-<<<<<<< Updated upstream
-=======
                 if (empty($item['email'])) {
                     Log::warning('Day-off: Email address is empty', [
                         'patient_id' => $item['patient']?->user_id,
@@ -197,7 +195,6 @@ class DayOffService
                 ]);
 
                 // Gửi email 
->>>>>>> Stashed changes
                 Mail::to($item['email'])->send(new AppointmentRescheduleMail(
                     patient:      $item['patient'],
                     appointment:  $item['appointment'],
