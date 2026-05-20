@@ -72,7 +72,7 @@
                                 $badgeColor = $daysLeft <= 15 ? 'text-danger' : 'text-warning';
                             @endphp
                             <tr>
-                                <td class="ps-4 fw-medium">{{ $card->patient->full_name ?? 'N/A' }}</td>
+                                <td class="ps-4 fw-medium">{{ data_get($card, 'user.full_name', data_get($card, 'patient.full_name', 'N/A')) }}</td>
                                 <td class="text-muted">{{ $card->card_number }}</td>
                                 <td class="text-center pe-4">
                                     <span class="{{ $badgeColor }} fw-bold" style="font-size: 0.85rem;">{{ $daysLeft }} ngày</span>
@@ -105,7 +105,7 @@
                         <div class="row g-3 mb-4">
                             <div class="col-md-8">
                                 <label class="form-label text-muted small fw-semibold">Bệnh nhân</label>
-                                <input type="text" class="form-control bg-light text-dark border-0" value="{{ data_get($card, 'patient.full_name') ?? 'N/A' }} – BN-{{ str_pad(data_get($card, 'patient_id', data_get($card, 'user_id', 0)), 5, '0', STR_PAD_LEFT) }}" readonly>
+                                <input type="text" class="form-control bg-light text-dark border-0" value="{{ data_get($card, 'user.full_name', data_get($card, 'patient.full_name')) ?? 'N/A' }} – BN-{{ str_pad(data_get($card, 'patient_id', data_get($card, 'user_id', 0)), 5, '0', STR_PAD_LEFT) }}" readonly>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label text-muted small fw-semibold">Mức hưởng BHYT</label>

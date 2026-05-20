@@ -300,7 +300,7 @@
         <div>
             {{-- Breadcrumb --}}
             <div class="breadcrumb">
-                <a href="{{ route('user.appointments.index') }}">Lịch hẹn của tôi</a>
+                <a href="{{ route('appointments.index') }}">Lịch hẹn của tôi</a>
                 <span>›</span>
                 <span>Thanh toán</span>
             </div>

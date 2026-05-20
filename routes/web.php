@@ -10,19 +10,27 @@ use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\ServiceController as UserServiceController;
 use App\Http\Controllers\User\PaymentController as UserPaymentController;
-use App\Http\Controllers\tiensucontroler;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HealthBackgroundController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\Doctor\DoctorAppointmentController;
+
+use App\Http\Controllers\NewsController;
+use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Admin\ChatRoomController;
+
 
 // ============================================================
 // TRANG CHỦ & AUTH
 // ============================================================
 
-Route::get('/', [UserServiceController::class, 'index'])->name('home');
+Route::get('/', [HomeController::class, 'welcome'])->name('home');
 
 Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
 Route::get('/register',  [AuthController::class, 'showRegister'])->name('register');
@@ -61,6 +69,7 @@ Route::middleware('auth')->group(function () {
     // Lịch sử + dời/hủy lịch hẹn (Route chính)
     Route::prefix('lich-hen')->name('user.appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/bac-si-nghi', [AppointmentController::class, 'doctorOff'])->name('doctor-off');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
@@ -69,13 +78,14 @@ Route::middleware('auth')->group(function () {
     // ALIAS: Route cũ cho tương thích với view
     Route::prefix('lich-hen')->name('appointments.')->group(function () {
         Route::get('/',          [AppointmentController::class, 'index'])->name('index');
+        Route::get('/{id}/bac-si-nghi', [AppointmentController::class, 'doctorOff'])->name('doctor-off');
         Route::get('/{id}/doi',  [AppointmentController::class, 'edit'])->name('edit');
         Route::put('/{id}/doi',  [AppointmentController::class, 'update'])->name('update');
         Route::post('/{id}/huy', [AppointmentController::class, 'cancel'])->name('cancel');
     });
 
     // --------------------------------------------------------
-    // THANH TOÁN (User)
+    // THANH TOÁN (Users)
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
         Route::get('/history', [UserPaymentController::class, 'history'])->name('history');
@@ -95,10 +105,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/reviews/{review}',        [ReviewsDoctorController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}',     [ReviewsDoctorController::class, 'destroy'])->name('reviews.destroy');
     Route::post('/reviews/{review}/reply', [ReviewsDoctorController::class, 'reply'])->name('reviews.reply');
-
-    // Xem tiền sử bệnh
-    Route::get('/tiensu',  [tiensucontroler::class, 'tiensusuckhoe'])->name('tiensu.index');
-    Route::post('/tiensu', [tiensucontroler::class, 'luutiensu'])->name('tiensu.store');
 
     // Thẻ thành viên
     Route::get('/thethanhvien', [MembershipController::class, 'show'])->name('membership.show');
@@ -124,6 +130,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/avatar', [ProfileController::class, 'deleteAvatar'])->name('avatar.delete');
     });
 
+    // Thẻ BHYT (User view)
+    Route::get('/my-insurance', [BhytController::class, 'userInsurance'])->name('user.insurance');
+
     // Tài liệu y khoa
     Route::prefix('tai-lieu')->name('documents.')->group(function () {
         Route::get('/',                      [DocumentController::class, 'index'])->name('index');
@@ -134,7 +143,50 @@ Route::middleware('auth')->group(function () {
         Route::put('/{document}',            [DocumentController::class, 'update'])->name('update');
         Route::delete('/{document}',         [DocumentController::class, 'destroy'])->name('destroy');
     });
+
+    // Chat CSKH – Patient Routes
+    Route::prefix('chat')->name('chat.')->group(function () {
+        Route::get('/',                   [ChatController::class, 'index'])->name('index'); // Giữ lại index nếu có view
+        Route::post('/room',              [ChatController::class, 'getOrCreateRoom'])->name('room');
+        Route::get('/messages/{roomId}',  [ChatController::class, 'getMessages'])->name('messages');
+        Route::post('/send',              [ChatController::class, 'sendMessage'])->name('send');
+        Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall');
+    });
+
+    // Doctor specific routes
+    Route::prefix('doctor')->name('doctor.')->group(function () {
+        Route::get('/appointments', [DoctorAppointmentController::class, 'index'])->name('appointments.index');
+    });
 });
+
+// ============================================================
+// BẢN TIN BỆNH VIỆN
+// ============================================================
+
+// Public routes
+Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
+
+// Admin routes
+Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
+    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
+    Route::patch('news/{id}/toggle', [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
+    Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
+});
+
+// ============================================================
+// ROUTE BÁC SĨ (Doctor Schedule Management)
+// ============================================================
+
+Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function () {
+    Route::get('/', function () {
+        return view('doctor.doctor-schedule');
+    })->name('schedule');
+});
+
+Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
+require_once "medical_records.php";
+
 
 // ============================================================
 // ADMIN ROUTES (Yêu cầu đăng nhập + quyền is_admin)
@@ -142,9 +194,7 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
-    Route::get('/', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
     // --------------------------------------------------------
     // Quản lý DỊCH VỤ (CRUD + bảng giá)
@@ -187,7 +237,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
             Route::get('/check-conflict',  [RoomController::class, 'checkConflict'])->name('check-conflict');
         });
 
-        // CRUD phòng (đặt SAU prefix để tránh conflict)
+        // CRUD phòng
         Route::get('/',            [RoomController::class, 'index'])->name('index');
         Route::get('/create',      [RoomController::class, 'create'])->name('create');
         Route::post('/',           [RoomController::class, 'store'])->name('store');
@@ -199,56 +249,63 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 
     // THANH TOÁN (Admin)
     Route::prefix('payments')->name('payments.')->group(function () {
-
-        // Danh sách giao dịch
         Route::get('/', [PaymentController::class, 'index'])->name('index');
-
-        // Trang thanh toán hóa đơn (checkout)
         Route::get('/checkout/{invoiceId}', [PaymentController::class, 'checkout'])->name('checkout');
-
-        // Chi tiết giao dịch theo paymentId
         Route::get('/{paymentId}', [PaymentController::class, 'show'])->name('show');
-
-        // Tạo giao dịch
         Route::post('/store', [PaymentController::class, 'store'])->name('store');
-
-        // Trang QR
         Route::get('/{paymentId}/qr', [PaymentController::class, 'qr'])->name('qr');
-
-        // Xác nhận thanh toán
         Route::post('/{paymentId}/confirm', [PaymentController::class, 'confirm'])->name('confirm');
-
-        // Đánh dấu thất bại
         Route::post('/{paymentId}/fail', [PaymentController::class, 'fail'])->name('fail');
     });
     
-    // --------------------------------------------------------
     // Quản lý BHYT
-    // --------------------------------------------------------
     Route::prefix('bhyt')->name('bhyt.')->group(function () {
         Route::get('/',        [BhytController::class, 'index'])->name('index');
         Route::post('/lookup', [BhytController::class, 'lookup'])->name('lookup');
         Route::post('/apply',  [BhytController::class, 'apply'])->name('apply');
     });
 
-    // --------------------------------------------------------
-    // Thống kê bác sĩ & Doanh thu
-    // --------------------------------------------------------
+    // Thống kê & Doanh thu
     Route::get('/doctor-statistics', [\App\Http\Controllers\Admin\DoctorStatisticController::class, 'index'])->name('doctor-statistics.index');
     Route::get('/revenue', [\App\Http\Controllers\Admin\RevenueController::class, 'index'])->name('revenue.index');
 
-    // --------------------------------------------------------
-    // Quản lý tiêm chủng
-    // --------------------------------------------------------
+    // Tiêm chủng
     Route::resource('vaccines', \App\Http\Controllers\Admin\VaccineController::class);
     Route::resource('vaccination-records', \App\Http\Controllers\Admin\VaccinationRecordController::class);
 
+    // Chat Admin
+    Route::prefix('chatroom')->name('chatroom.')->group(function () {
+        Route::get('/',                         [ChatRoomController::class, 'index'])->name('index');
+        Route::get('/list',                     [ChatRoomController::class, 'listJson'])->name('list');
+        Route::get('/{roomId}/messages',        [ChatRoomController::class, 'getMessages'])->name('messages');
+        Route::post('/{roomId}/send',           [ChatRoomController::class, 'sendMessage'])->name('send');
+        Route::post('/{roomId}/close',          [ChatRoomController::class, 'closeRoom'])->name('close');
+        Route::delete('/{roomId}',              [ChatRoomController::class, 'deleteRoom'])->name('delete');
+        Route::delete('/messages/{messageId}',  [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
+    });
 });
 
 // ============================================================
-// ROUTE BÁC SĨ (tạm thời)
+// HỆ THỐNG NHẮC NHỞ TUÂN THỦ ĐIỀU TRỊ
 // ============================================================
 
-Route::get('/bac-si', function () {
-    return view('welcome');
-})->name('doctors.index');
+// ── PATIENT ──────────────────────────────────────────────
+Route::middleware(['auth'])->prefix('treatment')->name('treatment.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'index'])->name('index');
+    Route::post('/confirm/{reminder}', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'confirm'])->name('confirm');
+    Route::post('/instruction/toggle', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'toggleInstruction'])->name('instruction.toggle');
+    Route::get('/report', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'report'])->name('report');
+});
+
+// ── ADMIN ─────────────────────────────────────────────────
+Route::middleware(['auth', 'is_admin'])->prefix('admin/treatment-reminders')->name('admin.treatment.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'store'])->name('store');
+    Route::get('/{user}/show', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'show'])->name('show');
+    Route::get('/{reminder}/edit', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'edit'])->name('edit');
+    Route::put('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'update'])->name('update');
+    Route::delete('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'destroy'])->name('destroy');
+    Route::post('/generate/{record}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'generateFromRecord'])->name('generate');
+    Route::get('/compliance-report', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'complianceReport'])->name('compliance');
+});

@@ -30,20 +30,12 @@ class DoctorSuggestionService
 
         $doctorIds = $doctors->pluck('doctor_id')->toArray();
 
-        // Get doctors who have day off on this date
-        $daysOff = $this->getDaysOff($doctorIds, $workDate);
-
         // Get available slots for each doctor
         $scheduleStats = $this->getScheduleStats($doctorIds, $workDate);
 
         // Calculate scores
         $scored = [];
         foreach ($doctors as $doctor) {
-            // Skip if doctor has day off
-            if (isset($daysOff[$doctor->doctor_id])) {
-                continue;
-            }
-
             // Get slot stats for this doctor
             $stats = $scheduleStats->get($doctor->doctor_id);
             $totalSlots = $stats ? (int) $stats->total_slots : 0;
@@ -85,19 +77,6 @@ class DoctorSuggestionService
     }
 
     /**
-     * Get doctors who have day off on specified date
-     */
-    private function getDaysOff(array $doctorIds, string $workDate): array
-    {
-        return DB::table('doctordaysoff')
-            ->whereIn('doctor_id', $doctorIds)
-            ->where('off_date', $workDate)
-            ->pluck('doctor_id')
-            ->flip()
-            ->toArray();
-    }
-
-    /**
      * Get schedule statistics for doctors on specified date
      * Returns total slots and booked count per doctor
      */
@@ -116,7 +95,7 @@ class DoctorSuggestionService
             )
             ->whereIn('doctorschedules.doctor_id', $doctorIds)
             ->where('doctorschedules.work_date', $workDate)
-            ->where('doctorschedules.status', 'Hoạt động')
+            ->whereIn('doctorschedules.status', ['active', 'Hoạt động'])
             ->select(
                 'doctorschedules.doctor_id',
                 DB::raw('SUM(doctorschedules.max_slot) as total_slots'),

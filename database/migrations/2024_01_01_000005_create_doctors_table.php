@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('Doctors', function (Blueprint $table) {
+        Schema::create('doctors', function (Blueprint $table) {
             $table->increments('doctor_id');
             $table->unsignedInteger('user_id')->unique();
             $table->string('full_name', 100);
@@ -19,17 +19,17 @@ return new class extends Migration {
             $table->boolean('status')->default(true);
 
             $table->foreign('user_id')
-                  ->references('user_id')->on('Users')
+                  ->references('user_id')->on('users')
                   ->onUpdate('cascade')->onDelete('cascade');
 
             $table->foreign('department_id')
-                  ->references('department_id')->on('Departments')
+                  ->references('department_id')->on('departments')
                   ->onUpdate('cascade')->onDelete('restrict');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('Doctors');
+        Schema::dropIfExists('doctors');
     }
 };
