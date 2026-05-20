@@ -9,7 +9,7 @@ class Service extends Model
 {
     use HasFactory;
 
-    protected $table = 'Services';
+    protected $table = 'services';
     protected $primaryKey = 'service_id';
     public $timestamps = false;
 
@@ -42,6 +42,17 @@ class Service extends Model
                 $q->whereNull('end_date')
                   ->orWhere('end_date', '>=', now()->toDateString());
             });
+    }
+
+    public function latestPrice()
+    {
+        return $this->hasOne(ServicePrice::class, 'service_id', 'service_id')
+            ->where('effective_date', '<=', now()->toDateString())
+            ->where(function($q) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', now()->toDateString());
+            })
+            ->orderBy('effective_date', 'desc');
     }
 
     public function prices()

@@ -9,7 +9,7 @@ class Invoice extends Model
 {
     use HasFactory;
 
-    protected $table = 'Invoices';
+    protected $table = 'invoices';
     protected $primaryKey = 'invoice_id';
     public $timestamps = true;
 
@@ -63,6 +63,6 @@ class Invoice extends Model
 
     public function payments()
     {
-        return $this->hasMany(Payment::class, 'invoice_id', 'invoice_id');
+        return $this->hasMany(Payment::class, 'appointment_id', 'appointment_id');
     }
 }

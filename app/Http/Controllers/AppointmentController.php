@@ -88,7 +88,8 @@ class AppointmentController extends Controller
             );
 
             return redirect()->route('appointments.index')
-                ->with('success', $result['message']);
+                ->with('success', $result['message'])
+                ->with('appointment_id', $result['appointment_id']);
         } catch (\Exception $e) {
             return back()
                 ->withErrors(['msg' => $e->getMessage()])
@@ -102,8 +103,8 @@ class AppointmentController extends Controller
     public function index(Request $request)
     {
         $userId = Auth::id();
-        $status = $request->get('status', 'all');
-        $sort = $request->get('sort', 'desc');
+        $status = $request->input('status', 'all');
+        $sort = $request->input('sort', 'desc');
 
         $counts = $this->appointmentService->getUserAppointmentStats($userId);
         $appointments = $this->appointmentService->getUserAppointments($userId, $status, $sort);
@@ -124,7 +125,7 @@ class AppointmentController extends Controller
                 ->withErrors(['msg' => 'Không tìm thấy lịch hẹn.']);
         }
 
-        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
+        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận', 'Bác sĩ nghỉ'])) {
             return redirect()->route('appointments.index')
                 ->withErrors(['msg' => 'Lịch hẹn này không thể dời (trạng thái: ' . $appointment->status . ').']);
         }
@@ -138,6 +139,24 @@ class AppointmentController extends Controller
         }
 
         return view('appointments.edit', compact('appointment', 'availableSchedules'));
+    }
+
+    public function doctorOff($id)
+    {
+        $userId = Auth::id();
+
+        $appointment = $this->appointmentService->getAppointmentForEdit($id, $userId);
+        if (!$appointment) {
+            return redirect()->route('appointments.index')
+                ->withErrors(['msg' => 'Không tìm thấy lịch hẹn.']);
+        }
+
+        if ($appointment->status !== 'Bác sĩ nghỉ') {
+            return redirect()->route('appointments.index')
+                ->withErrors(['msg' => 'Lịch hẹn này không bị ảnh hưởng bởi bác sĩ nghỉ.']);
+        }
+
+        return view('appointments.doctor-off', compact('appointment'));
     }
 
     // ================================================================

@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentConfirmed;
-use App\Mail\AppointmentRescheduled;
+use App\Mail\AppointmentRescheduleMail;
 use App\Models\Appointment;
 use App\Models\DoctorSchedule;
 use App\Models\User;
@@ -94,7 +94,7 @@ class AppointmentService
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -123,7 +123,7 @@ class AppointmentService
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -324,7 +324,7 @@ class AppointmentService
                 DB::raw('COUNT(*) as total'),
                 DB::raw("SUM(CASE WHEN status IN ('Chờ xác nhận','Đã xác nhận') AND appointment_time >= NOW() THEN 1 ELSE 0 END) as upcoming"),
                 DB::raw("SUM(CASE WHEN status = 'Đã khám' THEN 1 ELSE 0 END) as completed"),
-                DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch') THEN 1 ELSE 0 END) as cancelled")
+                DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch','Bác sĩ nghỉ') THEN 1 ELSE 0 END) as cancelled")
             )
             ->first();
     }
@@ -332,52 +332,47 @@ class AppointmentService
     /**
      * Lấy danh sách lịch khám của người dùng
      */
-    public function getUserAppointments(int $userId, string $status = 'all', string $sort = 'desc'): object
+    public function getUserAppointments(int $userId, string $status = 'all', string $sort = 'desc'): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
-        $query = DB::table('appointments')
-            ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
-            ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
-            ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
-            ->join('users', 'appointments.user_id', '=', 'users.user_id')
-            ->leftJoin('services', 'appointments.service_id', '=', 'services.service_id')
-            ->leftJoin('rooms', 'doctorschedules.room_id', '=', 'rooms.room_id')
-            ->leftJoin('reviews', 'appointments.appointment_id', '=', 'reviews.appointment_id')
-            ->where('appointments.user_id', $userId)
-            ->select(
-                'appointments.*',
-                'doctorschedules.work_date',
-                'doctorschedules.start_time',
-                'doctorschedules.end_time',
-                'doctorschedules.slot_duration',
-                'doctors.doctor_id',
-                'doctors.full_name as doctor_name',
-                'doctors.avatar_url as doctor_avatar',
-                'doctors.price as doctor_price',
-                'departments.department_name',
-                'services.service_name',
-                'rooms.room_code',
-                'rooms.room_name',
-                'users.full_name as user_full_name',
-                'users.phone as user_phone',
-                'users.address as user_address',
-                'users.email as user_email',
-                'reviews.review_id',
-                'reviews.rating as review_rating',
-                'reviews.comment as review_comment',
-                'reviews.doctor_reply',
-                'reviews.created_at as review_created_at'
-            );
+        $query = Appointment::with(['review'])
+        ->join('doctorschedules as ds', 'appointments.schedule_id', '=', 'ds.schedule_id')
+        ->join('doctors as d', 'ds.doctor_id', '=', 'd.doctor_id')
+        ->join('departments as dep', 'd.department_id', '=', 'dep.department_id')
+        ->leftJoin('services as s', 'appointments.service_id', '=', 's.service_id')
+        ->leftJoin('payments as p', function($join) {
+            $join->on('appointments.appointment_id', '=', 'p.appointment_id')
+                ->whereIn('p.status', ['Thành công', 'Đã thanh toán']);
+        })
+        ->leftJoin('reviews as r', 'appointments.appointment_id', '=', 'r.appointment_id')
+        ->select(
+            'appointments.*',
+            'p.status as payment_status',
+            'p.payment_id',
+            'ds.work_date',
+            'ds.start_time',
+            'ds.end_time',
+            'd.full_name as doctor_name',
+            'd.doctor_id',
+            'dep.department_name',
+            's.service_name',
+            'r.review_id',
+            'r.rating as review_rating',
+            'r.comment as review_comment',
+            'r.doctor_reply',
+            'r.created_at as review_created_at'
+        )
+        ->where('appointments.user_id', $userId);
 
         if ($status === 'upcoming') {
             $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
-                ->where('doctorschedules.work_date', '>=', now()->toDateString());
+                ->where('ds.work_date', '>=', now()->toDateString());
         } elseif ($status === 'completed') {
             $query->where('appointments.status', 'Đã khám');
         } elseif ($status === 'cancelled') {
-            $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch']);
+            $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch', 'Bác sĩ nghỉ']);
         }
 
-        return $query->orderBy('doctorschedules.work_date', $sort === 'asc' ? 'asc' : 'desc')
+        return $query->orderBy('ds.work_date', $sort === 'asc' ? 'asc' : 'desc')
             ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc')
             ->paginate(8);
     }
@@ -427,7 +422,7 @@ class AppointmentService
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -695,23 +690,18 @@ class AppointmentService
     private function sendAppointmentRescheduleEmail(int $appointmentId, int $userId): void
     {
         try {
-            $appointment = DB::table('appointments')
-                ->join('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
-                ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
-                ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
-                ->where('appointments.appointment_id', $appointmentId)
-                ->select(
-                    'appointments.*',
-                    'doctors.full_name as doctor_name',
-                    'departments.department_name'
-                )
-                ->first();
-
+            $appointment = Appointment::with('schedule.doctor.department')->find($appointmentId);
             $user = User::find($userId);
+
             if ($user && $user->email && $appointment) {
-                Mail::to($user->email)->send(
-                    new AppointmentRescheduled($user, $appointment)
-                );
+                Mail::to($user->email)->send(new AppointmentRescheduleMail(
+                    patient: $user,
+                    appointment: $appointment,
+                    doctor: $appointment->schedule->doctor ?? null,
+                    reason: $appointment->cancel_reason ?? '',
+                    type: 'leave',
+                    alternatives: [],
+                ));
             }
         } catch (Exception $e) {
             Log::warning('Failed to send appointment rescheduled email', [

@@ -1100,6 +1100,7 @@
             <a href="{{ route('home') }}">🏠 Trang chủ</a>
             <a href="{{ route('appointments.index') }}">📋 Lịch hẹn</a>
             <a href="{{ route('appointments.create') }}" class="active">✨ Đặt lịch mới</a>
+            <a href="{{ route('news.index') }}">📰 Bản tin</a>
         </div>
 
         <div style="display:flex;align-items:center;gap:10px">

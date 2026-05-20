@@ -45,7 +45,7 @@ class BhytController extends Controller
     public function apply(Request $request)
     {
         $request->validate([
-            'invoice_id'  => 'required|exists:Invoices,invoice_id',
+            'invoice_id'  => 'required|exists:payments,payment_id',
             'card_number' => 'required|string',
         ]);
 
@@ -68,5 +68,14 @@ class BhytController extends Controller
                 ? 'BHYT đã được áp dụng trước đó.'
                 : 'Áp dụng BHYT thành công!',
         ]);
+    }
+    // ----------------------------------------------------------------
+    // Trang BHYT của tôi (User view)
+    // ----------------------------------------------------------------
+    public function userInsurance()
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $insurance = $user->insuranceCards()->latest()->first();
+        return view('bhyt.user', compact('user', 'insurance'));
     }
 }

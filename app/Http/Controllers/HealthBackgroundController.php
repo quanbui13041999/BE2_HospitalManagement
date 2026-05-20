@@ -13,7 +13,7 @@ class HealthBackgroundController extends Controller
     {
         $healthData = HealthBackground::where('user_id', Auth::id())->first();
 
-       return view('health_background.index', compact('healthData'));
+        return view('health_background.index', compact('healthData'));
     }
 
     // 👉 Store / Update
@@ -61,5 +61,20 @@ class HealthBackgroundController extends Controller
             'chronic_diseases'       => $data['chronic_diseases'] ?? [],
             'other_chronic_diseases' => $data['other_chronic_diseases'],
         ];
+    }
+    // 👉 Bác sĩ/Admin xem tiền sử của bệnh nhân cụ thể
+    public function showPatient(int $patientId)
+    {
+        $user = Auth::user();
+        $isDoctor = in_array($user->role_id ?? 0, [1, 2]);
+
+        if (!$isDoctor) {
+            abort(403, 'Không có quyền xem hồ sơ này');
+        }
+
+        $healthData = HealthBackground::where('user_id', $patientId)->first();
+        $patient    = \App\Models\User::findOrFail($patientId);
+
+        return view('health_background.index', compact('healthData', 'patient'));
     }
 }

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MediCore — Hệ thống Quản lý Bệnh viện</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -676,9 +677,16 @@
                 @auth
                 <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
                 <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
+                @if (Auth::user()->isDoctor || Auth::user()->is_admin)
+                <li><a href="{{ route('doctor.schedule') }}">Lịch làm việc</a></li>
+                @endif
                 @endauth
+                <li><a href="{{ route('news.index') }}">Bản tin</a></li>
                 <li><a href="{{ route('doctors.index') }}">Bác sĩ</a></li>
                 <li><a href="{{ route('user.services.index') }}">Khoa phòng</a></li>
+                @auth
+                <li><a href="{{ route('treatment.index') }}">Tuân thủ điều trị</a></li>
+                @endauth
             </ul>
 
             <div class="nav-cta">
@@ -805,6 +813,9 @@
         video.load();
     </script>
 
+    @auth
+        @include('components.chat-widget')
+    @endauth
 </body>
 
 </html>

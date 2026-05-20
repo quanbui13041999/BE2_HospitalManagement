@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('Users', function (Blueprint $table) {
+        Schema::create('users', function (Blueprint $table) {
             $table->increments('user_id');
             $table->string('full_name', 100);
             $table->string('email', 100)->unique();
@@ -22,13 +22,13 @@ return new class extends Migration {
             $table->dateTime('created_at')->useCurrent();
 
             $table->foreign('role_id')
-                  ->references('role_id')->on('Roles')
+                  ->references('role_id')->on('roles')
                   ->onUpdate('cascade')->onDelete('restrict');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('Users');
+        Schema::dropIfExists('users');
     }
 };

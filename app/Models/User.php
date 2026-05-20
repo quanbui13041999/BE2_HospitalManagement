@@ -13,6 +13,8 @@ class User extends Authenticatable
     protected $primaryKey = 'user_id';
     public $timestamps    = false;
 
+    
+
     protected $fillable = [
         'full_name',
         'email',
@@ -95,16 +97,42 @@ class User extends Authenticatable
     {
         return $this->hasMany(MedicalDocument::class, 'user_id', 'user_id');
     }
+    public function treatmentHomeInstructions()
+    {
+        return $this->hasMany(TreatmentHomeInstruction::class, 'user_id', 'user_id');
+    }
+    public function treatmentConfirmations()
+    {
+        return $this->hasMany(TreatmentConfirmation::class, 'user_id', 'user_id');
+    }
+
+    // ── Accessors ──
+    public function getIsAdminAttribute()
+    {
+        return $this->isAdmin();
+    }
+
+    public function getIsDoctorAttribute()
+    {
+        return $this->isDoctor();
+    }
+
+    public function getIsPatientAttribute()
+    {
+        return $this->isPatient();
+    }
 
     // ── Helpers ──
     public function isAdmin()
     {
         return $this->role_id === 1;
     }
+
     public function isDoctor()
     {
         return $this->role_id === 2;
     }
+
     public function isPatient()
     {
         return $this->role_id === 3;
@@ -113,7 +141,7 @@ class User extends Authenticatable
     /**
      * Tạo thông báo cho user
      */
-    public function notify(string $type, string $title, string $content, int $refId = null, string $refType = null)
+    public function notify(string $type, string $title, string $content, ?int $refId = null, ?string $refType = null)
     {
         return $this->notifications()->create([
             'notif_type' => $type,
@@ -129,7 +157,7 @@ class User extends Authenticatable
     /**
      * Ghi log hoạt động
      */
-    public function logActivity(string $action, string $ipAddress = null)
+    public function logActivity(string $action, ?string $ipAddress = null)
     {
         return $this->activityLogs()->create([
             'action' => $action,

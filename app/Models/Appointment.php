@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Appointment extends Model
 {
-    protected $table      = 'Appointments';
+    protected $table      = 'appointments';
     protected $primaryKey = 'appointment_id';
     public    $timestamps = false;
 
@@ -136,6 +136,14 @@ class Appointment extends Model
     }
 
     // ── Helpers ────────────────────────────────────────────────────
+
+    public function getAppointmentTimeEndAttribute()
+    {
+        if (!$this->schedule) return $this->appointment_time;
+        $start = \Carbon\Carbon::parse($this->appointment_time);
+        return $start->copy()->addMinutes($this->schedule->slot_duration);
+    }
+
     public function canCancel(): bool
     {
         if (!in_array($this->status, ['Chờ xác nhận', 'Đã xác nhận'])) return false;
