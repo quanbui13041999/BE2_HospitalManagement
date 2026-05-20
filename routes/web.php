@@ -21,6 +21,8 @@ use App\Http\Controllers\Doctor\DoctorAppointmentController;
 
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+use App\Http\Controllers\RehabExerciseController;
+use App\Http\Controllers\Admin\AdminRehabExerciseController;
 
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\ChatRoomController;
@@ -167,6 +169,7 @@ Route::middleware('auth')->group(function () {
 Route::get('/news', [NewsController::class, 'index'])->name('news.index');
 Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
 
+
 // Admin routes
 Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
     Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
@@ -273,6 +276,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     Route::resource('vaccines', \App\Http\Controllers\Admin\VaccineController::class);
     Route::resource('vaccination-records', \App\Http\Controllers\Admin\VaccinationRecordController::class);
 
+    // Quản lý Thư viện Phục hồi (Admin)
+    Route::resource('rehab-exercises', AdminRehabExerciseController::class)
+        ->names('rehab')
+        ->parameters(['rehab-exercises' => 'exercise'])
+        ->except(['show']);
+
     // Chat Admin
     Route::prefix('chatroom')->name('chatroom.')->group(function () {
         Route::get('/',                         [ChatRoomController::class, 'index'])->name('index');
@@ -283,29 +292,44 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::delete('/{roomId}',              [ChatRoomController::class, 'deleteRoom'])->name('delete');
         Route::delete('/messages/{messageId}',  [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
     });
-});
 
 // ============================================================
 // HỆ THỐNG NHẮC NHỞ TUÂN THỦ ĐIỀU TRỊ
 // ============================================================
 
-// ── PATIENT ──────────────────────────────────────────────
-Route::middleware(['auth'])->prefix('treatment')->name('treatment.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'index'])->name('index');
-    Route::post('/confirm/{reminder}', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'confirm'])->name('confirm');
-    Route::post('/instruction/toggle', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'toggleInstruction'])->name('instruction.toggle');
-    Route::get('/report', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'report'])->name('report');
-});
+/// Admin Treatment
+    Route::prefix('treatment-reminders')->name('treatment.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'store'])->name('store');
+        Route::get('/{user}/show', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'show'])->name('show');
+        Route::get('/{reminder}/edit', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'edit'])->name('edit');
+        Route::put('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'update'])->name('update');
+        Route::delete('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'destroy'])->name('destroy');
+        Route::post('/generate/{record}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'generateFromRecord'])->name('generate');
+        Route::get('/compliance-report', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'complianceReport'])->name('compliance');
+    });
 
-// ── ADMIN ─────────────────────────────────────────────────
-Route::middleware(['auth', 'is_admin'])->prefix('admin/treatment-reminders')->name('admin.treatment.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'index'])->name('index');
-    Route::get('/create', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'create'])->name('create');
-    Route::post('/', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'store'])->name('store');
-    Route::get('/{user}/show', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'show'])->name('show');
-    Route::get('/{reminder}/edit', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'edit'])->name('edit');
-    Route::put('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'update'])->name('update');
-    Route::delete('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'destroy'])->name('destroy');
-    Route::post('/generate/{record}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'generateFromRecord'])->name('generate');
-    Route::get('/compliance-report', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'complianceReport'])->name('compliance');
+}); // ← đóng block admin
+
+// ============================================================
+// PATIENT – Treatment & Rehab (NGOÀI admin, chỉ cần auth)
+// ============================================================
+
+Route::middleware(['auth'])->group(function () {
+
+    // Tuân thủ điều trị
+    Route::prefix('treatment')->name('treatment.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'index'])->name('index');
+        Route::post('/confirm/{reminder}', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'confirm'])->name('confirm');
+        Route::post('/instruction/toggle', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'toggleInstruction'])->name('instruction.toggle');
+        Route::get('/report', [\App\Http\Controllers\Patient\TreatmentReminderController::class, 'report'])->name('report');
+    });
+
+    // Thư viện phục hồi chức năng
+    Route::prefix('rehab-exercises')->name('rehab.')->group(function () {
+        Route::get('/', [RehabExerciseController::class, 'index'])->name('index');
+        Route::get('/{exercise}', [RehabExerciseController::class, 'show'])->name('show');
+    });
+
 });
