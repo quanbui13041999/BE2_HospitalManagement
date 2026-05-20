@@ -255,6 +255,8 @@ class AppointmentService
                         'appointment_timeEnd' => $appointmentEndtime,
                         'queue_number' => $queueNumber,
                         'status' => 'Chờ xác nhận',
+                        'is_priority' => $data['is_priority'] ?? false,
+                        'priority_type' => $data['priority_type'] ?? null,
                         'note' => $data['note'] ?? null,
                         'cancel_reason' => null,
                         'slot_hold_expire' => null,
@@ -270,6 +272,8 @@ class AppointmentService
                     'appointment_timeEnd' => $appointmentEndtime,
                     'queue_number' => $queueNumber,
                     'status' => 'Chờ xác nhận',
+                    'is_priority' => $data['is_priority'] ?? false,
+                    'priority_type' => $data['priority_type'] ?? null,
                     'note' => $data['note'] ?? null,
                     'created_at' => now(),
                 ]);
