@@ -121,6 +121,12 @@
            class="nav-link {{ request()->routeIs('admin.treatment.*') ? 'active' : '' }}">
             <i class="bi bi-alarm"></i> Nhắc nhở tuân thủ
         </a>
+        @if(in_array(Auth::user()->role_id, [1, 2, 4]))
+        <a href="{{ route('admin.patients.search') }}"
+           class="nav-link {{ request()->routeIs('admin.patients.search*') ? 'active' : '' }}">
+            <i class="bi bi-person-bounding-box"></i> Tìm kiếm bệnh nhân (AI)
+        </a>
+        @endif
 
         <div class="nav-section">Hỗ trợ</div>
         @if(Auth::user()->role_id == 1 || Auth::user()->role_id == 2)

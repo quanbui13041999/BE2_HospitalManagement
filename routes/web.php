@@ -18,6 +18,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\Doctor\DoctorAppointmentController;
+use App\Http\Controllers\Admin\PatientSearchController;
 
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
@@ -308,4 +309,12 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/treatment-reminders')->na
     Route::delete('/{reminder}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'destroy'])->name('destroy');
     Route::post('/generate/{record}', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'generateFromRecord'])->name('generate');
     Route::get('/compliance-report', [\App\Http\Controllers\Admin\TreatmentReminderAdminController::class, 'complianceReport'])->name('compliance');
+});
+
+// ── ADVANCED PATIENT SEARCH WITH AI ────────────────────────
+Route::prefix('admin')->middleware(['auth', 'role:Admin,Lễ tân,Bác sĩ'])->group(function () {
+    Route::get('/patients/search', [PatientSearchController::class, 'index'])->name('admin.patients.search');
+    Route::get('/patients/search/results', [PatientSearchController::class, 'search'])->name('admin.patients.search.results');
+    Route::get('/patients/{id}/detail', [PatientSearchController::class, 'detail'])->name('admin.patients.detail');
+    Route::post('/patients/ai-search', [PatientSearchController::class, 'aiSearch'])->name('admin.patients.ai-search');
 });
