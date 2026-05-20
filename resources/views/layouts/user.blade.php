@@ -63,6 +63,11 @@
                             <i class="bi bi-clipboard2-pulse"></i> Dịch vụ
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('queue.display.*') ? 'active' : '' }}" href="{{ route('queue.display.index') }}">
+                            <i class="bi bi-tv"></i> Màn Hình Hàng Đợi
+                        </a>
+                    </li>
                     @auth
                     {{-- Nút DEMO MỚI (bên trái nút lịch hẹn) --}}
                     <li class="nav-item">
