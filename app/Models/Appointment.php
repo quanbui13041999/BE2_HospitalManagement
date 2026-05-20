@@ -67,17 +67,11 @@ class Appointment extends Model
     }
 
     // ── Query Scopes ───────────────────────────────────────────────
-    /**
-     * Lọc appointment của một user
-     */
     public function scopeForUser($query, int $userId)
     {
         return $query->where('user_id', $userId);
     }
 
-    /**
-     * Lọc appointment sắp tới (Chờ xác nhận, Đã xác nhận và trong tương lai)
-     */
     public function scopeUpcoming($query)
     {
         return $query
@@ -86,48 +80,33 @@ class Appointment extends Model
     }
 
     /**
-     * Lọc appointment đã hoàn thành
+     * FIX: đổi 'Đã khám' → 'Hoàn thành' cho nhất quán với toàn hệ thống
      */
     public function scopeCompleted($query)
     {
-        return $query->where('status', 'Đã khám');
+        return $query->where('status', 'Hoàn thành');
     }
 
-    /**
-     * Lọc appointment đã hủy hoặc dời
-     */
     public function scopeCancelled($query)
     {
         return $query->whereIn('status', ['Đã hủy', 'Dời lịch']);
     }
 
-    /**
-     * Lọc appointment theo trạng thái
-     */
     public function scopeByStatus($query, array $statuses)
     {
         return $query->whereIn('status', $statuses);
     }
 
-    /**
-     * Sắp xếp theo ngày
-     */
     public function scopeOrderByDate($query, string $direction = 'desc')
     {
         return $query->orderBy('appointment_time', $direction);
     }
 
-    /**
-     * Lọc appointment theo ngày làm việc
-     */
     public function scopeOnDate($query, string $date)
     {
         return $query->whereDate('appointment_time', $date);
     }
 
-    /**
-     * Lọc appointment cho một bác sĩ
-     */
     public function scopeForDoctor($query, int $doctorId)
     {
         return $query
