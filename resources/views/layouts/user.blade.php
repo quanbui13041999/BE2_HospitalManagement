@@ -70,6 +70,11 @@
                             <i class="bi bi-calendar-check"></i> Lịch hẹn
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('treatment.index') ? 'active' : '' }}" href="{{ route('treatment.index') }}">
+                            <i class="bi bi-alarm"></i> Tuân thủ điều trị
+                        </a>
+                    </li>
                     @php
                     $user = Auth::user();
                     $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));

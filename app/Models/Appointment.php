@@ -14,7 +14,7 @@ class Appointment extends Model
     protected $fillable = [
         'user_id', 'schedule_id', 'service_id',
         'appointment_time', 'queue_number',
-        'status', 'note', 'cancel_reason',
+        'status', 'is_priority', 'priority_type', 'note', 'cancel_reason',
         'slot_hold_expire', 'rescheduled_from',
         'created_at',
     ];
@@ -23,6 +23,7 @@ class Appointment extends Model
         'appointment_time' => 'datetime',
         'slot_hold_expire' => 'datetime',
         'created_at'       => 'datetime',
+        'is_priority'      => 'boolean',
     ];
 
     // ── Relationships ──────────────────────────────────────────────

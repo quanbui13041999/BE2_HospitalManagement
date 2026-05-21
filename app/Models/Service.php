@@ -44,6 +44,17 @@ class Service extends Model
             });
     }
 
+    public function latestPrice()
+    {
+        return $this->hasOne(ServicePrice::class, 'service_id', 'service_id')
+            ->where('effective_date', '<=', now()->toDateString())
+            ->where(function($q) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', now()->toDateString());
+            })
+            ->orderBy('effective_date', 'desc');
+    }
+
     public function prices()
     {
         return $this->hasMany(ServicePrice::class, 'service_id', 'service_id');

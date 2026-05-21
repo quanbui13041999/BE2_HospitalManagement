@@ -16,6 +16,22 @@
         <p class="text-muted small">Lưu lịch sử tiêm, nhắc lịch tiêm tiếp theo cho từng bệnh nhân</p>
     </div>
 
+    <!-- Search Section -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form action="{{ route('admin.vaccination-records.index') }}" method="GET" class="d-flex gap-2">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0" placeholder="Tìm bệnh nhân (Tên, SĐT)..." value="{{ $search ?? '' }}">
+                </div>
+                <button type="submit" class="btn btn-primary px-4">Tìm</button>
+                @if($search)
+                    <a href="{{ route('admin.vaccination-records.index') }}" class="btn btn-outline-secondary">Xóa</a>
+                @endif
+            </form>
+        </div>
+    </div>
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
@@ -159,9 +175,33 @@
             </div>
         </div>
 
-        <!-- RIGHT COLUMN: Lịch tiêm sắp đến -->
+        <!-- RIGHT COLUMN -->
         <div class="col-lg-7">
-            <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden; height: 100%;">
+            @if($search)
+            <!-- Search Results -->
+            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-header bg-white border-0 py-3">
+                    <h6 class="mb-0 fw-bold" style="color: #0b328f;"><i class="bi bi-people me-2"></i>Kết quả tìm kiếm cho "{{ $search }}"</h6>
+                </div>
+                <div class="card-body p-0 border-top">
+                    <div class="list-group list-group-flush">
+                        @forelse($patients as $p)
+                        <a href="{{ route('admin.vaccination-records.index', ['patient_id' => $p->user_id]) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 {{ ($selectedPatient && $selectedPatient->user_id == $p->user_id) ? 'bg-light' : '' }}">
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark">{{ $p->full_name }}</h6>
+                                <small class="text-muted">BN-{{ str_pad($p->user_id, 5, '0', STR_PAD_LEFT) }} • {{ $p->phone ?? 'Không có SĐT' }}</small>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted"></i>
+                        </a>
+                        @empty
+                        <div class="p-4 text-center text-muted small">Không tìm thấy bệnh nhân nào khớp với từ khóa.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden; {{ !$search ? 'height: 100%;' : '' }}">
                 <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-bold" style="color: #0b328f;">
                         <i class="bi bi-calendar-event me-2"></i>Lịch tiêm sắp đến 
@@ -225,7 +265,7 @@
                                         <span class="{{ $statusClass }} fw-semibold" style="font-size: 0.85rem;">{{ $statusText }}</span>
                                     </td>
                                     <td class="text-center pe-3">
-                                        <button class="btn btn-sm rounded-circle {{ $iconClass }}" style="width: 32px; height: 32px; padding: 0;" title="Nhắc nhở">
+                                        <button type="button" onclick="event.stopPropagation(); alert('Đã gửi thông báo nhắc lịch tiêm đến bệnh nhân!')" class="btn btn-sm rounded-circle {{ $iconClass }}" style="width: 32px; height: 32px; padding: 0;" title="Nhắc nhở">
                                             <i class="bi {{ $icon }}"></i>
                                         </button>
                                     </td>

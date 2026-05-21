@@ -69,4 +69,13 @@ class BhytController extends Controller
                 : 'Áp dụng BHYT thành công!',
         ]);
     }
+    // ----------------------------------------------------------------
+    // Trang BHYT của tôi (User view)
+    // ----------------------------------------------------------------
+    public function userInsurance()
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $insurance = $user->insuranceCards()->latest()->first();
+        return view('bhyt.user', compact('user', 'insurance'));
+    }
 }

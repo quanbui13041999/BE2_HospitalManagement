@@ -84,12 +84,42 @@
             <i class="bi bi-clipboard2-pulse"></i> Dịch vụ & Giá
         </a>
         <a href="{{ route('admin.rooms.index') }}"
-           class="nav-link {{ request()->routeIs('admin.rooms.*') ? 'active' : '' }}">
+           class="nav-link {{ (request()->routeIs('admin.rooms.*') && !request()->routeIs('admin.rooms.schedule.*') && !request()->routeIs('admin.rooms.weekly')) ? 'active' : '' }}">
             <i class="bi bi-door-open"></i> Phòng khám
+        </a>
+        <a href="{{ route('admin.rooms.schedule.index') }}"
+           class="nav-link {{ request()->routeIs('admin.rooms.schedule.*') ? 'active' : '' }}">
+            <i class="bi bi-calendar-range"></i> Phân bổ ca trực
+        </a>
+        <a href="{{ route('admin.rooms.weekly') }}"
+           class="nav-link {{ request()->routeIs('admin.rooms.weekly') ? 'active' : '' }}">
+            <i class="bi bi-calendar-week"></i> Lịch trực tuần
         </a>
         <a href="{{ route('admin.payments.index') }}"
            class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
             <i class="bi bi-credit-card"></i> Thanh toán
+        </a>
+        <a href="{{ route('admin.news.index') }}"
+           class="nav-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">
+            <i class="bi bi-newspaper"></i> Bản tin
+        </a>
+
+        <div class="nav-section">Thống kê & Y tế</div>
+        <a href="{{ route('admin.revenue.index') }}"
+           class="nav-link {{ request()->routeIs('admin.revenue.index') ? 'active' : '' }}">
+            <i class="bi bi-wallet2"></i> Doanh thu
+        </a>
+        <a href="{{ route('admin.doctor-statistics.index') }}"
+           class="nav-link {{ request()->routeIs('admin.doctor-statistics.*') ? 'active' : '' }}">
+            <i class="bi bi-person-lines-fill"></i> Thống kê bác sĩ
+        </a>
+        <a href="{{ route('admin.vaccination-records.index') }}"
+           class="nav-link {{ request()->routeIs('admin.vaccination-records.*') ? 'active' : '' }}">
+            <i class="bi bi-patch-check"></i> Tiêm chủng
+        </a>
+        <a href="{{ route('admin.treatment.index') }}"
+           class="nav-link {{ request()->routeIs('admin.treatment.*') ? 'active' : '' }}">
+            <i class="bi bi-alarm"></i> Nhắc nhở tuân thủ
         </a>
 
         <div class="nav-section">Hỗ trợ</div>

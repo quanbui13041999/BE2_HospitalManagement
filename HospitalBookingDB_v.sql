@@ -865,6 +865,7 @@ CREATE TABLE IF NOT EXISTS `membershipcards` (
   `card_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `tier` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Thường',
   `points` int NOT NULL DEFAULT '0',
+  `total_spent` decimal(12,2) NOT NULL DEFAULT '0.00',
   `discount_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
   `issue_date` date NOT NULL DEFAULT (curdate()),
   `expiry_date` date DEFAULT NULL,
@@ -878,13 +879,13 @@ CREATE TABLE IF NOT EXISTS `membershipcards` (
 -- Đang đổ dữ liệu cho bảng `membershipcards`
 --
 
-INSERT INTO `membershipcards` (`card_id`, `user_id`, `card_number`, `tier`, `points`, `discount_pct`, `issue_date`, `expiry_date`, `status`) VALUES
-(1, 5, 'MEM20260001', 'Bạc', 1500, 5.00, '2026-01-10', '2027-01-10', 1),
-(2, 6, 'MEM20260002', 'Vàng', 8500, 10.00, '2026-01-12', '2027-01-12', 1),
-(3, 7, 'MEM20260003', 'Thường', 350, 0.00, '2026-01-15', '2027-01-15', 1),
-(4, 8, 'MEM20260004', 'Bạc', 2200, 5.00, '2026-01-18', '2027-01-18', 1),
-(5, 9, 'MEM20260005', 'Kim Cương', 25000, 20.00, '2026-01-20', '2027-01-20', 1),
-(6, 22, 'Chưa có thẻ', 'Thường', 0, 0.00, '2026-05-08', NULL, 1);
+INSERT INTO `membershipcards` (`card_id`, `user_id`, `card_number`, `tier`, `points`, `total_spent`, `discount_pct`, `issue_date`, `expiry_date`, `status`) VALUES
+(1, 5, 'MEM20260001', 'Bạc', 1500, 1500000.00, 5.00, '2026-01-10', '2027-01-10', 1),
+(2, 6, 'MEM20260002', 'Vàng', 8500, 8500000.00, 10.00, '2026-01-12', '2027-01-12', 1),
+(3, 7, 'MEM20260003', 'Thường', 350, 350000.00, 0.00, '2026-01-15', '2027-01-15', 1),
+(4, 8, 'MEM20260004', 'Bạc', 2200, 2200000.00, 5.00, '2026-01-18', '2027-01-18', 1),
+(5, 9, 'MEM20260005', 'Kim Cương', 25000, 25000000.00, 20.00, '2026-01-20', '2027-01-20', 1),
+(6, 22, 'Chưa có thẻ', 'Thường', 0, 0.00, 0.00, '2026-05-08', NULL, 1);
 
 -- --------------------------------------------------------
 
