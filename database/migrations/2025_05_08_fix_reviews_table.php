@@ -7,24 +7,24 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('Reviews', function (Blueprint $table) {
+        Schema::table('reviews', function (Blueprint $table) {
             // Add missing updated_at column
-            if (!Schema::hasColumn('Reviews', 'updated_at')) {
+            if (!Schema::hasColumn('reviews', 'updated_at')) {
                 $table->dateTime('updated_at')->nullable()->after('created_at');
             }
 
             // Add missing doctor_reply_updated_at column
-            if (!Schema::hasColumn('Reviews', 'doctor_reply_updated_at')) {
+            if (!Schema::hasColumn('reviews', 'doctor_reply_updated_at')) {
                 $table->dateTime('doctor_reply_updated_at')->nullable()->after('doctor_reply');
             }
 
             // Fix comment length (from 500 to 1000)
-            if (Schema::hasColumn('Reviews', 'comment')) {
+            if (Schema::hasColumn('reviews', 'comment')) {
                 $table->text('comment')->nullable()->change();
             }
 
             // Fix doctor_reply length (from 500 to 1000)
-            if (Schema::hasColumn('Reviews', 'doctor_reply')) {
+            if (Schema::hasColumn('reviews', 'doctor_reply')) {
                 $table->text('doctor_reply')->nullable()->change();
             }
         });
@@ -32,11 +32,11 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::table('Reviews', function (Blueprint $table) {
-            if (Schema::hasColumn('Reviews', 'updated_at')) {
+        Schema::table('reviews', function (Blueprint $table) {
+            if (Schema::hasColumn('reviews', 'updated_at')) {
                 $table->dropColumn('updated_at');
             }
-            if (Schema::hasColumn('Reviews', 'doctor_reply_updated_at')) {
+            if (Schema::hasColumn('reviews', 'doctor_reply_updated_at')) {
                 $table->dropColumn('doctor_reply_updated_at');
             }
         });

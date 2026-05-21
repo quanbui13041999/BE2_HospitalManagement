@@ -16,7 +16,9 @@ use App\Http\Controllers\HealthBackgroundController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DoctorScheduleController;
+use App\Http\Controllers\Doctor\DashboardController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
@@ -147,9 +149,8 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
-    Route::get('/', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/data', [AdminDashboardController::class, 'data'])->name('dashboard.data');
 
     // --------------------------------------------------------
     // Quản lý DỊCH VỤ (CRUD + bảng giá)
@@ -265,34 +266,52 @@ Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(
     Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
 });
 
-// ============================================================
-// ROUTE BÁC SĨ (Doctor Schedule Management)
-// ============================================================
+    // ============================================================
+    // ROUTE BÁC SĨ (Doctor Dashboard + Schedule Management)
+    // ============================================================
 
-Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function () {
-    // Quản lý lịch làm việc
-    Route::get('/', function () {
-        return view('doctor.doctor-schedule');
-    })->name('schedule');
-});
+    Route::prefix('doctor')->name('doctor.')->middleware('auth')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/appointments/today', [DashboardController::class, 'todayAppointments']);
+        Route::get('/dashboard/appointments/upcoming', [DashboardController::class, 'upcomingAppointments']);
+        Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
+        Route::patch('/dashboard/appointments/{id}/complete', [DashboardController::class, 'completeAppointment']);
+        Route::patch('/dashboard/appointments/{id}/cancel', [DashboardController::class, 'cancelAppointment']);
+        Route::get('/dashboard/reviews', [DashboardController::class, 'reviews']);
+        Route::post('/dashboard/reviews/{id}/reply', [DashboardController::class, 'replyReview']);
+        Route::delete('/dashboard/reviews/{id}/reply', [DashboardController::class, 'deleteReply']);
 
-Route::prefix('api/v1')->middleware('auth')->group(function () {
-    Route::prefix('schedules')->group(function () {
-        // ─── Recurring Schedule ───────────────────────────────────────
-        Route::post('recurring/preview', [DoctorScheduleController::class, 'recurringPreview']);
-        Route::post('recurring', [DoctorScheduleController::class, 'storeRecurring']);
-        Route::get('recurring/{doctorId}', [DoctorScheduleController::class, 'indexRecurring']);
-        Route::delete('recurring/{scheduleId}', [DoctorScheduleController::class, 'destroyRecurring']);
-
-        // ─── Day-Off (Block + Email) ──────────────────────────────────
-        Route::post('day-off', [DoctorScheduleController::class, 'storeDayOff']);
-        Route::get('day-off/{doctorId}', [DoctorScheduleController::class, 'indexDayOff']);
-        Route::delete('day-off/{scheduleId}', [DoctorScheduleController::class, 'destroyDayOff']);
-
-        // ─── Utility ──────────────────────────────────────────────────
-        Route::get('doctors', [DoctorScheduleController::class, 'listDoctors']);
+        Route::get('/dashboard/doctors/list', [DashboardController::class, 'doctorsList']);
+        Route::post('/dashboard/doctors/upload-avatar', [DashboardController::class, 'uploadAvatar']);
+        Route::post('/dashboard/doctors', [DashboardController::class, 'storeDoctor']);
+        Route::put('/dashboard/doctors/{id}', [DashboardController::class, 'updateDoctor']);
+        Route::delete('/dashboard/doctors/{id}', [DashboardController::class, 'destroyDoctor']);
     });
-});
+
+    Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function () {
+        // Quản lý lịch làm việc
+        Route::get('/', function () {
+            return view('doctor.doctor-schedule');
+        })->name('schedule');
+    });
+
+    Route::prefix('api/v1')->middleware('auth')->group(function () {
+        Route::prefix('schedules')->group(function () {
+            // ─── Recurring Schedule ───────────────────────────────────────
+            Route::post('recurring/preview', [DoctorScheduleController::class, 'recurringPreview']);
+            Route::post('recurring', [DoctorScheduleController::class, 'storeRecurring']);
+            Route::get('recurring/{doctorId}', [DoctorScheduleController::class, 'indexRecurring']);
+            Route::delete('recurring/{scheduleId}', [DoctorScheduleController::class, 'destroyRecurring']);
+
+            // ─── Day-Off (Block + Email) ──────────────────────────────────
+            Route::post('day-off', [DoctorScheduleController::class, 'storeDayOff']);
+            Route::get('day-off/{doctorId}', [DoctorScheduleController::class, 'indexDayOff']);
+            Route::delete('day-off/{scheduleId}', [DoctorScheduleController::class, 'destroyDayOff']);
+
+            // ─── Utility ──────────────────────────────────────────────────
+            Route::get('doctors', [DoctorScheduleController::class, 'listDoctors']);
+        });
+    });
 
 // ============================================================
 // ROUTE BÁC SĨ (tạm thời)

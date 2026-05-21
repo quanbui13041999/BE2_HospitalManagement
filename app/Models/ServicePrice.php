@@ -9,7 +9,7 @@ class ServicePrice extends Model
 {
     use HasFactory;
 
-    protected $table = 'ServicePrices';
+    protected $table = 'serviceprices';
     protected $primaryKey = 'price_id';
     public $timestamps = false;  // ĐÚNG: không có updated_at
 

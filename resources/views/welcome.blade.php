@@ -677,12 +677,14 @@
                 @auth
                 <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
                 <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
-                @if (Auth::user()->isDoctor || Auth::user()->is_admin)
-                <li><a href="{{ route('doctor.schedule') }}">Lịch làm việc</a></li>
-                @endif
+                
                 @endauth
                 <li><a href="{{ route('news.index') }}">Bản tin</a></li>
-                <li><a href="{{ route('doctors.index') }}">Bác sĩ</a></li>
+                @auth
+                @if (Auth::user()->isDoctor || Auth::user()->is_admin)
+                <li><a href="{{ route('doctor.dashboard') }}">Quản lý bác sĩ</a></li>
+                @endif
+                @endauth
                 <li><a href="{{ route('user.services.index') }}">Khoa phòng</a></li>
             </ul>
 
