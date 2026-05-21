@@ -45,4 +45,18 @@ class Payment extends Model
     {
         return $this->belongsTo(MembershipCard::class, 'membership_id', 'card_id');
     }
+
+    // Relationship với Invoice (thông qua Appointment)
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class, 'appointment_id', 'appointment_id');
+    }
+
+    /**
+     * Kiểm tra giao dịch đã thanh toán chưa.
+     */
+    public function isPaid(): bool
+    {
+        return in_array($this->status, ['Thành công', 'Đã thanh toán']);
+    }
 }

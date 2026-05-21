@@ -22,11 +22,11 @@ return new class extends Migration {
             $table->unique(['doctor_id', 'work_date', 'start_time'], 'UQ_DoctorSchedules');
 
             $table->foreign('doctor_id')
-                  ->references('doctor_id')->on('Doctors')
+                  ->references('doctor_id')->on('doctors')
                   ->onUpdate('cascade')->onDelete('cascade');
 
             $table->foreign('room_id')
-                  ->references('room_id')->on('Rooms')
+                  ->references('room_id')->on('rooms')
                   ->onUpdate('cascade')->onDelete('set null');
         });
     }

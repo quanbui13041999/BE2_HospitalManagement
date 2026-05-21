@@ -1332,6 +1332,25 @@
                         </div>
 
                         <div class="form-group" style="margin-top:22px">
+                            <label class="form-label">
+                                <input type="checkbox" name="is_priority" id="is_priority" value="1" {{ old('is_priority') ? 'checked' : '' }} onchange="togglePriorityType()"> 
+                                Đăng ký đối tượng ưu tiên
+                            </label>
+                            
+                            <div id="priority_type_container" style="display: {{ old('is_priority') ? 'block' : 'none' }}; margin-top: 10px;">
+                                <label class="form-label">Loại ưu tiên</label>
+                                <select name="priority_type" class="form-control">
+                                    <option value="">-- Chọn đối tượng --</option>
+                                    <option value="Trẻ em dưới 6 tuổi" {{ old('priority_type') == 'Trẻ em dưới 6 tuổi' ? 'selected' : '' }}>Trẻ em dưới 6 tuổi</option>
+                                    <option value="Người già trên 80 tuổi" {{ old('priority_type') == 'Người già trên 80 tuổi' ? 'selected' : '' }}>Người già trên 80 tuổi</option>
+                                    <option value="Phụ nữ có thai" {{ old('priority_type') == 'Phụ nữ có thai' ? 'selected' : '' }}>Phụ nữ có thai</option>
+                                    <option value="Người khuyết tật" {{ old('priority_type') == 'Người khuyết tật' ? 'selected' : '' }}>Người khuyết tật nặng</option>
+                                    <option value="Cấp cứu" {{ old('priority_type') == 'Cấp cứu' ? 'selected' : '' }}>Tình trạng cấp cứu</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top:12px">
                             <label class="form-label">Ghi Chú / Triệu Chứng</label>
                             <textarea name="note" class="form-control"
                                 placeholder="VD: đau ngực, khó thở, tái khám sau điều trị...">{{ old('note') }}</textarea>
@@ -1936,6 +1955,13 @@
         updateSummary();
     </script>
 
+    <script>
+        function togglePriorityType() {
+            var isPriority = document.getElementById('is_priority').checked;
+            var container = document.getElementById('priority_type_container');
+            container.style.display = isPriority ? 'block' : 'none';
+        }
+    </script>
 </body>
 
 </html>

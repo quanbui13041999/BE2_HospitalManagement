@@ -43,9 +43,19 @@ class HospitalNews extends Model
     // URL thumbnail với fallback
     public function getThumbnailUrlAttribute(): string
     {
-        return $this->thumbnail
-            ? asset('storage/' . $this->thumbnail)
-            : asset('images/news-default.jpg');
+        if (! $this->thumbnail) {
+            return asset('images/news-default.jpg');
+        }
+
+        if (filter_var($this->thumbnail, FILTER_VALIDATE_URL)) {
+            return $this->thumbnail;
+        }
+
+        if (str_starts_with($this->thumbnail, 'uploads/news/')) {
+            return asset($this->thumbnail);
+        }
+
+        return asset('storage/' . $this->thumbnail);
     }
 
     public function author()
