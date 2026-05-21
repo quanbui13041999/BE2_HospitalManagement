@@ -56,7 +56,7 @@ class QueueService
 
             $queueNumber = $lastNumber + 1;
 
-            // Tính estimated wait: đếm ticket đang chờ trước mình
+            // Tính estimated wait tạm thời: đếm ticket đang chờ trước mình
             $waitingBefore = QueueTicket::forSchedule($scheduleId)
                 ->waiting()
                 ->where('priority_sort', '<=', QueueTicket::PRIORITY_SORT[$priority])
@@ -78,7 +78,7 @@ class QueueService
                 'checkin_time'    => now(),
                 'est_wait_minutes'=> $estWait,
                 'notes'           => $data['notes'] ?? null,
-                'served_by'       => auth()->id(),
+                'served_by'       => array_key_exists('served_by', $data) ? $data['served_by'] : auth()->id(),
             ]);
 
             // Nếu có appointment → cập nhật status
@@ -86,6 +86,9 @@ class QueueService
                 Appointment::where('appointment_id', $data['appointment_id'])
                     ->update(['status' => 'Đã xác nhận']);
             }
+
+            // Tự động tính toán lại thời gian chờ chính xác cho toàn bộ người đang chờ
+            $this->recalculateWaitTimes($scheduleId);
 
             // Broadcast realtime
             broadcast(new QueueUpdated($scheduleId))->toOthers();
