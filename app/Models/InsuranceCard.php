@@ -33,7 +33,7 @@ class InsuranceCard extends Model
 }
 
 
-class MembershipCard extends Model
+class LegacyMembershipCard extends Model
 {
     protected $table      = 'membershipcards';
     protected $primaryKey = 'card_id';

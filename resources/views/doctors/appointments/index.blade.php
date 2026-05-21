@@ -72,7 +72,12 @@
         @forelse($appointments as $apt)
         <tr>
           <td class="ps-3">
-            <div class="fw-semibold">{{ $apt->user->full_name ?? '—' }}</div>
+            <div class="fw-semibold">
+              {{ $apt->user->full_name ?? '—' }}
+              @if($apt->is_priority)
+                <span class="badge bg-danger ms-1" title="{{ $apt->priority_type }}">⭐ Ưu tiên</span>
+              @endif
+            </div>
             <small class="text-muted">{{ $apt->user->phone ?? '' }}</small>
           </td>
           <td>{{ $apt->service->service_name ?? '—' }}</td>
