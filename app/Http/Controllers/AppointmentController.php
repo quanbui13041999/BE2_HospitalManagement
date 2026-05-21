@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Services\AppointmentService;
-use App\Services\DoctorSuggestionService;
-use App\Services\DoctorTimeslotService;
-use App\Services\AppointmentQueueService;
+use App\Services\Doctor\DoctorSuggestionService;
+use App\Services\Doctor\DoctorTimeslotService;
+use App\Services\Doctor\AppointmentQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 

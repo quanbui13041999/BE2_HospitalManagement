@@ -2,7 +2,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // app/Services/DayOffService.php
 // ═══════════════════════════════════════════════════════════════════════════════
-namespace App\Services;
+namespace App\Services\Doctor;
 
 use App\Mail\AppointmentRescheduleMail;
 use App\Mail\DoctorDayOffNotification;

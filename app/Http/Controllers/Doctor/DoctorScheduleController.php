@@ -9,10 +9,11 @@ use App\Http\Requests\StoreDayOffRequest;
 use App\Http\Requests\StoreRecurringScheduleRequest;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
-use App\Services\DayOffService;
-use App\Services\RecurringScheduleService;
+use App\Services\Doctor\DayOffService;
+use App\Services\Doctor\RecurringScheduleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 /**
  * Controller xử lý 2 nhóm chức năng:

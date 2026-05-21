@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
-use App\Http\Controllers\ReviewsDoctorController;
+use App\Http\Controllers\Doctor\ReviewsDoctorController;
 use App\Http\Controllers\Admin\BhytController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\RoomController;
@@ -259,7 +259,7 @@ Route::prefix('api/v1')->middleware('auth')->group(function () {
 // Medical Records
 // ============================================================
 
-require_once "medical_records.php";
+require_once __DIR__ . "/medical_records.php";
 
 // ============================================================
 // ADMIN ROUTES (Yêu cầu đăng nhập + quyền is_admin)

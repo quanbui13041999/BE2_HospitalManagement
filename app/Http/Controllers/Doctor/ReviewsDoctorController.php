@@ -1,7 +1,8 @@
 <?php
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Doctor;
 
-use App\Services\ReviewsDoctorService;
+use App\Http\Controllers\Controller;
+use App\Services\Doctor\ReviewsDoctorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
