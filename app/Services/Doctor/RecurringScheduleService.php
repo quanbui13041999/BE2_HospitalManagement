@@ -2,7 +2,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // app/Services/RecurringScheduleService.php
 // ═══════════════════════════════════════════════════════════════════════════════
-namespace App\Services;
+namespace App\Services\Doctor;
 
 use App\Models\DoctorSchedule;
 use Carbon\Carbon;

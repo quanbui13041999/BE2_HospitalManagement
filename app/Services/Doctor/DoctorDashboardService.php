@@ -1,7 +1,7 @@
 <?php
 // app/Services/DoctorDashboardService.php
 
-namespace App\Services;
+namespace App\Services\Doctor;
 
 use App\Models\Appointment;
 use App\Models\Doctor;

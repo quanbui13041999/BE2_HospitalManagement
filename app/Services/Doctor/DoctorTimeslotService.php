@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Doctor;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
