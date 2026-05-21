@@ -59,7 +59,7 @@ class User extends Authenticatable
     }
     public function medicalRecords()
     {
-        return $this->hasMany(MedicalRecord::class, 'user_id', 'user_id');
+        return $this->hasMany(MedicalRecord::class, 'patient_id', 'user_id');
     }
     public function insuranceCards()
     {
@@ -73,7 +73,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(PatientAllergy::class, 'user_id', 'user_id');
     }
+    public function patientAllergies()
+    {
+        return $this->hasMany(PatientAllergy::class, 'user_id', 'user_id');
+    }
     public function medicalHistory()
+    {
+        return $this->hasMany(PatientMedicalHistory::class, 'user_id', 'user_id');
+    }
+    public function patientMedicalHistories()
     {
         return $this->hasMany(PatientMedicalHistory::class, 'user_id', 'user_id');
     }
