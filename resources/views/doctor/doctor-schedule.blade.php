@@ -139,7 +139,7 @@
                     </div>
                     <div>
                         <a href="{{ route('home') }}" class="active">
-                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0">MediBook</h1>
+                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0"> MediCore<sup>®</sup></h1>
                     </a>
                         <p class="text-xs text-gray-500">Quản lý bác sĩ</p>
                     </div>

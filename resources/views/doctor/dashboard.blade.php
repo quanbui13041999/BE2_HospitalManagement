@@ -1050,8 +1050,8 @@
                 </div>
                 <div>
                     <a href="{{ route('home') }}" class="active">
-                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0;text-decoration:none;">
-                            MediBook
+                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0;">
+                            MediCore<sup>®</sup>
                         </h1>
                     </a>
 
@@ -1333,9 +1333,21 @@
                         </div>
 
                         <div class="field">
-                            <label>User ID (tài khoản) *</label>
-                            <input id="f-user-id" type="number" placeholder="ID tài khoản" min="1">
-                            <span class="err">Vui lòng nhập user ID hợp lệ.</span>
+                            <label>User ID (tài khoản)</label>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <input id="f-user-id" type="hidden">
+                                <div style="padding:8px 10px;border:1px solid var(--c-border);border-radius:8px;background:#f7fafc;color:var(--c-muted)">Tự động tạo</div>
+                            </div>
+                            <span class="err">Mã định danh người dùng sẽ được tạo tự động.</span>
+                        </div>
+
+                        <div class="field">
+                            <label style="display:flex;align-items:center;gap:8px"><input id="f-create-account" type="checkbox"> Tạo tài khoản (email & mật khẩu)</label>
+                            <div style="display:none;flex-direction:column;gap:8px" id="account-fields">
+                                <input id="f-email" type="email" placeholder="Email đăng nhập (vd: bs@example.com)" style="width:100%">
+                                <input id="f-password" type="password" placeholder="Mật khẩu (tùy chọn, để trống để tạo ngẫu nhiên)" style="width:100%">
+                                <span class="err">Email phải hợp lệ và chưa tồn tại.</span>
+                            </div>
                         </div>
 
                         <div class="field">
@@ -1361,7 +1373,16 @@
 
                         <div class="field span2">
                             <label>URL ảnh đại diện</label>
-                            <input id="f-avatar-url" type="text" placeholder="VD: images/doctors/bs-an.jpg">
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <input id="f-avatar-url" type="text" placeholder="VD: images/doctors/bs-an.jpg" style="flex:1">
+                                <label class="btn btn-outline" style="padding:6px 10px;margin:0">
+                                    Chọn ảnh
+                                    <input id="f-avatar-file" type="file" accept="image/*" style="display:none" onchange="handleAvatarFileChange(event)">
+                                </label>
+                            </div>
+                            <div id="f-avatar-preview" style="margin-top:8px;display:none">
+                                <img src="" alt="preview" style="max-height:80px;border-radius:8px" onerror="this.style.display='none'">
+                            </div>
                         </div>
 
                         <div class="field span2">
@@ -1440,6 +1461,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadStats();
             loadToday();
+            document.getElementById('f-create-account')?.addEventListener('change', (e) => {
+                const show = e.target.checked;
+                const el = document.getElementById('account-fields');
+                if (el) el.style.display = show ? 'flex' : 'none';
+            });
         });
 
         // ══════════════════════════════════════════════════════
@@ -1459,8 +1485,19 @@
                 headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
             };
             if (body) opts.body = JSON.stringify(body);
-            const res = await fetch(BASE_URL + path, opts);
-            return res.json();
+            try {
+                const res = await fetch(BASE_URL + path, opts);
+                const text = await res.text();
+                try {
+                    const json = text ? JSON.parse(text) : {};
+                    if (!res.ok) return { success: false, status: res.status, message: json.message || (json.error || res.statusText), errors: json.errors || null };
+                    return json;
+                } catch (e) {
+                    return { success: res.ok, status: res.status, message: text || res.statusText };
+                }
+            } catch (e) {
+                return { success: false, message: e.message || 'Network error' };
+            }
         }
 
         const skeletonRows = (n = 3, h = 72) =>
@@ -1625,7 +1662,7 @@
             }
             el.innerHTML = list.map(r => {
                 const hasReply = !!r.doctor_reply;
-                const avatarHtml = r.patient_avatar ? `<img src="/storage/${r.patient_avatar}" alt="">` : initials(r.patient_name);
+                const avatarHtml = r.patient_avatar ? `<img src="/storage/${r.patient_avatar}" alt="" onerror="this.onerror=null; this.src='/${r.patient_avatar}'; setTimeout(()=>{ if(this.naturalWidth===0) this.remove(); },300)">` : initials(r.patient_name);
                 return `
                         <div class="review-card" id="rv-${r.id}">
                             <div class="review-header">
@@ -1718,7 +1755,7 @@
             tbody.innerHTML = list.map(d => {
                 const on = d.status == 1;
                 const avatar = d.avatar_url
-                    ? `<img src="/storage/${d.avatar_url}" alt="" onerror="this.remove()">`
+                    ? `<img src="/storage/${d.avatar_url}" alt="" onerror="this.onerror=null; this.src='/${d.avatar_url}'; setTimeout(()=>{ if(this.naturalWidth===0) this.remove(); },300)">`
                     : initials(d.full_name);
                 // serialize for edit button safely
                 const json = encodeURIComponent(JSON.stringify(d));
@@ -1809,7 +1846,7 @@
             }
 
             const full_name = validate('f-full-name', v => v.length > 0);
-            const user_id = validate('f-user-id', v => v > 0);
+            const user_id = document.getElementById('f-user-id')?.value || '';
             const department_id = validate('f-department-id', v => v !== '');
             if (!ok) return;
 
@@ -1825,6 +1862,14 @@
                 status: parseInt(document.getElementById('f-status').value),
             };
 
+            // optional account creation
+            if (document.getElementById('f-create-account')?.checked) {
+                const email = document.getElementById('f-email')?.value?.trim() || '';
+                const password = document.getElementById('f-password')?.value || '';
+                payload.email = email || null;
+                payload.password = password || null;
+            }
+
             const btn = document.getElementById('doc-submit-btn');
             btn.disabled = true;
 
@@ -1832,12 +1877,87 @@
             const data = await api(isEdit ? 'PUT' : 'POST', isEdit ? `/doctors/${doctorId}` : '/doctors', payload);
 
             btn.disabled = false;
-            toast(data.message, data.success ? 'success' : 'error');
 
-            if (data.success) {
-                closeDoctorModal();
-                loadDoctors(docPage);
-                syncDropdown(data.doctor, isEdit);
+            // Clear previous field errors
+            document.querySelectorAll('#doctor-form .field').forEach(f => {
+                f.classList.remove('has-err');
+                const err = f.querySelector('.err'); if (err) err.textContent = 'Vui lòng nhập thông tin.';
+            });
+
+            if (!data.success) {
+                // Validation errors from server
+                if (data.status === 422 && data.errors) {
+                    const fieldMap = {
+                        full_name: 'f-full-name',
+                        user_id: 'f-user-id',
+                        email: 'f-email',
+                        password: 'f-password',
+                        department_id: 'f-department-id',
+                        experience: 'f-experience',
+                        price: 'f-price',
+                        avatar_url: 'f-avatar-url',
+                        bio: 'f-bio',
+                        status: 'f-status',
+                    };
+                    for (const key in data.errors) {
+                        const inpId = fieldMap[key] || ('f-' + key);
+                        const inp = document.getElementById(inpId);
+                        const field = inp?.closest('.field');
+                        if (field) {
+                            field.classList.add('has-err');
+                            const errEl = field.querySelector('.err');
+                            if (errEl) errEl.textContent = data.errors[key][0];
+                        }
+                    }
+                    toast(data.message || 'Vui lòng sửa các trường bị lỗi.', 'error');
+                    return;
+                }
+
+                toast(data.message || 'Đã có lỗi xảy ra.', 'error');
+                return;
+            }
+
+            // success
+            toast(data.message, 'success');
+            // if server created a user, show credentials to admin
+            if (data.created_user) {
+                const cu = data.created_user;
+                const info = `Tài khoản đã tạo:\nEmail: ${cu.email}\nUser ID: ${cu.user_id}${cu.plain_password ? '\nMật khẩu: ' + cu.plain_password : ''}`;
+                alert(info);
+            }
+            closeDoctorModal();
+            loadDoctors(docPage);
+            syncDropdown(data.doctor, isEdit);
+        }
+
+        // Handle avatar file selection and upload
+        async function handleAvatarFileChange(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const preview = document.getElementById('f-avatar-preview');
+            const img = preview.querySelector('img');
+            // show preview
+            const url = URL.createObjectURL(file);
+            img.src = url; preview.style.display = '';
+
+            // upload
+            const fd = new FormData();
+            fd.append('avatar', file);
+
+            const opts = { method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF }, body: fd };
+            try {
+                const res = await fetch(BASE_URL + '/doctors/upload-avatar', opts);
+                const text = await res.text();  
+                let json = {};
+                try { json = text ? JSON.parse(text) : {}; } catch (err) { json = { success: res.ok, message: text }; }
+                if (json.success) {
+                    document.getElementById('f-avatar-url').value = json.path;
+                    toast('Ảnh đã được tải lên.', 'success');
+                } else {
+                    toast(json.message || 'Không thể tải ảnh lên.', 'error');
+                }
+            } catch (err) {
+                toast(err.message || 'Lỗi mạng khi tải ảnh.', 'error');
             }
         }
 

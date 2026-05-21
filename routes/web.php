@@ -18,6 +18,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DoctorScheduleController;
 use App\Http\Controllers\Doctor\DashboardController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\Doctor\DoctorAppointmentController;
 
@@ -26,7 +27,7 @@ use App\Http\Controllers\Admin\NewsController as AdminNewsController;
 
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\ChatRoomController;
-use App\Http\Controllers\Admin\AdminDashboardController;
+
 
 
 // ============================================================

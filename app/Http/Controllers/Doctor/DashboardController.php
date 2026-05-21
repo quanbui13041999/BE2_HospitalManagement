@@ -9,6 +9,8 @@ use App\Services\DoctorDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
@@ -306,7 +308,9 @@ public function storeDoctor(Request $request): JsonResponse
 
     $validated = $request->validate([
         'full_name'     => 'required|string|max:100',
-        'user_id'       => 'required|integer|exists:users,user_id',
+        'user_id'       => 'nullable|integer|exists:users,user_id',
+        'email'         => 'nullable|email|unique:users,email',
+        'password'      => 'nullable|string|min:6',
         'department_id' => 'required|integer|exists:departments,department_id',
         'experience'    => 'nullable|integer|min:0|max:60',
         'price'         => 'nullable|numeric|min:0',
@@ -315,6 +319,42 @@ public function storeDoctor(Request $request): JsonResponse
         'status'        => 'required|in:0,1',
     ]);
 
+    // If admin didn't provide user_id, create a user account automatically for this doctor
+    $plainPassword = null;
+    if (empty($validated['user_id'])) {
+        // If admin supplied an email, create user with that email (and provided password or generated one)
+        if (!empty($validated['email'])) {
+            $plainPassword = $validated['password'] ?? bin2hex(random_bytes(4));
+            $user = \App\Models\User::create([
+                'full_name' => $validated['full_name'],
+                'email'     => $validated['email'],
+                'password'  => Hash::make($plainPassword),
+                'role_id'   => 2,
+                'status'    => 1,
+            ]);
+            $validated['user_id'] = $user->user_id;
+        } else {
+            // fallback: generate a placeholder user
+            $timestamp = time();
+            $rand = substr(md5(uniqid('', true)), 0, 6);
+            $email = "doctor+{$timestamp}{$rand}@example.local";
+            $plainPassword = bin2hex(random_bytes(4));
+            $user = \App\Models\User::create([
+                'full_name' => $validated['full_name'],
+                'email'     => $email,
+                'password'  => Hash::make($plainPassword),
+                'role_id'   => 2,
+                'status'    => 1,
+            ]);
+            $validated['user_id'] = $user->user_id;
+        }
+    }
+
+    // ensure user_id is unique in doctors table
+    if (\App\Models\Doctor::where('user_id', $validated['user_id'])->exists()) {
+        return response()->json(['success' => false, 'message' => 'Tài khoản người dùng đã được liên kết với bác sĩ khác.'], 422);
+    }
+
     $doctor = \App\Models\Doctor::create($validated);
     $doctor->load('department:department_id,department_name');
 
@@ -322,6 +362,7 @@ public function storeDoctor(Request $request): JsonResponse
         'success' => true,
         'message' => 'Đã thêm bác sĩ thành công.',
         'doctor'  => ['doctor_id' => $doctor->doctor_id, 'full_name' => $doctor->full_name],
+        'created_user' => isset($user) ? ['user_id' => $user->user_id, 'email' => $user->email, 'plain_password' => $plainPassword] : null,
     ], 201);
 }
 
@@ -341,7 +382,10 @@ public function updateDoctor(Request $request, int $id): JsonResponse
 
     $validated = $request->validate([
         'full_name'     => 'required|string|max:100',
-        'user_id'       => 'required|integer|exists:users,user_id',
+        'user_id'       => [
+            'required','integer','exists:users,user_id',
+            Rule::unique('doctors','user_id')->ignore($doctor->doctor_id, 'doctor_id'),
+        ],
         'department_id' => 'required|integer|exists:departments,department_id',
         'experience'    => 'nullable|integer|min:0|max:60',
         'price'         => 'nullable|numeric|min:0',
@@ -390,6 +434,26 @@ public function destroyDoctor(int $id): JsonResponse
 
     return response()->json(['success' => true, 'message' => 'Đã xóa bác sĩ thành công.']);
 }
+
+    /**
+     * POST /doctor/dashboard/upload-avatar
+     * Upload avatar image for doctor (admin only)
+     */
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        if (!Auth::user()->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
+        }
+
+        $validated = $request->validate([
+            'avatar' => 'required|image|max:5120', // max 5MB
+        ]);
+
+        $file = $request->file('avatar');
+        $path = $file->store('images/doctors', 'public');
+
+        return response()->json(['success' => true, 'message' => 'Uploaded', 'path' => $path, 'url' => '/storage/' . $path]);
+    }
 
 }
 
