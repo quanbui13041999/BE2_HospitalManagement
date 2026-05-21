@@ -18,6 +18,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DoctorScheduleController;
 use App\Http\Controllers\Doctor\DashboardController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
@@ -148,8 +149,8 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
-    Route::get('/', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/data', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'data'])->name('dashboard.data');
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/data', [AdminDashboardController::class, 'data'])->name('dashboard.data');
 
     // --------------------------------------------------------
     // Quản lý DỊCH VỤ (CRUD + bảng giá)
