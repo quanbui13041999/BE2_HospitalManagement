@@ -12,6 +12,12 @@ class DoctorSchedule extends Model
     protected $primaryKey = 'schedule_id';
     public $timestamps = false;
 
+    // Status constants
+    const STATUS_ACTIVE = 'Hoạt động';  // Vietnamese
+    const STATUS_ACTIVE_EN = 'active';  // English
+    const STATUS_BLOCKED = 'blocked';
+    const STATUS_FULL = 'full';
+
     protected $fillable = [
         'doctor_id',
         'room_id',
@@ -66,11 +72,12 @@ class DoctorSchedule extends Model
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     /**
-     * Đây là ca sáng nếu start_time < 12:00
+     * Đây là ca sáng nếu start_time >= 08:00:00 và < 12:00:00
+     * (Sáng: 08:00-12:00, Chiều: 13:30-17:00+, Trưa 12:00-13:30: không có lịch)
      */
     public function isMorning(): bool
     {
-        return $this->start_time < '12:00:00';
+        return $this->start_time >= '08:00:00' && $this->start_time < '12:00:00';
     }
 
     /**

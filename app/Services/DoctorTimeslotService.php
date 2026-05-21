@@ -9,6 +9,7 @@ class DoctorTimeslotService
 {
     // Thêm constants (trong cùng file service hoặc trong model)
     private const STATUS_ACTIVE = 'active';
+    private const STATUS_ACTIVE_VI = 'Hoạt động';  // Vietnamese variant
     private const STATUS_BLOCKED = 'blocked';
     
     private const APPOINTMENT_CANCELLED = ['Đã hủy', 'Dời lịch'];
@@ -44,23 +45,48 @@ class DoctorTimeslotService
     }
 
     /**
-     * Check if doctor has day off on specified date - ĐÃ SỬA
+     * Check if doctor has day off on specified date
+     * 
+     * Returns true (day off) if:
+     * 1. Doctor registered day off (DoctorDayOff record exists)
+     * 2. Doctor has schedules but ALL are blocked (intentional closure)
      */
     private function isDayOff(int $doctorId, string $workDate): bool
     {
-        // Có lịch active -> không phải ngày nghỉ
+        // 1. Check DoctorDayOff table first - explicit day off registration
+        $isDayOffRegistered = DB::table('doctordaysoff')
+            ->where('doctor_id', $doctorId)
+            ->where('off_date', $workDate)
+            ->exists();
+        
+        if ($isDayOffRegistered) {
+            return true;  // Doctor explicitly registered day off
+        }
+        
+        // 2. Check if there are any active schedules (both English & Vietnamese status values)
         $hasActiveSchedule = DB::table('doctorschedules')
             ->where('doctor_id', $doctorId)
             ->where('work_date', $workDate)
-            ->where('status', self::STATUS_ACTIVE)
+            ->whereIn('status', [self::STATUS_ACTIVE, self::STATUS_ACTIVE_VI])
             ->exists();
         
         if ($hasActiveSchedule) {
-            return false;
+            return false;  // Has active schedule = NOT a day off
         }
         
-        // Không có lịch active -> ngày nghỉ (kể cả có blocked hay không)
-        return true;
+        // 3. Check if there are blocked schedules (all schedules blocked = intentional closure)
+        $hasBlockedSchedule = DB::table('doctorschedules')
+            ->where('doctor_id', $doctorId)
+            ->where('work_date', $workDate)
+            ->where('status', self::STATUS_BLOCKED)
+            ->exists();
+        
+        if ($hasBlockedSchedule) {
+            return true;  // All schedules blocked = day off
+        }
+        
+        // 4. No schedules at all = NOT a day off (schedules just not created yet)
+        return false;
     }
 
     /**
@@ -71,7 +97,7 @@ class DoctorTimeslotService
         return DB::table('doctorschedules')
             ->where('doctor_id', $doctorId)
             ->where('work_date', $workDate)
-            ->where('status', self::STATUS_ACTIVE) // Đã sửa: chỉ lấy active
+            ->whereIn('status', [self::STATUS_ACTIVE, self::STATUS_ACTIVE_VI])
             ->select(
                 'schedule_id',
                 'start_time',
