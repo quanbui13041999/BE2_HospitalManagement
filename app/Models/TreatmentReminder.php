@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Str;
 
 class TreatmentReminder extends Model
@@ -21,7 +23,7 @@ class TreatmentReminder extends Model
     ];
 
     // Relationships
-    public function user()        { return $this->belongsTo(User::class, 'user_id', 'user_id'); }
+    public function user()         { return $this->belongsTo(User::class, 'user_id', 'user_id'); }
     public function medicalRecord(){ return $this->belongsTo(MedicalRecord::class, 'record_id', 'record_id'); }
     public function confirmation() { return $this->hasOne(TreatmentConfirmation::class, 'reminder_id', 'reminder_id'); }
 
@@ -33,7 +35,19 @@ class TreatmentReminder extends Model
     public function scopePending($q) { return $q->where('is_sent', false)->where('remind_at', '<=', now()); }
 
     // Helpers
-    public function isConfirmed(): bool  { return $this->confirmation()->exists(); }
+    public function isConfirmed(): bool  
+    { 
+        // Tránh lỗi N+1 Query khi lặp danh sách nhắc nhở ngoài View
+        return $this->relationLoaded('confirmation') 
+            ? !is_null($this->confirmation) 
+            : $this->confirmation()->exists(); 
+    }
+
     public function isDangerous(): bool  { return Str::contains($this->message, 'NGUY HIỂM') || Str::contains($this->message, 'dị ứng'); }
-    public function getTimeLabelAttribute(): string { return $this->remind_at->format('H:i'); }
+
+    // Accessors (Chuẩn hóa theo Laravel mới)
+    protected function timeLabel(): Attribute
+    {
+        return Attribute::get(fn () => $this->remind_at->format('H:i'));
+    }
 }

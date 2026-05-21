@@ -132,7 +132,10 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold">Bản tin mới nhất</h5>
-                    <a href="{{ route('admin.news.index') }}" class="btn btn-sm btn-light text-primary fw-600">Quản lý</a>
+                    <div>
+                        <a href="{{ route('admin.news.index') }}" class="btn btn-sm btn-light text-primary fw-600">Quản lý</a>
+                        <a href="{{ route('admin.rehab.index') }}" class="btn btn-sm btn-outline-primary ms-2">Quản lý phục hồi</a>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">

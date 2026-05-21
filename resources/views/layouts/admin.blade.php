@@ -103,6 +103,10 @@
            class="nav-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">
             <i class="bi bi-newspaper"></i> Bản tin
         </a>
+        <a href="{{ route('admin.rehab.index') }}"
+           class="nav-link {{ request()->routeIs('admin.rehab.*') ? 'active' : '' }}">
+            <i class="bi bi-file-earmark-medical"></i> Quản lý Phục hồi
+        </a>
 
         <div class="nav-section">Thống kê & Y tế</div>
         <a href="{{ route('admin.revenue.index') }}"
