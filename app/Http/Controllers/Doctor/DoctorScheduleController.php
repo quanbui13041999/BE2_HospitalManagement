@@ -2,8 +2,9 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // app/Http/Controllers/DoctorScheduleController.php
 // ═══════════════════════════════════════════════════════════════════════════════
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Doctor;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDayOffRequest;
 use App\Http\Requests\StoreRecurringScheduleRequest;
 use App\Models\Doctor;
