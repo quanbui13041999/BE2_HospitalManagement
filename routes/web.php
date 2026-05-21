@@ -148,9 +148,8 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
-    Route::get('/', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/data', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'data'])->name('dashboard.data');
 
     // --------------------------------------------------------
     // Quản lý DỊCH VỤ (CRUD + bảng giá)
@@ -282,6 +281,7 @@ Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(
         Route::delete('/dashboard/reviews/{id}/reply', [DashboardController::class, 'deleteReply']);
 
         Route::get('/dashboard/doctors/list', [DashboardController::class, 'doctorsList']);
+        Route::post('/dashboard/doctors/upload-avatar', [DashboardController::class, 'uploadAvatar']);
         Route::post('/dashboard/doctors', [DashboardController::class, 'storeDoctor']);
         Route::put('/dashboard/doctors/{id}', [DashboardController::class, 'updateDoctor']);
         Route::delete('/dashboard/doctors/{id}', [DashboardController::class, 'destroyDoctor']);

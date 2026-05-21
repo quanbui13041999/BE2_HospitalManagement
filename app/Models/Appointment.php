@@ -80,7 +80,8 @@ class Appointment extends Model
     }
 
     /**
-     * FIX: đổi 'Đã khám' → 'Hoàn thành' cho nhất quán với toàn hệ thống
+     * Scope for completed appointments (status = 'Hoàn thành')
+      * Note: Only appointments with this status are considered completed, regardless of time.
      */
     public function scopeCompleted($query)
     {
