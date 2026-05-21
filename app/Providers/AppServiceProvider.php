@@ -27,5 +27,6 @@ class AppServiceProvider extends ServiceProvider
 
         \Illuminate\Pagination\Paginator::useBootstrapFive();
 
+        \App\Models\QueueTicket::observe(\App\Observers\QueueTicketObserver::class);
     }
 }

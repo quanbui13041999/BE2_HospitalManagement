@@ -31,6 +31,8 @@ use App\Http\Controllers\Admin\AdminRehabExerciseController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\ChatRoomController;
 
+use App\Http\Controllers\Queue\{QueueManageController, QueueDoctorController, QueueDisplayController};
+
 
 
 // ============================================================
@@ -405,7 +407,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 }); // Close admin block
 
 // ============================================================
+
 // HỆ THỐNG NHẮC NHỞ TUÂN THỰ ĐIỀU TRỊ – Admin
+
+// HÀNG ĐỢI - Admin, Doctor, Receptionist, Pharmacist
+// ============================================================
+Route::middleware(['auth', 'check_queue_role:1,2,4,5'])->prefix('admin/queue')->name('admin.queue.')->group(function () {
+    Route::get('/',                 [\App\Http\Controllers\Admin\QueueController::class, 'index'])->name('index');
+    Route::get('/report',           [\App\Http\Controllers\Admin\QueueController::class, 'report'])->name('report');
+    Route::get('/{scheduleId}',     [\App\Http\Controllers\Admin\QueueController::class, 'show'])->name('show')->whereNumber('scheduleId');
+    Route::get('/api/snapshot/{scheduleId}', [\App\Http\Controllers\Admin\QueueController::class, 'apiSnapshot'])->name('api.snapshot')->whereNumber('scheduleId');
+    Route::get('/api/all-snapshots', [\App\Http\Controllers\Admin\QueueController::class, 'apiAllSnapshots'])->name('api.all-snapshots');
+});
+
+
+// ============================================================
+// HỆ THỐNG NHẮC NHỞ TUÂN THỦ ĐIỀU TRỊ
+
 // ============================================================
 
 
@@ -461,11 +479,40 @@ Route::middleware(['auth'])->group(function () {
 
 
 
+
 // ── ADVANCED PATIENT SEARCH WITH AI ────────────────────────
 Route::prefix('admin')->middleware(['auth', 'role:Admin,Lễ tân,Bác sĩ'])->group(function () {
     Route::get('/patients/search', [PatientSearchController::class, 'index'])->name('admin.patients.search');
     Route::get('/patients/search/results', [PatientSearchController::class, 'search'])->name('admin.patients.search.results');
     Route::get('/patients/{id}/detail', [PatientSearchController::class, 'detail'])->name('admin.patients.detail');
     Route::post('/patients/ai-search', [PatientSearchController::class, 'aiSearch'])->name('admin.patients.ai-search');
+});
+// ============================================================
+// HỆ THỐNG HÀNG ĐỢI KHÁM BỆNH (QUEUE SYSTEM)
+// ============================================================
+
+// Màn hình TV - không cần auth nhưng có auth route index
+Route::get('/queue/display', [QueueDisplayController::class, 'index'])->name('queue.display.index');
+Route::get('/queue/display/{scheduleId}', [QueueDisplayController::class, 'show'])->name('queue.display')->whereNumber('scheduleId');
+Route::get('/api/queue/{scheduleId}/snapshot', [QueueDisplayController::class, 'apiSnapshot'])->name('queue.api.display')->whereNumber('scheduleId');
+
+// Lễ tân + Admin
+Route::middleware(['auth', 'check_queue_role:1,4'])->prefix('queue/manage')->name('queue.manage.')->group(function () {
+    Route::get('/',                          [QueueManageController::class, 'index'])->name('index');
+    Route::get('/schedule/{scheduleId}',     [QueueManageController::class, 'show'])->name('show')->whereNumber('scheduleId');
+    Route::get('/checkin',                   [QueueManageController::class, 'searchPatient'])->name('checkin');
+    Route::post('/checkin',                  [QueueManageController::class, 'checkin'])->name('checkin.store');
+    Route::post('/ticket/{ticketId}/skip',   [QueueManageController::class, 'skip'])->name('ticket.skip')->whereNumber('ticketId');
+    Route::get('/api/{scheduleId}/snapshot', [QueueManageController::class, 'apiSnapshot'])->name('api.snapshot')->whereNumber('scheduleId');
+});
+
+// Bác sĩ + Admin
+Route::middleware(['auth', 'check_queue_role:1,2'])->prefix('queue/doctor')->name('queue.doctor.')->group(function () {
+    Route::get('/',                                    [QueueDoctorController::class, 'index'])->name('index');
+    Route::post('/schedule/{scheduleId}/call-next',    [QueueDoctorController::class, 'callNext'])->name('call.next')->whereNumber('scheduleId');
+    Route::post('/ticket/{ticketId}/start',            [QueueDoctorController::class, 'startExam'])->name('start')->whereNumber('ticketId');
+    Route::post('/ticket/{ticketId}/complete',         [QueueDoctorController::class, 'complete'])->name('complete')->whereNumber('ticketId');
+    Route::get('/api/{scheduleId}/snapshot',           [QueueDoctorController::class, 'apiSnapshot'])->name('api.snapshot')->whereNumber('scheduleId');
+
 });
 
