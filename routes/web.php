@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\NewsController as AdminNewsController;
 
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\ChatRoomController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 
 
 // ============================================================
@@ -219,6 +220,7 @@ Route::prefix('doctor')->name('doctor.')->middleware('auth')->group(function () 
     Route::post('/dashboard/reviews/{id}/reply',            [DashboardController::class, 'replyReview']);
     Route::delete('/dashboard/reviews/{id}/reply',          [DashboardController::class, 'deleteReply']);
     Route::get('/dashboard/doctors/list',                   [DashboardController::class, 'doctorsList']);
+    Route::post('/dashboard/doctors/upload-avatar',         [DashboardController::class, 'uploadAvatar']);
     Route::post('/dashboard/doctors',                       [DashboardController::class, 'storeDoctor']);
     Route::put('/dashboard/doctors/{id}',                   [DashboardController::class, 'updateDoctor']);
     Route::delete('/dashboard/doctors/{id}',                [DashboardController::class, 'destroyDoctor']);
@@ -264,7 +266,8 @@ require_once "medical_records.php";
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
-    Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/data', [AdminDashboardController::class, 'data'])->name('dashboard.data');
 
     // --------------------------------------------------------
     // Quản lý Dịch vụ (CRUD + bảng giá)
