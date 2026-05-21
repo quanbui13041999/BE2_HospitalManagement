@@ -31,7 +31,7 @@ class AdminDashboardController extends Controller
         $waitTimeData        = $this->service->getWaitTimeBySpecialty($timeRange);
         $satisfactionByDoctor = $this->service->getSatisfactionByDoctor(5);
 
-        $topDoctors          = $this->service->getTopDoctors(5);
+        $topDoctors          = $this->service->getTopDoctors();
         $topDoctorWeek       = $this->service->getTopDoctorThisWeek();
 
         // FIX: Không cho browser/proxy cache trang dashboard
@@ -59,4 +59,6 @@ class AdminDashboardController extends Controller
                 'Expires'       => '0',
             ]);
     }
+
+   
 }
