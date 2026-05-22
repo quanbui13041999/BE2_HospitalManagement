@@ -23,7 +23,7 @@ class ServiceService
             'services'     => $this->repo->filteredServices($request),
             'departments'  => $this->repo->activeDepartments(),
             'pricesByType' => $this->repo->pricesByType(),
-            'priceHistory' => collect(),
+            'priceHistory' => $this->repo->priceHistory(),
             'priceTypes'   => ServicePrice::PRICE_TYPES,
             'tab'          => $request->get('tab', 'services'),
         ];
@@ -116,6 +116,13 @@ class ServiceService
 
     public function deleteService(Service $service): void
     {
+        $hasAppointments = \App\Models\Appointment::where('service_id', $service->service_id)->exists();
+        $hasInvoices = \App\Models\InvoiceItem::where('service_id', $service->service_id)->exists();
+
+        if ($hasAppointments || $hasInvoices) {
+            throw new \Exception('Không thể xoá dịch vụ này vì đã có dữ liệu liên quan (lịch hẹn khám hoặc hoá đơn bệnh nhân) trong hệ thống. Vui lòng đổi trạng thái dịch vụ sang "Tạm ngưng" để không tiếp nhận thêm lịch hẹn mới.');
+        }
+
         DB::transaction(function () use ($service) {
             $service->prices()->delete();
             $service->delete();
@@ -132,8 +139,44 @@ class ServiceService
     // Bảng giá
     // ----------------------------------------------------------------
 
+    protected function validatePriceDates(Service $service, string $priceType, $effectiveDate, $endDate, $excludePriceId = null)
+    {
+        $effectiveDate = \Carbon\Carbon::parse($effectiveDate)->toDateString();
+        $endDate = $endDate ? \Carbon\Carbon::parse($endDate)->toDateString() : null;
+
+        $query = ServicePrice::where('service_id', $service->service_id)
+            ->where('price_type', $priceType);
+
+        if ($excludePriceId) {
+            $query->where('price_id', '!=', $excludePriceId);
+        }
+
+        $existingPrices = $query->get();
+
+        foreach ($existingPrices as $existing) {
+            $eStart = $existing->effective_date->toDateString();
+            $eEnd = $existing->end_date ? $existing->end_date->toDateString() : null;
+
+            // Overlap check
+            $cond1 = ($endDate === null || $eStart <= $endDate);
+            $cond2 = ($eEnd === null || $effectiveDate <= $eEnd);
+
+            if ($cond1 && $cond2) {
+                $rangeStr = $existing->end_date
+                    ? "từ " . $existing->effective_date->format('d/m/Y') . " đến " . $existing->end_date->format('d/m/Y')
+                    : "từ " . $existing->effective_date->format('d/m/Y') . " trở đi";
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'effective_date' => ["Trùng lặp khoảng thời gian áp dụng với mức giá {$priceType} đang có ({$rangeStr}, giá: " . number_format($existing->price, 0, ',', '.') . "đ). Vui lòng điều chỉnh ngày bắt đầu hoặc ngày kết thúc để không bị giao nhau."]
+                ]);
+            }
+        }
+    }
+
     public function addPrice(Service $service, array $data): ServicePrice
     {
+        $this->validatePriceDates($service, $data['price_type'], $data['effective_date'], $data['end_date'] ?? null);
+
         return $service->prices()->create([
             'price_type'     => $data['price_type'],
             'price'          => $data['price'],
@@ -146,6 +189,9 @@ class ServiceService
 
     public function updatePrice(ServicePrice $price, array $data): ServicePrice
     {
+        $service = $price->service;
+        $this->validatePriceDates($service, $data['price_type'], $data['effective_date'], $data['end_date'] ?? null, $price->price_id);
+
         $price->update([
             'price_type'     => $data['price_type'],
             'price'          => $data['price'],

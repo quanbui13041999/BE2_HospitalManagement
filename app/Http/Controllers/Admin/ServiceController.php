@@ -36,7 +36,15 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function store(ServiceRequest $request)
     {
-        $this->serviceService->createService($request->validated());
+        $service = $this->serviceService->createService($request->validated());
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tạo dịch vụ thành công!',
+                'service' => $service,
+            ]);
+        }
 
         return redirect()->route('admin.services.index')
             ->with('success', 'Tạo dịch vụ thành công!');
@@ -47,6 +55,14 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function show(Service $service)
     {
+        if (request()->ajax() || request()->wantsJson()) {
+            $service->load(['department', 'prices.createdBy']);
+            return response()->json([
+                'success' => true,
+                'service' => $service,
+                'priceTypes' => ServicePrice::PRICE_TYPES,
+            ]);
+        }
         return view('admin.services.show', $this->serviceService->buildShowData($service));
     }
 
@@ -55,6 +71,14 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function edit(Service $service)
     {
+        if (request()->ajax() || request()->wantsJson()) {
+            $service->load(['department']);
+            return response()->json([
+                'success' => true,
+                'service' => $service,
+                'departments' => $this->serviceService->buildEditData($service)['departments'],
+            ]);
+        }
         return view('admin.services.edit', $this->serviceService->buildEditData($service));
     }
 
@@ -65,6 +89,14 @@ class ServiceController extends Controller
     {
         $this->serviceService->updateService($service, $request->validated());
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật dịch vụ thành công!',
+                'service' => $service->fresh(['department']),
+            ]);
+        }
+
         return redirect()->route('admin.services.show', $service)
             ->with('success', 'Cập nhật dịch vụ thành công!');
     }
@@ -74,11 +106,30 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function destroy(Service $service)
     {
-        $name = $service->service_name;
-        $this->serviceService->deleteService($service);
+        try {
+            $name = $service->service_name;
+            $this->serviceService->deleteService($service);
 
-        return redirect()->route('admin.services.index')
-            ->with('success', "Đã xoá dịch vụ \"{$name}\" thành công.");
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Đã xoá dịch vụ \"{$name}\" thành công.",
+                ]);
+            }
+
+            return redirect()->route('admin.services.index')
+                ->with('success', "Đã xoá dịch vụ \"{$name}\" thành công.");
+        } catch (\Exception $e) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            return redirect()->route('admin.services.index')
+                ->with('error', $e->getMessage());
+        }
     }
 
     // ----------------------------------------------------------------
@@ -87,7 +138,16 @@ class ServiceController extends Controller
     public function toggleStatus(Service $service)
     {
         $this->serviceService->toggleStatus($service);
-        $msg = $service->fresh()->status ? 'Đã kích hoạt dịch vụ.' : 'Đã vô hiệu hoá dịch vụ.';
+        $status = $service->fresh()->status;
+        $msg = $status ? 'Đã kích hoạt dịch vụ.' : 'Đã vô hiệu hoá dịch vụ.';
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'status' => $status,
+            ]);
+        }
 
         return back()->with('success', $msg);
     }
@@ -98,7 +158,15 @@ class ServiceController extends Controller
 
     public function storePrice(ServicePriceRequest $request, Service $service)
     {
-        $this->serviceService->addPrice($service, $request->validated());
+        $price = $this->serviceService->addPrice($service, $request->validated());
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã thêm mức giá mới.',
+                'price' => $price->load('createdBy'),
+            ]);
+        }
 
         return back()->with('success', 'Đã thêm mức giá mới.');
     }
@@ -108,6 +176,14 @@ class ServiceController extends Controller
         abort_if($price->service_id !== $service->service_id, 403);
         $this->serviceService->updatePrice($price, $request->validated());
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật giá thành công.',
+                'price' => $price->fresh('createdBy'),
+            ]);
+        }
+
         return back()->with('success', 'Cập nhật giá thành công.');
     }
 
@@ -115,6 +191,13 @@ class ServiceController extends Controller
     {
         abort_if($price->service_id !== $service->service_id, 403);
         $this->serviceService->deletePrice($price);
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã xoá mức giá.',
+            ]);
+        }
 
         return back()->with('success', 'Đã xoá mức giá.');
     }
