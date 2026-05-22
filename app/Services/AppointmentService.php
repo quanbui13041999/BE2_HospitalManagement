@@ -255,6 +255,8 @@ class AppointmentService
                         'appointment_timeEnd' => $appointmentEndtime,
                         'queue_number' => $queueNumber,
                         'status' => 'Chờ xác nhận',
+                        'is_priority' => $data['is_priority'] ?? false,
+                        'priority_type' => $data['priority_type'] ?? null,
                         'note' => $data['note'] ?? null,
                         'cancel_reason' => null,
                         'slot_hold_expire' => null,
@@ -270,6 +272,8 @@ class AppointmentService
                     'appointment_timeEnd' => $appointmentEndtime,
                     'queue_number' => $queueNumber,
                     'status' => 'Chờ xác nhận',
+                    'is_priority' => $data['is_priority'] ?? false,
+                    'priority_type' => $data['priority_type'] ?? null,
                     'note' => $data['note'] ?? null,
                     'created_at' => now(),
                 ]);
@@ -297,6 +301,32 @@ class AppointmentService
                 'created_at' => now(),
             ]);
 
+            // Tự động đẩy vào hàng đợi nếu ngày khám là hôm nay
+            $ticket = null;
+            if (Carbon::parse($data['work_date'])->isToday()) {
+                $user = User::find($userId);
+                $priority = 'normal';
+                if ($user && $user->date_of_birth) {
+                    $age = Carbon::parse($user->date_of_birth)->age;
+                    if ($age >= 60) {
+                        $priority = 'elderly';
+                    }
+                }
+
+                $queueService = app(\App\Services\QueueService::class);
+                $ticket = $queueService->checkin([
+                    'schedule_id'    => $data['schedule_id'],
+                    'priority'       => $priority,
+                    'appointment_id' => $appointmentId,
+                    'user_id'        => $userId,
+                    'patient_name'   => $user ? $user->full_name : 'Bệnh nhân',
+                    'patient_phone'  => $user ? $user->phone : null,
+                    'patient_email'  => $user ? $user->email : null,
+                    'notes'          => $data['note'] ?? null,
+                    'served_by'      => null, // Đặt lịch online tự động check-in, không qua lễ tân
+                ]);
+            }
+
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();
@@ -305,6 +335,14 @@ class AppointmentService
 
         // Send email after commit
         $this->sendAppointmentConfirmationEmail($appointmentId, $userId);
+
+        if ($ticket) {
+            return [
+                'appointment_id' => $appointmentId,
+                'queue_number' => $ticket->queue_number,
+                'message' => 'Đặt lịch hẹn thành công và đã được đưa vào hàng đợi khám hôm nay! Số thứ tự của bạn là: #' . $ticket->queue_number . '.'
+            ];
+        }
 
         return [
             'appointment_id' => $appointmentId,

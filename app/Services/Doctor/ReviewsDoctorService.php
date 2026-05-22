@@ -1,5 +1,5 @@
 <?php
-namespace App\Services;
+namespace App\Services\Doctor;
 
 use App\Models\ActivityLog;
 use App\Models\Review;

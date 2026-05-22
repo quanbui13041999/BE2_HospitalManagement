@@ -14,7 +14,7 @@ class Appointment extends Model
     protected $fillable = [
         'user_id', 'schedule_id', 'service_id',
         'appointment_time', 'queue_number',
-        'status', 'note', 'cancel_reason',
+        'status', 'is_priority', 'priority_type', 'note', 'cancel_reason',
         'slot_hold_expire', 'rescheduled_from',
         'created_at',
     ];
@@ -23,6 +23,7 @@ class Appointment extends Model
         'appointment_time' => 'datetime',
         'slot_hold_expire' => 'datetime',
         'created_at'       => 'datetime',
+        'is_priority'      => 'boolean',
     ];
 
     // ── Relationships ──────────────────────────────────────────────
@@ -67,17 +68,11 @@ class Appointment extends Model
     }
 
     // ── Query Scopes ───────────────────────────────────────────────
-    /**
-     * Lọc appointment của một user
-     */
     public function scopeForUser($query, int $userId)
     {
         return $query->where('user_id', $userId);
     }
 
-    /**
-     * Lọc appointment sắp tới (Chờ xác nhận, Đã xác nhận và trong tương lai)
-     */
     public function scopeUpcoming($query)
     {
         return $query
@@ -86,48 +81,34 @@ class Appointment extends Model
     }
 
     /**
-     * Lọc appointment đã hoàn thành
+     * Scope for completed appointments (status = 'Hoàn thành')
+      * Note: Only appointments with this status are considered completed, regardless of time.
      */
     public function scopeCompleted($query)
     {
-        return $query->where('status', 'Đã khám');
+        return $query->where('status', 'Hoàn thành');
     }
 
-    /**
-     * Lọc appointment đã hủy hoặc dời
-     */
     public function scopeCancelled($query)
     {
         return $query->whereIn('status', ['Đã hủy', 'Dời lịch']);
     }
 
-    /**
-     * Lọc appointment theo trạng thái
-     */
     public function scopeByStatus($query, array $statuses)
     {
         return $query->whereIn('status', $statuses);
     }
 
-    /**
-     * Sắp xếp theo ngày
-     */
     public function scopeOrderByDate($query, string $direction = 'desc')
     {
         return $query->orderBy('appointment_time', $direction);
     }
 
-    /**
-     * Lọc appointment theo ngày làm việc
-     */
     public function scopeOnDate($query, string $date)
     {
         return $query->whereDate('appointment_time', $date);
     }
 
-    /**
-     * Lọc appointment cho một bác sĩ
-     */
     public function scopeForDoctor($query, int $doctorId)
     {
         return $query
