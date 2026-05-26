@@ -45,6 +45,12 @@ class DatabaseSeeder extends Seeder
         $this->repairMembershipCardsSchema();
         $this->seedMedicalDetailBaseline();
         $this->createDoctorRatingsView();
+
+        $this->call([
+            FoodSeeder::class,
+            NutritionArticleSeeder::class,
+            DiseaseNutritionRuleSeeder::class,
+        ]);
     }
 
     private function shouldSkip(string $statement): bool
@@ -120,9 +126,11 @@ class DatabaseSeeder extends Seeder
 
     private function seedMedicalDetailBaseline(): void
     {
-        if (! DB::getSchemaBuilder()->hasTable('medical_records')
+        if (
+            ! DB::getSchemaBuilder()->hasTable('medical_records')
             || ! DB::getSchemaBuilder()->hasTable('diagnoses')
-            || ! DB::getSchemaBuilder()->hasTable('vital_signs')) {
+            || ! DB::getSchemaBuilder()->hasTable('vital_signs')
+        ) {
             return;
         }
 
@@ -203,8 +211,10 @@ class DatabaseSeeder extends Seeder
 
     private function createDoctorRatingsView(): void
     {
-        if (! DB::getSchemaBuilder()->hasTable('doctors')
-            || ! DB::getSchemaBuilder()->hasTable('reviews')) {
+        if (
+            ! DB::getSchemaBuilder()->hasTable('doctors')
+            || ! DB::getSchemaBuilder()->hasTable('reviews')
+        ) {
             return;
         }
 

@@ -677,6 +677,9 @@
                 @auth
                 <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
                 <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
+                    @if(!Auth::user()->is_admin)
+                    <li><a href="{{ route('patient.nutrition.index') }}">Dinh dưỡng</a></li>
+                    @endif
                 
                 @endauth
                 <li><a href="{{ route('news.index') }}">Bản tin</a></li>
