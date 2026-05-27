@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('nutrition_articles')) {
+            return;
+        }
+
         Schema::create('nutrition_articles', function (Blueprint $table) {
             $table->increments('article_id');
             // FK → doctors.doctor_id (nullable vì admin cũng viết được)

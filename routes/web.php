@@ -522,5 +522,7 @@ Route::middleware(['auth', 'check_queue_role:1,2'])->prefix('queue/doctor')->nam
     Route::get('/api/{scheduleId}/snapshot',           [QueueDoctorController::class, 'apiSnapshot'])->name('api.snapshot')->whereNumber('scheduleId');
 
 });
+// che do dinh duong
 require __DIR__.'/nutrition.php';
-    
+ // nhat ky suc khoe chu dong
+ require __DIR__.'/health_tracking.php';   
