@@ -1,0 +1,16 @@
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+/**
+ * API Routes
+ *
+ * Note: All API v1 routes are defined in routes/web.php with the /api/v1 prefix.
+ * This file is kept for Laravel's default route structure but can be used for
+ * additional API routes if needed in the future.
+ */
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
