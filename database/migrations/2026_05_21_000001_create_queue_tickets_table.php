@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('queue_tickets')) {
+            return;
+        }
+
         Schema::create('queue_tickets', function (Blueprint $table) {
             $table->id('ticket_id');
             $table->unsignedInteger('appointment_id')->nullable(); // null nếu walk-in
@@ -31,11 +35,10 @@ return new class extends Migration {
             $table->unsignedInteger('served_by')->nullable();     // bác sĩ/lễ tân xử lý
             $table->timestamps();
             
-            $table->foreign('appointment_id')->references('appointment_id')->on('appointments');
-            $table->foreign('schedule_id')->references('schedule_id')->on('doctorschedules');
-            $table->foreign('user_id')->references('user_id')->on('users');
-            $table->foreign('served_by')->references('user_id')->on('users');
-            
+            $table->index('appointment_id');
+            $table->index('schedule_id');
+            $table->index('user_id');
+            $table->index('served_by');
             $table->index(['queue_date', 'schedule_id', 'status'], 'idx_qt_date_sched_status');
             $table->index(['queue_date', 'schedule_id', 'priority_sort', 'queue_number'], 'idx_qt_date_sched_priority_num');
         });

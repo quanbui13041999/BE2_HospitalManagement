@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         }
 
         DB::statement('DROP VIEW IF EXISTS v_doctorratings');
+        DB::statement('DROP TABLE IF EXISTS v_doctorratings');
         DB::connection()->getPdo()->exec('SET FOREIGN_KEY_CHECKS=0');
 
         try {
@@ -35,6 +36,8 @@ class DatabaseSeeder extends Seeder
                 if ($this->shouldSkip($statement)) {
                     continue;
                 }
+
+                $statement = $this->makeSafe($statement);
 
                 DB::connection()->getPdo()->exec($statement);
             }
@@ -65,9 +68,19 @@ class DatabaseSeeder extends Seeder
             || str_starts_with($normalized, 'use ')
             || str_starts_with($normalized, 'start transaction')
             || str_starts_with($normalized, 'commit')
-            || str_starts_with($normalized, 'drop table if exists `migrations`')
+            || str_starts_with($normalized, 'drop table if exists')
+            || str_starts_with($normalized, 'drop view if exists')
             || str_starts_with($normalized, 'create table if not exists `migrations`')
+            || str_starts_with($normalized, 'create table if not exists `v_doctorratings`')
             || str_starts_with($normalized, 'insert into `migrations`');
+    }
+
+    private function makeSafe(string $statement): string
+    {
+        $statement = preg_replace('/^insert\s+into\s+/i', 'INSERT IGNORE INTO ', $statement, 1) ?? $statement;
+        $statement = preg_replace('/\s+DEFINER=`[^`]+`@`[^`]+`/i', '', $statement) ?? $statement;
+
+        return $statement;
     }
 
     /**
