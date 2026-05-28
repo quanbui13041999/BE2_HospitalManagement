@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Repositories\PaymentRepository;
+use App\Services\ActivityLogService;
 use Illuminate\Support\Str;
 
 class PaymentService
@@ -183,6 +184,19 @@ class PaymentService
                 if ($payment->invoice) {
                     $payment->invoice->update(['status' => 'Đã thanh toán']);
                 }
+
+                ActivityLogService::log(
+                    'Thanh toán lịch khám',
+                    'Bệnh nhân đã thanh toán lịch khám #' . $payment->appointment_id . ' với số tiền ' . number_format((float) $payment->total_amount, 0, ',', '.') . 'đ.',
+                    'payment',
+                    $payment->payment_id,
+                    [
+                        'appointment_id' => $payment->appointment_id,
+                        'method' => $payment->method,
+                        'amount' => $payment->total_amount,
+                        'transaction_ref' => $payment->transaction_ref,
+                    ]
+                );
             }
         }
         

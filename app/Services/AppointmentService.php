@@ -289,12 +289,11 @@ class AppointmentService
                 'created_at' => now(),
             ]);
 
-            // Log activity
-            DB::table('activitylogs')->insert([
-                'user_id' => $userId,
-                'action' => 'Đặt lịch hẹn #' . $appointmentId,
-                'ip_address' => $data['ip_address'] ?? null,
-                'created_at' => now(),
+            $this->logAppointmentEvent('Đặt lịch khám', $appointmentId, $userId, [
+                'schedule_id' => $data['schedule_id'],
+                'service_id' => $data['service_id'] ?? null,
+                'appointment_time' => $appointmentDatetime,
+                'queue_number' => $queueNumber,
             ]);
 
             DB::commit();
@@ -541,11 +540,22 @@ class AppointmentService
                 'created_at' => now(),
             ]);
 
-            DB::table('activitylogs')->insert([
-                'user_id' => $userId,
-                'action' => 'Dời lịch hẹn #' . $appointmentId . ' sang schedule #' . $data['new_schedule_id'],
-                'ip_address' => $data['ip_address'] ?? null,
-                'created_at' => now(),
+            $this->logAppointmentEvent('Dời lịch khám', $appointmentId, $userId, [
+                'changes' => [
+                    'schedule_id' => [
+                        'before' => $appointment->schedule_id,
+                        'after' => $data['new_schedule_id'],
+                    ],
+                    'appointment_time' => [
+                        'before' => $appointment->appointment_time,
+                        'after' => $newDatetime,
+                    ],
+                    'status' => [
+                        'before' => $appointment->status,
+                        'after' => 'Chờ xác nhận',
+                    ],
+                ],
+                'reason' => $data['reschedule_reason'] ?? null,
             ]);
 
             DB::commit();
@@ -631,11 +641,14 @@ class AppointmentService
                 'created_at' => now(),
             ]);
 
-            DB::table('activitylogs')->insert([
-                'user_id' => $userId,
-                'action' => 'Hủy lịch hẹn #' . $appointmentId,
-                'ip_address' => $data['ip_address'] ?? null,
-                'created_at' => now(),
+            $this->logAppointmentEvent('Hủy lịch khám', $appointmentId, $userId, [
+                'changes' => [
+                    'status' => [
+                        'before' => $appointment->status,
+                        'after' => 'Đã hủy',
+                    ],
+                ],
+                'cancel_reason' => $data['cancel_reason'] ?? 'Bệnh nhân tự hủy',
             ]);
 
             DB::commit();
@@ -741,5 +754,50 @@ class AppointmentService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function logAppointmentEvent(string $action, int $appointmentId, int $userId, array $metadata = []): void
+    {
+        $actor = User::with('role')->find($userId);
+        $appointment = DB::table('appointments')
+            ->leftJoin('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
+            ->leftJoin('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
+            ->where('appointments.appointment_id', $appointmentId)
+            ->select(
+                'appointments.appointment_time',
+                'appointments.queue_number',
+                'appointments.status',
+                'doctors.full_name as doctor_name'
+            )
+            ->first();
+
+        $time = $appointment?->appointment_time
+            ? Carbon::parse($appointment->appointment_time)->format('H:i ngày d/m/Y')
+            : 'không rõ thời gian';
+
+        $description = match ($action) {
+            'Đặt lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
+                . ' đã đặt lịch khám với '
+                . ($appointment?->doctor_name ? 'BS. ' . $appointment->doctor_name : 'bác sĩ')
+                . ' vào ' . $time . '.',
+            'Dời lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
+                . ' đã dời lịch khám #' . $appointmentId . ' sang ' . $time . '.',
+            'Hủy lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
+                . ' đã hủy lịch khám #' . $appointmentId . '.',
+            default => $action . ' #' . $appointmentId,
+        };
+
+        ActivityLogService::log(
+            $action,
+            $description,
+            'appointment',
+            $appointmentId,
+            array_merge($metadata, [
+                'appointment_status' => $appointment?->status,
+                'queue_number' => $appointment?->queue_number,
+            ]),
+            'success',
+            $actor
+        );
     }
 }

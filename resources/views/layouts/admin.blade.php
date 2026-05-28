@@ -103,6 +103,10 @@
            class="nav-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">
             <i class="bi bi-newspaper"></i> Bản tin
         </a>
+        <a href="{{ route('admin.activity-logs.index') }}"
+           class="nav-link {{ request()->routeIs('admin.activity-logs.*') ? 'active' : '' }}">
+            <i class="bi bi-clock-history"></i> Nhật ký hoạt động
+        </a>
 
         <div class="nav-section">Thống kê & Y tế</div>
         <a href="{{ route('admin.revenue.index') }}"

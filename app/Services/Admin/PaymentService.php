@@ -8,6 +8,7 @@ use App\Repositories\PaymentRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Services\ActivityLogService;
 
 class PaymentService
 {
@@ -110,6 +111,19 @@ class PaymentService
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
                 }
+
+                ActivityLogService::log(
+                    'Thanh toán lịch khám',
+                    'Admin đã xác nhận thanh toán giao dịch #' . $payment->payment_id . ' cho lịch khám #' . $payment->appointment_id . '.',
+                    'payment',
+                    $payment->payment_id,
+                    [
+                        'appointment_id' => $payment->appointment_id,
+                        'method' => $payment->method,
+                        'amount' => $payment->total_amount,
+                        'transaction_ref' => $payment->transaction_ref,
+                    ]
+                );
             }
         }
 

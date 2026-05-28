@@ -19,6 +19,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\Doctor\DoctorAppointmentController;
 use App\Http\Controllers\Admin\PatientSearchController;
+use App\Http\Controllers\Admin\ActivityLogController;
 
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
@@ -196,6 +197,8 @@ require_once "medical_records.php";
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
     Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+    Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
 
     // --------------------------------------------------------
     // Quản lý DỊCH VỤ (CRUD + bảng giá)

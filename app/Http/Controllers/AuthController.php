@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\WelcomeMail;
+use App\Services\ActivityLogService;
 
 class AuthController extends Controller
 {
@@ -52,6 +53,15 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        ActivityLogService::log(
+            'Đăng ký tài khoản',
+            'Bệnh nhân ' . $user->full_name . ' đã đăng ký tài khoản mới.',
+            'user',
+            $user->user_id,
+            ['email' => $user->email],
+            'success',
+            $user
+        );
         // Gửi mail nhưng KHÔNG để lỗi mail chặn đăng ký
 
         try {
@@ -76,9 +86,23 @@ class AuthController extends Controller
 
         if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $request->session()->regenerate();
+            ActivityLogService::log(
+                'Đăng nhập',
+                Auth::user()->full_name . ' đã đăng nhập hệ thống.',
+                'user',
+                Auth::id()
+            );
             return redirect()->intended(route('appointments.index'))
                 ->with('success', 'Đăng nhập thành công!');
         }
+
+        ActivityLogService::logFailed(
+            'Đăng nhập thất bại',
+            'Có lượt đăng nhập thất bại với email ' . $request->email . '.',
+            'user',
+            null,
+            ['email' => $request->email]
+        );
 
         return back()->withErrors([
             'email' => 'Email hoặc mật khẩu không chính xác.',
@@ -90,6 +114,19 @@ class AuthController extends Controller
     // ── ĐĂNG XUẤT ──
     public function logout(Request $request)
     {
+        $user = Auth::user();
+        if ($user) {
+            ActivityLogService::log(
+                'Đăng xuất',
+                $user->full_name . ' đã đăng xuất khỏi hệ thống.',
+                'user',
+                $user->user_id,
+                [],
+                'success',
+                $user
+            );
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
