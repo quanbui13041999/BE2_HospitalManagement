@@ -63,6 +63,11 @@
                             <i class="bi bi-clipboard2-pulse"></i> Dịch vụ
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('queue.display.*') ? 'active' : '' }}" href="{{ route('queue.display.index') }}">
+                            <i class="bi bi-tv"></i> Màn Hình Hàng Đợi
+                        </a>
+                    </li>
                     @auth
                     {{-- Nút DEMO MỚI (bên trái nút lịch hẹn) --}}
                     <li class="nav-item">
@@ -75,6 +80,13 @@
                             <i class="bi bi-alarm"></i> Tuân thủ điều trị
                         </a>
                     </li>
+                    @if(Auth::user()->role_id == 3 || (Auth::user()->role ?? '') == 'patient')
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('patient.nutrition.*') ? 'active' : '' }}" href="{{ route('patient.nutrition.index') }}">
+                            <i class="bi bi-heart-pulse"></i> Dinh dưỡng
+                        </a>
+                    </li>
+                    @endif
                     @php
                     $user = Auth::user();
                     $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
@@ -89,7 +101,7 @@
                     $demoIcon = 'bi-stethoscope';
                     $demoClass = 'btn-outline-primary';
                     } elseif ($roleId == 3 || ($user->role == 'patient')) {
-                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
+                    $demoLink = route('medical_history.index');
                     $demoText = 'Demo Bệnh án';
                     $demoIcon = 'bi-file-medical';
                     $demoClass = 'btn-outline-success';
@@ -108,39 +120,7 @@
                             <i class="bi {{ $demoIcon }}"></i> {{ $demoText }}
                         </a>
                     </li>
-                    @php
-                    $user = Auth::user();
-                    $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
-                    $demoLink = '#';
-                    $demoText = 'Demo';
-                    $demoIcon = 'bi-star';
-                    $demoClass = 'btn-outline-secondary';
-
-                    if ($roleId == 2 || ($user->role == 'doctor')) {
-                    $demoLink = route('doctor.appointments.index');
-                    $demoText = 'Demo BS';
-                    $demoIcon = 'bi-stethoscope';
-                    $demoClass = 'btn-outline-primary';
-                    } elseif ($roleId == 3 || ($user->role == 'patient')) {
-                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
-                    $demoText = 'Demo Bệnh án';
-                    $demoIcon = 'bi-file-medical';
-                    $demoClass = 'btn-outline-success';
-                    } elseif ($roleId == 1 || ($user->role == 'admin')) {
-                    $demoLink = route('admin.dashboard');
-                    $demoText = 'Demo Admin';
-                    $demoIcon = 'bi-speedometer2';
-                    $demoClass = 'btn-outline-warning';
-                    }
-                    @endphp
-
-                    <li class="nav-item me-2">
-                        <a class="nav-link {{ $demoClass }}"
-                            href="{{ $demoLink }}"
-                            style="border-radius: 20px; padding: 5px 15px; border-width: 1px; border-style: solid;">
-                            <i class="bi {{ $demoIcon }}"></i> {{ $demoText }}
-                        </a>
-                    </li>
+                   
                     
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">

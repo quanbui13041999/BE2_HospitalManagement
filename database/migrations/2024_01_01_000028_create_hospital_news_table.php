@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->string('thumbnail', 500)->nullable();
             $table->unsignedInteger('author_id')->nullable();
             $table->boolean('is_published')->default(true);
+            $table->boolean('email_sent')->default(false);
             $table->dateTime('published_at')->nullable();
             $table->dateTime('created_at')->useCurrent();
 

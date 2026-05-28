@@ -147,6 +147,13 @@
                         <small>Hỗ trợ mạng lưới và liên hệ</small>
                     </div>
                 </a>
+                 <a href="{{ route('health-tracking.index') }}" class="quick-link-item">
+                    <div class="link-icon">📓</div>
+                    <div>
+                        <strong>Nhật kí sức khỏe </strong>
+                        
+                    </div>
+                </a>
                 <a href="{{ route('documents.index') }}" class="quick-link-item">
                     <div class="link-icon">📁</div>
                     <div>

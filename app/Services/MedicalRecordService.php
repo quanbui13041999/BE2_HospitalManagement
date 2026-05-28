@@ -34,6 +34,7 @@ class MedicalRecordService
                 'exam_time'       => $data['exam_time'] ?? now()->toTimeString(),
                 'visit_type'      => $data['visit_type'] ?? 'Khám mới',
                 'chief_complaint' => $data['chief_complaint'] ?? null,
+                'status'          => MedicalRecord::STATUS_COMPLETED,
             ]);
 
             // Chỉ số sinh tồn

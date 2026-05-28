@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
-use App\Services\DoctorDashboardService;
+use App\Services\Doctor\DoctorDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;

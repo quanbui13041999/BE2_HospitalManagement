@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1:3306
--- Thời gian đã tạo: Th5 13, 2026 lúc 07:01 PM
+-- Thời gian đã tạo: Th5 20, 2026 lúc 01:45 PM
 -- Phiên bản máy phục vụ: 8.4.7
 -- Phiên bản PHP: 8.3.28
 
@@ -140,7 +140,7 @@ INSERT INTO `appointments` (`appointment_id`, `user_id`, `schedule_id`, `service
 (32, 21, 382, NULL, '2026-05-15 14:00:00', '2026-05-07 10:30:00', 1, 'Hoàn Thành', NULL, 'Dời sang lịch mới', NULL, 376, '2026-05-07 17:00:23', 0, 0),
 (33, 22, 391, NULL, '2026-05-08 08:30:00', '2026-05-08 09:00:00', 1, 'Hoàn Thành', NULL, NULL, NULL, NULL, '2026-05-08 01:56:50', 0, 0),
 (34, 23, 382, NULL, '2026-05-15 14:00:00', '2026-05-13 10:00:00', 2, 'Đã hủy', NULL, 'Bệnh nhân tự hủy', NULL, 380, '2026-05-13 16:36:57', 0, 0),
-(35, 23, 394, 2, '2026-05-13 13:30:00', '2026-05-13 14:00:00', 1, 'Chờ xác nhận', NULL, NULL, NULL, NULL, '2026-05-13 16:53:38', 0, 0);
+(35, 23, 394, 2, '2026-05-13 13:30:00', '2026-05-13 14:00:00', 1, 'Đã thanh toán', NULL, NULL, NULL, NULL, '2026-05-13 16:53:38', 0, 0);
 
 -- --------------------------------------------------------
 
@@ -173,8 +173,8 @@ CREATE TABLE IF NOT EXISTS `bhyt_cards` (
 
 DROP TABLE IF EXISTS `cache`;
 CREATE TABLE IF NOT EXISTS `cache` (
-  `key` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` mediumtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` bigint NOT NULL,
   PRIMARY KEY (`key`),
   KEY `cache_expiration_index` (`expiration`)
@@ -188,8 +188,8 @@ CREATE TABLE IF NOT EXISTS `cache` (
 
 DROP TABLE IF EXISTS `cache_locks`;
 CREATE TABLE IF NOT EXISTS `cache_locks` (
-  `key` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `owner` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `owner` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` bigint NOT NULL,
   PRIMARY KEY (`key`),
   KEY `cache_locks_expiration_index` (`expiration`)
@@ -300,6 +300,33 @@ INSERT INTO `departments` (`department_id`, `department_name`, `description`, `s
 (10, 'Cơ xương khớp', 'Điều trị bệnh xương khớp, cột sống', 1),
 (11, 'Tiêu hóa', 'Khám và điều trị bệnh lý đường tiêu hóa', 1),
 (12, 'Nội tiết', 'Điều trị đái tháo đường, tuyến giáp, rối loạn nội tiết', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `diagnoses`
+--
+
+DROP TABLE IF EXISTS `diagnoses`;
+CREATE TABLE IF NOT EXISTS `diagnoses` (
+  `diagnosis_id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `record_id` bigint UNSIGNED NOT NULL,
+  `diagnosis_name` varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `icd_code` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `diagnosis_type` enum('primary','secondary','complication') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'primary',
+  `note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`diagnosis_id`),
+  KEY `diagnoses_record_id_index` (`record_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `diagnoses`
+--
+
+INSERT INTO `diagnoses` (`diagnosis_id`, `record_id`, `diagnosis_name`, `icd_code`, `diagnosis_type`, `note`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Viêm khớp', '44', 'secondary', NULL, '2026-05-14 03:18:03', '2026-05-14 03:18:03');
 
 -- --------------------------------------------------------
 
@@ -642,6 +669,27 @@ INSERT INTO `hospitalnews` (`news_id`, `title`, `content`, `category`, `thumbnai
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `instruction_daily_checks`
+--
+
+DROP TABLE IF EXISTS `instruction_daily_checks`;
+CREATE TABLE IF NOT EXISTS `instruction_daily_checks` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `instruction_id` bigint UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `checked_date` date NOT NULL,
+  `is_done` tinyint(1) NOT NULL DEFAULT '0',
+  `checked_at` datetime DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_instruction_user_date` (`instruction_id`,`user_id`,`checked_date`),
+  KEY `idc_user_date_index` (`user_id`,`checked_date`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `insurancecards`
 --
 
@@ -734,8 +782,8 @@ CREATE TABLE IF NOT EXISTS `invoice_items` (
 DROP TABLE IF EXISTS `jobs`;
 CREATE TABLE IF NOT EXISTS `jobs` (
   `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
-  `queue` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `queue` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `attempts` tinyint UNSIGNED NOT NULL,
   `reserved_at` int UNSIGNED DEFAULT NULL,
   `available_at` int UNSIGNED NOT NULL,
@@ -787,6 +835,85 @@ CREATE TABLE IF NOT EXISTS `medicalrecords` (
   KEY `medicalrecords_user_id_foreign` (`user_id`),
   KEY `medicalrecords_doctor_id_foreign` (`doctor_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `medical_attachments`
+--
+
+DROP TABLE IF EXISTS `medical_attachments`;
+CREATE TABLE IF NOT EXISTS `medical_attachments` (
+  `attachment_id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `record_id` bigint UNSIGNED NOT NULL,
+  `file_name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_path` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_size` bigint UNSIGNED DEFAULT NULL,
+  `attachment_category` enum('result','image','document','other') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'document',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`attachment_id`),
+  KEY `medical_attachments_record_id_index` (`record_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `medical_orders`
+--
+
+DROP TABLE IF EXISTS `medical_orders`;
+CREATE TABLE IF NOT EXISTS `medical_orders` (
+  `order_id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `record_id` bigint UNSIGNED NOT NULL,
+  `order_type` enum('lab','imaging','other') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'lab',
+  `order_name` varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `result_status` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Chờ kết quả',
+  `result_note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`order_id`),
+  KEY `medical_orders_record_id_index` (`record_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `medical_records`
+--
+
+DROP TABLE IF EXISTS `medical_records`;
+CREATE TABLE IF NOT EXISTS `medical_records` (
+  `record_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `record_code` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `patient_id` int UNSIGNED NOT NULL,
+  `patient_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `patient_code` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `doctor_id` int UNSIGNED DEFAULT NULL,
+  `doctor_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `appointment_id` int UNSIGNED DEFAULT NULL,
+  `exam_date` date DEFAULT NULL,
+  `exam_time` time DEFAULT NULL,
+  `visit_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `chief_complaint` text COLLATE utf8mb4_unicode_ci,
+  `status` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `status_note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`record_id`),
+  UNIQUE KEY `medical_records_record_code_unique` (`record_code`),
+  KEY `medical_records_patient_id_foreign` (`patient_id`),
+  KEY `medical_records_doctor_id_foreign` (`doctor_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `medical_records`
+--
+
+INSERT INTO `medical_records` (`record_id`, `record_code`, `patient_id`, `patient_name`, `patient_code`, `doctor_id`, `doctor_name`, `appointment_id`, `exam_date`, `exam_time`, `visit_type`, `chief_complaint`, `status`, `status_note`, `created_at`, `updated_at`) VALUES
+(1, 'CK-2026-0001', 22, 'Anh Tú Huỳnh', 'AN2026056285', 11, 'Nguyễn Thị Thu', 32, '2026-05-15', '11:30:00', 'Kham moi', 'gfgfgf', 'completed', NULL, '2026-05-14 03:18:03', '2026-05-14 03:18:03');
 
 -- --------------------------------------------------------
 
@@ -873,7 +1000,7 @@ CREATE TABLE IF NOT EXISTS `membershipcards` (
   PRIMARY KEY (`card_id`),
   UNIQUE KEY `membershipcards_user_id_unique` (`user_id`),
   UNIQUE KEY `membershipcards_card_number_unique` (`card_number`)
-) ENGINE=MyISAM AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `membershipcards`
@@ -885,7 +1012,8 @@ INSERT INTO `membershipcards` (`card_id`, `user_id`, `card_number`, `tier`, `poi
 (3, 7, 'MEM20260003', 'Thường', 350, 350000.00, 0.00, '2026-01-15', '2027-01-15', 1),
 (4, 8, 'MEM20260004', 'Bạc', 2200, 2200000.00, 5.00, '2026-01-18', '2027-01-18', 1),
 (5, 9, 'MEM20260005', 'Kim Cương', 25000, 25000000.00, 20.00, '2026-01-20', '2027-01-20', 1),
-(6, 22, 'Chưa có thẻ', 'Thường', 0, 0.00, 0.00, '2026-05-08', NULL, 1);
+(6, 22, 'Chưa có thẻ', 'Thường', 0, 0.00, 0.00, '2026-05-08', NULL, 1),
+(7, 23, 'MB-20260520-000023', 'Đồng', 0, 0.00, 0.00, '2026-05-20', '2027-05-20', 1);
 
 -- --------------------------------------------------------
 
@@ -896,10 +1024,10 @@ INSERT INTO `membershipcards` (`card_id`, `user_id`, `card_number`, `tier`, `poi
 DROP TABLE IF EXISTS `migrations`;
 CREATE TABLE IF NOT EXISTS `migrations` (
   `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
-  `migration` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `migration` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=43 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `migrations`
@@ -936,17 +1064,14 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (28, '2024_01_01_000028_create_hospital_news_table', 1),
 (29, '2024_01_01_000029_create_notifications_table', 1),
 (30, '2024_01_01_000030_create_activity_logs_table', 1),
-(31, '2026_04_23_082114_create_tiensu_table', 2),
-(32, '2026_05_05_134149_add_appointment_time_end_to_appointments_table', 3),
-(33, '2024_01_01_000031_create_bhyt_cards_table', 4),
-(34, '2024_01_01_000032_create_invoices_table', 4),
-(35, '2024_01_01_000033_create_invoice_items_table', 4),
-(37, '2025_05_08_fix_reviews_table', 5),
-(38, '2026_05_13_151551_create_hospitalnews_table', 6),
-(39, '2026_05_13_161224_create_jobs_table', 7),
-(40, '2026_05_13_161917_create_cache_table', 8),
-(41, '2026_05_13_184531_add_is_ai_to_chatmessages_table', 9),
-(42, '2026_05_14_010000_fix_chatrooms_staff_foreign_key', 10);
+(31, '2024_01_01_000031_create_health_backgrounds_table', 1),
+(32, '2024_01_01_000035_create_emergency_contacts_table', 1),
+(33, '2024_01_01_000036_create_jobs_table', 1),
+(34, '2024_01_01_000037_create_cache_table', 1),
+(35, '2026_05_15_000000_import_hospital_booking_dump', 1),
+(36, '2026_05_15_000001_create_medical_detail_tables_and_view', 1),
+(37, '2026_05_16_000002_add_total_spent_to_membershipcards_table', 1),
+(38, '2026_05_16_060847_create_treatment_reminder_tables', 1);
 
 -- --------------------------------------------------------
 
@@ -1090,7 +1215,15 @@ CREATE TABLE IF NOT EXISTS `paymentitems` (
   `total_price` decimal(10,2) DEFAULT NULL,
   PRIMARY KEY (`item_id`),
   KEY `paymentitems_payment_id_foreign` (`payment_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `paymentitems`
+--
+
+INSERT INTO `paymentitems` (`item_id`, `payment_id`, `item_type`, `item_name`, `quantity`, `unit_price`, `total_price`) VALUES
+(1, 1, 'Khám bệnh', 'Phí khám - BS. Hoàng Văn Tùng', 1, 280000.00, 280000.00),
+(2, 1, 'Dịch vụ', 'Điện tâm đồ (ECG)', 1, 200000.00, 200000.00);
 
 -- --------------------------------------------------------
 
@@ -1116,6 +1249,72 @@ CREATE TABLE IF NOT EXISTS `payments` (
   UNIQUE KEY `payments_appointment_id_unique` (`appointment_id`),
   KEY `payments_insurance_id_foreign` (`insurance_id`),
   KEY `payments_membership_id_foreign` (`membership_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `payments`
+--
+
+INSERT INTO `payments` (`payment_id`, `appointment_id`, `insurance_id`, `membership_id`, `subtotal`, `discount_amount`, `total_amount`, `method`, `status`, `transaction_ref`, `payment_date`, `notes`) VALUES
+(1, 35, NULL, NULL, 480000.00, 0.00, 480000.00, 'QR', 'Thành công', 'PAY-26ZHARW6KR', '2026-05-20 13:39:46', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `payment_items`
+--
+
+DROP TABLE IF EXISTS `payment_items`;
+CREATE TABLE IF NOT EXISTS `payment_items` (
+  `item_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `payment_id` int UNSIGNED NOT NULL,
+  `item_name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `quantity` int UNSIGNED NOT NULL DEFAULT '1',
+  `unit_price` decimal(15,2) NOT NULL,
+  `subtotal` decimal(15,2) NOT NULL,
+  PRIMARY KEY (`item_id`),
+  KEY `payment_items_payment_id_foreign` (`payment_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `prescriptions`
+--
+
+DROP TABLE IF EXISTS `prescriptions`;
+CREATE TABLE IF NOT EXISTS `prescriptions` (
+  `prescription_id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `record_id` bigint UNSIGNED NOT NULL,
+  `drug_name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dosage` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `instructions` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `duration_days` int UNSIGNED NOT NULL DEFAULT '30',
+  `quantity` int UNSIGNED DEFAULT NULL,
+  `unit` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`prescription_id`),
+  KEY `prescriptions_record_id_index` (`record_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `record_allergies`
+--
+
+DROP TABLE IF EXISTS `record_allergies`;
+CREATE TABLE IF NOT EXISTS `record_allergies` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `record_id` bigint UNSIGNED NOT NULL,
+  `allergen` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `severity` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reaction` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `record_allergies_record_id_index` (`record_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1364,6 +1563,50 @@ CREATE TABLE IF NOT EXISTS `treatmentreminders` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `treatment_confirmations`
+--
+
+DROP TABLE IF EXISTS `treatment_confirmations`;
+CREATE TABLE IF NOT EXISTS `treatment_confirmations` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `reminder_id` int UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `confirmed_at` datetime NOT NULL,
+  `confirm_type` enum('medicine','instruction') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'medicine',
+  `note` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `tc_reminder_id_index` (`reminder_id`),
+  KEY `tc_user_id_date_index` (`user_id`,`confirmed_at`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `treatment_home_instructions`
+--
+
+DROP TABLE IF EXISTS `treatment_home_instructions`;
+CREATE TABLE IF NOT EXISTS `treatment_home_instructions` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `record_id` bigint UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `instruction_text` varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `detail` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `icon` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'activity',
+  `sort_order` tinyint UNSIGNED NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `thi_record_id_index` (`record_id`),
+  KEY `thi_user_id_index` (`user_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `users`
 --
 
@@ -1413,7 +1656,8 @@ INSERT INTO `users` (`user_id`, `full_name`, `email`, `password`, `phone`, `addr
 (20, 'BS. Đặng Thị Hằng', 'hang.bs@hospital.vn', '$2y$12$wa5hS.P1b..AgnGHh2RkZOsorAyjQBkG14cX4P.yW3sIoJ6mnZ7VC', '0910000000', 'Bệnh viện Đa khoa Trung tâm', '1979-05-22', 'Nữ', 2, NULL, 1, '2025-06-01 07:00:00'),
 (21, 'ádsad', 'aaa@gmail.com', '$2y$12$vlL1wWlfN5/ztxF/HaNjUuss56EPyXdcUPG/STgSRP/4oYw4CB.Si', '0913841867', '123 nguyen trai', '2026-05-06', 'Nam', 3, NULL, 1, '2026-05-07 23:55:06'),
 (23, 'Anh Tú Huỳnh', 'anh2482006@gmail.com', '$2y$12$6y7eJvCL/MaK4DRZFTiKzO.7Kj18EXX7dyzLUqJba6wHJQWlBfbUq', '0812816248', 'anh2482006@gmail.com', '2026-05-04', 'Nam', 1, NULL, 1, '2026-05-13 23:36:17'),
-(24, 'Tú Huỳnh', 'tuh225095@gmail.com', '$2y$12$GsW2E6.alOYgVYOcioUrxenKya4KyRe1FtP4WnLahSJif/dJ8Y1JC', '1234567890', 'tuh225095@gmail.com', '2026-05-06', 'Nam', 3, NULL, 1, '2026-05-13 23:56:47');
+(24, 'Tú Huỳnh', 'tuh225095@gmail.com', '$2y$12$GsW2E6.alOYgVYOcioUrxenKya4KyRe1FtP4WnLahSJif/dJ8Y1JC', '1234567890', 'tuh225095@gmail.com', '2026-05-06', 'Nam', 3, NULL, 1, '2026-05-13 23:56:47'),
+(22, 'Anh Tú Huỳnh', 'a123@gmail.com', '$2y$12$k8UuiGqtbaAtoyW0UhZQae.yZhnm43aPPvosi0GHy9WUIPDVKE152', '1234567890', 'a123@gmail.com', '2026-05-05', 'Nam', 1, NULL, 1, '2026-05-07 23:53:09');
 
 -- --------------------------------------------------------
 
@@ -1469,6 +1713,70 @@ INSERT INTO `vaccines` (`vaccine_id`, `vaccine_name`, `description`, `manufactur
 (6, 'Viêm não Nhật Bản', 'Phòng ngừa viêm não Nhật Bản', 'Vabiotech', 3, 1),
 (7, 'COVID-19 (Pfizer)', 'Vaccine phòng COVID-19 mRNA', 'Pfizer-BioNTech', 2, 1),
 (8, 'Uốn ván – Bạch hầu', 'Phòng uốn ván và bạch hầu', 'Pasteur', 1, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `vital_signs`
+--
+
+DROP TABLE IF EXISTS `vital_signs`;
+CREATE TABLE IF NOT EXISTS `vital_signs` (
+  `vital_id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `record_id` bigint UNSIGNED NOT NULL,
+  `blood_pressure` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bp_status` enum('normal','high','low') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `heart_rate` decimal(5,1) DEFAULT NULL,
+  `hr_status` enum('normal','high','low') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `temperature` decimal(4,1) DEFAULT NULL,
+  `temp_status` enum('normal','high','low') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `spo2` decimal(5,1) DEFAULT NULL,
+  `spo2_status` enum('normal','high','low') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `weight` decimal(5,1) DEFAULT NULL,
+  `blood_sugar` decimal(5,2) DEFAULT NULL,
+  `sugar_status` enum('normal','high','low') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`vital_id`),
+  UNIQUE KEY `vital_signs_record_id_unique` (`record_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `vital_signs`
+--
+
+INSERT INTO `vital_signs` (`vital_id`, `record_id`, `blood_pressure`, `bp_status`, `heart_rate`, `hr_status`, `temperature`, `temp_status`, `spo2`, `spo2_status`, `weight`, `blood_sugar`, `sugar_status`, `created_at`, `updated_at`) VALUES
+(1, 1, '124', 'normal', 75.0, 'normal', 34.0, 'normal', 66.0, 'normal', 66.0, 66.00, 'normal', '2026-05-14 03:18:03', '2026-05-14 03:18:03');
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc đóng vai cho view `v_doctorratings`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `v_doctorratings`;
+CREATE TABLE IF NOT EXISTS `v_doctorratings` (
+`avatar_url` varchar(500)
+,`avg_rating` decimal(7,4)
+,`bio` varchar(1000)
+,`department_id` int unsigned
+,`doctor_id` int unsigned
+,`experience` int unsigned
+,`full_name` varchar(100)
+,`price` decimal(10,2)
+,`status` tinyint(1)
+,`total_reviews` bigint
+);
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc cho view `v_doctorratings`
+--
+DROP TABLE IF EXISTS `v_doctorratings`;
+
+DROP VIEW IF EXISTS `v_doctorratings`;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_doctorratings`  AS SELECT `d`.`doctor_id` AS `doctor_id`, `d`.`full_name` AS `full_name`, `d`.`department_id` AS `department_id`, `d`.`experience` AS `experience`, `d`.`price` AS `price`, `d`.`avatar_url` AS `avatar_url`, `d`.`bio` AS `bio`, `d`.`status` AS `status`, coalesce(avg(`r`.`rating`),0) AS `avg_rating`, count(`r`.`review_id`) AS `total_reviews` FROM (`doctors` `d` left join `reviews` `r` on((`r`.`doctor_id` = `d`.`doctor_id`))) GROUP BY `d`.`doctor_id`, `d`.`full_name`, `d`.`department_id`, `d`.`experience`, `d`.`price`, `d`.`avatar_url`, `d`.`bio`, `d`.`status` ;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
