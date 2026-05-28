@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\Doctor\DoctorAppointmentController;
 use App\Http\Controllers\Admin\PatientSearchController;
+use App\Http\Controllers\Admin\ActivityLogController;
 
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
@@ -296,6 +297,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/data', [AdminDashboardController::class, 'data'])->name('dashboard.data');
+    Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+    Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
 
     // --------------------------------------------------------
     // Quản lý Dịch vụ (CRUD + bảng giá)

@@ -167,10 +167,8 @@ class User extends Authenticatable
      */
     public function logActivity(string $action, ?string $ipAddress = null)
     {
-        return $this->activityLogs()->create([
-            'action' => $action,
+        return \App\Services\ActivityLogService::log($action, $action, null, null, [
             'ip_address' => $ipAddress,
-            'created_at' => now(),
-        ]);
+        ], 'success', $this);
     }
 }
