@@ -129,6 +129,10 @@
            class="nav-link {{ request()->routeIs('admin.treatment.*') ? 'active' : '' }}">
             <i class="bi bi-alarm"></i> Nhắc nhở tuân thủ
         </a>
+        <a href="{{ route('admin.nutrition.index') }}"
+           class="nav-link {{ request()->routeIs('admin.nutrition.*') ? 'active' : '' }}">
+            <i class="bi bi-alarm"></i> Quản lý Dinh dưỡng
+        </a>
         @if(in_array(Auth::user()->role_id, [1, 2, 4]))
         <a href="{{ route('admin.patients.search') }}"
            class="nav-link {{ request()->routeIs('admin.patients.search*') ? 'active' : '' }}">

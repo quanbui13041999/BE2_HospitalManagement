@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('rehab_exercises')) {
+            return;
+        }
+
         Schema::create('rehab_exercises', function (Blueprint $table) {
             $table->id();
             $table->string('title');
@@ -22,7 +26,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['category', 'status']);
-            $table->foreign('created_by')->references('user_id')->on('users')->nullOnDelete();
+            $table->index('created_by');
         });
     }
 

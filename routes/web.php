@@ -522,4 +522,5 @@ Route::middleware(['auth', 'check_queue_role:1,2'])->prefix('queue/doctor')->nam
     Route::get('/api/{scheduleId}/snapshot',           [QueueDoctorController::class, 'apiSnapshot'])->name('api.snapshot')->whereNumber('scheduleId');
 
 });
-
+require __DIR__.'/nutrition.php';
+    

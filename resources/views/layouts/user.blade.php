@@ -80,6 +80,13 @@
                             <i class="bi bi-alarm"></i> Tuân thủ điều trị
                         </a>
                     </li>
+                    @if(Auth::user()->role_id == 3 || (Auth::user()->role ?? '') == 'patient')
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('patient.nutrition.*') ? 'active' : '' }}" href="{{ route('patient.nutrition.index') }}">
+                            <i class="bi bi-heart-pulse"></i> Dinh dưỡng
+                        </a>
+                    </li>
+                    @endif
                     @php
                     $user = Auth::user();
                     $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));

@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('queue_counters')) {
+            return;
+        }
+
         Schema::create('queue_counters', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('schedule_id')->unique();
@@ -14,8 +18,7 @@ return new class extends Migration {
             $table->unsignedSmallInteger('last_called_number')->default(0);
             $table->timestamps();
 
-            $table->foreign('schedule_id')->references('schedule_id')->on('doctorschedules')->onDelete('cascade');
-            $table->foreign('current_ticket_id')->references('ticket_id')->on('queue_tickets')->onDelete('set null');
+            $table->index('current_ticket_id');
         });
     }
 
