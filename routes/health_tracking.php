@@ -1,10 +1,6 @@
 <?php
-
-// Thêm vào routes/web.php:
-// require __DIR__.'/health_tracking.php';
-
-use App\Http\Controllers\HealthTrackingController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HealthTrackingController;
 
 Route::middleware('auth')->group(function () {
     Route::get('/health-tracking',                        [HealthTrackingController::class, 'index'])->name('health-tracking.index');

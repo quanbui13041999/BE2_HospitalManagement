@@ -82,7 +82,8 @@
         .page-subtitle {
             margin: 6px 0 0;
             color: var(--muted);
-            max-width: 620px;
+            max-width: none;
+            white-space: nowrap;
         }
 
         .summary-grid {
@@ -299,6 +300,10 @@
         }
 
         @media (max-width: 992px) {
+            .page-subtitle {
+                white-space: normal;
+            }
+
             .summary-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -373,11 +378,7 @@
                     Tổng hợp các chỉ số huyết áp, nhịp tim, SpO2, cân nặng và đường huyết theo từng lần ghi nhận.
                 </p>
             </div>
-            @if(auth()->user()->isPatient())
-                <a href="{{ route('health-tracking.create') }}" class="btn btn-primary">
-                    <i class="bi bi-plus-lg me-1"></i> Ghi nhận mới
-                </a>
-            @endif
+          
         </section>
 
         <section class="summary-grid">

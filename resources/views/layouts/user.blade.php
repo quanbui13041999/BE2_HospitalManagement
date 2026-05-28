@@ -101,7 +101,7 @@
                     $demoIcon = 'bi-stethoscope';
                     $demoClass = 'btn-outline-primary';
                     } elseif ($roleId == 3 || ($user->role == 'patient')) {
-                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
+                    $demoLink = route('medical_history.index');
                     $demoText = 'Demo Bệnh án';
                     $demoIcon = 'bi-file-medical';
                     $demoClass = 'btn-outline-success';

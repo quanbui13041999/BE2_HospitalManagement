@@ -4,13 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminNutritionController;
 use App\Http\Controllers\PatientNutritionController;
 
-/*
-|--------------------------------------------------------------------------
-| NUTRITION MODULE ROUTES
-| File này được include vào routes/web.php bằng cách thêm:
-|   require __DIR__.'/nutrition.php';
-|--------------------------------------------------------------------------
-*/
+
 
 // =============================================
 // PHÂN HỆ 1: ADMIN & BÁC SĨ (AdminNutritionController)

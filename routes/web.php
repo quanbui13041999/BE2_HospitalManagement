@@ -282,10 +282,11 @@ Route::prefix('api/v1')->middleware('auth')->group(function () {
 });
 
 // ============================================================
-// Medical Records
+// Medical Records and Medical History
 // ============================================================
 
 require_once __DIR__ . "/medical_records.php";
+require_once __DIR__ . "/medical_history.php";
 
 // ============================================================
 // ADMIN ROUTES (Yêu cầu đăng nhập + quyền is_admin)
