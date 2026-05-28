@@ -21,6 +21,8 @@ return new class extends Migration {
             $table->dateTime('slot_hold_expire')->nullable();
             $table->unsignedInteger('rescheduled_from')->nullable();
             $table->dateTime('created_at')->useCurrent();
+            $table->boolean('mail_reminded_1day')->default(false);
+            $table->boolean('mail_reminded_1hour')->default(false);
 
             $table->foreign('user_id')
                   ->references('user_id')->on('users')

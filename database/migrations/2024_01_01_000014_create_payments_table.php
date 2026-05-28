@@ -16,9 +16,11 @@ return new class extends Migration {
             $table->unsignedInteger('membership_id')->nullable();
             $table->decimal('total_amount', 15, 2)->default(0);
             $table->string('status', 30)->default('Chờ xử lý');
+            $table->string('method', 50)->nullable();
             $table->string('payment_method', 50)->nullable();
             $table->dateTime('payment_date')->nullable();
             $table->string('transaction_ref', 100)->nullable();
+            $table->string('notes', 255)->nullable();
             $table->timestamps();
 
             $table->foreign('appointment_id')->references('appointment_id')->on('appointments')->onDelete('cascade');

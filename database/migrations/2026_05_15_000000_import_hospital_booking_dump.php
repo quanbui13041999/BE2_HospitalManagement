@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -28,6 +30,8 @@ return new class extends Migration
         DB::connection()->getPdo()->exec('SET FOREIGN_KEY_CHECKS=0');
 
         try {
+            $this->ensureDumpCompatibility($sql);
+
             foreach ($this->statements($sql) as $statement) {
                 if ($this->shouldSkip($statement)) {
                     continue;
@@ -45,6 +49,87 @@ return new class extends Migration
     public function down(): void
     {
         // The imported dump is a baseline dataset. Use migrate:fresh to rebuild it.
+    }
+
+    private function ensureDumpCompatibility(string $sql): void
+    {
+        if (! Schema::hasTable('appointments')) {
+            $this->addMissingColumnsFromDump($sql);
+
+            return;
+        }
+
+        if (Schema::hasTable('hospitalnews') && ! Schema::hasColumn('hospitalnews', 'email_sent')) {
+            Schema::table('hospitalnews', function (Blueprint $table) {
+                $table->boolean('email_sent')->default(false)->after('is_published');
+            });
+        }
+
+        if (Schema::hasTable('payments')) {
+            if (! Schema::hasColumn('payments', 'method')) {
+                Schema::table('payments', function (Blueprint $table) {
+                    $table->string('method', 50)->nullable()->after('total_amount');
+                });
+            }
+
+            if (! Schema::hasColumn('payments', 'notes')) {
+                Schema::table('payments', function (Blueprint $table) {
+                    $table->string('notes', 255)->nullable()->after('payment_date');
+                });
+            }
+        }
+
+        $this->addMissingColumnsFromDump($sql);
+    }
+
+    private function addMissingColumnsFromDump(string $sql): void
+    {
+        preg_match_all(
+            '/CREATE TABLE IF NOT EXISTS `([^`]+)`\s*\((.*?)\)\s*ENGINE=/is',
+            $sql,
+            $matches,
+            PREG_SET_ORDER
+        );
+
+        foreach ($matches as $match) {
+            $table = $match[1];
+
+            if ($table === 'migrations' || ! Schema::hasTable($table)) {
+                continue;
+            }
+
+            foreach ($this->dumpColumnDefinitions($match[2]) as $column => $definition) {
+                if (Schema::hasColumn($table, $column)) {
+                    continue;
+                }
+
+                DB::statement(sprintf(
+                    'ALTER TABLE `%s` ADD COLUMN %s',
+                    str_replace('`', '``', $table),
+                    $definition
+                ));
+            }
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function dumpColumnDefinitions(string $createTableBody): array
+    {
+        $columns = [];
+
+        foreach (preg_split('/\R/', $createTableBody) ?: [] as $line) {
+            $definition = rtrim(trim($line), ',');
+
+            if (! preg_match('/^`([^`]+)`\s+.+$/', $definition, $match)) {
+                continue;
+            }
+
+            $columns[$match[1]] = $definition;
+        }
+
+        return $columns;
     }
 
     private function shouldSkip(string $statement): bool
