@@ -35,7 +35,7 @@ class NotificationController extends Controller
             ->orderBy('notification_type')
             ->pluck('notification_type');
 
-        $layout = $user->role_id === 1 ? 'layouts.admin' : 'layouts.user';
+        $layout = $this->layoutFor($user);
 
         return view('notifications.index', compact('notifications', 'status', 'type', 'types', 'layout'));
     }
@@ -46,9 +46,20 @@ class NotificationController extends Controller
         $this->notifications->markAsRead($notification, $user);
 
         $notification->load('sender');
-        $layout = $user->role_id === 1 ? 'layouts.admin' : 'layouts.user';
+        $layout = $this->layoutFor($user);
 
         return view('notifications.show', compact('notification', 'layout'));
+    }
+
+    private function layoutFor($user): string
+    {
+        $roleName = mb_strtolower((string) ($user->role?->role_name ?? ''), 'UTF-8');
+
+        if ((method_exists($user, 'isAdmin') && $user->isAdmin()) || $user->role_id === 1 || $roleName === 'admin') {
+            return 'layouts.admin';
+        }
+
+        return 'layouts.user';
     }
 
     public function dropdown()
