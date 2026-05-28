@@ -101,7 +101,7 @@
                     $demoIcon = 'bi-stethoscope';
                     $demoClass = 'btn-outline-primary';
                     } elseif ($roleId == 3 || ($user->role == 'patient')) {
-                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
+                    $demoLink = route('medical_history.index');
                     $demoText = 'Demo Bệnh án';
                     $demoIcon = 'bi-file-medical';
                     $demoClass = 'btn-outline-success';
@@ -120,39 +120,7 @@
                             <i class="bi {{ $demoIcon }}"></i> {{ $demoText }}
                         </a>
                     </li>
-                    @php
-                    $user = Auth::user();
-                    $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
-                    $demoLink = '#';
-                    $demoText = 'Demo';
-                    $demoIcon = 'bi-star';
-                    $demoClass = 'btn-outline-secondary';
-
-                    if ($roleId == 2 || ($user->role == 'doctor')) {
-                    $demoLink = route('doctor.appointments.index');
-                    $demoText = 'Demo BS';
-                    $demoIcon = 'bi-stethoscope';
-                    $demoClass = 'btn-outline-primary';
-                    } elseif ($roleId == 3 || ($user->role == 'patient')) {
-                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
-                    $demoText = 'Demo Bệnh án';
-                    $demoIcon = 'bi-file-medical';
-                    $demoClass = 'btn-outline-success';
-                    } elseif ($roleId == 1 || ($user->role == 'admin')) {
-                    $demoLink = route('admin.dashboard');
-                    $demoText = 'Demo Admin';
-                    $demoIcon = 'bi-speedometer2';
-                    $demoClass = 'btn-outline-warning';
-                    }
-                    @endphp
-
-                    <li class="nav-item me-2">
-                        <a class="nav-link {{ $demoClass }}"
-                            href="{{ $demoLink }}"
-                            style="border-radius: 20px; padding: 5px 15px; border-width: 1px; border-style: solid;">
-                            <i class="bi {{ $demoIcon }}"></i> {{ $demoText }}
-                        </a>
-                    </li>
+                   
                     
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
