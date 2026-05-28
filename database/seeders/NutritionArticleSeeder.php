@@ -9,7 +9,7 @@ class NutritionArticleSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('nutrition_articles')->insertOrIgnore([
+        $articles = [
             [
                 'doctor_id' => 11,
                 'title' => 'Chế độ dinh dưỡng hỗ trợ phục hồi khi mắc Cúm A',
@@ -140,6 +140,13 @@ class NutritionArticleSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-        ]);
+        ];
+
+        foreach ($articles as $article) {
+            DB::table('nutrition_articles')->updateOrInsert(
+                ['slug' => $article['slug']],
+                $article
+            );
+        }
     }
 }
