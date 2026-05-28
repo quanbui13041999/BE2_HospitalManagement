@@ -20,6 +20,7 @@ use App\Http\Controllers\Doctor\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Doctor\DoctorAppointmentController;
 use App\Http\Controllers\Admin\PatientSearchController;
 
@@ -82,6 +83,15 @@ Route::middleware('auth')->group(function () {
 
     // Trang chủ sau khi đăng nhập
     Route::get('/trangchu', [HomeController::class, 'index'])->name('Home.trangchu');
+
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/dropdown', [NotificationController::class, 'dropdown'])->name('dropdown');
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('mark-all-read');
+        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
+        Route::post('/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('mark-read');
+    });
 
     // --------------------------------------------------------
     // Đặt lịch mới

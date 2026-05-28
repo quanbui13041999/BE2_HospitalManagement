@@ -8,6 +8,7 @@ use App\Mail\AppointmentRescheduleMail;
 use App\Models\Appointment;
 use App\Models\DoctorSchedule;
 use App\Models\User;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -279,19 +280,16 @@ class AppointmentService
                 ]);
             }
 
-            // Create notification
-            DB::table('notifications')->insert([
-                'user_id' => $userId,
-                'notif_type' => 'Lịch hẹn',
-                'title' => 'Đặt lịch hẹn thành công',
-                'content' => 'Lịch khám lúc ' . $data['appointment_time']
+            app(NotificationService::class)->createForUser(
+                $userId,
+                'Đặt lịch hẹn thành công',
+                'Lịch khám lúc ' . $data['appointment_time']
                     . ' ngày ' . Carbon::parse($data['work_date'])->format('d/m/Y')
                     . '. Số thứ tự: #' . $queueNumber,
-                'ref_id' => $appointmentId,
-                'ref_type' => 'appointment',
-                'is_read' => false,
-                'created_at' => now(),
-            ]);
+                'appointment_created',
+                'appointment',
+                $appointmentId
+            );
 
             // Log activity
             DB::table('activitylogs')->insert([
@@ -567,17 +565,15 @@ class AppointmentService
                     'rescheduled_from' => $appointment->schedule_id,
                 ]);
 
-            DB::table('notifications')->insert([
-                'user_id' => $userId,
-                'notif_type' => 'Lịch hẹn',
-                'title' => 'Dời lịch hẹn thành công',
-                'content' => 'Lịch hẹn #' . $appointmentId . ' đã được dời sang '
+            app(NotificationService::class)->createForUser(
+                $userId,
+                'Dời lịch hẹn thành công',
+                'Lịch hẹn #' . $appointmentId . ' đã được dời sang '
                     . Carbon::parse($newDatetime)->format('H:i d/m/Y'),
-                'ref_id' => $appointmentId,
-                'ref_type' => 'appointment',
-                'is_read' => false,
-                'created_at' => now(),
-            ]);
+                'appointment_rescheduled',
+                'appointment',
+                $appointmentId
+            );
 
             DB::table('activitylogs')->insert([
                 'user_id' => $userId,
@@ -657,17 +653,15 @@ class AppointmentService
                     'cancel_reason' => $data['cancel_reason'] ?? 'Bệnh nhân tự hủy',
                 ]);
 
-            DB::table('notifications')->insert([
-                'user_id' => $userId,
-                'notif_type' => 'Lịch hẹn',
-                'title' => 'Hủy lịch hẹn thành công',
-                'content' => 'Lịch hẹn #' . $appointmentId . ' đã được hủy.'
+            app(NotificationService::class)->createForUser(
+                $userId,
+                'Hủy lịch hẹn thành công',
+                'Lịch hẹn #' . $appointmentId . ' đã được hủy.'
                     . ($data['cancel_reason'] ? ' Lý do: ' . $data['cancel_reason'] : ''),
-                'ref_id' => $appointmentId,
-                'ref_type' => 'appointment',
-                'is_read' => false,
-                'created_at' => now(),
-            ]);
+                'appointment_cancelled',
+                'appointment',
+                $appointmentId
+            );
 
             DB::table('activitylogs')->insert([
                 'user_id' => $userId,

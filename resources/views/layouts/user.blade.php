@@ -69,6 +69,9 @@
                         </a>
                     </li>
                     @auth
+                    <li class="nav-item d-flex align-items-center">
+                        <x-notification-bell />
+                    </li>
                     {{-- Nút DEMO MỚI (bên trái nút lịch hẹn) --}}
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen"> 

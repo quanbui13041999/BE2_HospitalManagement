@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Repositories\PaymentRepository;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +16,10 @@ class PaymentService
     const PAYMENT_METHODS = ['QR', 'ATM', 'MoMo', 'ZaloPay', 'Counter'];
     const PAYMENT_STATUSES = ['Chờ xử lý', 'Thành công', 'Thất bại', 'Hoàn tiền', 'Đã thanh toán', 'Chưa thanh toán'];
 
-    public function __construct(protected PaymentRepository $repo) {}
+    public function __construct(
+        protected PaymentRepository $repo,
+        protected NotificationService $notifications
+    ) {}
 
     // ----------------------------------------------------------------
     // Data builders cho view
@@ -81,6 +85,17 @@ class PaymentService
 
         $payment = $this->repo->createPayment($paymentData);
 
+        if ($payment->appointment?->user_id) {
+            $this->notifications->createForUser(
+                $payment->appointment->user_id,
+                'Có hóa đơn cần thanh toán',
+                'Hóa đơn cho lịch khám #' . $payment->appointment_id . ' có số tiền ' . number_format((float) $payment->total_amount, 0, ',', '.') . 'đ.',
+                'payment_created',
+                'payment',
+                $payment->payment_id
+            );
+        }
+
         $result = ['payment' => $payment, 'ref' => $ref];
 
         // Với QR: tạo nội dung QR để frontend render
@@ -109,6 +124,14 @@ class PaymentService
                 }
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
+                    $this->notifications->createForUser(
+                        $payment->appointment->user_id,
+                        'Thanh toán thành công',
+                        'Giao dịch #' . $payment->payment_id . ' đã được xác nhận thanh toán.',
+                        'payment_paid',
+                        'payment',
+                        $payment->payment_id
+                    );
                 }
             }
         }
