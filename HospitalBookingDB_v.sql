@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1:3306
--- Thời gian đã tạo: Th5 28, 2026 lúc 03:54 PM
+-- Thời gian đã tạo: Th5 28, 2026 lúc 04:55 PM
 -- Phiên bản máy phục vụ: 8.4.7
 -- Phiên bản PHP: 8.3.28
 
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS `activitylogs` (
   KEY `activitylogs_created_at_index` (`created_at`),
   KEY `activitylogs_role_name_subject_type_index` (`role_name`,`subject_type`),
   KEY `activitylogs_user_id_created_at_index` (`user_id`,`created_at`)
-) ENGINE=MyISAM AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `activitylogs`
@@ -113,7 +113,8 @@ INSERT INTO `activitylogs` (`log_id`, `user_id`, `actor_name`, `actor_email`, `r
 (55, 23, 'Anh Tú Huỳnh', 'anh2482006@gmail.com', 'Admin', 'Đăng nhập', 'user', 23, 'Anh Tú Huỳnh đã đăng nhập hệ thống.', '[]', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'success', '2026-05-28 15:50:08'),
 (56, 30, 'Search Test Admin', 'search_admin_6a18649b5cb00@example.test', 'Admin', 'Admin xóa người dùng', 'user', 31, 'Admin Search Test Admin đã xóa người dùng Search Test Patient Lan.', '{\"deleted_user\": {\"email\": \"patient_lan_6a18649b6085e@example.test\", \"status\": true, \"role_id\": 3, \"user_id\": 31, \"full_name\": \"Search Test Patient Lan\"}}', '127.0.0.1', 'Symfony', 'success', '2026-05-28 15:51:55'),
 (57, 30, 'Search Test Admin', 'search_admin_6a18649b5cb00@example.test', 'Admin', 'Admin xóa người dùng', 'user', 30, 'Admin Search Test Admin đã xóa người dùng Search Test Admin.', '{\"deleted_user\": {\"email\": \"search_admin_6a18649b5cb00@example.test\", \"status\": true, \"role_id\": 1, \"user_id\": 30, \"full_name\": \"Search Test Admin\"}}', '127.0.0.1', 'Symfony', 'success', '2026-05-28 15:51:55'),
-(58, 32, 'AI Test Admin', 'ai_admin_6a18649bd1dad@example.test', 'Admin', 'Admin xóa người dùng', 'user', 32, 'Admin AI Test Admin đã xóa người dùng AI Test Admin.', '{\"deleted_user\": {\"email\": \"ai_admin_6a18649bd1dad@example.test\", \"status\": true, \"role_id\": 1, \"user_id\": 32, \"full_name\": \"AI Test Admin\"}}', '127.0.0.1', 'Symfony', 'success', '2026-05-28 15:51:55');
+(58, 32, 'AI Test Admin', 'ai_admin_6a18649bd1dad@example.test', 'Admin', 'Admin xóa người dùng', 'user', 32, 'Admin AI Test Admin đã xóa người dùng AI Test Admin.', '{\"deleted_user\": {\"email\": \"ai_admin_6a18649bd1dad@example.test\", \"status\": true, \"role_id\": 1, \"user_id\": 32, \"full_name\": \"AI Test Admin\"}}', '127.0.0.1', 'Symfony', 'success', '2026-05-28 15:51:55'),
+(59, 24, NULL, NULL, NULL, 'Đặt lịch hẹn #36', NULL, NULL, NULL, NULL, '127.0.0.1', NULL, 'success', '2026-05-28 23:18:56');
 
 -- --------------------------------------------------------
 
@@ -145,7 +146,7 @@ CREATE TABLE IF NOT EXISTS `appointments` (
   KEY `appointments_schedule_id_foreign` (`schedule_id`),
   KEY `appointments_service_id_foreign` (`service_id`),
   KEY `appointments_rescheduled_from_foreign` (`rescheduled_from`)
-) ENGINE=MyISAM AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `appointments`
@@ -160,7 +161,8 @@ INSERT INTO `appointments` (`appointment_id`, `user_id`, `schedule_id`, `service
 (32, 21, 382, NULL, '2026-05-15 14:00:00', '2026-05-07 10:30:00', 1, 'Hoàn Thành', 0, NULL, NULL, 'Dời sang lịch mới', NULL, 376, '2026-05-07 17:00:23', 0, 0),
 (33, 22, 391, NULL, '2026-05-08 08:30:00', '2026-05-08 09:00:00', 1, 'Hoàn Thành', 0, NULL, NULL, NULL, NULL, NULL, '2026-05-08 01:56:50', 0, 0),
 (34, 23, 382, NULL, '2026-05-15 14:00:00', '2026-05-13 10:00:00', 2, 'Đã hủy', 0, NULL, NULL, 'Bệnh nhân tự hủy', NULL, 380, '2026-05-13 16:36:57', 0, 0),
-(35, 23, 394, 2, '2026-05-13 13:30:00', '2026-05-13 14:00:00', 1, 'Đã thanh toán', 0, NULL, NULL, NULL, NULL, NULL, '2026-05-13 16:53:38', 0, 0);
+(35, 23, 394, 2, '2026-05-13 13:30:00', '2026-05-13 14:00:00', 1, 'Đã thanh toán', 0, NULL, NULL, NULL, NULL, NULL, '2026-05-13 16:53:38', 0, 0),
+(36, 24, 338, NULL, '2026-05-28 08:30:00', '2026-05-28 09:00:00', 1, 'Đã thanh toán', 0, NULL, NULL, NULL, NULL, NULL, '2026-05-28 23:18:56', 0, 0);
 
 -- --------------------------------------------------------
 
@@ -754,7 +756,7 @@ CREATE TABLE IF NOT EXISTS `hospitalnews` (
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`news_id`),
   KEY `hospitalnews_author_id_foreign` (`author_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `hospitalnews`
@@ -776,7 +778,8 @@ INSERT INTO `hospitalnews` (`news_id`, `title`, `content`, `category`, `thumbnai
 (13, 'Chương trình ưu đãi khám tổng quát tháng này', 'Giảm 20% chi phí khám sức khỏe tổng quát cho khách hàng đăng ký online từ ngày 01 đến 31 hàng tháng.', 'Khuyến mãi', 'uploads/news/news7.jpg', 8, 1, 0, '2026-05-14 00:48:55', '2026-05-14 00:48:55'),
 (14, 'Hướng dẫn đăng ký khám bệnh trực tuyến', 'Người dân có thể đặt lịch khám nhanh chóng thông qua website hoặc ứng dụng di động của bệnh viện để tiết kiệm thời gian chờ đợi.', 'Hướng dẫn', 'uploads/news/news8.jpg', 8, 1, 0, '2026-05-14 00:48:55', '2026-05-14 00:48:55'),
 (15, 'Bệnh viện tiếp nhận máy chụp MRI thế hệ mới', 'Thiết bị MRI mới giúp chẩn đoán hình ảnh chính xác hơn, giảm thời gian chụp và nâng cao trải nghiệm bệnh nhân.', 'Tin tức', 'uploads/news/news9.jpg', 8, 1, 0, '2026-05-14 00:48:55', '2026-05-14 00:48:55'),
-(16, 'Khuyến nghị tiêm vaccine cúm định kỳ', 'Bác sĩ khuyến nghị người cao tuổi, trẻ em và người có bệnh nền nên tiêm vaccine cúm mỗi năm để tăng cường miễn dịch.', 'Sức khỏe', 'uploads/news/news10.jpg', 8, 1, 0, '2026-05-14 00:48:55', '2026-05-14 00:48:55');
+(16, 'Khuyến nghị tiêm vaccine cúm định kỳ', 'Bác sĩ khuyến nghị người cao tuổi, trẻ em và người có bệnh nền nên tiêm vaccine cúm mỗi năm để tăng cường miễn dịch.', 'Sức khỏe', 'uploads/news/news10.jpg', 8, 1, 0, '2026-05-14 00:48:55', '2026-05-14 00:48:55'),
+(17, 'bệnh ế', '<p>&eacute;eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeavavvvaaaaaaaaaaaaa</p>', 'Thông báo', 'http://127.0.0.1:8000/uploads/news/news_6a1872ef6eb7d2.95883191.jpg', 23, 1, 0, '2026-05-28 23:53:03', '2026-05-28 23:53:03');
 
 -- --------------------------------------------------------
 
@@ -903,7 +906,15 @@ CREATE TABLE IF NOT EXISTS `jobs` (
   `created_at` int UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
   KEY `jobs_queue_index` (`queue`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `jobs`
+--
+
+INSERT INTO `jobs` (`id`, `queue`, `payload`, `attempts`, `reserved_at`, `available_at`, `created_at`) VALUES
+(1, 'default', '{\"uuid\":\"54c50593-0a95-4cd8-9c2b-e14f9c38fead\",\"displayName\":\"App\\\\Events\\\\QueueUpdated\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"deleteWhenMissingModels\":false,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":17:{s:5:\\\"event\\\";O:23:\\\"App\\\\Events\\\\QueueUpdated\\\":1:{s:10:\\\"scheduleId\\\";i:338;}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:23:\\\"deleteWhenMissingModels\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\",\"batchId\":null},\"createdAt\":1779985137,\"delay\":null}', 0, NULL, 1779985137, 1779985137),
+(2, 'default', '{\"uuid\":\"66fd3e67-7c5d-4ed9-b397-fde2ae028e92\",\"displayName\":\"App\\\\Events\\\\QueueUpdated\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"deleteWhenMissingModels\":false,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":17:{s:5:\\\"event\\\";O:23:\\\"App\\\\Events\\\\QueueUpdated\\\":1:{s:10:\\\"scheduleId\\\";i:338;}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:23:\\\"deleteWhenMissingModels\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\",\"batchId\":null},\"createdAt\":1779985137,\"delay\":null}', 0, NULL, 1779985137, 1779985137);
 
 -- --------------------------------------------------------
 
@@ -1203,7 +1214,7 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   `migration` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `migrations`
@@ -1259,7 +1270,8 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (47, '2026_05_22_000004_create_nutrition_articles_table', 1),
 (48, '2026_05_27_000001_ensure_appointments_booking_columns', 1),
 (49, '2026_05_28_000001_create_health_trackings_table', 1),
-(50, '2026_05_28_000001_enhance_activitylogs_table', 2);
+(50, '2026_05_28_000001_enhance_activitylogs_table', 2),
+(51, '2026_05_28_000002_upgrade_notifications_for_scoped_delivery', 3);
 
 -- --------------------------------------------------------
 
@@ -1270,58 +1282,109 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE IF NOT EXISTS `notifications` (
   `notification_id` int UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id` int UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED DEFAULT NULL,
   `notif_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `title` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `content` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `message` text COLLATE utf8mb4_unicode_ci,
+  `type` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `target_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user',
+  `target_user_id` int UNSIGNED DEFAULT NULL,
+  `target_role` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `related_type` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `related_id` int UNSIGNED DEFAULT NULL,
+  `sender_id` int UNSIGNED DEFAULT NULL,
+  `action_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `ref_id` int UNSIGNED DEFAULT NULL,
   `ref_type` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_read` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`notification_id`),
-  KEY `notifications_user_id_foreign` (`user_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `notifications_user_id_foreign` (`user_id`),
+  KEY `notifications_target_user_id_index` (`target_user_id`),
+  KEY `notifications_target_type_target_role_index` (`target_type`,`target_role`),
+  KEY `notifications_created_at_index` (`created_at`)
+) ENGINE=MyISAM AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `notifications`
 --
 
-INSERT INTO `notifications` (`notification_id`, `user_id`, `notif_type`, `title`, `content`, `ref_id`, `ref_type`, `is_read`, `created_at`) VALUES
-(1, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 07:34 ngày 23/04/2026. Số thứ tự: #1', 1, 'appointment', 0, '2026-04-23 04:53:29'),
-(2, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 23/04/2026. Số thứ tự: #1', 2, 'appointment', 0, '2026-04-23 07:09:56'),
-(3, 1, 'Lịch hẹn', 'Hủy lịch hẹn thành công', 'Lịch hẹn #2 đã được hủy.', 2, 'appointment', 0, '2026-04-23 07:10:54'),
-(4, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 23/04/2026. Số thứ tự: #1', 3, 'appointment', 0, '2026-04-23 07:12:49'),
-(5, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:00 ngày 23/04/2026. Số thứ tự: #1', 4, 'appointment', 0, '2026-04-23 07:16:20'),
-(6, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:00 ngày 24/04/2026. Số thứ tự: #1', 5, 'appointment', 0, '2026-04-23 07:19:22'),
-(7, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 23/04/2026. Số thứ tự: #1', 6, 'appointment', 0, '2026-04-23 10:00:41'),
-(8, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 10:30 ngày 25/04/2026. Số thứ tự: #1', 7, 'appointment', 0, '2026-04-23 10:08:06'),
-(9, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:00 ngày 23/04/2026. Số thứ tự: #1', 8, 'appointment', 0, '2026-04-23 10:27:33'),
-(10, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 23/04/2026. Số thứ tự: #1', 10, 'appointment', 0, '2026-04-23 11:15:21'),
-(11, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 15:00 ngày 23/04/2026. Số thứ tự: #1', 12, 'appointment', 0, '2026-04-23 11:21:25'),
-(12, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 24/04/2026. Số thứ tự: #1', 16, 'appointment', 0, '2026-04-23 13:23:49'),
-(13, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:00 ngày 24/04/2026. Số thứ tự: #1', 17, 'appointment', 0, '2026-04-23 13:43:24'),
-(14, 3, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 23/04/2026. Số thứ tự: #1', 18, 'appointment', 0, '2026-04-23 15:08:02'),
-(15, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 25/04/2026. Số thứ tự: #1', 19, 'appointment', 0, '2026-04-23 15:17:18'),
-(16, 1, 'Lịch hẹn', 'Dời lịch hẹn thành công', 'Lịch hẹn #19 đã được dời sang 08:00 30/04/2026', 19, 'appointment', 0, '2026-04-23 15:17:31'),
-(17, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 14:00 ngày 24/04/2026. Số thứ tự: #1', 20, 'appointment', 0, '2026-04-23 16:17:11'),
-(18, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 24/04/2026. Số thứ tự: #2', 21, 'appointment', 0, '2026-04-23 16:18:17'),
-(19, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 05/05/2026. Số thứ tự: #1', 22, 'appointment', 0, '2026-05-05 12:29:13'),
-(20, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 10:00 ngày 05/05/2026. Số thứ tự: #2', 23, 'appointment', 0, '2026-05-05 12:53:24'),
-(21, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:30 ngày 06/05/2026. Số thứ tự: #1', 24, 'appointment', 0, '2026-05-06 03:51:39'),
-(22, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 06/05/2026. Số thứ tự: #1', 25, 'appointment', 0, '2026-05-06 05:52:01'),
-(23, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 06/05/2026. Số thứ tự: #2', 26, 'appointment', 0, '2026-05-06 05:52:16'),
-(24, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:30 ngày 06/05/2026. Số thứ tự: #1', 27, 'appointment', 0, '2026-05-06 14:17:21'),
-(25, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 14:00 ngày 14/05/2026. Số thứ tự: #1', 28, 'appointment', 0, '2026-05-06 14:59:48'),
-(26, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 14:30 ngày 07/05/2026. Số thứ tự: #1', 29, 'appointment', 0, '2026-05-07 05:46:13'),
-(27, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 07/05/2026. Số thứ tự: #1', 30, 'appointment', 0, '2026-05-07 16:39:03'),
-(28, 21, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 07/05/2026. Số thứ tự: #1', 31, 'appointment', 0, '2026-05-07 16:55:17'),
-(29, 21, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 10:00 ngày 07/05/2026. Số thứ tự: #1', 32, 'appointment', 0, '2026-05-07 17:00:23'),
-(30, 21, 'Lịch hẹn', 'Dời lịch hẹn thành công', 'Lịch hẹn #32 đã được dời sang 14:00 15/05/2026', 32, 'appointment', 0, '2026-05-07 17:01:02'),
-(31, 22, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:30 ngày 08/05/2026. Số thứ tự: #1', 33, 'appointment', 0, '2026-05-08 01:56:50'),
-(32, 23, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:30 ngày 13/05/2026. Số thứ tự: #1', 34, 'appointment', 0, '2026-05-13 16:36:57'),
-(33, 23, 'Lịch hẹn', 'Dời lịch hẹn thành công', 'Lịch hẹn #34 đã được dời sang 14:00 15/05/2026', 34, 'appointment', 0, '2026-05-13 16:37:35'),
-(34, 23, 'Lịch hẹn', 'Hủy lịch hẹn thành công', 'Lịch hẹn #34 đã được hủy.', 34, 'appointment', 0, '2026-05-13 16:42:54'),
-(35, 23, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 13/05/2026. Số thứ tự: #1', 35, 'appointment', 0, '2026-05-13 16:53:38');
+INSERT INTO `notifications` (`notification_id`, `user_id`, `notif_type`, `title`, `content`, `message`, `type`, `target_type`, `target_user_id`, `target_role`, `related_type`, `related_id`, `sender_id`, `action_url`, `ref_id`, `ref_type`, `is_read`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 07:34 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 1, 'appointment', 0, '2026-04-23 04:53:29', NULL),
+(2, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 2, 'appointment', 0, '2026-04-23 07:09:56', NULL),
+(3, 1, 'Lịch hẹn', 'Hủy lịch hẹn thành công', 'Lịch hẹn #2 đã được hủy.', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 2, 'appointment', 0, '2026-04-23 07:10:54', NULL),
+(4, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 3, 'appointment', 0, '2026-04-23 07:12:49', NULL),
+(5, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:00 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 4, 'appointment', 0, '2026-04-23 07:16:20', NULL),
+(6, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:00 ngày 24/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 5, 'appointment', 0, '2026-04-23 07:19:22', NULL),
+(7, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 6, 'appointment', 0, '2026-04-23 10:00:41', NULL),
+(8, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 10:30 ngày 25/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 7, 'appointment', 0, '2026-04-23 10:08:06', NULL),
+(9, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:00 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 8, 'appointment', 0, '2026-04-23 10:27:33', NULL),
+(10, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 10, 'appointment', 0, '2026-04-23 11:15:21', NULL),
+(11, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 15:00 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 12, 'appointment', 0, '2026-04-23 11:21:25', NULL),
+(12, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 24/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 16, 'appointment', 0, '2026-04-23 13:23:49', NULL),
+(13, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:00 ngày 24/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 17, 'appointment', 0, '2026-04-23 13:43:24', NULL),
+(14, 3, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 23/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 18, 'appointment', 0, '2026-04-23 15:08:02', NULL),
+(15, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 25/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 19, 'appointment', 0, '2026-04-23 15:17:18', NULL),
+(16, 1, 'Lịch hẹn', 'Dời lịch hẹn thành công', 'Lịch hẹn #19 đã được dời sang 08:00 30/04/2026', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 19, 'appointment', 0, '2026-04-23 15:17:31', NULL),
+(17, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 14:00 ngày 24/04/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 20, 'appointment', 0, '2026-04-23 16:17:11', NULL),
+(18, 1, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 24/04/2026. Số thứ tự: #2', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 21, 'appointment', 0, '2026-04-23 16:18:17', NULL),
+(19, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 05/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 22, 'appointment', 0, '2026-05-05 12:29:13', NULL),
+(20, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 10:00 ngày 05/05/2026. Số thứ tự: #2', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 23, 'appointment', 0, '2026-05-05 12:53:24', NULL),
+(21, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:30 ngày 06/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 24, 'appointment', 0, '2026-05-06 03:51:39', NULL),
+(22, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 06/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 25, 'appointment', 0, '2026-05-06 05:52:01', NULL),
+(23, 2, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 06/05/2026. Số thứ tự: #2', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 26, 'appointment', 0, '2026-05-06 05:52:16', NULL),
+(24, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:30 ngày 06/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 27, 'appointment', 0, '2026-05-06 14:17:21', NULL),
+(25, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 14:00 ngày 14/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 28, 'appointment', 0, '2026-05-06 14:59:48', NULL),
+(26, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 14:30 ngày 07/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 29, 'appointment', 0, '2026-05-07 05:46:13', NULL),
+(27, 4, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 07/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 30, 'appointment', 0, '2026-05-07 16:39:03', NULL),
+(28, 21, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:00 ngày 07/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 31, 'appointment', 0, '2026-05-07 16:55:17', NULL),
+(29, 21, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 10:00 ngày 07/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 32, 'appointment', 0, '2026-05-07 17:00:23', NULL),
+(30, 21, 'Lịch hẹn', 'Dời lịch hẹn thành công', 'Lịch hẹn #32 đã được dời sang 14:00 15/05/2026', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 32, 'appointment', 0, '2026-05-07 17:01:02', NULL),
+(31, 22, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:30 ngày 08/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 33, 'appointment', 0, '2026-05-08 01:56:50', NULL),
+(32, 23, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 09:30 ngày 13/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 34, 'appointment', 1, '2026-05-13 16:36:57', '2026-05-28 23:46:19'),
+(33, 23, 'Lịch hẹn', 'Dời lịch hẹn thành công', 'Lịch hẹn #34 đã được dời sang 14:00 15/05/2026', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 34, 'appointment', 1, '2026-05-13 16:37:35', '2026-05-28 23:46:19'),
+(34, 23, 'Lịch hẹn', 'Hủy lịch hẹn thành công', 'Lịch hẹn #34 đã được hủy.', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 34, 'appointment', 1, '2026-05-13 16:42:54', '2026-05-28 23:46:19'),
+(35, 23, 'Lịch hẹn', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 13:30 ngày 13/05/2026. Số thứ tự: #1', NULL, NULL, 'user', NULL, NULL, NULL, NULL, NULL, NULL, 35, 'appointment', 1, '2026-05-13 16:53:38', '2026-05-28 23:46:07'),
+(36, 24, 'appointment_created', 'Đặt lịch hẹn thành công', 'Lịch khám lúc 08:30 ngày 28/05/2026. Số thứ tự: #1', 'Lịch khám lúc 08:30 ngày 28/05/2026. Số thứ tự: #1', 'appointment_created', 'user', 24, NULL, 'appointment', 36, NULL, NULL, 36, 'appointment', 1, '2026-05-28 23:18:56', '2026-05-28 23:19:36'),
+(37, 24, 'payment_created', 'Đã tạo yêu cầu thanh toán', 'Hóa đơn cho lịch khám #36 có số tiền 250.000đ đang chờ thanh toán.', 'Hóa đơn cho lịch khám #36 có số tiền 250.000đ đang chờ thanh toán.', 'payment_created', 'user', 24, NULL, 'payment', 2, NULL, NULL, 2, 'payment', 1, '2026-05-28 23:19:13', '2026-05-28 23:19:31'),
+(38, 24, 'payment_paid', 'Thanh toán thành công', 'Giao dịch #2 đã được xác nhận thanh toán.', 'Giao dịch #2 đã được xác nhận thanh toán.', 'payment_paid', 'user', 24, NULL, 'payment', 2, NULL, NULL, 2, 'payment', 1, '2026-05-28 23:19:16', '2026-05-28 23:19:27'),
+(39, NULL, 'hospital_news', 'Bản tin mới của bệnh viện', 'bệnh ế', 'bệnh ế', 'hospital_news', 'all', NULL, NULL, 'news', 17, 23, 'http://127.0.0.1:8000/news/17', 17, 'news', 0, '2026-05-28 23:53:03', '2026-05-28 23:53:03');
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `notification_user`
+--
+
+DROP TABLE IF EXISTS `notification_user`;
+CREATE TABLE IF NOT EXISTS `notification_user` (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `notification_id` int UNSIGNED NOT NULL,
+  `user_id` int UNSIGNED NOT NULL,
+  `read_at` datetime DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `notification_user_notification_id_user_id_unique` (`notification_id`,`user_id`),
+  KEY `notification_user_user_id_read_at_index` (`user_id`,`read_at`)
+) ENGINE=MyISAM AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `notification_user`
+--
+
+INSERT INTO `notification_user` (`id`, `notification_id`, `user_id`, `read_at`, `created_at`, `updated_at`) VALUES
+(1, 36, 24, '2026-05-28 23:42:25', '2026-05-28 16:18:56', '2026-05-28 16:42:25'),
+(2, 37, 24, '2026-05-28 23:42:31', '2026-05-28 16:19:13', '2026-05-28 16:42:31'),
+(3, 38, 24, '2026-05-28 23:45:39', '2026-05-28 16:19:16', '2026-05-28 16:45:39'),
+(4, 35, 23, '2026-05-28 23:51:52', '2026-05-28 16:46:07', '2026-05-28 16:51:52'),
+(5, 32, 23, '2026-05-28 23:46:52', '2026-05-28 16:46:19', '2026-05-28 16:46:52'),
+(6, 33, 23, '2026-05-28 23:51:58', '2026-05-28 16:46:19', '2026-05-28 16:51:58'),
+(7, 34, 23, '2026-05-28 23:46:19', '2026-05-28 16:46:19', '2026-05-28 16:46:19'),
+(8, 39, 23, '2026-05-28 23:53:27', '2026-05-28 16:53:12', '2026-05-28 16:53:27'),
+(9, 39, 24, '2026-05-28 23:54:06', '2026-05-28 16:54:06', '2026-05-28 16:54:06');
 
 -- --------------------------------------------------------
 
@@ -1451,7 +1514,7 @@ CREATE TABLE IF NOT EXISTS `paymentitems` (
   `total_price` decimal(10,2) DEFAULT NULL,
   PRIMARY KEY (`item_id`),
   KEY `paymentitems_payment_id_foreign` (`payment_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `paymentitems`
@@ -1459,7 +1522,8 @@ CREATE TABLE IF NOT EXISTS `paymentitems` (
 
 INSERT INTO `paymentitems` (`item_id`, `payment_id`, `item_type`, `item_name`, `quantity`, `unit_price`, `total_price`) VALUES
 (1, 1, 'Khám bệnh', 'Phí khám - BS. Hoàng Văn Tùng', 1, 280000.00, 280000.00),
-(2, 1, 'Dịch vụ', 'Điện tâm đồ (ECG)', 1, 200000.00, 200000.00);
+(2, 1, 'Dịch vụ', 'Điện tâm đồ (ECG)', 1, 200000.00, 200000.00),
+(3, 2, 'Khám bệnh', 'Phí khám - BS. Nguyễn Thị Thu', 1, 250000.00, 250000.00);
 
 -- --------------------------------------------------------
 
@@ -1486,14 +1550,15 @@ CREATE TABLE IF NOT EXISTS `payments` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`payment_id`),
   UNIQUE KEY `payments_appointment_id_unique` (`appointment_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `payments`
 --
 
 INSERT INTO `payments` (`payment_id`, `appointment_id`, `subtotal`, `insurance_id`, `discount_amount`, `membership_id`, `total_amount`, `status`, `method`, `payment_method`, `payment_date`, `transaction_ref`, `notes`, `created_at`, `updated_at`) VALUES
-(1, 35, 480000.00, NULL, 0.00, NULL, 480000.00, 'Thành công', 'QR', NULL, '2026-05-20 13:39:46', 'PAY-26ZHARW6KR', NULL, NULL, NULL);
+(1, 35, 480000.00, NULL, 0.00, NULL, 480000.00, 'Thành công', 'QR', NULL, '2026-05-20 13:39:46', 'PAY-26ZHARW6KR', NULL, NULL, NULL),
+(2, 36, 250000.00, NULL, 0.00, NULL, 250000.00, 'Thành công', 'QR', NULL, '2026-05-28 23:19:16', 'PAY-Z8PRH1TOWH', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1618,7 +1683,14 @@ CREATE TABLE IF NOT EXISTS `queue_tickets` (
   KEY `queue_tickets_served_by_index` (`served_by`),
   KEY `idx_qt_date_sched_status` (`queue_date`,`schedule_id`,`status`),
   KEY `idx_qt_date_sched_priority_num` (`queue_date`,`schedule_id`,`priority_sort`,`queue_number`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `queue_tickets`
+--
+
+INSERT INTO `queue_tickets` (`ticket_id`, `appointment_id`, `schedule_id`, `user_id`, `patient_name`, `patient_phone`, `patient_email`, `queue_date`, `queue_number`, `priority`, `status`, `priority_sort`, `checkin_time`, `called_at`, `started_at`, `completed_at`, `est_wait_minutes`, `notes`, `served_by`, `created_at`, `updated_at`) VALUES
+(1, 36, 338, 24, 'Tú Huỳnh', '1234567890', 'tuh225095@gmail.com', '2026-05-28', 1, 'normal', 'waiting', 4, '2026-05-28 23:18:56', NULL, NULL, NULL, 15, NULL, NULL, '2026-05-28 16:18:56', '2026-05-28 16:18:57');
 
 -- --------------------------------------------------------
 
@@ -2128,15 +2200,15 @@ INSERT INTO `vital_signs` (`vital_id`, `record_id`, `blood_pressure`, `bp_status
 --
 DROP VIEW IF EXISTS `v_doctorratings`;
 CREATE TABLE IF NOT EXISTS `v_doctorratings` (
-`avatar_url` varchar(500)
-,`avg_rating` decimal(7,4)
-,`bio` varchar(1000)
-,`department_id` int unsigned
-,`doctor_id` int unsigned
-,`experience` int unsigned
+`doctor_id` int unsigned
 ,`full_name` varchar(100)
+,`department_id` int unsigned
+,`experience` int unsigned
 ,`price` decimal(10,2)
+,`avatar_url` varchar(500)
+,`bio` varchar(1000)
 ,`status` tinyint(1)
+,`avg_rating` decimal(7,4)
 ,`total_reviews` bigint
 );
 

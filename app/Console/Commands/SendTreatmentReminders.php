@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\TreatmentReminderMail;
 use App\Models\TreatmentReminder;
+use App\Services\NotificationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 
@@ -11,6 +12,11 @@ class SendTreatmentReminders extends Command
 {
     protected $signature = 'reminders:send';
     protected $description = 'Send treatment reminder emails to patients';
+
+    public function __construct(private NotificationService $notifications)
+    {
+        parent::__construct();
+    }
 
     public function handle(): void
     {
@@ -38,6 +44,17 @@ class SendTreatmentReminders extends Command
                 // CHÌA KHÓA: Đánh dấu đã gửi TRƯỚC khi bắn mail 
                 // Điều này chặn đứng việc tiến trình chạy sau quét trùng nếu lệnh bị nghẽn mạng quá 1 phút
                 $reminder->update(['is_sent' => 1]);
+
+                if ($patient?->user_id) {
+                    $this->notifications->createForUser(
+                        $patient->user_id,
+                        'Nhắc lịch điều trị',
+                        $reminder->message,
+                        'treatment_reminder',
+                        'treatment_reminder',
+                        $reminder->reminder_id
+                    );
+                }
 
                 Mail::to($email)->send(new TreatmentReminderMail($reminder));
 

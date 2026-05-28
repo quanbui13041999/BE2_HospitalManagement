@@ -53,6 +53,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notification::class, 'user_id', 'user_id');
     }
+    public function notificationReads()
+    {
+        return $this->hasMany(NotificationUser::class, 'user_id', 'user_id');
+    }
     public function reviews()
     {
         return $this->hasMany(Review::class, 'user_id', 'user_id');
@@ -151,15 +155,14 @@ class User extends Authenticatable
      */
     public function notify(string $type, string $title, string $content, ?int $refId = null, ?string $refType = null)
     {
-        return $this->notifications()->create([
-            'notif_type' => $type,
-            'title' => $title,
-            'content' => $content,
-            'ref_id' => $refId,
-            'ref_type' => $refType,
-            'is_read' => false,
-            'created_at' => now(),
-        ]);
+        return app(\App\Services\NotificationService::class)->createForUser(
+            $this->user_id,
+            $title,
+            $content,
+            $type,
+            $refType,
+            $refId
+        );
     }
 
     /**

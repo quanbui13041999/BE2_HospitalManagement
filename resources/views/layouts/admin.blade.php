@@ -188,6 +188,9 @@
     <div id="topbar">
         <span class="page-title">@yield('title', 'Trang quản trị')</span>
         <div class="d-flex align-items-center gap-3">
+            @auth
+                <x-notification-bell />
+            @endauth
             <span class="text-muted small">
                 <i class="bi bi-calendar3 me-1"></i>
                 {{ now()->format('d/m/Y') }}
