@@ -955,7 +955,7 @@
                                             <circle cx="12" cy="12" r="10" />
                                             <polyline points="12 6 12 12 16 14" />
                                         </svg>
-                                        {{ \Carbon\Carbon::parse($item->start_time)->format('H:i') }}
+                                        {{ \Carbon\Carbon::parse($item->appointment_time)->format('H:i') }}
                                     </div>
                                 </div>
                             </td>
