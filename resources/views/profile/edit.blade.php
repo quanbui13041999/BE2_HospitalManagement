@@ -16,11 +16,22 @@
         <h1 class="page-title">Chỉnh sửa thông tin cá nhân</h1>
     </div>
 
+    @if(session('success'))
+    <div class="form-alert success">{{ session('success') }}</div>
+    @endif
+    @if(session('warning'))
+    <div class="form-alert warning">{{ session('warning') }}</div>
+    @endif
+    @if(session('error'))
+    <div class="form-alert error">{{ session('error') }}</div>
+    @endif
+
     {{-- ===== FORM XÓA AVATAR — đặt NGOÀI form chính ===== --}}
     @if($user->avatar_url)
     <form id="deleteAvatarForm" action="{{ route('profile.avatar.delete') }}" method="POST" style="display:none">
         @csrf
         @method('DELETE')
+        <input type="hidden" name="profile_snapshot" value="{{ $profileSnapshot }}">
     </form>
     @endif
 
@@ -28,6 +39,7 @@
     <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" class="profile-form">
         @csrf
         @method('PUT')
+        <input type="hidden" name="profile_snapshot" value="{{ $profileSnapshot }}">
 
         {{-- Avatar upload --}}
         <div class="form-card">
@@ -41,7 +53,7 @@
                             <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4H2zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/>
                         </svg>
                     </label>
-                    <input type="file" id="avatar" name="avatar" accept="image/*" class="hidden-input" onchange="previewAvatar(this)">
+                    <input type="file" id="avatar" name="avatar" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="hidden-input" onchange="previewAvatar(this)">
                 </div>
                 <div class="avatar-meta">
                     <p class="avatar-hint">JPG, PNG, WEBP · Tối đa 2MB</p>
@@ -54,6 +66,7 @@
                     @endif
                 </div>
             </div>
+            <p class="field-error" id="avatarClientError" style="display:none"></p>
             @error('avatar') <p class="field-error">{{ $message }}</p> @enderror
         </div>
 
@@ -67,6 +80,7 @@
                     <input type="text" id="full_name" name="full_name"
                         value="{{ old('full_name', $user->full_name) }}"
                         class="form-input @error('full_name') is-error @enderror"
+                        maxlength="100" pattern="[A-Za-zÀ-ỹ\s.'-]+" title="Họ và tên chỉ được nhập chữ cái, khoảng trắng, dấu chấm, dấu gạch nối hoặc dấu nháy."
                         placeholder="Nhập họ và tên đầy đủ">
                     @error('full_name') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
@@ -76,6 +90,7 @@
                     <input type="email" id="email" name="email"
                         value="{{ old('email', $user->email) }}"
                         class="form-input @error('email') is-error @enderror"
+                        maxlength="100"
                         placeholder="example@email.com">
                     @error('email') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
@@ -85,6 +100,7 @@
                     <input type="tel" id="phone" name="phone"
                         value="{{ old('phone', $user->phone) }}"
                         class="form-input @error('phone') is-error @enderror"
+                        inputmode="numeric" minlength="10" maxlength="10" pattern="0[0-9]{9}" title="Số điện thoại phải đúng 10 chữ số và bắt đầu bằng số 0."
                         placeholder="0901234567">
                     @error('phone') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
@@ -117,6 +133,7 @@
                     <input type="text" id="address" name="address"
                         value="{{ old('address', $user->address) }}"
                         class="form-input @error('address') is-error @enderror"
+                        maxlength="255" pattern="[A-Za-zÀ-ỹ0-9\s,.\-/]+" title="Địa chỉ chỉ được nhập chữ, số, khoảng trắng và các dấu phân cách thông dụng."
                         placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành">
                     @error('address') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
@@ -140,9 +157,31 @@
 <script>
 function previewAvatar(input) {
     if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const error = document.getElementById('avatarClientError');
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const maxSize = 2 * 1024 * 1024;
+
+        error.style.display = 'none';
+        error.textContent = '';
+
+        if (!allowedTypes.includes(file.type)) {
+            input.value = '';
+            error.textContent = 'Chỉ được chọn ảnh JPG, JPEG, PNG hoặc WEBP.';
+            error.style.display = 'block';
+            return;
+        }
+
+        if (file.size > maxSize) {
+            input.value = '';
+            error.textContent = 'Ảnh không được vượt quá 2MB.';
+            error.style.display = 'block';
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = e => document.getElementById('avatarPreview').src = e.target.result;
-        reader.readAsDataURL(input.files[0]);
+        reader.readAsDataURL(file);
     }
 }
 </script>
@@ -154,6 +193,10 @@ function previewAvatar(input) {
     text-decoration: none; font-size: .875rem; margin-bottom: .5rem; }
 .back-link:hover { color: #4f46e5; }
 .page-title { font-size: 1.5rem; font-weight: 700; color: #111827; margin: 0; }
+.form-alert { padding: .85rem 1rem; border-radius: 10px; margin-bottom: 1rem; font-size: .875rem; font-weight: 600; }
+.form-alert.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.form-alert.warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.form-alert.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
 .form-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px;
     padding: 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); }

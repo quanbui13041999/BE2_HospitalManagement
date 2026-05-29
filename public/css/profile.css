@@ -73,6 +73,18 @@ body {
     border: 1px solid var(--c-accent-md);
 }
 
+.profile-alert.warning {
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.profile-alert.error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
 .profile-alert svg {
     flex-shrink: 0;
     opacity: 0.85;

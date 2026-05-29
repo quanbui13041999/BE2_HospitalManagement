@@ -60,6 +60,16 @@
         <span>{{ session('success') }}</span>
     </div>
     @endif
+    @if(session('warning'))
+    <div class="profile-alert warning" role="alert">
+        <span>{{ session('warning') }}</span>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="profile-alert error" role="alert">
+        <span>{{ session('error') }}</span>
+    </div>
+    @endif
 
     {{-- Hero Section --}}
     <section class="profile-card hero-card">
@@ -166,7 +176,7 @@
 
             <div class="quick-links">
 
-                <a href="{{ route('health.store') }}" class="quick-link-item">
+                <a href="{{ route('health.index') }}" class="quick-link-item">
                     <div class="link-icon">📋</div>
                     <div>
                         <strong>Tiền sử & dị ứng</strong>

@@ -17,9 +17,17 @@
         <p class="page-subtitle">Mật khẩu mới phải có ít nhất 8 ký tự và khác mật khẩu hiện tại.</p>
     </div>
 
+    @if(session('warning'))
+    <div class="form-alert warning">{{ session('warning') }}</div>
+    @endif
+    @if(session('error'))
+    <div class="form-alert error">{{ session('error') }}</div>
+    @endif
+
     <form action="{{ route('profile.password.update') }}" method="POST" class="form-card" id="passwordForm">
         @csrf
         @method('PUT')
+        <input type="hidden" name="profile_snapshot" value="{{ $profileSnapshot }}">
 
         <div class="form-group">
             <label for="current_password" class="form-label">Mật khẩu hiện tại <span class="required">*</span></label>
@@ -45,6 +53,7 @@
                 <input type="password" id="new_password" name="new_password"
                     class="form-input @error('new_password') is-error @enderror"
                     placeholder="Ít nhất 8 ký tự" autocomplete="new-password"
+                    minlength="8" maxlength="255"
                     oninput="checkStrength(this.value)">
                 <button type="button" class="toggle-pw" onclick="togglePw('new_password', this)" tabindex="-1">
                     <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -123,6 +132,9 @@ function checkStrength(val) {
 .back-link:hover { color: #4f46e5; }
 .page-title { font-size: 1.5rem; font-weight: 700; color: #111827; margin: 0 0 .25rem; }
 .page-subtitle { font-size: .875rem; color: #6b7280; margin: 0; }
+.form-alert { padding: .85rem 1rem; border-radius: 10px; margin-bottom: 1rem; font-size: .875rem; font-weight: 600; }
+.form-alert.warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.form-alert.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 .form-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 1.75rem;
     box-shadow: 0 1px 3px rgba(0,0,0,.06); display: flex; flex-direction: column; gap: 1.1rem; }
 .form-group { display: flex; flex-direction: column; gap: .35rem; }
