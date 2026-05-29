@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{TreatmentReminder, User, MedicalRecord};
+use App\Models\{TreatmentReminder, User, MedicalRecord, TreatmentHomeInstruction};
 use App\Services\{TreatmentReminderService, ComplianceReportService};
 use App\Http\Requests\Admin\StoreTreatmentReminderRequest;
 use Illuminate\Http\Request;
@@ -96,5 +96,41 @@ class TreatmentReminderAdminController extends Controller
             $request->integer('year', now()->year)
         );
         return view('admin.treatment_reminder.compliance', compact('report'));
+    }
+
+    /** ============================================================
+     * BỔ SUNG: Form tạo hướng dẫn/bài tập tại nhà cho bệnh nhân
+     * ============================================================ */
+    public function createInstruction(int $userId)
+    {
+        $user = User::where('role_id', 3)->findOrFail($userId);
+        return view('admin.treatment_reminder.create_instruction', compact('user'));
+    }
+
+    /** ============================================================
+     * BỔ SUNG: Lưu hướng dẫn/bài tập tại nhà mới
+     * ============================================================ */
+    public function storeInstruction(Request $request)
+    {
+        $request->validate([
+            'user_id'          => 'required|integer',
+            'instruction_text' => 'required|string|max:255',
+            'detail'           => 'nullable|string',
+            'icon'             => 'nullable|string',
+        ]);
+
+        TreatmentHomeInstruction::create([
+            'user_id'          => $request->user_id,
+            'record_id'        => null, // Tạo tự do trực tiếp từ trang hồ sơ tuân thủ nên tạm để null
+            'instruction_text' => $request->instruction_text,
+            'detail'           => $request->detail,
+            'icon'             => $request->icon ?? 'tasks',
+            'sort_order'       => 0,
+            'is_active'        => 1,
+        ]);
+
+        // Điều hướng ngược về trang chi tiết của bệnh nhân vừa tạo theo đúng cấu trúc route mới
+        return redirect()->route('admin.treatment.show', $request->user_id)
+            ->with('success', 'Đã thêm bài tập tại nhà thành công!');
     }
 }

@@ -99,9 +99,21 @@
            class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
             <i class="bi bi-credit-card"></i> Thanh toán
         </a>
+        <a href="{{ route('admin.queue.index') }}"
+           class="nav-link {{ request()->routeIs('admin.queue.*') ? 'active' : '' }}">
+            <i class="bi bi-collection-play"></i> Hàng đợi
+        </a>
         <a href="{{ route('admin.news.index') }}"
            class="nav-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">
             <i class="bi bi-newspaper"></i> Bản tin
+        </a>
+        <a href="{{ route('admin.rehab.index') }}"
+           class="nav-link {{ request()->routeIs('admin.rehab.*') ? 'active' : '' }}">
+            <i class="bi bi-file-earmark-medical"></i> Quản lý Phục hồi
+        </a>
+        <a href="{{ route('admin.activity-logs.index') }}"
+           class="nav-link {{ request()->routeIs('admin.activity-logs.*') ? 'active' : '' }}">
+            <i class="bi bi-clock-history"></i> Nhật ký hoạt động
         </a>
 
         <div class="nav-section">Thống kê & Y tế</div>
@@ -121,6 +133,16 @@
            class="nav-link {{ request()->routeIs('admin.treatment.*') ? 'active' : '' }}">
             <i class="bi bi-alarm"></i> Nhắc nhở tuân thủ
         </a>
+        <a href="{{ route('admin.nutrition.index') }}"
+           class="nav-link {{ request()->routeIs('admin.nutrition.*') ? 'active' : '' }}">
+            <i class="bi bi-alarm"></i> Quản lý Dinh dưỡng
+        </a>
+        @if(in_array(Auth::user()->role_id, [1, 2, 4]))
+        <a href="{{ route('admin.patients.search') }}"
+           class="nav-link {{ request()->routeIs('admin.patients.search*') ? 'active' : '' }}">
+            <i class="bi bi-person-bounding-box"></i> Tìm kiếm bệnh nhân (AI)
+        </a>
+        @endif
 
         <div class="nav-section">Hỗ trợ</div>
         @if(Auth::user()->role_id == 1 || Auth::user()->role_id == 2)
@@ -166,6 +188,9 @@
     <div id="topbar">
         <span class="page-title">@yield('title', 'Trang quản trị')</span>
         <div class="d-flex align-items-center gap-3">
+            @auth
+                <x-notification-bell />
+            @endauth
             <span class="text-muted small">
                 <i class="bi bi-calendar3 me-1"></i>
                 {{ now()->format('d/m/Y') }}

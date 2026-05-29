@@ -369,9 +369,14 @@
                         @endforeach
                     </div>
 
-                    <a href="{{ route('profile.show') }}" class="btn-hover-white" style="background: #fff; color: #000; padding: 0.5rem 1.5rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: background 200ms;">
-                        Hồ sơ
-                    </a>
+                    <div class="flex items-center gap-4">
+                        @auth
+                            <x-notification-bell :direct="true" />
+                        @endauth
+                        <a href="{{ route('profile.show') }}" class="btn-hover-white" style="background: #fff; color: #000; padding: 0.5rem 1.5rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: background 200ms;">
+                            Hồ sơ
+                        </a>
+                    </div>
                 </nav>
             </div>
 
@@ -396,6 +401,9 @@
                             </a>
                             <a href="#news-list" class="liquid-glass btn-liquid-hover" style="border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 0.75rem 2rem; border-radius: 0.5rem; font-weight: 500; text-decoration: none; font-size: 1rem; background: transparent; transition: background 200ms, color 200ms;">
                                 Khám phá thêm
+                            </a>
+                            <a href="{{ route('rehab.index') }}" class="btn-hover-white" style="background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.12); padding: 0.75rem 2rem; border-radius: 0.5rem; font-weight: 500; text-decoration: none; font-size: 1rem; transition: background 200ms;">
+                                Thư viện phục hồi
                             </a>
                         </div>
                     </div>

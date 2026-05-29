@@ -13,7 +13,7 @@ return new class extends Migration {
             $table->unsignedInteger('schedule_id')->nullable();
             $table->unsignedInteger('service_id')->nullable();
             $table->dateTime('appointment_time');
-            $table->dateTime('appointment_time_end')->nullable(); // Merged from 2026 migration
+            $table->dateTime('appointment_timeEnd')->nullable();
             $table->integer('queue_number')->nullable();
             $table->string('status', 50)->default('Chờ xác nhận');
             $table->text('note')->nullable();
@@ -21,6 +21,8 @@ return new class extends Migration {
             $table->dateTime('slot_hold_expire')->nullable();
             $table->unsignedInteger('rescheduled_from')->nullable();
             $table->dateTime('created_at')->useCurrent();
+            $table->boolean('mail_reminded_1day')->default(false);
+            $table->boolean('mail_reminded_1hour')->default(false);
 
             $table->foreign('user_id')
                   ->references('user_id')->on('users')

@@ -10,13 +10,13 @@ return new class extends Migration {
         Schema::create('chatrooms', function (Blueprint $table) {
             $table->increments('room_id');
             $table->unsignedInteger('user_id');
-            $table->unsignedInteger('doctor_id');
+            $table->unsignedInteger('doctor_id')->nullable();
             $table->string('status', 20)->default('Mở');
             $table->dateTime('created_at')->useCurrent();
             $table->dateTime('closed_at')->nullable();
 
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
-            $table->foreign('doctor_id')->references('doctor_id')->on('doctors')->onDelete('cascade');
+            $table->index('doctor_id');
         });
     }
 

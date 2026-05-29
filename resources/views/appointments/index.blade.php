@@ -806,6 +806,13 @@
             <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
             <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
             <a href="{{ route('news.index') }}">📰 Bản tin</a>
+            @auth
+                @if(auth()->user()->isPatient())
+                    <a href="{{ route('medical_history.index') }}">📄 Hồ sơ bệnh án</a>
+                @elseif(auth()->user()->isDoctor())
+                    <a href="{{ route('doctor.appointments.index') }}">🩺 Danh sách khám</a>
+                @endif
+            @endauth
         </div>
         <div class="topbar-right" style="display:flex;align-items:center;gap:10px;">
             @auth

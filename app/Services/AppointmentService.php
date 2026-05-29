@@ -8,6 +8,7 @@ use App\Mail\AppointmentRescheduleMail;
 use App\Models\Appointment;
 use App\Models\DoctorSchedule;
 use App\Models\User;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -279,27 +280,49 @@ class AppointmentService
                 ]);
             }
 
-            // Create notification
-            DB::table('notifications')->insert([
-                'user_id' => $userId,
-                'notif_type' => 'Lịch hẹn',
-                'title' => 'Đặt lịch hẹn thành công',
-                'content' => 'Lịch khám lúc ' . $data['appointment_time']
+            app(NotificationService::class)->createForUser(
+                $userId,
+                'Đặt lịch hẹn thành công',
+                'Lịch khám lúc ' . $data['appointment_time']
                     . ' ngày ' . Carbon::parse($data['work_date'])->format('d/m/Y')
                     . '. Số thứ tự: #' . $queueNumber,
-                'ref_id' => $appointmentId,
-                'ref_type' => 'appointment',
-                'is_read' => false,
-                'created_at' => now(),
+                'appointment_created',
+                'appointment',
+                $appointmentId
+            );
+
+            $this->logAppointmentEvent('Đặt lịch khám', $appointmentId, $userId, [
+                'schedule_id' => $data['schedule_id'],
+                'service_id' => $data['service_id'] ?? null,
+                'appointment_time' => $appointmentDatetime,
+                'queue_number' => $queueNumber,
             ]);
 
-            // Log activity
-            DB::table('activitylogs')->insert([
-                'user_id' => $userId,
-                'action' => 'Đặt lịch hẹn #' . $appointmentId,
-                'ip_address' => $data['ip_address'] ?? null,
-                'created_at' => now(),
-            ]);
+            // Tự động đẩy vào hàng đợi nếu ngày khám là hôm nay
+            $ticket = null;
+            if (Carbon::parse($data['work_date'])->isToday()) {
+                $user = User::find($userId);
+                $priority = 'normal';
+                if ($user && $user->date_of_birth) {
+                    $age = Carbon::parse($user->date_of_birth)->age;
+                    if ($age >= 60) {
+                        $priority = 'elderly';
+                    }
+                }
+
+                $queueService = app(\App\Services\QueueService::class);
+                $ticket = $queueService->checkin([
+                    'schedule_id'    => $data['schedule_id'],
+                    'priority'       => $priority,
+                    'appointment_id' => $appointmentId,
+                    'user_id'        => $userId,
+                    'patient_name'   => $user ? $user->full_name : 'Bệnh nhân',
+                    'patient_phone'  => $user ? $user->phone : null,
+                    'patient_email'  => $user ? $user->email : null,
+                    'notes'          => $data['note'] ?? null,
+                    'served_by'      => null, // Đặt lịch online tự động check-in, không qua lễ tân
+                ]);
+            }
 
             DB::commit();
         } catch (Exception $e) {
@@ -309,6 +332,14 @@ class AppointmentService
 
         // Send email after commit
         $this->sendAppointmentConfirmationEmail($appointmentId, $userId);
+
+        if ($ticket) {
+            return [
+                'appointment_id' => $appointmentId,
+                'queue_number' => $ticket->queue_number,
+                'message' => 'Đặt lịch hẹn thành công và đã được đưa vào hàng đợi khám hôm nay! Số thứ tự của bạn là: #' . $ticket->queue_number . '.'
+            ];
+        }
 
         return [
             'appointment_id' => $appointmentId,
@@ -533,23 +564,32 @@ class AppointmentService
                     'rescheduled_from' => $appointment->schedule_id,
                 ]);
 
-            DB::table('notifications')->insert([
-                'user_id' => $userId,
-                'notif_type' => 'Lịch hẹn',
-                'title' => 'Dời lịch hẹn thành công',
-                'content' => 'Lịch hẹn #' . $appointmentId . ' đã được dời sang '
+            app(NotificationService::class)->createForUser(
+                $userId,
+                'Dời lịch hẹn thành công',
+                'Lịch hẹn #' . $appointmentId . ' đã được dời sang '
                     . Carbon::parse($newDatetime)->format('H:i d/m/Y'),
-                'ref_id' => $appointmentId,
-                'ref_type' => 'appointment',
-                'is_read' => false,
-                'created_at' => now(),
-            ]);
+                'appointment_rescheduled',
+                'appointment',
+                $appointmentId
+            );
 
-            DB::table('activitylogs')->insert([
-                'user_id' => $userId,
-                'action' => 'Dời lịch hẹn #' . $appointmentId . ' sang schedule #' . $data['new_schedule_id'],
-                'ip_address' => $data['ip_address'] ?? null,
-                'created_at' => now(),
+            $this->logAppointmentEvent('Dời lịch khám', $appointmentId, $userId, [
+                'changes' => [
+                    'schedule_id' => [
+                        'before' => $appointment->schedule_id,
+                        'after' => $data['new_schedule_id'],
+                    ],
+                    'appointment_time' => [
+                        'before' => $appointment->appointment_time,
+                        'after' => $newDatetime,
+                    ],
+                    'status' => [
+                        'before' => $appointment->status,
+                        'after' => 'Chờ xác nhận',
+                    ],
+                ],
+                'reason' => $data['reschedule_reason'] ?? null,
             ]);
 
             DB::commit();
@@ -623,23 +663,24 @@ class AppointmentService
                     'cancel_reason' => $data['cancel_reason'] ?? 'Bệnh nhân tự hủy',
                 ]);
 
-            DB::table('notifications')->insert([
-                'user_id' => $userId,
-                'notif_type' => 'Lịch hẹn',
-                'title' => 'Hủy lịch hẹn thành công',
-                'content' => 'Lịch hẹn #' . $appointmentId . ' đã được hủy.'
+            app(NotificationService::class)->createForUser(
+                $userId,
+                'Hủy lịch hẹn thành công',
+                'Lịch hẹn #' . $appointmentId . ' đã được hủy.'
                     . ($data['cancel_reason'] ? ' Lý do: ' . $data['cancel_reason'] : ''),
-                'ref_id' => $appointmentId,
-                'ref_type' => 'appointment',
-                'is_read' => false,
-                'created_at' => now(),
-            ]);
+                'appointment_cancelled',
+                'appointment',
+                $appointmentId
+            );
 
-            DB::table('activitylogs')->insert([
-                'user_id' => $userId,
-                'action' => 'Hủy lịch hẹn #' . $appointmentId,
-                'ip_address' => $data['ip_address'] ?? null,
-                'created_at' => now(),
+            $this->logAppointmentEvent('Hủy lịch khám', $appointmentId, $userId, [
+                'changes' => [
+                    'status' => [
+                        'before' => $appointment->status,
+                        'after' => 'Đã hủy',
+                    ],
+                ],
+                'cancel_reason' => $data['cancel_reason'] ?? 'Bệnh nhân tự hủy',
             ]);
 
             DB::commit();
@@ -745,5 +786,50 @@ class AppointmentService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function logAppointmentEvent(string $action, int $appointmentId, int $userId, array $metadata = []): void
+    {
+        $actor = User::with('role')->find($userId);
+        $appointment = DB::table('appointments')
+            ->leftJoin('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
+            ->leftJoin('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
+            ->where('appointments.appointment_id', $appointmentId)
+            ->select(
+                'appointments.appointment_time',
+                'appointments.queue_number',
+                'appointments.status',
+                'doctors.full_name as doctor_name'
+            )
+            ->first();
+
+        $time = $appointment?->appointment_time
+            ? Carbon::parse($appointment->appointment_time)->format('H:i ngày d/m/Y')
+            : 'không rõ thời gian';
+
+        $description = match ($action) {
+            'Đặt lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
+                . ' đã đặt lịch khám với '
+                . ($appointment?->doctor_name ? 'BS. ' . $appointment->doctor_name : 'bác sĩ')
+                . ' vào ' . $time . '.',
+            'Dời lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
+                . ' đã dời lịch khám #' . $appointmentId . ' sang ' . $time . '.',
+            'Hủy lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
+                . ' đã hủy lịch khám #' . $appointmentId . '.',
+            default => $action . ' #' . $appointmentId,
+        };
+
+        ActivityLogService::log(
+            $action,
+            $description,
+            'appointment',
+            $appointmentId,
+            array_merge($metadata, [
+                'appointment_status' => $appointment?->status,
+                'queue_number' => $appointment?->queue_number,
+            ]),
+            'success',
+            $actor
+        );
     }
 }

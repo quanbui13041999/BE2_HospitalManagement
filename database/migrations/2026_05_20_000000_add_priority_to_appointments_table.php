@@ -11,10 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
-            $table->boolean('is_priority')->default(false)->after('status');
-            $table->string('priority_type')->nullable()->after('is_priority');
-        });
+        if (! Schema::hasTable('appointments')) {
+            return;
+        }
+
+        if (! Schema::hasColumn('appointments', 'is_priority')) {
+            Schema::table('appointments', function (Blueprint $table) {
+                $table->boolean('is_priority')->default(false)->after('status');
+            });
+        }
+
+        if (! Schema::hasColumn('appointments', 'priority_type')) {
+            Schema::table('appointments', function (Blueprint $table) {
+                $table->string('priority_type')->nullable()->after('is_priority');
+            });
+        }
     }
 
     /**
@@ -22,8 +33,20 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
-            $table->dropColumn(['is_priority', 'priority_type']);
-        });
+        if (! Schema::hasTable('appointments')) {
+            return;
+        }
+
+        if (Schema::hasColumn('appointments', 'priority_type')) {
+            Schema::table('appointments', function (Blueprint $table) {
+                $table->dropColumn('priority_type');
+            });
+        }
+
+        if (Schema::hasColumn('appointments', 'is_priority')) {
+            Schema::table('appointments', function (Blueprint $table) {
+                $table->dropColumn('is_priority');
+            });
+        }
     }
 };

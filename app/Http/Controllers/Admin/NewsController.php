@@ -7,6 +7,7 @@ use App\Http\Requests\StoreNewsRequest;
 use App\Mail\NewsPublishedMail;
 use App\Models\HospitalNews;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -15,6 +16,8 @@ use Exception;
 
 class NewsController extends Controller
 {
+    public function __construct(private NotificationService $notifications) {}
+
     public function index()
     {
         $news = HospitalNews::with('author')
@@ -45,6 +48,18 @@ class NewsController extends Controller
         }
 
         $article = HospitalNews::create($data);
+
+        if ($article->is_published) {
+            $this->notifications->createForAll(
+                'Bản tin mới của bệnh viện',
+                $article->title,
+                'hospital_news',
+                'news',
+                $article->news_id,
+                Auth::id(),
+                route('news.show', $article->news_id)
+            );
+        }
 
         return redirect()->route('admin.news.index')
             ->with('success', 'Đã tạo bài viết thành công.');
@@ -94,11 +109,24 @@ class NewsController extends Controller
     public function togglePublish($id)
     {
         $article = HospitalNews::findOrFail($id);
+        $wasPublished = (bool) $article->is_published;
         $article->is_published = !$article->is_published;
         if ($article->is_published && !$article->published_at) {
             $article->published_at = now();
         }
         $article->save();
+
+        if (! $wasPublished && $article->is_published) {
+            $this->notifications->createForAll(
+                'Bản tin mới của bệnh viện',
+                $article->title,
+                'hospital_news',
+                'news',
+                $article->news_id,
+                Auth::id(),
+                route('news.show', $article->news_id)
+            );
+        }
 
         return back()->with('success', 'Đã thay đổi trạng thái bài viết.');
     }
