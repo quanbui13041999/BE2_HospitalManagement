@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\AppointmentService;
+use App\Services\AppointmentReminderService;
 use App\Services\Doctor\DoctorSuggestionService;
 use App\Services\Doctor\DoctorTimeslotService;
 use App\Services\Doctor\AppointmentQueueService;
@@ -18,10 +19,12 @@ use Illuminate\Support\Facades\Auth;
 class AppointmentController extends Controller
 {
     protected AppointmentService $appointmentService;
+    protected AppointmentReminderService $appointmentReminderService;
 
-    public function __construct(AppointmentService $appointmentService)
+    public function __construct(AppointmentService $appointmentService, AppointmentReminderService $appointmentReminderService)
     {
         $this->appointmentService = $appointmentService;
+        $this->appointmentReminderService = $appointmentReminderService;
     }
 
     // ================================================================
@@ -223,6 +226,17 @@ class AppointmentController extends Controller
             return redirect()->route('appointments.index')
                 ->withErrors(['msg' => $e->getMessage()]);
         }
+    }
+
+    public function sendEmailReminders()
+    {
+        $stats = $this->appointmentReminderService->sendPendingReminders();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Appointment reminder job executed.',
+            'data' => $stats,
+        ]);
     }
 
     /**
