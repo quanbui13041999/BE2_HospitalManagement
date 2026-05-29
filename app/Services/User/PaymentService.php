@@ -6,11 +6,16 @@ use App\Models\Appointment;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Repositories\PaymentRepository;
+use App\Services\ActivityLogService;
+use App\Services\NotificationService;
 use Illuminate\Support\Str;
 
 class PaymentService
 {
-    public function __construct(protected PaymentRepository $repo) {}
+    public function __construct(
+        protected PaymentRepository $repo,
+        protected NotificationService $notifications
+    ) {}
 
     /**
      * Xây dựng dữ liệu trang thanh toán cho user.
@@ -128,6 +133,15 @@ class PaymentService
             'payment_date'    => now(),
         ]);
 
+        $this->notifications->createForUser(
+            $userId,
+            'Đã tạo yêu cầu thanh toán',
+            'Hóa đơn cho lịch khám #' . $appointmentId . ' có số tiền ' . number_format($totalAmount, 0, ',', '.') . 'đ đang chờ thanh toán.',
+            'payment_created',
+            'payment',
+            $payment->payment_id
+        );
+
         // Tạo payment items
         if ($doctorFee > 0) {
             PaymentItem::create([
@@ -179,10 +193,31 @@ class PaymentService
             if ($payment) {
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
+                    $this->notifications->createForUser(
+                        $payment->appointment->user_id,
+                        'Thanh toán thành công',
+                        'Giao dịch #' . $payment->payment_id . ' đã được xác nhận thanh toán.',
+                        'payment_paid',
+                        'payment',
+                        $payment->payment_id
+                    );
                 }
                 if ($payment->invoice) {
                     $payment->invoice->update(['status' => 'Đã thanh toán']);
                 }
+
+                ActivityLogService::log(
+                    'Thanh toán lịch khám',
+                    'Bệnh nhân đã thanh toán lịch khám #' . $payment->appointment_id . ' với số tiền ' . number_format((float) $payment->total_amount, 0, ',', '.') . 'đ.',
+                    'payment',
+                    $payment->payment_id,
+                    [
+                        'appointment_id' => $payment->appointment_id,
+                        'method' => $payment->method,
+                        'amount' => $payment->total_amount,
+                        'transaction_ref' => $payment->transaction_ref,
+                    ]
+                );
             }
         }
         

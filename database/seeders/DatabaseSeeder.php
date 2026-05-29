@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         }
 
         DB::statement('DROP VIEW IF EXISTS v_doctorratings');
+        DB::statement('DROP TABLE IF EXISTS v_doctorratings');
         DB::connection()->getPdo()->exec('SET FOREIGN_KEY_CHECKS=0');
 
         try {
@@ -36,14 +37,23 @@ class DatabaseSeeder extends Seeder
                     continue;
                 }
 
+                $statement = $this->makeSafe($statement);
+
                 DB::connection()->getPdo()->exec($statement);
             }
         } finally {
             DB::connection()->getPdo()->exec('SET FOREIGN_KEY_CHECKS=1');
         }
 
+        $this->repairMembershipCardsSchema();
         $this->seedMedicalDetailBaseline();
         $this->createDoctorRatingsView();
+
+        $this->call([
+            FoodSeeder::class,
+            NutritionArticleSeeder::class,
+            DiseaseNutritionRuleSeeder::class,
+        ]);
     }
 
     private function shouldSkip(string $statement): bool
@@ -58,9 +68,19 @@ class DatabaseSeeder extends Seeder
             || str_starts_with($normalized, 'use ')
             || str_starts_with($normalized, 'start transaction')
             || str_starts_with($normalized, 'commit')
-            || str_starts_with($normalized, 'drop table if exists `migrations`')
+            || str_starts_with($normalized, 'drop table if exists')
+            || str_starts_with($normalized, 'drop view if exists')
             || str_starts_with($normalized, 'create table if not exists `migrations`')
+            || str_starts_with($normalized, 'create table if not exists `v_doctorratings`')
             || str_starts_with($normalized, 'insert into `migrations`');
+    }
+
+    private function makeSafe(string $statement): string
+    {
+        $statement = preg_replace('/^insert\s+into\s+/i', 'INSERT IGNORE INTO ', $statement, 1) ?? $statement;
+        $statement = preg_replace('/\s+DEFINER=`[^`]+`@`[^`]+`/i', '', $statement) ?? $statement;
+
+        return $statement;
     }
 
     /**
@@ -119,9 +139,11 @@ class DatabaseSeeder extends Seeder
 
     private function seedMedicalDetailBaseline(): void
     {
-        if (! DB::getSchemaBuilder()->hasTable('medical_records')
+        if (
+            ! DB::getSchemaBuilder()->hasTable('medical_records')
             || ! DB::getSchemaBuilder()->hasTable('diagnoses')
-            || ! DB::getSchemaBuilder()->hasTable('vital_signs')) {
+            || ! DB::getSchemaBuilder()->hasTable('vital_signs')
+        ) {
             return;
         }
 
@@ -189,10 +211,23 @@ class DatabaseSeeder extends Seeder
         ]);
     }
 
+    private function repairMembershipCardsSchema(): void
+    {
+        if (! DB::getSchemaBuilder()->hasTable('membershipcards')) {
+            return;
+        }
+
+        if (! DB::getSchemaBuilder()->hasColumn('membershipcards', 'total_spent')) {
+            DB::statement('ALTER TABLE membershipcards ADD total_spent DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER points');
+        }
+    }
+
     private function createDoctorRatingsView(): void
     {
-        if (! DB::getSchemaBuilder()->hasTable('doctors')
-            || ! DB::getSchemaBuilder()->hasTable('reviews')) {
+        if (
+            ! DB::getSchemaBuilder()->hasTable('doctors')
+            || ! DB::getSchemaBuilder()->hasTable('reviews')
+        ) {
             return;
         }
 

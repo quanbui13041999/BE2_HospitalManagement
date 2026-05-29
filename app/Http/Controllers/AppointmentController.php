@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Services\AppointmentService;
-use App\Services\DoctorSuggestionService;
-use App\Services\DoctorTimeslotService;
-use App\Services\AppointmentQueueService;
+use App\Services\Doctor\DoctorSuggestionService;
+use App\Services\Doctor\DoctorTimeslotService;
+use App\Services\Doctor\AppointmentQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -67,6 +67,8 @@ class AppointmentController extends Controller
             'work_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|string|max:10',
             'note' => 'nullable|string|max:255',
+            'is_priority' => 'nullable',
+            'priority_type' => 'nullable|string|max:255',
         ], [
             'schedule_id.required' => 'Vui lòng chọn khung giờ khám.',
             'schedule_id.exists' => 'Khung giờ không hợp lệ.',
@@ -83,6 +85,8 @@ class AppointmentController extends Controller
                     'work_date' => $request->work_date,
                     'appointment_time' => $request->appointment_time,
                     'note' => $request->note,
+                    'is_priority' => $request->has('is_priority') ? true : false,
+                    'priority_type' => $request->priority_type,
                     'ip_address' => $request->ip(),
                 ]
             );

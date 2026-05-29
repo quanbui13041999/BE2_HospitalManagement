@@ -3,18 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Str;
 
 class TreatmentReminder extends Model
 {
-        protected $table      = 'treatmentreminders';
+    protected $table = 'treatmentreminders';
     protected $primaryKey = 'reminder_id';
-
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = null;
+    public $timestamps = false;
 
     protected $fillable = [
-        'user_id','record_id','reminder_type',
-        'remind_at','message','is_sent',
+        'user_id', 'record_id', 'reminder_type', 'remind_at', 'message', 'is_sent',
     ];
 
     protected $casts = [
@@ -23,8 +22,32 @@ class TreatmentReminder extends Model
         'created_at' => 'datetime',
     ];
 
-    public function user()          { return $this->belongsTo(User::class, 'user_id', 'user_id'); }
-    public function medicalRecord() { return $this->belongsTo(MedicalRecord::class, 'record_id', 'record_id'); }
+    // Relationships
+    public function user()         { return $this->belongsTo(User::class, 'user_id', 'user_id'); }
+    public function medicalRecord(){ return $this->belongsTo(MedicalRecord::class, 'record_id', 'record_id'); }
+    public function confirmation() { return $this->hasOne(TreatmentConfirmation::class, 'reminder_id', 'reminder_id'); }
 
+    // Scopes
+    public function scopeToday($q)  { return $q->whereDate('remind_at', today()); }
+    public function scopeForUser($q, $userId) { return $q->where('user_id', $userId); }
+    public function scopeMedicine($q) { return $q->where('reminder_type', 'medicine'); }
+    public function scopeInstruction($q){ return $q->where('reminder_type', 'instruction'); }
     public function scopePending($q) { return $q->where('is_sent', false)->where('remind_at', '<=', now()); }
+
+    // Helpers
+    public function isConfirmed(): bool  
+    { 
+        // Tránh lỗi N+1 Query khi lặp danh sách nhắc nhở ngoài View
+        return $this->relationLoaded('confirmation') 
+            ? !is_null($this->confirmation) 
+            : $this->confirmation()->exists(); 
+    }
+
+    public function isDangerous(): bool  { return Str::contains($this->message, 'NGUY HIỂM') || Str::contains($this->message, 'dị ứng'); }
+
+    // Accessors (Chuẩn hóa theo Laravel mới)
+    protected function timeLabel(): Attribute
+    {
+        return Attribute::get(fn () => $this->remind_at->format('H:i'));
+    }
 }

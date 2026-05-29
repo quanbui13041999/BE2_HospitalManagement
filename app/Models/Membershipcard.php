@@ -10,21 +10,26 @@ class MembershipCard extends Model
     protected $table      = 'membershipcards';
     
     // Cấu hình khóa chính của bảng là cột 'id'
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'card_id';
     
     // Cho phép tự động cập nhật 2 cột mốc thời gian: created_at (ngày tạo) và updated_at (ngày sửa)
-    public    $timestamps = true;
+    public    $timestamps = false;
 
     // Định nghĩa các cột được phép thêm/sửa dữ liệu hàng loạt thông qua Mass Assignment (như Create, Update)
     protected $fillable = [
         'user_id', 'card_number', 'tier',
-        'total_spent', 'points', 'expiry_date',
+        'total_spent', 'points', 'discount_pct',
+        'issue_date', 'expiry_date', 'status',
     ];
 
     // Ép kiểu dữ liệu (Casts): Đảm bảo khi lấy dữ liệu lên từ DB, các biến luôn đúng kiểu số mong muốn
     protected $casts = [
         'total_spent' => 'float',   // Ép kiểu tổng chi tiêu về số thực (decimal trong DB -> float)
         'points'      => 'integer', // Ép kiểu điểm số tích lũy về số nguyên (int)
+        'discount_pct' => 'decimal:2',
+        'issue_date'  => 'date',
+        'expiry_date' => 'date',
+        'status'      => 'boolean',
     ];
 
     /**

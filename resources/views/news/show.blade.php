@@ -398,11 +398,14 @@
             <a href="{{ route('appointments.create') }}">Đặt lịch</a>
         </div>
 
-        @auth
-            <a href="{{ route('profile.show') }}" class="news-detail-profile">Hồ sơ</a>
-        @else
-            <a href="{{ route('login') }}" class="news-detail-profile">Đăng nhập</a>
-        @endauth
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            @auth
+                <x-notification-bell :direct="true" />
+                <a href="{{ route('profile.show') }}" class="news-detail-profile">Hồ sơ</a>
+            @else
+                <a href="{{ route('login') }}" class="news-detail-profile">Đăng nhập</a>
+            @endauth
+        </div>
     </nav>
 
     <div class="news-detail-page">

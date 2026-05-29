@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('DoctorDaysOff', function (Blueprint $table) {
+        Schema::create('doctordaysoff', function (Blueprint $table) {
             $table->increments('day_off_id');
             $table->unsignedInteger('doctor_id');
             $table->date('off_date');
@@ -24,6 +24,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('DoctorDaysOff');
+        Schema::dropIfExists('doctordaysoff');
     }
 };

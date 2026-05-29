@@ -53,13 +53,17 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notification::class, 'user_id', 'user_id');
     }
+    public function notificationReads()
+    {
+        return $this->hasMany(NotificationUser::class, 'user_id', 'user_id');
+    }
     public function reviews()
     {
         return $this->hasMany(Review::class, 'user_id', 'user_id');
     }
     public function medicalRecords()
     {
-        return $this->hasMany(MedicalRecord::class, 'user_id', 'user_id');
+        return $this->hasMany(MedicalRecord::class, 'patient_id', 'user_id');
     }
     public function insuranceCards()
     {
@@ -73,7 +77,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(PatientAllergy::class, 'user_id', 'user_id');
     }
+    public function patientAllergies()
+    {
+        return $this->hasMany(PatientAllergy::class, 'user_id', 'user_id');
+    }
     public function medicalHistory()
+    {
+        return $this->hasMany(PatientMedicalHistory::class, 'user_id', 'user_id');
+    }
+    public function patientMedicalHistories()
     {
         return $this->hasMany(PatientMedicalHistory::class, 'user_id', 'user_id');
     }
@@ -96,6 +108,14 @@ class User extends Authenticatable
     public function medicalDocuments()
     {
         return $this->hasMany(MedicalDocument::class, 'user_id', 'user_id');
+    }
+    public function treatmentHomeInstructions()
+    {
+        return $this->hasMany(TreatmentHomeInstruction::class, 'user_id', 'user_id');
+    }
+    public function treatmentConfirmations()
+    {
+        return $this->hasMany(TreatmentConfirmation::class, 'user_id', 'user_id');
     }
 
     // ── Accessors ──
@@ -133,28 +153,25 @@ class User extends Authenticatable
     /**
      * Tạo thông báo cho user
      */
-    public function notify(string $type, string $title, string $content, int $refId = null, string $refType = null)
+    public function notify(string $type, string $title, string $content, ?int $refId = null, ?string $refType = null)
     {
-        return $this->notifications()->create([
-            'notif_type' => $type,
-            'title' => $title,
-            'content' => $content,
-            'ref_id' => $refId,
-            'ref_type' => $refType,
-            'is_read' => false,
-            'created_at' => now(),
-        ]);
+        return app(\App\Services\NotificationService::class)->createForUser(
+            $this->user_id,
+            $title,
+            $content,
+            $type,
+            $refType,
+            $refId
+        );
     }
 
     /**
      * Ghi log hoạt động
      */
-    public function logActivity(string $action, string $ipAddress = null)
+    public function logActivity(string $action, ?string $ipAddress = null)
     {
-        return $this->activityLogs()->create([
-            'action' => $action,
+        return \App\Services\ActivityLogService::log($action, $action, null, null, [
             'ip_address' => $ipAddress,
-            'created_at' => now(),
-        ]);
+        ], 'success', $this);
     }
 }

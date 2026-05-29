@@ -138,13 +138,14 @@
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-900">MediBook</h1>
+                        <a href="{{ route('home') }}" class="active">
+                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0"> MediCore<sup>®</sup></h1>
+                    </a>
                         <p class="text-xs text-gray-500">Quản lý bác sĩ</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
                    {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
-                </a>
                     <form action="{{ route('logout') }}" method="POST" class="inline">
                         @csrf
                         <button type="submit" class="text-sm text-gray-500 hover:text-red-600 transition">
@@ -159,13 +160,13 @@
     <nav class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex gap-1 overflow-x-auto">
-                <a href="{{ route('doctors.index') }}"
+                <a href="{{ route('doctor.dashboard') }}"
                     class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
+                   Dashboard {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
                 </a>
                 <a href="{{ route('doctor.schedule') }}"
                     class="nav-link active flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
@@ -185,6 +186,12 @@
                     Thống kê
                 </a>
                 @endif
+                <a href="{{ route('treatment.index') }}" class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Tuân thủ điều trị
+                </a>
                 @endauth
             </div>
         </div>

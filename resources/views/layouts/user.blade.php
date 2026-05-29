@@ -36,6 +36,66 @@
         .navbar .navbar-collapse {
             visibility: visible !important;
         }
+        
+        /* Premium Custom Navbar Styling */
+        .navbar-custom {
+            background: rgba(255, 255, 255, 0.85) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+            transition: all 0.3s;
+        }
+        .navbar-custom .nav-link {
+            color: #475569 !important;
+            font-weight: 550;
+            padding: 8px 14px !important;
+            border-radius: 99px;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .navbar-custom .nav-link:hover {
+            color: #2563eb !important;
+            background: rgba(37, 99, 235, 0.06);
+        }
+        .navbar-custom .nav-link.active {
+            color: #2563eb !important;
+            background: rgba(37, 99, 235, 0.08) !important;
+            font-weight: 600;
+        }
+        .navbar-custom .navbar-brand {
+            font-size: 1.25rem;
+            letter-spacing: -0.02em;
+            transition: transform 0.3s;
+        }
+        .navbar-custom .navbar-brand:hover {
+            transform: scale(1.02);
+        }
+        .dropdown-menu-custom {
+            border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+            border-radius: 16px !important;
+            padding: 8px !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+            backdrop-filter: blur(16px) !important;
+            margin-top: 8px !important;
+        }
+        .dropdown-menu-custom .dropdown-item {
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569;
+            transition: all 0.2s;
+        }
+        .dropdown-menu-custom .dropdown-item:hover {
+            background-color: rgba(37, 99, 235, 0.06) !important;
+            color: #2563eb !important;
+        }
     </style>
 
     @stack('styles')
@@ -43,7 +103,7 @@
 
 <body>
     {{-- Header Navigation --}}
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
         <div class="container">
             <a class="navbar-brand fw-bold text-primary" href="{{ route('home') }}">
                 <i class="bi bi-hospital"></i> Bệnh viện
@@ -63,13 +123,33 @@
                             <i class="bi bi-clipboard2-pulse"></i> Dịch vụ
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('queue.display.*') ? 'active' : '' }}" href="{{ route('queue.display.index') }}">
+                            <i class="bi bi-tv"></i> Màn Hình Hàng Đợi
+                        </a>
+                    </li>
                     @auth
+                    <li class="nav-item d-flex align-items-center">
+                        <x-notification-bell />
+                    </li>
                     {{-- Nút DEMO MỚI (bên trái nút lịch hẹn) --}}
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen"> 
                             <i class="bi bi-calendar-check"></i> Lịch hẹn
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('treatment.index') ? 'active' : '' }}" href="{{ route('treatment.index') }}">
+                            <i class="bi bi-alarm"></i> Tuân thủ điều trị
+                        </a>
+                    </li>
+                    @if(Auth::user()->role_id == 3 || (Auth::user()->role ?? '') == 'patient')
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('patient.nutrition.*') ? 'active' : '' }}" href="{{ route('patient.nutrition.index') }}">
+                            <i class="bi bi-heart-pulse"></i> Dinh dưỡng
+                        </a>
+                    </li>
+                    @endif
                     @php
                     $user = Auth::user();
                     $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
@@ -84,7 +164,7 @@
                     $demoIcon = 'bi-stethoscope';
                     $demoClass = 'btn-outline-primary';
                     } elseif ($roleId == 3 || ($user->role == 'patient')) {
-                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
+                    $demoLink = route('medical_history.index');
                     $demoText = 'Demo Bệnh án';
                     $demoIcon = 'bi-file-medical';
                     $demoClass = 'btn-outline-success';
@@ -103,45 +183,13 @@
                             <i class="bi {{ $demoIcon }}"></i> {{ $demoText }}
                         </a>
                     </li>
-                    @php
-                    $user = Auth::user();
-                    $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
-                    $demoLink = '#';
-                    $demoText = 'Demo';
-                    $demoIcon = 'bi-star';
-                    $demoClass = 'btn-outline-secondary';
-
-                    if ($roleId == 2 || ($user->role == 'doctor')) {
-                    $demoLink = route('doctor.appointments.index');
-                    $demoText = 'Demo BS';
-                    $demoIcon = 'bi-stethoscope';
-                    $demoClass = 'btn-outline-primary';
-                    } elseif ($roleId == 3 || ($user->role == 'patient')) {
-                    $demoLink = route('medical-records.index') . '?patient_id=' . $user->user_id;
-                    $demoText = 'Demo Bệnh án';
-                    $demoIcon = 'bi-file-medical';
-                    $demoClass = 'btn-outline-success';
-                    } elseif ($roleId == 1 || ($user->role == 'admin')) {
-                    $demoLink = route('admin.dashboard');
-                    $demoText = 'Demo Admin';
-                    $demoIcon = 'bi-speedometer2';
-                    $demoClass = 'btn-outline-warning';
-                    }
-                    @endphp
-
-                    <li class="nav-item me-2">
-                        <a class="nav-link {{ $demoClass }}"
-                            href="{{ $demoLink }}"
-                            style="border-radius: 20px; padding: 5px 15px; border-width: 1px; border-style: solid;">
-                            <i class="bi {{ $demoIcon }}"></i> {{ $demoText }}
-                        </a>
-                    </li>
+                   
                     
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i> {{ Auth::user()->full_name ?? Auth::user()->name ?? 'User' }}
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
 
                             <li><a class="dropdown-item" href="{{ route('profile.show') }}">Hồ sơ cá nhân</a></li>
                             @if(Auth::user()->role_id == 1)
