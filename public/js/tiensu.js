@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const bmiValue = document.getElementById('bmi-value');
     const bmiStatus = document.getElementById('bmi-status');
 
+    if (!heightInput || !weightInput || !bmiValue || !bmiStatus) {
+        return;
+    }
+
     function calculateBMI() {
         const height = parseFloat(heightInput.value) / 100; // Đổi cm sang m
         const weight = parseFloat(weightInput.value);
@@ -31,4 +35,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
     heightInput.addEventListener('input', calculateBMI);
     weightInput.addEventListener('input', calculateBMI);
+    calculateBMI();
 });

@@ -12,9 +12,34 @@
 
 <body>
     <div class="container py-4">
+        @php
+        $isReadOnly = isset($patient);
+        $safeTextPattern = '[A-Za-zÀ-ỹ\s,.\-()/]+';
+        @endphp
+
         @if(session('success'))
         <div class="alert alert-success border-0 shadow-sm mb-3">
             <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
+        </div>
+        @endif
+        @if(session('warning'))
+        <div class="alert alert-warning border-0 shadow-sm mb-3">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('warning') }}
+        </div>
+        @endif
+        @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm mb-3">
+            <i class="bi bi-x-circle-fill me-2"></i> {{ session('error') }}
+        </div>
+        @endif
+        @if($errors->any())
+        <div class="alert alert-danger border-0 shadow-sm mb-3">
+            <div class="fw-bold mb-1">Vui lòng kiểm tra lại dữ liệu vừa nhập.</div>
+            <ul class="mb-0 ps-3">
+                @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+                @endforeach
+            </ul>
         </div>
         @endif
 
@@ -27,8 +52,17 @@
                 </div>
             </div>
         </div>
-        <form action="{{ route('health.store') }}" method="POST">
+        @if($isReadOnly)
+        <div class="alert alert-info border-0 shadow-sm mb-4">
+            <i class="bi bi-eye-fill me-2"></i>
+            Bạn đang xem tiền sử sức khỏe của bệnh nhân {{ $patient->full_name ?? '' }}. Màn hình này chỉ cho phép xem, không chỉnh sửa.
+        </div>
+        @endif
+        <form action="{{ route('health.store') }}" method="POST" @if($isReadOnly) onsubmit="return false;" @endif>
             @csrf
+            <input type="hidden" name="health_background_id" value="{{ $healthData->id ?? '' }}">
+            <input type="hidden" name="health_background_updated_at" value="{{ optional($healthData->updated_at ?? null)->format('Y-m-d H:i:s') }}">
+            <input type="hidden" name="health_background_snapshot" value="{{ $healthSnapshot ?? '' }}">
             <div class="row g-4">
                 <div class="col-md-6">
                     <div class="card border-0 shadow-sm mb-4">
@@ -39,9 +73,9 @@
                             <div class="row g-3 mb-3">
                                 <div class="col-6">
                                     <label class="form-label small text-muted">NHÓM MÁU</label>
-                                    <select name="nhommau" class="form-select border-light-subtle">
+                                    <select name="nhommau" class="form-select border-light-subtle" {{ $isReadOnly ? 'disabled' : '' }}>
                                         @foreach(['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'] as $type)
-                                        <option value="{{ $type }}" {{ (old('nhommau', $$healthData->blood_group ?? '') == $type) ? 'selected' : '' }}>
+                                        <option value="{{ $type }}" {{ (old('nhommau', $healthData->blood_group ?? '') == $type) ? 'selected' : '' }}>
                                             {{ $type }}
                                         </option>
                                         @endforeach
@@ -49,27 +83,37 @@
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small text-muted">YẾU TỐ RH</label>
-                                    <select name="yeuto_rh" class="form-select border-light-subtle">
-                                        <option value="positive" {{ (old('yeuto_rh', $$healthData->yeuto_rh ?? '') == 'positive') ? 'selected' : '' }}>Dương tính (+)</option>
-                                        <option value="negative" {{ (old('yeuto_rh', $$healthData->yeuto_rh ?? '') == 'negative') ? 'selected' : '' }}>Âm tính (-)</option>
+                                    <select name="yeuto_rh" class="form-select border-light-subtle" {{ $isReadOnly ? 'disabled' : '' }}>
+                                        <option value="positive" {{ (old('yeuto_rh', $healthData->yeuto_rh ?? '') == 'positive') ? 'selected' : '' }}>Dương tính (+)</option>
+                                        <option value="negative" {{ (old('yeuto_rh', $healthData->yeuto_rh ?? '') == 'negative') ? 'selected' : '' }}>Âm tính (-)</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="row g-3">
                                 <div class="col-6">
                                     <label class="form-label small text-muted">Chiều cao (cm)</label>
-                                    <input type="number" name="height" class="form-control"
+                                    <input type="number" name="height" class="form-control @error('height') is-invalid @enderror"
+                                        min="0.01" max="300" step="0.01" inputmode="decimal"
+                                        {{ $isReadOnly ? 'disabled' : '' }}
                                         value="{{ old('height', $healthData->height ?? '') }}" placeholder="Nhập chiều cao..">
+                                    @error('height')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small text-muted">Cân nặng (kg)</label>
-                                    <input type="number" name="weight" class="form-control"
+                                    <input type="number" name="weight" class="form-control @error('weight') is-invalid @enderror"
+                                        min="0.01" max="500" step="0.01" inputmode="decimal"
+                                        {{ $isReadOnly ? 'disabled' : '' }}
                                         value="{{ old('weight', $healthData->weight ?? '') }}" placeholder="Nhập cân nặng..">
+                                    @error('weight')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
                             <div class="mt-3 p-3 rounded bg-light border border-info-subtle">
                                 <span class="fs-4 fw-bold text-primary">{{ $healthData->blood_group ?? 'O+' }}</span>
-                                <span class="ms-2">BMI HIỆN TẠI: <strong id="bmi-value">{{ $healthData->bmi ?? 0 }}</strong></span>
+                                <span class="ms-2">BMI HIỆN TẠI: <strong id="bmi-value">{{ $healthData->bmi ?? 0 }}</strong><span id="bmi-status" class="text-muted"></span></span>
                             </div>
                         </div>
                     </div>
@@ -81,8 +125,13 @@
                             </h6>
                             <div class="mb-3">
                                 <label class="form-label small text-muted">THỰC PHẨM</label>
-                                <input type="text" name="food_allergies" class="form-control"
+                                <input type="text" name="food_allergies" class="form-control @error('food_allergies') is-invalid @enderror"
+                                    maxlength="1000" pattern="{{ $safeTextPattern }}" title="Chỉ nhập chữ cái, khoảng trắng và dấu phân cách thông dụng; không nhập số hoặc ký tự lạ."
+                                    {{ $isReadOnly ? 'disabled' : '' }}
                                     value="{{ old('food_allergies', $healthData->food_allergies ?? '') }}" placeholder="VD: Sữa, Gluten...">
+                                @error('food_allergies')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                         <a href="{{ route('profile.show') }}"
@@ -99,8 +148,13 @@
                                 <i class="bi bi-capsule"></i> DỊ ỨNG THUỐC
                             </h6>
                             <div class="input-group">
-                                <input type="text" name="drug_allergies" class="form-control"
+                                <input type="text" name="drug_allergies" class="form-control @error('drug_allergies') is-invalid @enderror"
+                                    maxlength="1000" pattern="{{ $safeTextPattern }}" title="Chỉ nhập chữ cái, khoảng trắng và dấu phân cách thông dụng; không nhập số hoặc ký tự lạ."
+                                    {{ $isReadOnly ? 'disabled' : '' }}
                                     value="{{ old('drug_allergies', $healthData->drug_allergies ?? '') }}" placeholder="Nhập tên thuốc...">
+                                @error('drug_allergies')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -117,31 +171,37 @@
                                 <div class="col-6">
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="TĂNG HUYẾT ÁP" id="check1"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('TĂNG HUYẾT ÁP', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check1">TĂNG HUYẾT ÁP</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="TUỘT HUYẾT ÁP" id="check2"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('TUỘT HUYẾT ÁP', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check2">TUỘT HUYẾT ÁP</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="ĐÁI THÁO ĐƯỜNG" id="check3"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('ĐÁI THÁO ĐƯỜNG', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check3">ĐÁI THÁO ĐƯỜNG</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="TIM MẠCH" id="check4"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('TIM MẠCH', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check4">TIM MẠCH</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="MỠ MÁU CAO" id="check5"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('MỠ MÁU CAO', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check5">MỠ MÁU CAO</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="BỆNH THẬN MÃN" id="check6"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('BỆNH THẬN MÃN', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check6">BỆNH THẬN MÃN</label>
                                     </div>
@@ -149,31 +209,37 @@
                                 <div class="col-6">
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="BỆNH PHỔI MÃN TÍNH (COPD)" id="check7"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('BỆNH PHỔI MÃN TÍNH (COPD)', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check7">COPD</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="HEN SUYỄN" id="check8"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('HEN SUYỄN', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check8">HEN SUYỄN</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="VIÊM LOÉT DẠ DÀY" id="check9"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('VIÊM LOÉT DẠ DÀY', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check9">VIÊM LOÉT DẠ DÀY</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="GAN NHIỄM MỠ" id="check10"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('GAN NHIỄM MỠ', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check10">GAN NHIỄM MỠ</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="VIÊM KHỚP" id="check11"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('VIÊM KHỚP', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check11">VIÊM KHỚP</label>
                                     </div>
                                     <div class="form-check p-2 border rounded border-light-subtle mb-2">
                                         <input class="form-check-input ms-1" name="chronic_diseases[]" type="checkbox" value="LOÃNG XƯƠNG" id="check12"
+                                            {{ $isReadOnly ? 'disabled' : '' }}
                                             {{ in_array('LOÃNG XƯƠNG', $selectedDiseases) ? 'checked' : '' }}>
                                         <label class="form-check-label ms-2" for="check12">LOÃNG XƯƠNG</label>
                                     </div>
@@ -181,9 +247,16 @@
                             </div>
                             <div class="mt-3 mb-3">
                                 <label class="form-label small text-muted">BỆNH MÃN TÍNH KHÁC</label>
-                                <textarea name="other_chronic_diseases" class="form-control bg-light" rows="3">{{ old('other_chronic_diseases', $healthData->other_chronic_diseases ?? '') }}</textarea>
+                                <textarea name="other_chronic_diseases" class="form-control bg-light @error('other_chronic_diseases') is-invalid @enderror" rows="3"
+                                    maxlength="1000" pattern="{{ $safeTextPattern }}" title="Chỉ nhập chữ cái, khoảng trắng và dấu phân cách thông dụng; không nhập số hoặc ký tự lạ."
+                                    {{ $isReadOnly ? 'disabled' : '' }}>{{ old('other_chronic_diseases', $healthData->other_chronic_diseases ?? '') }}</textarea>
+                                @error('other_chronic_diseases')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
+                            @if(!$isReadOnly)
                             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Lưu thông tin</button>
+                            @endif
                         </div>
                     </div>
                 </div>

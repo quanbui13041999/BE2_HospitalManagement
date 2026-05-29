@@ -586,6 +586,11 @@
 </head>
 
 <body>
+    @if(session('error') || session('warning') || session('success'))
+    <div style="position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9999; width: min(640px, calc(100% - 32px)); padding: 14px 18px; border-radius: 12px; background: {{ session('error') ? '#FEF2F2' : (session('warning') ? '#FFFBEB' : '#ECFDF5') }}; color: {{ session('error') ? '#991B1B' : (session('warning') ? '#92400E' : '#065F46') }}; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16); font-weight: 600;">
+        {{ session('error') ?? session('warning') ?? session('success') }}
+    </div>
+    @endif
 
     <div class="hero-wrapper">
 
