@@ -78,6 +78,7 @@ body {
 }
 .alert-success { background: #d1fae5; color: #065f46; border-bottom: 2px solid #6ee7b7; }
 .alert-error   { background: #fee2e2; color: #991b1b; border-bottom: 2px solid #fca5a5; }
+.alert-warning { background: #fef3c7; color: #92400e; border-bottom: 2px solid #fcd34d; }
 .alert-close {
   margin-left: auto;
   background: none;

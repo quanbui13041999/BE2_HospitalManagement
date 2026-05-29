@@ -22,6 +22,12 @@
     <button class="alert-close" onclick="this.parentElement.remove()">×</button>
   </div>
   @endif
+  @if(session('warning'))
+  <div class="alert alert-warning" id="flash-msg">
+    <span>⚠️</span> {{ session('warning') }}
+    <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+  </div>
+  @endif
 
   <!-- HEADER -->
   <div class="header">
@@ -47,8 +53,10 @@
     <div>
 
       <!-- UPLOAD CARD -->
+      @if(!isset($patient))
       <form action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
+        <input type="hidden" name="document_collection_snapshot" value="{{ $documentCollectionSnapshot }}">
         <div class="upload-card">
           <div class="upload-zone" id="dropZone"
             ondragover="event.preventDefault(); this.classList.add('drag-over')"
@@ -57,12 +65,13 @@
 
             <div class="upload-icon">📤</div>
             <div class="upload-label">Tải lên tài liệu y tế</div>
-            <div class="upload-hint">Hỗ trợ: JPG, PNG, PDF · Tối đa 20MB / tệp</div>
+            <div class="upload-hint">Hỗ trợ: JPG, JPEG, PNG · Tối đa 20MB / tệp</div>
             <button type="button" class="btn-upload" onclick="document.getElementById('fileInput').click()">📁 Chọn tệp để tải lên</button>
-            <input type="file" id="fileInput" name="file" accept=".jpg,.jpeg,.png,.pdf" hidden onchange="updateFilePreview()">
+            <input type="file" id="fileInput" name="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
           </div>
 
           <div id="filePreview" class="file-preview hidden"></div>
+          <p class="field-error" id="fileClientError" style="display:none"></p>
 
           <div class="section-label">Phân loại tài liệu</div>
           <div class="tag-group" id="upload-category-group">
@@ -85,6 +94,7 @@
           @error('file') <p class="field-error">{{ $message }}</p> @enderror
         </div>
       </form>
+      @endif
 
       <!-- DOCS -->
       <div class="doc-section">
@@ -112,12 +122,15 @@
               <div class="btn-view-wrap" style="flex-wrap: wrap; gap: 6px;">
                 <a href="{{ route('documents.show', $document) }}" target="_blank" class="btn-view">👁 Xem</a>
                 <a href="{{ route('documents.download', $document) }}" class="btn-action" title="Tải xuống">⬇️</a>
+                @if(!isset($patient))
                 <a href="{{ route('documents.edit', $document) }}" class="btn-action edit" title="Chỉnh sửa">✏️</a>
                 <form action="{{ route('documents.destroy', $document) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xoá tài liệu này?')" style="display:inline-flex;">
                   @csrf
                   @method('DELETE')
+                  <input type="hidden" name="document_snapshot" value="{{ $document->document_snapshot }}">
                   <button type="submit" class="btn-action" title="Xoá">🗑</button>
                 </form>
+                @endif
               </div>
             </div>
           </div>
@@ -229,7 +242,12 @@
       const dropZone = document.getElementById('dropZone');
       const fileInput = document.getElementById('fileInput');
       const preview = document.getElementById('filePreview');
+      const fileError = document.getElementById('fileClientError');
       const submitBtn = document.querySelector('button[type="submit"]');
+
+      if (!dropZone || !fileInput || !preview || !submitBtn) {
+        return;
+      }
 
       // disable submit ban đầu
       submitBtn.disabled = true;
@@ -291,6 +309,17 @@
 
       function updatePreview(file) {
         preview.innerHTML = '';
+        fileError.style.display = 'none';
+        fileError.textContent = '';
+
+        if (!isValidImage(file)) {
+          fileInput.value = '';
+          preview.classList.add('hidden');
+          submitBtn.disabled = true;
+          fileError.textContent = 'Chỉ được tải lên ảnh JPG, JPEG hoặc PNG, tối đa 20MB.';
+          fileError.style.display = 'block';
+          return;
+        }
 
         const text = document.createElement('span');
         text.textContent = `Đã chọn: ${file.name} (${Math.round(file.size / 1024)} KB)`;
@@ -307,6 +336,17 @@
         preview.classList.remove('hidden');
 
         submitBtn.disabled = false;
+      }
+
+      function isValidImage(file) {
+        const allowedTypes = ['image/jpeg', 'image/png'];
+        const allowedExtensions = ['jpg', 'jpeg', 'png'];
+        const extension = file.name.split('.').pop().toLowerCase();
+        const maxSize = 20 * 1024 * 1024;
+
+        return allowedTypes.includes(file.type)
+          && allowedExtensions.includes(extension)
+          && file.size <= maxSize;
       }
 
     });

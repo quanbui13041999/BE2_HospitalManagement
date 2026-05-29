@@ -31,17 +31,25 @@
 
         {{-- Edit form --}}
         <form action="{{ route('documents.update', $document) }}"
-              method="POST" novalidate>
+              method="POST" enctype="multipart/form-data" novalidate>
             @csrf
             @method('PUT')
+            <input type="hidden" name="document_snapshot" value="{{ $documentSnapshot }}">
+
+            <div class="section-label">Thay ảnh tài liệu</div>
+            <div class="form-group">
+                <input class="note-input" type="file" id="file" name="file"
+                       accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                       onchange="validateReplacementFile(this)">
+                <p class="upload-hint">Chỉ chấp nhận ảnh JPG, JPEG hoặc PNG · Tối đa 20MB. Bỏ trống nếu không muốn đổi file.</p>
+                <p class="field-error" id="fileClientError" style="display:none"></p>
+                @error('file')
+                    <p class="field-error">{{ $message }}</p>
+                @enderror
+            </div>
 
             <div class="form-row">
-                <div class="form-group">
-                    <label class="section-label" for="hospital">Bệnh viện / Phòng khám</label>
-                    <input class="note-input" type="text" id="hospital" name="hospital"
-                           placeholder="VD: BV Nhân Dân Gia Định"
-                           value="{{ old('hospital', $document->hospital) }}">
-                </div>
+                
                 <div class="form-group">
                     <label class="section-label" for="document_date">Ngày tài liệu</label>
                     <input class="note-input" type="date" id="document_date"
@@ -69,11 +77,6 @@
                 <p class="field-error">{{ $message }}</p>
             @enderror
 
-            {{-- Note --}}
-            <div class="section-label">Ghi chú / Mô tả</div>
-            <textarea class="note-input" name="note" rows="3"
-                      placeholder="Ghi chú thêm về tài liệu này...">{{ old('note', $document->note) }}</textarea>
-
             {{-- Actions --}}
             <div class="edit-actions">
                 <a href="{{ route('documents.index') }}" class="btn-cancel">Huỷ</a>
@@ -91,6 +94,29 @@ function selectTag(el) {
     document.querySelectorAll('#category-group .tag').forEach(t => t.className = 'tag gray');
     el.className = 'tag active-blue';
     document.getElementById('category-input').value = el.dataset.value;
+}
+
+function validateReplacementFile(input) {
+    const error = document.getElementById('fileClientError');
+    const file = input.files && input.files[0];
+
+    error.style.display = 'none';
+    error.textContent = '';
+
+    if (!file) {
+        return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png'];
+    const allowedExtensions = ['jpg', 'jpeg', 'png'];
+    const extension = file.name.split('.').pop().toLowerCase();
+    const maxSize = 20 * 1024 * 1024;
+
+    if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(extension) || file.size > maxSize) {
+        input.value = '';
+        error.textContent = 'Chỉ được chọn ảnh JPG, JPEG hoặc PNG, tối đa 20MB.';
+        error.style.display = 'block';
+    }
 }
 </script>
 @endpush
