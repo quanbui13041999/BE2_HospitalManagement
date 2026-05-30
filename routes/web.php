@@ -17,6 +17,7 @@ use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Doctor\DoctorScheduleController;
 use App\Http\Controllers\Doctor\DashboardController;
+use App\Http\Controllers\Doctor\SlotHoldController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\MedicalRecordController;
@@ -106,7 +107,13 @@ Route::middleware('auth')->group(function () {
     // API gợi ý (AJAX)
     Route::get('/api/appointments/suggest',    [AppointmentController::class, 'suggest'])->name('appointments.suggest');
     Route::get('/api/appointments/timeslots',  [AppointmentController::class, 'timeslots'])->name('appointments.timeslots');
-    Route::get('/api/appointments/queue-info', [AppointmentController::class, 'getQueueInfo'])->name('appointments.queue-info');    Route::post('/api/appointments/reminders/send', [AppointmentController::class, 'sendEmailReminders'])->middleware(['auth','is_admin'])->name('appointments.reminders.send');
+    Route::get('/api/appointments/queue-info', [AppointmentController::class, 'getQueueInfo'])->name('appointments.queue-info');
+    Route::post('/api/appointments/reminders/send', [AppointmentController::class, 'sendEmailReminders'])->middleware(['auth','is_admin'])->name('appointments.reminders.send');
+
+    Route::post('/api/slot-hold', [SlotHoldController::class, 'hold'])->name('slot.hold');
+    Route::delete('/api/slot-hold', [SlotHoldController::class, 'release'])->name('slot.release');
+    Route::get('/api/slot-hold/status', [SlotHoldController::class, 'status'])->name('slot.status');
+
     // --------------------------------------------------------
     // Lịch hẹn — Route chính (user.appointments.*)
     // --------------------------------------------------------
