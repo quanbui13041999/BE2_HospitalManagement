@@ -7,12 +7,20 @@ use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\Review;
 use App\Models\DoctorSchedule;
+use App\Models\QueueTicket;
+use App\Services\QueueService;
+use App\Services\MedicalRecordService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
 
 class DoctorDashboardService
 {
+    public function __construct(
+        private MedicalRecordService $medicalRecordService,
+        private QueueService $queueService
+    ) {}
+
     // ═══════════════════════════════════════════════════════════════
     //  STATS
     // ═══════════════════════════════════════════════════════════════
@@ -34,7 +42,7 @@ class DoctorDashboardService
         $today    = Carbon::today();
         $todayCount = (clone $appointmentQuery)
             ->whereDate('appointments.appointment_time', $today)
-            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'])
+            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán', 'Đang khám'])
             ->count();
 
         $upcomingCount = (clone $appointmentQuery)
@@ -73,7 +81,7 @@ class DoctorDashboardService
 
         return $this->baseAppointmentQuery($effectiveId)
             ->whereDate('appointments.appointment_time', Carbon::today())
-            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'])
+            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán', 'Đang khám', 'Hoàn thành'])
             ->orderBy('appointments.queue_number')
             ->select([
                 'appointments.*',
@@ -83,7 +91,8 @@ class DoctorDashboardService
                 'doctors.full_name as doctor_name',
                 'doctorschedules.slot_duration',
             ])
-            ->get();
+            ->get()
+            ->load('medicalRecord');
     }
 
     public function getUpcomingAppointments(int $doctorId, bool $isAdmin, ?int $targetDoctorId = null): \Illuminate\Support\Collection
@@ -91,7 +100,7 @@ class DoctorDashboardService
         $effectiveId = $isAdmin ? $targetDoctorId : $doctorId;
 
         return $this->baseAppointmentQuery($effectiveId)
-            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
+            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])
             ->where('appointments.appointment_time', '>', now())
             ->orderBy('appointments.appointment_time', 'asc')
             ->select([
@@ -101,7 +110,8 @@ class DoctorDashboardService
                 'services.service_name as service_name',
                 'doctors.full_name as doctor_name',
             ])
-            ->get();
+            ->get()
+            ->load('medicalRecord');
     }
 
     /**
@@ -124,13 +134,52 @@ class DoctorDashboardService
             }
         }
 
-        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'])) {
+        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán', 'Đang khám'])) {
             return ['success' => false, 'message' => "Không thể hoàn thành lịch hẹn với trạng thái: {$appointment->status}"];
         }
 
+        $queueTicket = QueueTicket::where('appointment_id', $appointment->appointment_id)
+            ->whereDate('queue_date', today())
+            ->latest('ticket_id')
+            ->first();
+
+        if ($queueTicket && $queueTicket->status !== 'in_progress') {
+            return ['success' => false, 'message' => 'Chỉ được hoàn thành khi bệnh nhân đang ở trạng thái Đang khám trong hàng đợi.'];
+        }
+
+        if ($queueTicket) {
+            $queueTicket = $this->queueService->complete($queueTicket->ticket_id);
+            $appointment = $queueTicket->appointment()->with(['user', 'service', 'schedule.doctor', 'medicalRecord'])->first();
+
+            $record = $appointment?->medicalRecord;
+
+            return [
+                'success' => true,
+                'message' => 'Đã hoàn thành ca khám và cập nhật hàng đợi.',
+                'record_id' => $record?->record_id,
+                'record_url' => $record ? route('medical-records.show', $record->record_id) : null,
+                'record_edit_url' => $record ? route('medical-records.edit', $record->record_id) : null,
+            ];
+        }
+
+        $appointment->loadMissing(['user', 'service', 'schedule.doctor', 'medicalRecord']);
+
         $appointment->update(['status' => 'Hoàn thành']);
 
-        return ['success' => true, 'message' => 'Đã đánh dấu hoàn thành lịch hẹn.'];
+        $record = $this->medicalRecordService->createBlankRecordFromAppointment($appointment->fresh([
+            'user',
+            'service',
+            'schedule.doctor',
+            'medicalRecord',
+        ]));
+
+        return [
+            'success' => true,
+            'message' => 'Đã hoàn thành lịch hẹn và tạo hồ sơ bệnh án để bác sĩ nhập.',
+            'record_id' => $record->record_id,
+            'record_url' => route('medical-records.show', $record->record_id),
+            'record_edit_url' => route('medical-records.edit', $record->record_id),
+        ];
     }
 
     /**
@@ -151,7 +200,7 @@ class DoctorDashboardService
             }
         }
 
-        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'])) {
+        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán', 'Đang khám'])) {
             return ['success' => false, 'message' => "Không thể hủy lịch hẹn với trạng thái: {$appointment->status}"];
         }
 

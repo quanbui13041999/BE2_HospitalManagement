@@ -158,8 +158,8 @@
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Mã bệnh nhân</label>
                         <input type="text" name="patient_code" id="patient_code" class="form-control" readonly
-                            value="{{ old('patient_code', $record->patient_code ?? '') }}">
-                        <small class="text-muted" id="patientCodeHint">Sẽ tự động tạo nếu chưa có</small>
+                            value="{{ old('patient_code', $record->patient_code ?? ($appointment?->user_id ? 'BN' . str_pad((string) $appointment->user_id, 6, '0', STR_PAD_LEFT) : '')) }}">
+                        <small class="text-muted" id="patientCodeHint">Mã bệnh nhân tự động, không cho phép sửa.</small>
                     </div>
 
                     <div class="col-md-2">
@@ -522,22 +522,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const patientCodeInput = document.getElementById('patient_code');
     const patientNameInput = document.querySelector('[name="patient_name"]');
     
-    function generatePatientCode(patientId, patientName) {
-        if (!patientId && !patientName) return '';
-        const date = new Date();
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-        const prefix = patientName ? patientName.substring(0, 2).toUpperCase() : 'PAT';
-        return `${prefix}${year}${month}${random}`;
+    function generatePatientCode(patientId) {
+        if (!patientId) return '';
+        return 'BN' + String(patientId).padStart(6, '0');
     }
     
     if (patientCodeInput && !patientCodeInput.value.trim()) {
         const patientId = patientIdInput?.value;
-        const patientName = patientNameInput?.value;
-        const newCode = generatePatientCode(patientId, patientName);
+        const newCode = generatePatientCode(patientId);
         patientCodeInput.value = newCode;
-        document.getElementById('patientCodeHint').innerHTML = 'Đã tạo mã mới: <strong>' + newCode + '</strong>';
+        document.getElementById('patientCodeHint').innerHTML = 'Mã bệnh nhân tự động: <strong>' + newCode + '</strong>';
         document.getElementById('patientCodeHint').style.color = '#28a745';
     }
 });

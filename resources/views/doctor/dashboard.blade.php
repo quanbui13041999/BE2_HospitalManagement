@@ -260,6 +260,7 @@
             cursor: pointer;
             transition: filter .15s, transform .1s;
             font-family: inherit;
+            text-decoration: none;
         }
 
         .btn:active {
@@ -1094,6 +1095,14 @@
                 </svg>
                 Lịch làm việc
             </a>
+            <a href="{{ route('medical-records.index') }}"
+                style="display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:.875rem;font-weight:500;white-space:nowrap;text-decoration:none;color:#6b7280;border-bottom:2px solid transparent">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6M7 4h7l3 3v13a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z" />
+                </svg>
+                Hồ sơ bệnh án
+            </a>
             @auth
                 @if(auth()->user()->is_admin ?? false)
                     <a href="{{ route('admin.dashboard') }}"
@@ -1506,7 +1515,7 @@
             ).join('');
 
         function statusBadge(s) {
-            const map = { 'Chờ xác nhận': 'warning', 'Đã xác nhận': 'info', 'Đang khám': 'primary', 'Hoàn thành': 'success', 'Đã hủy': 'danger', 'Dời lịch': 'secondary' };
+            const map = { 'Chưa khám': 'warning', 'Đang khám': 'primary', 'Hoàn thành': 'success', 'Đã hủy': 'danger', 'Dời lịch': 'secondary' };
             return `<span class="badge badge-${map[s] ?? 'secondary'}">${s}</span>`;
         }
         function stars(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
@@ -1599,13 +1608,22 @@
                 const timeStr = isToday
                     ? `<span>🕐 ${(a.appointment_time || '').split(' ')[1] ?? ''} · ${a.slot_duration || 30} phút</span>`
                     : `<span>📅 ${a.appointment_time || ''}</span>`;
-                const canFinish = isToday && ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'].includes(a.status);
-                const canCancel = ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'].includes(a.status);
+                const displayStatus = a.exam_status || a.status || 'Chưa khám';
+                const canFinish = isToday && displayStatus === 'Đang khám';
+                const canCancel = ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán', 'Đang khám'].includes(a.status);
+                const recordButton = a.medical_record_edit_url
+                    ? `<a class="btn btn-blue btn-sm" href="${escHtml(a.medical_record_edit_url)}">📋 Sửa hồ sơ</a>`
+                    : (a.medical_record_create_url
+                        ? `<a class="btn btn-outline btn-sm" href="${escHtml(a.medical_record_create_url)}">📋 Tạo hồ sơ</a>`
+                        : '');
+                const oldRecordsButton = a.old_record_count > 0
+                    ? `<a class="btn btn-ghost btn-sm" href="${escHtml(a.patient_records_url)}">📁 Hồ sơ cũ (${a.old_record_count})</a>`
+                    : '';
                 return `
                         <div class="apt-row" id="apt-${a.id}">
                             <div class="apt-queue">${a.queue_number || (i + 1)}</div>
                             <div class="apt-info">
-                                <div class="apt-name">${escHtml(a.patient_name || '—')} ${statusBadge(a.status)}</div>
+                                <div class="apt-name">${escHtml(a.patient_name || '—')} ${statusBadge(displayStatus)}</div>
                                 <div class="apt-sub">${escHtml(a.service_name || '')}${IS_ADMIN && a.doctor_name ? ' · ' + escHtml(a.doctor_name) : ''}</div>
                                 <div class="apt-meta">
                                     ${timeStr}
@@ -1614,6 +1632,8 @@
                                 </div>
                             </div>
                             <div class="apt-actions">
+                                ${oldRecordsButton}
+                                ${recordButton}
                                 ${canFinish ? `<button class="btn btn-green btn-sm" onclick="doComplete(${a.id},this)">✓ Hoàn thành</button>` : ''}
                                 ${canCancel ? `<button class="btn btn-red btn-sm"   onclick="openCancelModal(${a.id})">✕ Hủy</button>` : ''}
                             </div>
@@ -1625,7 +1645,13 @@
             btn.disabled = true; btn.textContent = '⏳';
             const data = await api('PATCH', `/appointments/${id}/complete`);
             toast(data.message, data.success ? 'success' : 'error');
-            if (data.success) { loadStats(); loadToday(); } else { btn.disabled = false; btn.textContent = '✓ Hoàn thành'; }
+            if (data.success) {
+                if (data.record_edit_url) {
+                    window.location.href = data.record_edit_url;
+                    return;
+                }
+                loadStats(); loadToday();
+            } else { btn.disabled = false; btn.textContent = '✓ Hoàn thành'; }
         }
 
         function openCancelModal(id) { cancelTargetId = id; document.getElementById('cancel-reason').value = ''; document.getElementById('cancel-modal').style.display = 'flex'; }
