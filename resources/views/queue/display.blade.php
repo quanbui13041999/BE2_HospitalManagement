@@ -5,6 +5,7 @@
     <title>Màn hình hiển thị hàng đợi - {{ $schedule->doctor?->full_name ?? 'Bác sĩ' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://js.pusher.com/8.2/pusher.min.js"></script>
+    <x-typography-base />
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;700;900&display=swap');
         body { font-family: 'Be Vietnam Pro', sans-serif; }

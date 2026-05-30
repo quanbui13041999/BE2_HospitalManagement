@@ -7,6 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Lịch Khám Của Tôi – HospitalC</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <x-typography-base />
     <style>
         /* (toàn bộ CSS giữ nguyên như file của bạn) */
         * {

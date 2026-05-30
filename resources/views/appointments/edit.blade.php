@@ -8,6 +8,7 @@
     <!-- Tailwind CSS + Font -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <x-typography-base />
     <style>
         /* Giữ lại animation cần thiết cho spinner, không ảnh hưởng logic */
         @keyframes spin { to { transform: rotate(360deg); } }

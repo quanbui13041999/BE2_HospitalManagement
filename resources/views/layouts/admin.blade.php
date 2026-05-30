@@ -11,6 +11,8 @@
     {{-- Bootstrap Icons --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
+    <x-typography-base />
+
     <style>
         body { background: #f4f6fb; font-family: 'Segoe UI', sans-serif; }
 

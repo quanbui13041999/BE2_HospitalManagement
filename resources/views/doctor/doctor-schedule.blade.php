@@ -7,6 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Quản lý lịch làm việc - MediBook</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <x-typography-base />
     <style>
         * {
             margin: 0;
