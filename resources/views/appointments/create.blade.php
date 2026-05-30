@@ -2230,13 +2230,27 @@
         // FORM SUBMIT
         // ══════════════════════════════════════════════════════════════
         document.getElementById('booking-form').addEventListener('submit', function (e) {
+            const svcSel = document.getElementById('service_id_select');
+            const serviceId = svcSel ? svcSel.value : '';
+
+            if (!serviceId) {
+                e.preventDefault();
+                const errEl = document.getElementById('slot-error');
+                errEl.textContent = '⚠️ Vui lòng chọn dịch vụ trước khi đặt lịch.';
+                errEl.style.display = 'block';
+                svcSel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
             if (!state.scheduleId || !state.time) {
                 e.preventDefault();
                 const errEl = document.getElementById('slot-error');
+                errEl.textContent = '⚠️ Vui lòng chọn khung giờ trước khi đặt lịch.';
                 errEl.style.display = 'block';
                 document.getElementById('slot-wrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
+
             const btn = document.getElementById('submit-btn');
             const spinner = document.getElementById('spinner');
             const icon = document.getElementById('submit-icon');
@@ -2244,6 +2258,7 @@
             spinner.style.display = 'inline-block';
             icon.style.display = 'none';
         });
+
 
         // Service dropdown → cập nhật summary
         document.getElementById('service_id_select')?.addEventListener('change', updateSummary);
