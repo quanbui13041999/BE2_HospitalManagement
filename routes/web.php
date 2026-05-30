@@ -137,6 +137,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/store',                           [UserPaymentController::class, 'store'])->name('store');
         Route::get('/{paymentId}/qr',                  [UserPaymentController::class, 'qr'])->name('qr');
         Route::get('/{paymentId}/gateway',             [UserPaymentController::class, 'gateway'])->name('gateway');
+        Route::get('/{paymentId}/check',               [UserPaymentController::class, 'check'])->name('check');
         Route::post('/{paymentId}/confirm',             [UserPaymentController::class, 'confirm'])->name('confirm');
         Route::get('/{paymentId}/fail',                [UserPaymentController::class, 'fail'])->name('fail');
         Route::post('/{paymentId}/fail',               [UserPaymentController::class, 'fail'])->name('fail.post');

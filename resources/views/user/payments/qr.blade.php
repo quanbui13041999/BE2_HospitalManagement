@@ -183,5 +183,41 @@
         btn.disabled = true;
         btn.textContent = 'Đang xử lý...';
     });
+
+    // Tự động quét đối soát giao dịch thực tế từ tài khoản ACB Bank
+    const paymentId = {{ $payment->payment_id }};
+    const checkStatusUrl = "{{ route('user.payments.check', $payment->payment_id) }}";
+
+    function startPolling() {
+        const intervalId = setInterval(async () => {
+            try {
+                const response = await fetch(checkStatusUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.is_paid && data.redirect_url) {
+                        clearInterval(intervalId);
+                        
+                        // Cập nhật giao diện nút bấm thành công
+                        const btn = document.querySelector('.btn-pay');
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.style.backgroundColor = '#10b981';
+                            btn.textContent = '✓ Ngân hàng đã nhận tiền! Đang chuyển hướng...';
+                        }
+                        
+                        // Chuyển hướng tự động sau 1.2 giây
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 1200);
+                    }
+                }
+            } catch (error) {
+                console.error('Lỗi khi kiểm tra đối soát:', error);
+            }
+        }, 3000); // 3 giây kiểm tra biến động 1 lần
+    }
+
+    // Kích hoạt ngay khi trang tải xong
+    startPolling();
 </script>
 @endpush

@@ -19,7 +19,8 @@ class PaymentService
 
     public function __construct(
         protected PaymentRepository $repo,
-        protected NotificationService $notifications
+        protected NotificationService $notifications,
+        protected \App\Services\PayOsService $payOsService
     ) {}
 
     // ----------------------------------------------------------------
@@ -99,9 +100,25 @@ class PaymentService
 
         $result = ['payment' => $payment, 'ref' => $ref];
 
-        // Với QR: tạo nội dung QR để frontend render
+        // Với QR: gọi PayOS sinh mã VietQR thật
         if ($data['payment_method'] === 'QR') {
-            $result['qr_content'] = $this->buildVietQrContent($payment);
+            $payOsResult = $this->payOsService->createPaymentLink(
+                $payment->payment_id,
+                (int) $payment->total_amount,
+                "Thanh toan hoa don " . ($invoice->invoice_id ?? $payment->payment_id),
+                route('admin.payments.show', $payment->payment_id),
+                route('admin.payments.checkout', $invoice->invoice_id)
+            );
+
+            if ($payOsResult['success']) {
+                $payment->update([
+                    'transaction_ref' => $payOsResult['paymentLinkId'] ?: $ref
+                ]);
+                $result['qr_content'] = $payOsResult['qrContent'];
+                $result['checkout_url'] = $payOsResult['checkoutUrl'] ?? null;
+            } else {
+                $result['qr_content'] = $this->buildVietQrContent($payment);
+            }
         }
 
         return $result;
@@ -118,11 +135,8 @@ class PaymentService
 
         if ($updated) {
             // Đánh dấu hóa đơn và lịch hẹn đã thanh toán
-            $payment = Payment::with(['invoice', 'appointment'])->find($paymentId);
+            $payment = Payment::with(['appointment'])->find($paymentId);
             if ($payment) {
-                if ($payment->invoice) {
-                    $payment->invoice->update(['status' => 'Đã thanh toán']);
-                }
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
                     $this->notifications->createForUser(
@@ -177,7 +191,7 @@ class PaymentService
             'HOSPITAL|%s|%d|%s',
             $payment->transaction_ref,
             (int) ($payment->total_amount ?? 0),
-            'Thanh toan hoa don ' . ($payment->invoice?->invoice_number ?? '')
+            'Thanh toan lich kham #' . ($payment->appointment_id ?? '')
         );
     }
 }

@@ -14,7 +14,8 @@ class PaymentService
 {
     public function __construct(
         protected PaymentRepository $repo,
-        protected NotificationService $notifications
+        protected NotificationService $notifications,
+        protected \App\Services\PayOsService $payOsService
     ) {}
 
     /**
@@ -168,12 +169,32 @@ class PaymentService
         $result = ['payment' => $payment, 'ref' => $ref];
 
         if ($method === 'QR') {
-            $result['qr_content'] = sprintf(
-                'HOSPITAL|%s|%d|Thanh toan lich kham %s',
-                $ref,
+            // Gọi API PayOS thực tế để sinh mã VietQR động
+            $payOsResult = $this->payOsService->createPaymentLink(
+                $payment->payment_id,
                 (int) $totalAmount,
-                $appointmentId
+                "Thanh toan lich kham {$appointmentId}",
+                route('user.payments.success', $payment->payment_id),
+                route('user.payments.show', $appointmentId)
             );
+
+            if ($payOsResult['success']) {
+                // Lưu payment link id từ PayOS vào trường transaction_ref để đối soát webhook
+                $payment->update([
+                    'transaction_ref' => $payOsResult['paymentLinkId'] ?: $ref
+                ]);
+                
+                $result['qr_content'] = $payOsResult['qrContent'];
+                $result['checkout_url'] = $payOsResult['checkoutUrl'] ?? null;
+            } else {
+                // Fallback nếu API PayOS bị gián đoạn kết nối
+                $result['qr_content'] = sprintf(
+                    'HOSPITAL|%s|%d|Thanh toan lich kham %s',
+                    $ref,
+                    (int) $totalAmount,
+                    $appointmentId
+                );
+            }
         }
 
         return $result;
@@ -188,8 +209,8 @@ class PaymentService
         $updated = $this->repo->confirmPayment($paymentId, $ref);
         
         if ($updated) {
-            // Đánh dấu lịch hẹn và hóa đơn đã thanh toán
-            $payment = Payment::with(['appointment', 'invoice'])->find($paymentId);
+            // Đánh dấu lịch hẹn đã thanh toán
+            $payment = Payment::with(['appointment'])->find($paymentId);
             if ($payment) {
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
@@ -201,9 +222,6 @@ class PaymentService
                         'payment',
                         $payment->payment_id
                     );
-                }
-                if ($payment->invoice) {
-                    $payment->invoice->update(['status' => 'Đã thanh toán']);
                 }
 
                 ActivityLogService::log(
