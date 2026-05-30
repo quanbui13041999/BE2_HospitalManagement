@@ -26,50 +26,7 @@
 </head>
 <body class="bg-gradient-to-br from-slate-50 to-blue-50/30 antialiased">
 
-{{-- Topbar hiện đại với Tailwind --}}
-<nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm px-4 md:px-8 py-3 flex items-center justify-between flex-wrap gap-3">
-    <a href="{{ route('home') }}" class="flex items-center gap-3 group">
-        <div class="w-9 h-9 bg-gradient-to-br from-blue-700 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
-            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-        </div>
-        <div>
-            <div class="font-extrabold text-gray-800 tracking-tight text-lg leading-5">HospitalC</div>
-            <div class="text-[11px] font-medium text-gray-400">Đặt lịch thông minh</div>
-        </div>
-    </a>
-    <div class="hidden md:flex gap-1 bg-gray-100/80 p-1 rounded-full">
-        <a href="{{ route('home') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🏠 Trang chủ</a>
-        @auth
-            @if(auth()->user()->isPatient())
-                <a href="{{ route('appointments.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📋 Lịch hẹn</a>
-            @endif
-            @if(auth()->user()->isPatient() || auth()->user()->isAdmin())
-                <a href="{{ route('appointments.create') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">✨ Đặt lịch mới</a>
-            @endif
-        @endauth
-        <a href="{{ route('news.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📰 Bản tin</a>
-        <a href="{{ route('queue.display.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📺 Hàng đợi</a>
-        @auth
-            @if(auth()->user()->isDoctor())
-                <a href="{{ route('doctor.dashboard') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🩺 Dashboard bác sĩ</a>
-            @endif
-        @endauth
-    </div>
-    <div class="flex items-center gap-3">
-        @auth
-        <div class="flex items-center gap-2 bg-gray-100/90 rounded-full pr-3 pl-1 py-1">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
-            <span class="text-sm font-semibold text-gray-700 max-w-[120px] truncate">{{ auth()->user()->name ?? 'Người dùng' }}</span>
-        </div>
-        <form method="POST" action="{{ route('logout') }}" class="inline">
-            @csrf
-            <button type="submit" class="text-xs font-semibold bg-transparent border border-gray-300 rounded-full px-4 py-1.5 text-gray-600 hover:bg-gray-100 transition">Đăng xuất</button>
-        </form>
-        @endauth
-    </div>
-</nav>
+<x-site-nav />
 
 <div class="max-w-4xl mx-auto px-4 sm:px-6 py-6">
     {{-- Breadcrumb --}}

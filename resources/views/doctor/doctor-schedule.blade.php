@@ -127,75 +127,7 @@
 
 <body>
 
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                    </div>
-                    <div>
-                        <a href="{{ route('home') }}" class="active">
-                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0"> HospitalC</h1>
-                    </a>
-                        <p class="text-xs text-gray-500">Quản lý bác sĩ</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4">
-                   {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
-                    <form action="{{ route('logout') }}" method="POST" class="inline">
-                        @csrf
-                        <button type="submit" class="text-sm text-gray-500 hover:text-red-600 transition">
-                            Đăng xuất
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <nav class="bg-white border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex gap-1 overflow-x-auto">
-                <a href="{{ route('doctor.dashboard') }}"
-                    class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                   Dashboard {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
-                </a>
-                <a href="{{ route('doctor.schedule') }}"
-                    class="nav-link active flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Lịch làm việc
-                </a>
-                @auth
-                @if(auth()->user()->is_admin ?? false)
-                <a href="{{ route('admin.dashboard') }}" class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                    </svg>
-                    Thống kê
-                </a>
-                @endif
-                <a href="{{ route('treatment.index') }}" class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Tuân thủ điều trị
-                </a>
-                @endauth
-            </div>
-        </div>
-    </nav>
+    <x-site-nav />
 
     <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="mb-6">

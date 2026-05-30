@@ -788,50 +788,7 @@
 
 <body>
 
-    {{-- TOPBAR --}}
-    <nav class="topbar">
-        <a href="{{ route('home') }}" class="topbar-brand">
-            <div class="logo-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                </svg>
-            </div>
-            <div>
-                <div class="brand-text">HospitalC</div>
-                <div class="brand-sub">Đặt lịch thông minh</div>
-            </div>
-        </a>
-        <div class="topbar-center">
-            <a href="{{ route('home') }}">🏠 Trang chủ</a>
-            @auth
-                @if(auth()->user()->isPatient())
-                    <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
-                @endif
-                @if(auth()->user()->isPatient() || auth()->user()->isAdmin())
-                    <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
-                @endif
-            @endauth
-            <a href="{{ route('news.index') }}">📰 Bản tin</a>
-            <a href="{{ route('queue.display.index') }}">📺 Hàng đợi</a>
-            @auth
-                @if(auth()->user()->isDoctor())
-                    <a href="{{ route('doctor.dashboard') }}">🩺 Dashboard bác sĩ</a>
-                @endif
-            @endauth
-        </div>
-        <div class="topbar-right" style="display:flex;align-items:center;gap:10px;">
-            @auth
-            <div class="user-pill">
-                <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
-                <span class="user-name">{{ auth()->user()->name ?? 'Người dùng' }}</span>
-            </div>
-            <form method="POST" action="{{ route('logout') }}" style="margin:0">
-                @csrf
-                <button type="submit" class="btn-logout">Đăng xuất</button>
-            </form>
-            @endauth
-        </div>
-    </nav>
+    <x-site-nav />
 
     {{-- BREADCRUMB --}}
     <div class="breadcrumb-bar">
