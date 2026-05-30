@@ -48,7 +48,7 @@
                 </div>
                 <nav class="nav flex-column">
                     <a class="nav-link" href="{{ route('admin.dashboard') }}">
-                        <i class="bi bi-speedometer2"></i> Dashboard
+                        <i class="bi bi-bar-chart-line"></i> Thống kê tổng quan
                     </a>
                     <a class="nav-link" href="{{ route('admin.bhyt.index') }}">
                         <i class="bi bi-shield-check"></i> BHYT

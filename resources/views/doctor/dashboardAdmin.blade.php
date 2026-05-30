@@ -45,10 +45,155 @@
         .change-badge-up   { background:#dcfce7; color:#15803d; }
         .change-badge-down { background:#fee2e2; color:#b91c1c; }
         .change-badge-flat { background:#f3f4f6; color:#6b7280; }
+        .admin-sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: 260px;
+            height: 100vh;
+            background: #fff;
+            border-right: 1px solid #e2e8f0;
+            z-index: 60;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .admin-sidebar nav {
+            flex: 1;
+            min-height: 0;
+            height: calc(100vh - 69px);
+            max-height: calc(100vh - 69px);
+            overflow-y: scroll;
+            overscroll-behavior: contain;
+            padding-bottom: 32px;
+        }
+        .admin-sidebar nav::-webkit-scrollbar {
+            width: 8px;
+        }
+        .admin-sidebar nav::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        .admin-sidebar nav::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        .admin-sidebar .brand {
+            height: 69px;
+            padding: 0 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 18px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #0f172a;
+        }
+        .admin-sidebar .section {
+            padding: 18px 22px 6px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: #94a3b8;
+            font-weight: 800;
+        }
+        .admin-sidebar .side-link {
+            margin: 2px 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #64748b;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        .admin-sidebar .side-link:hover {
+            background: #f8fafc;
+            color: #1e293b;
+        }
+        .admin-sidebar .side-link.active {
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-weight: 700;
+        }
+        .admin-page {
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+        @media (max-width: 1024px) {
+            .admin-sidebar { display: none; }
+            .admin-page { margin-left: 0; }
+        }
     </style>
 </head>
 
 <body>
+    <aside class="admin-sidebar">
+        <div class="brand">
+            <span class="text-blue-600">🏥</span>
+            <span>HospitalC Admin</span>
+        </div>
+
+        <nav class="mt-3">
+            <div class="section">Tổng quan</div>
+            <a href="{{ route('admin.dashboard') }}"
+               class="side-link {{ request()->routeIs('admin.dashboard') || request()->routeIs('admin.dashboard.data') ? 'active' : '' }}">
+                <span>📊</span> Thống kê tổng quan
+            </a>
+
+            <div class="section">Vận hành</div>
+            <a href="{{ route('admin.services.index') }}" class="side-link {{ request()->routeIs('admin.services.*') ? 'active' : '' }}">
+                <span>🏥</span> Dịch vụ & Giá
+            </a>
+            <a href="{{ route('admin.rooms.index') }}" class="side-link {{ (request()->routeIs('admin.rooms.*') && !request()->routeIs('admin.rooms.schedule.*') && !request()->routeIs('admin.rooms.weekly')) ? 'active' : '' }}">
+                <span>🚪</span> Phòng khám
+            </a>
+            <a href="{{ route('admin.rooms.schedule.index') }}" class="side-link {{ request()->routeIs('admin.rooms.schedule.*') ? 'active' : '' }}">
+                <span>🗓️</span> Phân bổ ca trực
+            </a>
+            <a href="{{ route('admin.rooms.weekly') }}" class="side-link {{ request()->routeIs('admin.rooms.weekly') ? 'active' : '' }}">
+                <span>📅</span> Lịch trực tuần
+            </a>
+            <a href="{{ route('admin.payments.index') }}" class="side-link {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
+                <span>💳</span> Thanh toán
+            </a>
+            <a href="{{ route('admin.queue.index') }}" class="side-link {{ request()->routeIs('admin.queue.*') ? 'active' : '' }}">
+                <span>🎞️</span> Hàng đợi
+            </a>
+            <a href="{{ route('admin.news.index') }}" class="side-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">
+                <span>📰</span> Bản tin
+            </a>
+            <a href="{{ route('admin.rehab.index') }}" class="side-link {{ request()->routeIs('admin.rehab.*') ? 'active' : '' }}">
+                <span>📋</span> Quản lý Phục hồi
+            </a>
+            <a href="{{ route('admin.activity-logs.index') }}" class="side-link {{ request()->routeIs('admin.activity-logs.*') ? 'active' : '' }}">
+                <span>🕘</span> Nhật ký hoạt động
+            </a>
+
+            <div class="section">Thống kê & Y tế</div>
+            <a href="{{ route('admin.revenue.index') }}" class="side-link {{ request()->routeIs('admin.revenue.index') ? 'active' : '' }}">
+                <span>💼</span> Doanh thu
+            </a>
+            <a href="{{ route('admin.doctor-statistics.index') }}" class="side-link {{ request()->routeIs('admin.doctor-statistics.*') ? 'active' : '' }}">
+                <span>👥</span> Thống kê bác sĩ
+            </a>
+            <a href="{{ route('admin.vaccination-records.index') }}" class="side-link {{ request()->routeIs('admin.vaccination-records.*') ? 'active' : '' }}">
+                <span>🛡️</span> Tiêm chủng
+            </a>
+            <a href="{{ route('admin.treatment.index') }}" class="side-link {{ request()->routeIs('admin.treatment.*') ? 'active' : '' }}">
+                <span>⏰</span> Nhắc nhở tuân thủ
+            </a>
+            <a href="{{ route('admin.nutrition.index') }}" class="side-link {{ request()->routeIs('admin.nutrition.*') ? 'active' : '' }}">
+                <span>🥗</span> Quản lý Dinh dưỡng
+            </a>
+            @if(in_array(Auth::user()->role_id, [1, 2, 4]))
+                <a href="{{ route('admin.patients.search') }}" class="side-link {{ request()->routeIs('admin.patients.search*') ? 'active' : '' }}">
+                    <span>🔎</span> Tìm kiếm bệnh nhân (AI)
+                </a>
+            @endif
+        </nav>
+    </aside>
+
+    <div class="admin-page">
     <!-- Header -->
     <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -739,5 +884,6 @@
             window.location.href = '{{ route("admin.dashboard") }}?time_range=' + range;
         }
     </script>
+    </div>
 </body>
 </html>
