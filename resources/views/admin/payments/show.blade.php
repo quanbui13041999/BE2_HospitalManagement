@@ -101,9 +101,6 @@
                                             @if($payment->appointment->schedule)
                                                 <tr><th>Ngày khám:</th><td>{{ \Carbon\Carbon::parse($payment->appointment->schedule->date)->format('d/m/Y') ?? 'N/A' }}</td></tr>
                                                 <tr><th>Bác sĩ:</th><td>{{ $payment->appointment->schedule->doctor->full_name ?? 'N/A' }}</td></tr>
-                                            @else
-                                                <tr><th>Ngày thực hiện:</th><td>{{ \Carbon\Carbon::parse($payment->appointment->appointment_time)->format('d/m/Y') ?? 'N/A' }}</td></tr>
-                                                <tr><th>Phân loại:</th><td><span class="badge bg-success">Dịch vụ độc lập</span></td></tr>
                                             @endif
                                         </table>
                                     @else

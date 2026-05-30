@@ -71,8 +71,7 @@ class AuthController extends Controller
         }
 
 
-        // BUG CŨ: redirect về /login sau khi đã login → sửa về trang đặt lịch
-        return redirect()->route('appointments.create')
+        return redirect()->route('Home.trangchu')
             ->with('success', 'Đăng ký thành công! Chào mừng ' . $user->full_name);
     }
 
@@ -94,7 +93,9 @@ class AuthController extends Controller
                 'user',
                 Auth::id()
             );
-            return redirect()->intended(route('appointments.index'))
+            $redirectRoute = Auth::user()->is_admin ? 'admin.dashboard' : 'Home.trangchu';
+
+            return redirect()->route($redirectRoute)
                 ->with('success', 'Đăng nhập thành công!');
         }
 

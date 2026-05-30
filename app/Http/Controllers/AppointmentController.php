@@ -352,18 +352,13 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->isPatient()) {
+        if (!$user || $user->isPatient() || $user->isAdmin()) {
             return null;
         }
 
         if ($user->isDoctor()) {
             return redirect()->route('doctor.dashboard')
                 ->with('error', 'Tài khoản bác sĩ không dùng chức năng đặt lịch của bệnh nhân.');
-        }
-
-        if ($user->isAdmin()) {
-            return redirect()->route('admin.dashboard')
-                ->with('error', 'Tài khoản quản trị không dùng chức năng đặt lịch của bệnh nhân.');
         }
 
         abort(403);
@@ -373,13 +368,13 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->isPatient()) {
+        if (!$user || $user->isPatient() || $user->isAdmin()) {
             return null;
         }
 
         return response()->json([
             'success' => false,
-            'message' => 'Chỉ bệnh nhân được dùng chức năng đặt lịch.',
+            'message' => 'Tài khoản bác sĩ không dùng chức năng đặt lịch của bệnh nhân.',
         ], 403);
     }
 }

@@ -1038,87 +1038,8 @@
         }
     </style>
 @endpush
-<header style="background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:50">
-    <div style="max-width:72rem;margin:0 auto;padding:0 1rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;height:64px">
-            <div style="display:flex;align-items:center;gap:12px">
-                <div
-                    style="width:40px;height:40px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                    <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                </div>
-                <div>
-                    <a href="{{ route('home') }}" class="active">
-                        <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0;">
-                            HospitalC
-                        </h1>
-                    </a>
-
-                    <p style="font-size:.75rem;color:#6b7280;margin:0">Quản lý bác sĩ</p>
-                </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:16px">
-                <span style="font-size:.875rem;font-weight:500;color:#374151">
-                    {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
-                </span>
-                <form action="{{ route('logout') }}" method="POST" style="display:inline">
-                    @csrf
-                    <button type="submit"
-                        style="font-size:.875rem;color:#6b7280;background:none;border:none;cursor:pointer;font-family:inherit"
-                        onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#6b7280'">
-                        Đăng xuất
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</header>
-
-<nav style="background:#fff;border-bottom:1px solid #e2e8f0">
-    <div style="max-width:72rem;margin:0 auto;padding:0 1rem">
-        <div style="display:flex;gap:4px;overflow-x:auto">
-            <a href="{{ route('doctor.dashboard') }}"
-                style="display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:.875rem;font-weight:500;white-space:nowrap;text-decoration:none;color:#2563eb;border-bottom:2px solid #2563eb">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {{ auth()->user()->doctor->full_name ?? auth()->user()->full_name ?? 'Bác sĩ' }}
-            </a>
-            <a href="{{ route('doctor.schedule') }}"
-                style="display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:.875rem;font-weight:500;white-space:nowrap;text-decoration:none;color:#6b7280;border-bottom:2px solid transparent">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Lịch làm việc
-            </a>
-            <a href="{{ route('medical-records.index') }}"
-                style="display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:.875rem;font-weight:500;white-space:nowrap;text-decoration:none;color:#6b7280;border-bottom:2px solid transparent">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12h6m-6 4h6M7 4h7l3 3v13a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z" />
-                </svg>
-                Hồ sơ bệnh án
-            </a>
-            @auth
-                @if(auth()->user()->is_admin ?? false)
-                    <a href="{{ route('admin.dashboard') }}"
-                        style="display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:.875rem;font-weight:500;white-space:nowrap;text-decoration:none;color:#6b7280;border-bottom:2px solid transparent">
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                        </svg>
-                        Thống kê
-                    </a>
-                @endif
-            @endauth
-        </div>
-    </div>
-</nav>
 @section('content')
+<x-site-nav :show-bell="false" />
 
     <div class="max-w-6xl mx-auto px-4 py-8">
 

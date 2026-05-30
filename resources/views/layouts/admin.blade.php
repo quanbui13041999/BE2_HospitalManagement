@@ -11,6 +11,8 @@
     {{-- Bootstrap Icons --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
+    <x-typography-base />
+
     <style>
         body { background: #f4f6fb; font-family: 'Segoe UI', sans-serif; }
 
@@ -27,6 +29,11 @@
             padding: 20px 24px;
             font-size: 18px; font-weight: 700; color: #1e293b;
             border-bottom: 1px solid #f1f5f9;
+            text-decoration: none;
+            display: block;
+        }
+        #sidebar .brand:hover {
+            color: #1d4ed8;
         }
         #sidebar .nav-link {
             color: #64748b; padding: 10px 20px;
@@ -88,9 +95,9 @@
 
 {{-- ══ SIDEBAR ══════════════════════════════════════════════════════ --}}
 <div id="sidebar">
-    <div class="brand">
+    <a href="{{ route('home') }}" class="brand">
         <i class="bi bi-hospital me-2 text-primary"></i>HospitalC Admin
-    </div>
+    </a>
 
     <nav class="mt-3 flex-fill">
         <div class="nav-section">Tổng quan</div>
@@ -99,6 +106,14 @@
             <i class="bi bi-bar-chart-line"></i> Thống kê tổng quan
         </a>
 
+        <a href="{{ route('doctor.dashboard') }}"
+           class="nav-link {{ request()->routeIs('doctor.dashboard') ? 'active' : '' }}">
+            <i class="bi bi-speedometer2"></i> Dashboard bác sĩ
+        </a>
+        <a href="{{ route('doctor.schedule') }}"
+           class="nav-link {{ request()->routeIs('doctor.schedule') ? 'active' : '' }}">
+            <i class="bi bi-calendar2-week"></i> Lịch làm việc
+        </a>
         <div class="nav-section">Vận hành</div>
         <a href="{{ route('admin.services.index') }}"
            class="nav-link {{ request()->routeIs('admin.services.*') ? 'active' : '' }}">
@@ -116,6 +131,10 @@
            class="nav-link {{ request()->routeIs('admin.rooms.weekly') ? 'active' : '' }}">
             <i class="bi bi-calendar-week"></i> Lịch trực tuần
         </a>
+        <a href="{{ route('appointments.create') }}"
+           class="nav-link {{ request()->routeIs('appointments.create') ? 'active' : '' }}">
+            <i class="bi bi-calendar-plus"></i> Đặt lịch
+        </a>
         <a href="{{ route('admin.payments.index') }}"
            class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
             <i class="bi bi-credit-card"></i> Thanh toán
@@ -123,6 +142,10 @@
         <a href="{{ route('admin.queue.index') }}"
            class="nav-link {{ request()->routeIs('admin.queue.*') ? 'active' : '' }}">
             <i class="bi bi-collection-play"></i> Hàng đợi
+        </a>
+        <a href="{{ route('queue.display.index') }}"
+           class="nav-link {{ request()->routeIs('queue.display*') ? 'active' : '' }}">
+            <i class="bi bi-tv"></i> Màn hình hàng đợi
         </a>
         <a href="{{ route('admin.news.index') }}"
            class="nav-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">
