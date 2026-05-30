@@ -704,8 +704,8 @@
             <div class="nav-cta" style="display: flex; align-items: center; gap: 16px;">
                 @auth
                 <x-notification-bell :direct="true" />
-                @if (Auth::user()->is_admin)
-                <a href="{{ route('admin.dashboard') }}" class="btn-outline">Dashboard</a>
+                @if (Auth::user()->is_admin || Auth::user()->role_id == 1 || Auth::user()->role_id == 2)
+                <a href="{{ route('admin.news.index') }}" class="btn-outline">Dashboard</a>
                 @else
                 <a href="{{ route('Home.trangchu') }}" class="btn-outline">Trang của tôi</a>
                 @endif
