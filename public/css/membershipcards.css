@@ -222,3 +222,113 @@ h3 {
 .h-points.minus { color: #d93025; }
 
 .text-right { text-align: right; }
+
+.membership-summary-grid {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.2fr);
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.membership-summary-grid .extra-item,
+.card-stats .membership-history-card {
+    display: none;
+}
+
+.membership-summary-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 58px;
+    font-size: 0;
+}
+
+.membership-summary-card .summary-content,
+.membership-summary-card .summary-icon {
+    font-size: 14px;
+}
+
+.summary-icon {
+    color: #4a90e2;
+    font-size: 20px;
+}
+
+.summary-content span {
+    color: var(--text-gray);
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.summary-content strong {
+    color: var(--text-dark);
+    font-size: 18px;
+}
+
+.membership-history-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 14px;
+    min-height: 58px;
+}
+
+.history-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #004085;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.history-title i {
+    color: #f39c12;
+}
+
+.point-history-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-top: 1px solid #e9ecef;
+}
+
+.point-history-item strong,
+.point-history-item span {
+    display: block;
+}
+
+.point-history-item strong {
+    font-size: 13px;
+    color: var(--text-dark);
+}
+
+.point-history-item span {
+    color: var(--text-gray);
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+.point-history-value {
+    color: #28a745;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.empty-history {
+    border-top: 1px solid #e9ecef;
+    color: var(--text-gray);
+    font-size: 13px;
+    padding-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .membership-summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
