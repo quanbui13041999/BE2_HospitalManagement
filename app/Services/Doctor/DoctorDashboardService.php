@@ -34,11 +34,11 @@ class DoctorDashboardService
         $today    = Carbon::today();
         $todayCount = (clone $appointmentQuery)
             ->whereDate('appointments.appointment_time', $today)
-            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'])
+            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám','Đã thanh toán'])
             ->count();
 
         $upcomingCount = (clone $appointmentQuery)
-            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
+            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận','Đã thanh toán'])
             ->where('appointments.appointment_time', '>', now())
             ->count();
 
@@ -73,7 +73,7 @@ class DoctorDashboardService
 
         return $this->baseAppointmentQuery($effectiveId)
             ->whereDate('appointments.appointment_time', Carbon::today())
-            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'])
+            ->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám','Đã thanh toán'])
             ->orderBy('appointments.queue_number')
             ->select([
                 'appointments.*',

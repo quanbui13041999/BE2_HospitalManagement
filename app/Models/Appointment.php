@@ -16,6 +16,7 @@ class Appointment extends Model
         'appointment_time', 'queue_number',
         'status', 'is_priority', 'priority_type', 'note', 'cancel_reason',
         'slot_hold_expire', 'rescheduled_from',
+        'mail_reminded_1day', 'mail_reminded_1hour',
         'created_at',
     ];
 
@@ -24,6 +25,8 @@ class Appointment extends Model
         'slot_hold_expire' => 'datetime',
         'created_at'       => 'datetime',
         'is_priority'      => 'boolean',
+        'mail_reminded_1day' => 'boolean',
+        'mail_reminded_1hour' => 'boolean',
     ];
 
     // ── Relationships ──────────────────────────────────────────────
@@ -78,6 +81,25 @@ class Appointment extends Model
         return $query
             ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận'])
             ->where('appointment_time', '>=', now());
+    }
+
+    public function scopeTomorrowReminder1Day($query)
+    {
+        return $query
+            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận'])
+            ->whereDate('appointment_time', now()->addDay()->toDateString())
+            ->where('mail_reminded_1day', false);
+    }
+
+    public function scopeOneHourReminder($query)
+    {
+        $from = now()->addMinutes(50);
+        $to = now()->addMinutes(70);
+
+        return $query
+            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận'])
+            ->where('mail_reminded_1hour', false)
+            ->whereBetween('appointment_time', [$from, $to]);
     }
 
     /**

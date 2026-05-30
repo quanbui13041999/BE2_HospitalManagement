@@ -106,8 +106,7 @@ Route::middleware('auth')->group(function () {
     // API gợi ý (AJAX)
     Route::get('/api/appointments/suggest',    [AppointmentController::class, 'suggest'])->name('appointments.suggest');
     Route::get('/api/appointments/timeslots',  [AppointmentController::class, 'timeslots'])->name('appointments.timeslots');
-    Route::get('/api/appointments/queue-info', [AppointmentController::class, 'getQueueInfo'])->name('appointments.queue-info');
-
+    Route::get('/api/appointments/queue-info', [AppointmentController::class, 'getQueueInfo'])->name('appointments.queue-info');    Route::post('/api/appointments/reminders/send', [AppointmentController::class, 'sendEmailReminders'])->middleware(['auth','is_admin'])->name('appointments.reminders.send');
     // --------------------------------------------------------
     // Lịch hẹn — Route chính (user.appointments.*)
     // --------------------------------------------------------

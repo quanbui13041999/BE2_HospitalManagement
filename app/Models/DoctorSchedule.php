@@ -136,4 +136,15 @@ class DoctorSchedule extends Model
             ->whereIn('status', ['pending', 'confirmed', 'Chờ xác nhận', 'Đã xác nhận'])
             ->get();
     }
+
+    /**
+     * Lấy appointment bị ảnh hưởng bởi ngày nghỉ của bác sĩ
+     */
+    public function dayOffAffectedAppointments()
+    {
+        return $this->appointments()
+            ->with('user')
+            ->whereIn('status', ['pending', 'confirmed', 'Chờ xác nhận', 'Đã xác nhận', 'Bác sĩ nghỉ'])
+            ->get();
+    }
 }
