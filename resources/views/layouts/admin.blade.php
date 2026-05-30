@@ -104,6 +104,14 @@
             <i class="bi bi-bar-chart-line"></i> Thống kê tổng quan
         </a>
 
+        <a href="{{ route('doctor.dashboard') }}"
+           class="nav-link {{ request()->routeIs('doctor.dashboard') ? 'active' : '' }}">
+            <i class="bi bi-speedometer2"></i> Dashboard bác sĩ
+        </a>
+        <a href="{{ route('doctor.schedule') }}"
+           class="nav-link {{ request()->routeIs('doctor.schedule') ? 'active' : '' }}">
+            <i class="bi bi-calendar2-week"></i> Lịch làm việc
+        </a>
         <div class="nav-section">Vận hành</div>
         <a href="{{ route('admin.services.index') }}"
            class="nav-link {{ request()->routeIs('admin.services.*') ? 'active' : '' }}">
