@@ -52,9 +52,9 @@
             
             {{-- Welcome Info --}}
             <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:20px; margin-top:10px;">
-                <img src="https://ui-avatars.com/api/?name=MediCore&background=0084ff&color=fff" 
+                <img src="https://ui-avatars.com/api/?name=HospitalC&background=0084ff&color=fff" 
                      style="width:60px;height:60px;border-radius:50%;margin-bottom:10px;">
-                <div style="color:#fff; font-weight:700; font-size:17px;">MediCore Hospital</div>
+                <div style="color:#fff; font-weight:700; font-size:17px;">HospitalC</div>
                 <div style="color:#b0b3b8; font-size:13px;">Chúng tôi đã tạo cuộc trò chuyện này</div>
                 <div style="color:#b0b3b8; font-size:11px; margin-top:15px; text-align:center; padding:0 30px;">
                     🔒 Tin nhắn và cuộc gọi được bảo mật bằng tính năng mã hóa đầu cuối.

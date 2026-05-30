@@ -8,3 +8,4 @@ bước 4:php artisan optimize:clear
 bước 5:php artisan serve
 chạy lệnh này mới thấy được ảnh trong profile 
 php artisan storage:link
+php artisan db:seed

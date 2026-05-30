@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập - Hospital Booking</title>
+    <title>Đăng nhập - HospitalC</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -86,7 +86,7 @@
 
         <!-- Footer -->
         <p class="text-center text-gray-400 text-xs mt-6">
-            © 2026 Hospital Booking System
+            © 2026 HospitalC
         </p>
     </div>
 

@@ -80,8 +80,8 @@
         </ul>
         
         <div class="footer">
-            <p>Cảm ơn bạn đã tin tưởng HospitalBooking. Chúng tôi mong sớm được phục vụ bạn!</p>
-            <p><strong>Bệnh Viện HospitalBooking</strong></p>
+            <p>Cảm ơn bạn đã tin tưởng HospitalC. Chúng tôi mong sớm được phục vụ bạn!</p>
+            <p><strong>Bệnh Viện HospitalC</strong></p>
         </div>
     </div>
 </body>

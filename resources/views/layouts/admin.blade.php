@@ -4,12 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Admin') — MediCore®</title>
-
-    {{-- Google Fonts --}}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>@yield('title', 'Admin') — HospitalC</title>
 
     {{-- Bootstrap 5 --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
@@ -17,15 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
     <style>
-        :root {
-            --accent: #0A6EBD;
-            --accent-light: #E8F3FC;
-            --accent-dark: #074B83;
-            --surface: #F4F7FA;
-            --black: #0A0F14;
-        }
-
-        body { background: var(--surface); font-family: 'DM Sans', sans-serif; }
+        body { background: #f4f6fb; font-family: 'Segoe UI', sans-serif; }
 
         /* ── Sidebar ── */
         #sidebar {
@@ -36,7 +23,7 @@
         }
         #sidebar .brand {
             padding: 20px 24px;
-            font-size: 18px; font-weight: 700; color: var(--black);
+            font-size: 18px; font-weight: 700; color: #1e293b;
             border-bottom: 1px solid #f1f5f9;
         }
         #sidebar .nav-link {
@@ -47,10 +34,10 @@
             text-decoration: none;
         }
         #sidebar .nav-link:hover {
-            background: var(--accent-light); color: var(--accent-dark);
+            background: #f8fafc; color: #1e293b;
         }
         #sidebar .nav-link.active {
-            background: var(--accent-light); color: var(--accent); font-weight: 600;
+            background: #dbeafe; color: #1d4ed8; font-weight: 600;
         }
         #sidebar .nav-section {
             padding: 18px 24px 6px;
@@ -68,7 +55,7 @@
             display: flex; align-items: center; justify-content: space-between;
             position: sticky; top: 0; z-index: 99;
         }
-        #topbar .page-title { font-weight: 700; font-size: 16px; color: var(--black); }
+        #topbar .page-title { font-weight: 700; font-size: 16px; color: #1e293b; }
 
         /* ── Content ── */
         #content { padding: 24px; flex: 1; }
@@ -81,13 +68,13 @@
 {{-- ══ SIDEBAR ══════════════════════════════════════════════════════ --}}
 <div id="sidebar">
     <div class="brand">
-        <i class="bi bi-heart-pulse-fill me-2" style="color: var(--accent);"></i>MediCore<sup>®</sup>
+        <i class="bi bi-hospital me-2 text-primary"></i>HospitalC Admin
     </div>
 
     <nav class="mt-3 flex-fill">
         <div class="nav-section">Tổng quan</div>
-        <a href="{{ route('admin.news.index') }}"
-           class="nav-link {{ (request()->routeIs('admin.news.*') || request()->routeIs('admin.dashboard')) ? 'active' : '' }}">
+        <a href="{{ route('admin.dashboard') }}"
+           class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
 

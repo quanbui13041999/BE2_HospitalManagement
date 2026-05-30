@@ -57,8 +57,8 @@
     </div>
 
     <div class="footer">
-        Cảm ơn bạn đã sử dụng dịch vụ <strong>HospitalBooking</strong>!<br>
-        © {{ date('Y') }} Bệnh Viện HospitalBooking
+        Cảm ơn bạn đã sử dụng dịch vụ <strong>HospitalC</strong>!<br>
+        © {{ date('Y') }} Bệnh Viện HospitalC
     </div>
 
 </div>

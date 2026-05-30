@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Đặt Lịch Khám – HospitalBooking | Trải nghiệm đặt khám hiện đại</title>
+    <title>Đặt Lịch Khám – HospitalC | Trải nghiệm đặt khám hiện đại</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
         rel="stylesheet">
@@ -1091,7 +1091,7 @@
                 </svg>
             </div>
             <div>
-                <div class="brand-text">HospitalBooking</div>
+                <div class="brand-text">HospitalC</div>
                 <div class="brand-sub">Đặt lịch thông minh</div>
             </div>
         </a>
@@ -1449,7 +1449,7 @@
     </div>{{-- /page --}}
 
     <footer class="footer">
-        © {{ date('Y') }} HospitalBooking &nbsp;·&nbsp;
+        © {{ date('Y') }} HospitalC &nbsp;·&nbsp;
         <a href="#">Chính sách bảo mật</a> &nbsp;·&nbsp;
         <a href="#">Hỗ trợ</a>
     </footer>
