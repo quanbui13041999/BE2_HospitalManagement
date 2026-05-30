@@ -150,6 +150,13 @@
                         </a>
                     </li>
                     @endif
+                    @if(Auth::user()->isDoctor())
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('doctor.dashboard') ? 'active' : '' }}" href="{{ route('doctor.dashboard') }}">
+                            <i class="bi bi-person-workspace"></i> Dashboard bác sĩ
+                        </a>
+                    </li>
+                    @endif
                     @php
                     $user = Auth::user();
                     $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
@@ -159,9 +166,9 @@
                     $demoClass = 'btn-outline-secondary';
 
                     if ($roleId == 2 || ($user->role == 'doctor')) {
-                    $demoLink = route('doctor.appointments.index');
-                    $demoText = 'Demo BS';
-                    $demoIcon = 'bi-stethoscope';
+                    $demoLink = route('doctor.dashboard');
+                    $demoText = 'Dashboard BS';
+                    $demoIcon = 'bi-person-workspace';
                     $demoClass = 'btn-outline-primary';
                     } elseif ($roleId == 3 || ($user->role == 'patient')) {
                     $demoLink = route('medical_history.index');

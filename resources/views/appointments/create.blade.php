@@ -1105,7 +1105,7 @@
                 @if(auth()->user()->isPatient())
                     <a href="{{ route('medical_history.index') }}">📄 Hồ sơ bệnh án</a>
                 @elseif(auth()->user()->isDoctor())
-                    <a href="{{ route('doctor.appointments.index') }}">🩺 Danh sách khám</a>
+                    <a href="{{ route('doctor.dashboard') }}">🩺 Dashboard bác sĩ</a>
                 @endif
             @endauth
         </div>
