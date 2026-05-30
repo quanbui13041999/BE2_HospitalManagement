@@ -21,12 +21,26 @@
             <a href="{{ route('admin.rooms.edit', $room) }}" class="btn btn-primary">
                 <i class="bi bi-pencil me-1"></i>Sửa phòng
             </a>
+            <form method="POST" action="{{ route('admin.rooms.destroy', $room) }}" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xoá phòng này?')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i>Xoá phòng
+                </button>
+            </form>
         </div>
     </div>
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">
             {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show">
+            {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif

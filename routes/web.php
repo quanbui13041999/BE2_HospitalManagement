@@ -365,6 +365,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::get('/{room}/edit',     [RoomController::class, 'edit'])->name('edit');
         Route::put('/{room}',          [RoomController::class, 'update'])->name('update');
         Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
+        Route::delete('/{room}',       [RoomController::class, 'destroy'])->name('destroy');
     });
 
     // --------------------------------------------------------

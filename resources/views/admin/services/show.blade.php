@@ -205,8 +205,9 @@
                                                     </div>
                                                     <div class="col-6">
                                                         <label class="form-label">Đơn giá (đ)</label>
-                                                        <input type="number" name="price" class="form-control"
-                                                               value="{{ $price->price }}" min="0" step="1000" required>
+                                                        <input type="number" name="price" class="form-control bg-light"
+                                                               value="{{ $price->price }}" readonly style="cursor: not-allowed;" required>
+                                                        <div class="form-text text-muted" style="font-size: 10px;">Số tiền của mức giá đã tạo không được sửa đổi trực tiếp.</div>
                                                     </div>
                                                     <div class="col-6">
                                                         <label class="form-label">Hiệu lực từ</label>

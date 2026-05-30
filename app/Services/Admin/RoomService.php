@@ -75,6 +75,29 @@ class RoomService
         ];
     }
 
+    public function destroyRoom(Room $room): ?string
+    {
+        if ($room->schedules()->exists()) {
+            return 'Không thể xoá phòng khám này vì đã có ca trực của bác sĩ được phân bổ hoặc đang diễn ra.';
+        }
+
+        $roomName = $room->room_name ?? $room->room_code;
+        $roomId = $room->room_id;
+        $roomData = $room->only(['room_id', 'room_name', 'room_code']);
+        
+        $room->delete();
+
+        \App\Services\ActivityLogService::log(
+            'Admin xoá phòng',
+            'Admin ' . (\Illuminate\Support\Facades\Auth::user()?->full_name ?: '') . ' đã xoá phòng khám ' . $roomName . '.',
+            'room',
+            $roomId,
+            ['room' => $roomData]
+        );
+
+        return null;
+    }
+
     // ----------------------------------------------------------------
     // Ca trực
     // ----------------------------------------------------------------
@@ -224,15 +247,34 @@ class RoomService
             'day'       => $weekStart->copy()->addDays($d)->isoFormat('dd'),
         ]);
 
-        $schedules = $this->repo->weekSchedulesForRoom($roomId, $weekStart)->map(fn($items) =>
-            $items->map(fn($item) => [
-                'start_time'  => $item->start_time,
-                'end_time'    => $item->end_time,
-                'status'      => $item->status,
-                'doctor_name' => $item->doctor->full_name ?? '',
-                'room_code'   => $item->room->room_code ?? '',
-            ])->toArray()
-        );
+        $schedules = $this->repo->weekSchedulesForRoom($roomId, $weekStart)->map(function ($items) {
+            $grouped = [
+                'sang' => null,
+                'chieu' => null,
+                'toi' => null
+            ];
+            foreach ($items as $item) {
+                $h = (int) substr($item->start_time, 0, 2);
+                $data = [
+                    'schedule_id' => $item->schedule_id,
+                    'start_time'  => substr($item->start_time, 0, 5),
+                    'end_time'    => substr($item->end_time, 0, 5),
+                    'status'      => $item->status,
+                    'doctor_name' => $item->doctor->full_name ?? '',
+                    'room_code'   => $item->room->room_code ?? '',
+                    'booked_slots' => $item->booked_slots,
+                    'max_slot'    => $item->max_slot,
+                ];
+                if ($h < 12) {
+                    $grouped['sang'] = $data;
+                } elseif ($h < 17) {
+                    $grouped['chieu'] = $data;
+                } else {
+                    $grouped['toi'] = $data;
+                }
+            }
+            return $grouped;
+        });
 
         return [
             'success'    => true,
