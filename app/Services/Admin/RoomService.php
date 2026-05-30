@@ -297,7 +297,7 @@ class RoomService
     {
         return [
             'total'    => $rooms->count(),
-            'in_use'   => $rooms->where('status', 'Đang sử dụng')->count(),
+            'in_use'   => $rooms->where('status', 'Hoạt động')->count(),
             'empty'    => $rooms->where('status', 'Trống')->count(),
             'maintain' => $rooms->where('status', 'Bảo trì')->count(),
             'clean'    => $rooms->where('status', 'Vệ sinh')->count(),

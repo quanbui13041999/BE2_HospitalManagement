@@ -68,7 +68,7 @@
                             <td class="text-muted">Trạng thái</td>
                             <td>
                                 @php
-                                    $colors = ['Trống'=>'success','Đang sử dụng'=>'primary','Bảo trì'=>'danger','Vệ sinh'=>'warning'];
+                                    $colors = ['Trống'=>'success','Hoạt động'=>'primary','Bảo trì'=>'danger','Vệ sinh'=>'warning'];
                                     $c = $colors[$room->status] ?? 'secondary';
                                 @endphp
                                 <span class="badge bg-{{ $c }}">{{ $room->status }}</span>

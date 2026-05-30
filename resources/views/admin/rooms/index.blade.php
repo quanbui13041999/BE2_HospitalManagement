@@ -94,7 +94,8 @@
     }
 
     .room-card.s-using {
-        background: #F0F4FF;
+        background: #E1EFFF;
+        border: 2px solid #84B5FF;
     }
 
     .room-card.s-empty {
@@ -292,7 +293,7 @@
         @php
         $statDefs = [
         ['label'=>'Tổng số phòng', 'val'=>$stats['total'], 'icon'=>'bi-door-open', 'bg'=>'#E3F2FD','color'=>'#0D47A1'],
-        ['label'=>'Đang sử dụng', 'val'=>$stats['in_use'], 'icon'=>'bi-person-check','bg'=>'#E8F5E9','color'=>'#2e7d32'],
+        ['label'=>'Đang hoạt động', 'val'=>$stats['in_use'], 'icon'=>'bi-person-check','bg'=>'#E8F5E9','color'=>'#2e7d32'],
         ['label'=>'Trống', 'val'=>$stats['empty'], 'icon'=>'bi-check-circle','bg'=>'#E8F5E9','color'=>'#388e3c'],
         ['label'=>'Bảo trì / Vệ sinh','val'=>$stats['maintain']+$stats['clean'],'icon'=>'bi-wrench','bg'=>'#FFEBEE','color'=>'#c62828'],
         ];
@@ -338,7 +339,7 @@
                         @endforeach
                     </select>
                     <div class="d-flex gap-1 ms-auto small text-muted align-items-center">
-                        <span class="d-inline-block" style="width:10px;height:10px;background:#F0F4FF;border:1px solid #90CAF9;border-radius:2px"></span> Đang dùng &nbsp;
+                        <span class="d-inline-block" style="width:10px;height:10px;background:#F0F4FF;border:1px solid #90CAF9;border-radius:2px"></span> Đang hoạt động &nbsp;
                         <span class="d-inline-block" style="width:10px;height:10px;background:#E8F5E9;border:1px solid #a5d6a7;border-radius:2px"></span> Trống &nbsp;
                         <span class="d-inline-block" style="width:10px;height:10px;background:#FFEBEE;border:1px solid #ef9a9a;border-radius:2px"></span> Bảo trì &nbsp;
                         <span class="d-inline-block" style="width:10px;height:10px;background:#FFFDE7;border:1px solid #ffe082;border-radius:2px"></span> Vệ sinh
@@ -351,7 +352,7 @@
             $roomsByFloor = $rooms->groupBy(function($r) {
             return intdiv((int) filter_var($r->room_code, FILTER_SANITIZE_NUMBER_INT), 100) * 100;
             });
-            $statusMap = ['Đang sử dụng'=>'s-using','Trống'=>'s-empty','Bảo trì'=>'s-maintain','Vệ sinh'=>'s-clean'];
+            $statusMap = ['Hoạt động'=>'s-using','Trống'=>'s-empty','Bảo trì'=>'s-maintain','Vệ sinh'=>'s-clean'];
             @endphp
 
             @forelse($roomsByFloor->sortKeys() as $floor => $floorRooms)

@@ -105,7 +105,7 @@
         @php
             $statusColors = [
                 'Trống'        => 'success',
-                'Đang sử dụng' => 'primary',
+                'Hoạt động'    => 'primary',
                 'Bảo trì'      => 'danger',
                 'Vệ sinh'      => 'warning',
             ];
