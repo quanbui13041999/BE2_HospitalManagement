@@ -9,7 +9,7 @@ class PaymentItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'paymentitems';  // ← PHẢI CÓ DÒNG NÀY
+    protected $table = 'payment_items';
     protected $primaryKey = 'item_id';
     public $timestamps = false;
 
