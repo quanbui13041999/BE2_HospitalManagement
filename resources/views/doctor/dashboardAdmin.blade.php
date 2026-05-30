@@ -86,6 +86,10 @@
             font-size: 18px;
             border-bottom: 1px solid #f1f5f9;
             color: #0f172a;
+            text-decoration: none;
+        }
+        .admin-sidebar .brand:hover {
+            color: #1d4ed8;
         }
         .admin-sidebar .section {
             padding: 18px 22px 6px;
@@ -128,10 +132,10 @@
 
 <body>
     <aside class="admin-sidebar">
-        <div class="brand">
+        <a href="{{ route('home') }}" class="brand">
             <span class="text-blue-600">🏥</span>
             <span>HospitalC Admin</span>
-        </div>
+        </a>
 
         <nav class="mt-3">
             <div class="section">Tổng quan</div>

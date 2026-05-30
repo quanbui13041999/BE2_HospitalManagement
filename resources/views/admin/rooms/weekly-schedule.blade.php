@@ -201,93 +201,50 @@
         </div>
 
         {{-- Bảng lịch tuần --}}
-        <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
+        <div class="card shadow-sm">
             <div class="card-body p-0" style="overflow-x: auto;">
-                <div class="week-grid" style="min-width: 900px; grid-template-columns: 140px repeat(7, 1fr);">
+                <div class="week-grid" style="min-width: 800px;">
                     {{-- Header: Giờ --}}
-                    <div class="week-header d-flex align-items-center justify-content-center bg-light fw-bold" style="border-bottom: 2px solid #e0e7ef; font-size: 14px;">Ca Trực</div>
+                    <div class="week-header" style="border-bottom: 2px solid #e0e7ef;">Giờ</div>
                     @foreach($weekDates as $date)
-                        <div class="week-header {{ $date->isToday() ? 'bg-primary text-white' : 'bg-light' }} py-3" 
+                        <div class="week-header {{ $date->isToday() ? 'bg-primary text-white' : '' }}" 
                              style="border-bottom: 2px solid #e0e7ef;">
-                            <div class="fw-bold">{{ $date->isoFormat('dddd') }}</div>
-                            <span class="opacity-75" style="font-size: 11px;">{{ $date->format('d/m/Y') }}</span>
+                            {{ $date->isoFormat('dddd') }}<br>
+                            <span style="font-size: 11px;">{{ $date->format('d/m/Y') }}</span>
                         </div>
                     @endforeach
 
-                    @php
-                        $shifts = [
-                            ['key' => 'sang', 'label' => 'Ca Sáng', 'time' => '07:00 – 12:00', 'start' => '07:00', 'end' => '12:00', 'bg' => 'bg-primary-subtle text-primary'],
-                            ['key' => 'chieu', 'label' => 'Ca Chiều', 'time' => '13:00 – 17:00', 'start' => '13:00', 'end' => '17:00', 'bg' => 'bg-info-subtle text-info'],
-                            ['key' => 'toi', 'label' => 'Ca Tối', 'time' => '17:00 – 22:00', 'start' => '17:00', 'end' => '22:00', 'bg' => 'bg-warning-subtle text-warning'],
-                        ];
-                    @endphp
-
-                    {{-- Các dòng ca trực --}}
-                    @foreach($shifts as $shift)
-                        <div class="week-time d-flex flex-column align-items-center justify-content-center py-4 border-end" style="background: #f8fafc;">
-                            <span class="badge {{ $shift['bg'] }} mb-1 px-2.5 py-1.5" style="font-size: 11px;">{{ $shift['label'] }}</span>
-                            <small class="text-muted" style="font-size: 10px; font-weight: 500;">{{ $shift['time'] }}</small>
-                        </div>
-                        
+                    {{-- Các dòng giờ --}}
+                    @foreach($timeSlots as $time)
+                        <div class="week-time">{{ $time }}</div>
                         @foreach($weekDates as $date)
                             @php
                                 $dateKey = $date->format('Y-m-d');
                                 $daySchedules = $weekSchedules->get($dateKey, collect());
-                                $slot = $daySchedules->first(function($s) use ($shift) {
-                                    $h = (int) substr($s->start_time, 0, 2);
-                                    if ($shift['key'] === 'sang') return $h < 12;
-                                    if ($shift['key'] === 'chieu') return $h >= 12 && $h < 17;
-                                    return $h >= 17;
+                                $slot = $daySchedules->first(function($s) use ($time) {
+                                    return $s->start_time <= $time . ':00' && $s->end_time > $time . ':00';
                                 });
                             @endphp
-                            <div class="week-cell p-2 d-flex flex-column justify-content-between align-items-stretch" style="min-height: 100px; background: #fff; border-right: 1px solid #e0e7ef; border-bottom: 1px solid #e0e7ef;">
+                            <div class="week-cell">
                                 @if($slot)
                                     @if($slot->status === 'Hoạt động')
-                                        @php
-                                            $percent = min(100, (int) round(($slot->booked_slots / $slot->max_slot) * 100));
-                                            $progressColor = $percent >= 100 ? 'bg-danger' : ($percent >= 70 ? 'bg-warning' : 'bg-success');
-                                        @endphp
-                                        <div class="week-slot has-dr p-2 rounded shadow-sm d-flex flex-column justify-content-between h-100" 
-                                             title="Bác sĩ: {{ $slot->doctor->full_name ?? '' }}&#10;Thời gian: {{ substr($slot->start_time,0,5) }} - {{ substr($slot->end_time,0,5) }}&#10;Đã đặt: {{ $slot->booked_slots }}/{{ $slot->max_slot }} slot"
+                                        <div class="week-slot has-dr" 
+                                             title="Bác sĩ: {{ $slot->doctor->full_name ?? '' }}&#10;Thời gian: {{ substr($slot->start_time,0,5) }} - {{ substr($slot->end_time,0,5) }}&#10;Slot: {{ $slot->booked_slots }}/{{ $slot->max_slot }}"
                                              onclick="window.location='{{ route('admin.rooms.schedule.edit', $slot) }}'">
-                                            <div>
-                                                <div class="fw-bold text-dark text-truncate" style="font-size: 12px;"><i class="bi bi-person-fill me-1 text-primary"></i>{{ $slot->doctor->full_name ?? '' }}</div>
-                                                <div class="text-muted small text-truncate" style="font-size: 10px;">{{ $slot->doctor->department->department_name ?? 'Không khoa' }}</div>
-                                            </div>
-                                            <div class="mt-2">
-                                                <div class="d-flex justify-content-between align-items-center mb-1 text-muted" style="font-size: 10px;">
-                                                    <span>Số slot đặt:</span>
-                                                    <span class="fw-bold text-dark">{{ $slot->booked_slots }}/{{ $slot->max_slot }}</span>
-                                                </div>
-                                                <div class="progress" style="height: 4px;">
-                                                    <div class="progress-bar {{ $progressColor }}" role="progressbar" style="width: {{ $percent }}%"></div>
-                                                </div>
-                                            </div>
+                                            <i class="bi bi-person-fill me-1"></i>
+                                            {{ $slot->doctor ? mb_substr($slot->doctor->full_name, 0, 12) : '—' }}
                                         </div>
                                     @else
-                                        <div class="week-slot locked p-2 rounded text-center d-flex align-items-center justify-content-center h-100" 
-                                             title="Ca đã tạm dừng"
-                                             onclick="window.location='{{ route('admin.rooms.schedule.edit', $slot) }}'">
-                                            <div>
-                                                <i class="bi bi-pause-circle fs-5 d-block text-secondary mb-1"></i>
-                                                <span class="text-muted small fw-semibold">Tạm dừng</span>
-                                            </div>
+                                        <div class="week-slot locked" title="Ca đã tạm dừng">
+                                            <i class="bi bi-pause-circle me-1"></i>Tạm dừng
                                         </div>
                                     @endif
                                 @else
-                                    <a href="{{ route('admin.rooms.schedule.create', [
-                                        'room_id' => $selectedRoom->room_id,
-                                        'work_date' => $date->toDateString(),
-                                        'start_time' => $shift['start'],
-                                        'end_time' => $shift['end']
-                                    ]) }}" 
-                                       class="week-slot empty p-2 rounded border border-dashed text-center d-flex align-items-center justify-content-center h-100 text-decoration-none"
-                                       title="Gán lịch làm việc cho {{ $shift['label'] }} ngày {{ $date->format('d/m') }}">
-                                        <div>
-                                            <i class="bi bi-plus-circle fs-5 d-block text-success mb-1"></i>
-                                            <span class="text-success small fw-semibold">Trống</span>
-                                        </div>
-                                    </a>
+                                    <div class="week-slot empty" 
+                                         style="opacity: 0.5; cursor: pointer;"
+                                         onclick="window.location='{{ route('admin.rooms.schedule.create', ['room_id' => $selectedRoom->room_id]) }}?work_date={{ $date->toDateString() }}'">
+                                        <i class="bi bi-plus-circle me-1"></i>Trống
+                                    </div>
                                 @endif
                             </div>
                         @endforeach
@@ -300,15 +257,15 @@
         <div class="legend">
             <div class="legend-item">
                 <div class="legend-color" style="background: #DBEAFE; border-left: 3px solid #1e40af;"></div>
-                <span>Có ca trực (Click để sửa)</span>
+                <span>Có ca hoạt động</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color" style="background: #DCFCE7; border-left: 3px solid #166534;"></div>
-                <span>Ca trống (Click để tạo mới nhanh)</span>
+                <span>Trống - Có thể thêm ca</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color" style="background: #F1F5F9; border-left: 3px solid #94a3b8;"></div>
-                <span>Tạm dừng</span>
+                <span>Tạm dừng / Đã huỷ</span>
             </div>
         </div>
     @else

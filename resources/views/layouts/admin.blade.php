@@ -27,6 +27,11 @@
             padding: 20px 24px;
             font-size: 18px; font-weight: 700; color: #1e293b;
             border-bottom: 1px solid #f1f5f9;
+            text-decoration: none;
+            display: block;
+        }
+        #sidebar .brand:hover {
+            color: #1d4ed8;
         }
         #sidebar .nav-link {
             color: #64748b; padding: 10px 20px;
@@ -88,9 +93,9 @@
 
 {{-- ══ SIDEBAR ══════════════════════════════════════════════════════ --}}
 <div id="sidebar">
-    <div class="brand">
+    <a href="{{ route('home') }}" class="brand">
         <i class="bi bi-hospital me-2 text-primary"></i>HospitalC Admin
-    </div>
+    </a>
 
     <nav class="mt-3 flex-fill">
         <div class="nav-section">Tổng quan</div>

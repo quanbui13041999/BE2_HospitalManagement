@@ -7,10 +7,6 @@ use App\Http\Requests\StoreNewsRequest;
 use App\Mail\NewsPublishedMail;
 use App\Models\HospitalNews;
 use App\Models\User;
-use App\Models\Appointment;
-use App\Models\Payment;
-use App\Models\Doctor;
-use App\Services\Admin\AdminDashboardService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,85 +16,14 @@ use Exception;
 
 class NewsController extends Controller
 {
-    public function __construct(
-        private NotificationService $notifications,
-        private AdminDashboardService $dashboardService
-    ) {}
+    public function __construct(private NotificationService $notifications) {}
 
-    public function index(Request $request)
+    public function index()
     {
-        $timeRange = $request->input('time_range', 'week');
-
-        // Fetch analytical dashboard data
-        $appointmentStats      = $this->dashboardService->getAppointmentStats($timeRange);
-        $patientStats          = $this->dashboardService->getPatientStats();
-        $performanceStats      = $this->dashboardService->getPerformanceStats($timeRange);
-
-        $dailyData             = $this->dashboardService->getDailyAppointmentsData($timeRange);
-        $specialtyData         = $this->dashboardService->getSpecialtyDistribution($timeRange);
-        $statusData            = $this->dashboardService->getStatusDistribution($timeRange);
-        $ageData               = $this->dashboardService->getAgeDistribution();
-        $patientTrendData      = $this->dashboardService->getPatientTypeTrend($timeRange);
-        $satisfactionTrendData = $this->dashboardService->getSatisfactionTrend($timeRange);
-
-        $waitTimeData          = $this->dashboardService->getWaitTimeBySpecialty($timeRange);
-        $satisfactionByDoctor   = $this->dashboardService->getSatisfactionByDoctor(5);
-
-        $topDoctors            = $this->dashboardService->getTopDoctors();
-        $topDoctorWeek         = $this->dashboardService->getTopDoctorThisWeek();
-
-        // Fetch old/traditional operational dashboard data
-        $stats = [
-            'total_patients' => User::where('role_id', 3)->count(),
-            'total_doctors' => Doctor::count(),
-            'appointments_today' => Appointment::whereDate('appointment_time', today())->count(),
-            'pending_appointments' => Appointment::where('status', 'Chờ xác nhận')->count(),
-            'total_revenue' => Payment::whereIn('status', ['Thành công', 'Đã thanh toán'])->sum('total_amount'),
-            'revenue_today' => Payment::whereIn('status', ['Thành công', 'Đã thanh toán'])
-                ->whereDate('payment_date', today())
-                ->sum('total_amount'),
-        ];
-
-        $recentAppointments = Appointment::with(['user', 'schedule.doctor'])
-            ->orderByDesc('created_at')
-            ->limit(5)
-            ->get();
-
-        $recentPayments = Payment::with(['appointment.user'])
-            ->orderByDesc('payment_date')
-            ->limit(5)
-            ->get();
-
-        $recentNews = HospitalNews::with('author')
-            ->orderByDesc('created_at')
-            ->limit(5)
-            ->get();
-
         $news = HospitalNews::with('author')
             ->orderByDesc('created_at')
             ->paginate(20);
-
-        return view('admin.news.index', compact(
-            'news',
-            'appointmentStats',
-            'patientStats',
-            'performanceStats',
-            'dailyData',
-            'specialtyData',
-            'statusData',
-            'ageData',
-            'patientTrendData',
-            'satisfactionTrendData',
-            'waitTimeData',
-            'satisfactionByDoctor',
-            'topDoctors',
-            'topDoctorWeek',
-            'timeRange',
-            'stats',
-            'recentAppointments',
-            'recentPayments',
-            'recentNews'
-        ));
+        return view('admin.news.index', compact('news'));
     }
 
     public function create()
