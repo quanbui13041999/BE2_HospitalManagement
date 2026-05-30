@@ -111,7 +111,7 @@ class MedicalRecordController extends Controller
         }
 
         if ($user->role_id === 2) {
-            return $record->doctor_id === $user->user_id;
+            return true;
         }
 
         if ($user->role_id === 3) {
@@ -140,12 +140,23 @@ class MedicalRecordController extends Controller
                 'user',
                 'service',
                 'schedule.doctor',
+                'medicalRecord',
             ])->find($appointmentId);
+
+            if (!$appointment) {
+                return redirect()->route('medical-records.index')
+                    ->with('error', 'Không tìm thấy lịch hẹn để tạo hồ sơ.');
+            }
+
+            if ($appointment->status !== 'Hoàn thành') {
+                return redirect()->route('medical-records.index', ['patient_id' => $appointment->user_id])
+                    ->with('error', 'Lịch hẹn chưa khám xong nên chưa thể tạo hồ sơ bệnh án mới.');
+            }
 
             if ($appointment?->medicalRecord) {
                 return redirect()
                     ->route(
-                        'medical-records.show',
+                        'medical-records.edit',
                         $appointment->medicalRecord->record_id
                     )
                     ->with('info', 'Hồ sơ khám đã tồn tại cho lịch hẹn này.');

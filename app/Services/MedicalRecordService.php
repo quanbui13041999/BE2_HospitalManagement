@@ -9,6 +9,7 @@ use App\Models\Prescription;
 use App\Models\MedicalOrder;
 use App\Models\MedicalAttachment;
 use App\Models\RecordAllergy;
+use App\Models\Appointment;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,47 @@ use Illuminate\Support\Facades\Auth;
 
 class MedicalRecordService
 {
+    public function createBlankRecordFromAppointment(Appointment $appointment): MedicalRecord
+    {
+        return DB::transaction(function () use ($appointment) {
+            $appointment->loadMissing(['user', 'service', 'schedule.doctor']);
+
+            if ($appointment->medicalRecord) {
+                return $appointment->medicalRecord;
+            }
+
+            $doctor = $appointment->schedule?->doctor;
+            $appointmentTime = $appointment->appointment_time ?? now();
+
+            $previousRecordExists = MedicalRecord::where('patient_id', $appointment->user_id)
+                ->where(function ($query) use ($appointment) {
+                    $query->whereNull('appointment_id')
+                        ->orWhere('appointment_id', '!=', $appointment->appointment_id);
+                })
+                ->exists();
+
+            $record = MedicalRecord::create([
+                'record_code'     => MedicalRecord::generateRecordCode(),
+                'patient_id'      => $appointment->user_id,
+                'patient_name'    => $appointment->user?->full_name,
+                'patient_code'    => $this->resolvePatientCode($appointment->user_id),
+                'doctor_id'       => $doctor?->user_id,
+                'doctor_name'     => $doctor?->full_name,
+                'appointment_id'  => $appointment->appointment_id,
+                'exam_date'       => $appointmentTime->toDateString(),
+                'exam_time'       => $appointmentTime->format('H:i:s'),
+                'visit_type'      => $previousRecordExists ? 'Tái khám' : 'Khám mới',
+                'chief_complaint' => $appointment->note,
+                'status'          => MedicalRecord::STATUS_EXAMINING,
+                'status_note'     => 'Hồ sơ được tạo tự động sau khi hoàn thành lịch khám, chờ bác sĩ nhập chi tiết.',
+            ]);
+
+            $this->logRecordCreated($record, []);
+
+            return $record;
+        });
+    }
+
     /**
      * Tạo hồ sơ bệnh án mới từ lịch hẹn đã hoàn thành
      */
@@ -26,7 +68,7 @@ class MedicalRecordService
                 'record_code'     => MedicalRecord::generateRecordCode(),
                 'patient_id'      => $data['patient_id'] ?? null,
                 'patient_name'    => $data['patient_name'],
-                'patient_code'    => $data['patient_code'] ?? null,
+                'patient_code'    => $this->resolvePatientCode($data['patient_id'] ?? null),
                 'doctor_id'       => $data['doctor_id'] ?? Auth::id(),
                 'doctor_name'     => $data['doctor_name'],
                 'appointment_id'  => $data['appointment_id'] ?? null,
@@ -105,6 +147,15 @@ class MedicalRecordService
     {
         return DB::transaction(function () use ($record, $data) {
             $before = $record->only(['patient_name', 'doctor_name', 'exam_date', 'exam_time', 'visit_type', 'status']);
+
+            unset($data['patient_code']);
+
+            if (!array_key_exists('status', $data) && in_array($record->status, [
+                MedicalRecord::STATUS_PENDING,
+                MedicalRecord::STATUS_EXAMINING,
+            ], true)) {
+                $data['status'] = MedicalRecord::STATUS_COMPLETED;
+            }
 
             $record->update($data);
 
@@ -484,5 +535,20 @@ class MedicalRecordService
         }
 
         return collect($items)->filter(fn($item) => is_array($item) && !empty($item[$field]))->count();
+    }
+
+    private function resolvePatientCode(?int $patientId): ?string
+    {
+        if (!$patientId) {
+            return null;
+        }
+
+        $existingCode = MedicalRecord::where('patient_id', $patientId)
+            ->whereNotNull('patient_code')
+            ->where('patient_code', '!=', '')
+            ->orderBy('record_id')
+            ->value('patient_code');
+
+        return $existingCode ?: 'BN' . str_pad((string) $patientId, 6, '0', STR_PAD_LEFT);
     }
 }

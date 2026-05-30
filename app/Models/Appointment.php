@@ -81,7 +81,7 @@ class Appointment extends Model
     public function scopeUpcoming($query)
     {
         return $query
-            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận'])
+            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])
             ->where('appointment_time', '>=', now());
     }
 
@@ -132,11 +132,10 @@ class Appointment extends Model
 
     public function canCancel(): bool
     {
-        if (!in_array($this->status, ['Chờ xác nhận', 'Đã xác nhận'])) return false;
-        $schedule = $this->schedule;
-        if (!$schedule) return false;
-        $time = \Carbon\Carbon::parse($schedule->work_date . ' ' . $schedule->start_time);
-        return $time->diffInHours(now(), false) <= -2;
+        if (!in_array($this->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])) return false;
+        if (!$this->appointment_time) return false;
+        $time = \Carbon\Carbon::parse($this->appointment_time);
+        return now()->lt($time) && now()->lte($time->copy()->subHour());
     }
 
     public function canReschedule(): bool

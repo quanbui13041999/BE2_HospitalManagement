@@ -105,22 +105,37 @@
             padding: 0.5rem 1rem;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: clamp(0.75rem, 1.4vw, 1.35rem);
             background: rgba(0, 0, 0, 0.62);
+            min-width: 0;
         }
 
         .news-glass-links {
             display: flex;
             align-items: center;
-            gap: 2rem;
+            justify-content: center;
+            gap: clamp(0.75rem, 1.25vw, 1.35rem);
             list-style: none;
             margin: 0;
             padding: 0;
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: visible;
+        }
+
+        .news-fixed-nav > a {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        .news-glass-links li {
+            flex: 0 0 auto;
         }
 
         .news-glass-links a,
         .news-glass-outline {
-            font-size: 0.875rem;
+            font-size: clamp(0.78rem, 0.9vw, 0.875rem);
             color: #fff;
             text-decoration: none;
             transition: color 0.2s ease;
@@ -138,6 +153,7 @@
             align-items: center;
             gap: 1rem;
             white-space: nowrap;
+            flex: 0 0 auto;
         }
 
         .news-glass-outline {
@@ -455,8 +471,8 @@
                         <li><a href="{{ route('home') }}">Trang chủ</a></li>
                         @auth
                             <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
-                            <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
-                            @if(!Auth::user()->is_admin)
+                            @if(Auth::user()->isPatient())
+                                <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
                                 <li><a href="{{ route('patient.nutrition.index') }}">Dinh dưỡng</a></li>
                             @endif
                         @endauth

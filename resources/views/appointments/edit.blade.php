@@ -45,10 +45,8 @@
         <a href="{{ route('appointments.create') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">✨ Đặt lịch mới</a>
         <a href="{{ route('news.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📰 Bản tin</a>
         @auth
-            @if(auth()->user()->isPatient())
-                <a href="{{ route('medical_history.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📄 Hồ sơ bệnh án</a>
-            @elseif(auth()->user()->isDoctor())
-                <a href="{{ route('doctor.appointments.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🩺 Danh sách khám</a>
+            @if(auth()->user()->isDoctor())
+                <a href="{{ route('doctor.dashboard') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🩺 Dashboard bác sĩ</a>
             @endif
         @endauth
     </div>
@@ -264,5 +262,6 @@
         icon.style.display = 'none';
     });
 </script>
+@include('components.back-to-previous')
 </body>
 </html>

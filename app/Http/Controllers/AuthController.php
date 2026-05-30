@@ -84,6 +84,8 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
+        $this->normalizeStoredPasswordHash($request->email);
+
         if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $request->session()->regenerate();
             ActivityLogService::log(
@@ -109,6 +111,27 @@ class AuthController extends Controller
         ])->withInput($request->only('email'));
 
         // BUG CŨ: có 1 dòng return thứ 2 sau return back() → unreachable code, đã xóa
+    }
+
+    private function normalizeStoredPasswordHash(string $email): void
+    {
+        $user = User::where('email', $email)->first();
+
+        if (!$user || !is_string($user->password)) {
+            return;
+        }
+
+        $normalized = trim($user->password);
+
+        if ($normalized === $user->password) {
+            return;
+        }
+
+        if (password_get_info($normalized)['algoName'] !== 'bcrypt') {
+            return;
+        }
+
+        $user->forceFill(['password' => $normalized])->save();
     }
 
     // ── ĐĂNG XUẤT ──

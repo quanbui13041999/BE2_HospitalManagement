@@ -68,9 +68,9 @@
 
     <nav class="mt-2 flex-fill">
         <div class="nav-section">Tổng quan</div>
-        <a href="{{ url('/admin/dashboard') }}"
-           class="nav-link {{ request()->is('admin/dashboard') ? 'active' : '' }}">
-            <i class="bi bi-speedometer2"></i> Dashboard
+        <a href="{{ route('admin.dashboard') }}"
+           class="nav-link {{ request()->routeIs('admin.dashboard') || request()->routeIs('admin.dashboard.data') ? 'active' : '' }}">
+            <i class="bi bi-bar-chart-line"></i> Thống kê tổng quan
         </a>
 
         <div class="nav-section">Danh mục</div>
@@ -157,5 +157,6 @@
 {{-- Bootstrap JS --}}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 @stack('scripts')
+@include('components.back-to-previous')
 </body>
 </html>

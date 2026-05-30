@@ -48,7 +48,7 @@
                 </div>
                 <nav class="nav flex-column">
                     <a class="nav-link" href="{{ route('admin.dashboard') }}">
-                        <i class="bi bi-speedometer2"></i> Dashboard
+                        <i class="bi bi-bar-chart-line"></i> Thống kê tổng quan
                     </a>
                     <a class="nav-link" href="{{ route('admin.bhyt.index') }}">
                         <i class="bi bi-shield-check"></i> BHYT
@@ -87,5 +87,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @stack('scripts')
+    @include('components.back-to-previous')
 </body>
 </html>

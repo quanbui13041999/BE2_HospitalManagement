@@ -200,8 +200,19 @@ class QueueService
 
             // Cập nhật appointment nếu có
             if ($ticket->appointment_id) {
-                Appointment::where('appointment_id', $ticket->appointment_id)
-                    ->update(['status' => 'Đã Khám']);
+                $appointment = Appointment::with(['user', 'service', 'schedule.doctor', 'medicalRecord'])
+                    ->where('appointment_id', $ticket->appointment_id)
+                    ->first();
+
+                if ($appointment) {
+                    $appointment->update(['status' => 'Hoàn thành']);
+                    app(MedicalRecordService::class)->createBlankRecordFromAppointment($appointment->fresh([
+                        'user',
+                        'service',
+                        'schedule.doctor',
+                        'medicalRecord',
+                    ]));
+                }
             }
 
             // Recalculate est_wait cho các ticket còn lại

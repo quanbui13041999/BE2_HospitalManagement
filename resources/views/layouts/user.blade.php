@@ -132,12 +132,13 @@
                     <li class="nav-item d-flex align-items-center">
                         <x-notification-bell />
                     </li>
-                    {{-- Nút DEMO MỚI (bên trái nút lịch hẹn) --}}
+                    @if(Auth::user()->isPatient())
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen"> 
+                        <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen">
                             <i class="bi bi-calendar-check"></i> Lịch hẹn
                         </a>
                     </li>
+                    @endif
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('treatment.index') ? 'active' : '' }}" href="{{ route('treatment.index') }}">
                             <i class="bi bi-alarm"></i> Tuân thủ điều trị
@@ -150,6 +151,13 @@
                         </a>
                     </li>
                     @endif
+                    @if(Auth::user()->isDoctor())
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('doctor.dashboard') ? 'active' : '' }}" href="{{ route('doctor.dashboard') }}">
+                            <i class="bi bi-person-workspace"></i> Dashboard bác sĩ
+                        </a>
+                    </li>
+                    @endif
                     @php
                     $user = Auth::user();
                     $roleId = $user->role_id ?? ($user->role === 'doctor' ? 2 : ($user->role === 'patient' ? 3 : 0));
@@ -159,9 +167,9 @@
                     $demoClass = 'btn-outline-secondary';
 
                     if ($roleId == 2 || ($user->role == 'doctor')) {
-                    $demoLink = route('doctor.appointments.index');
-                    $demoText = 'Demo BS';
-                    $demoIcon = 'bi-stethoscope';
+                    $demoLink = route('doctor.dashboard');
+                    $demoText = 'Dashboard BS';
+                    $demoIcon = 'bi-person-workspace';
                     $demoClass = 'btn-outline-primary';
                     } elseif ($roleId == 3 || ($user->role == 'patient')) {
                     $demoLink = route('medical_history.index');
@@ -256,6 +264,7 @@
     @auth
         @include('components.chat-widget')
     @endauth
+    @include('components.back-to-previous')
 </body>
 
 </html>

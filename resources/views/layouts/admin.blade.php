@@ -20,6 +20,8 @@
             position: fixed; top: 0; left: 0; z-index: 100;
             display: flex; flex-direction: column;
             border-right: 1px solid #e2e8f0;
+            height: 100vh;
+            overflow: hidden;
         }
         #sidebar .brand {
             padding: 20px 24px;
@@ -43,6 +45,25 @@
             padding: 18px 24px 6px;
             font-size: 11px; text-transform: uppercase;
             letter-spacing: .05em; color: #94a3b8; font-weight: 700;
+        }
+        #sidebar nav {
+            flex: 1;
+            min-height: 0;
+            height: calc(100vh - 69px - 111px);
+            max-height: calc(100vh - 69px - 111px);
+            overflow-y: scroll;
+            overscroll-behavior: contain;
+            padding-bottom: 24px;
+        }
+        #sidebar nav::-webkit-scrollbar {
+            width: 8px;
+        }
+        #sidebar nav::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        #sidebar nav::-webkit-scrollbar-track {
+            background: #f8fafc;
         }
 
         /* ── Main area ── */
@@ -74,8 +95,8 @@
     <nav class="mt-3 flex-fill">
         <div class="nav-section">Tổng quan</div>
         <a href="{{ route('admin.dashboard') }}"
-           class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-            <i class="bi bi-speedometer2"></i> Dashboard
+           class="nav-link {{ request()->routeIs('admin.dashboard') || request()->routeIs('admin.dashboard.data') ? 'active' : '' }}">
+            <i class="bi bi-bar-chart-line"></i> Thống kê tổng quan
         </a>
 
         <div class="nav-section">Vận hành</div>
@@ -239,5 +260,6 @@ if (document.getElementById('admin-unread-badge')) {
     @auth
         @include('components.chat-widget')
     @endauth
+@include('components.back-to-previous')
 </body>
 </html>
