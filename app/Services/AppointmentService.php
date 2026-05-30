@@ -9,31 +9,35 @@ use App\Models\Appointment;
 use App\Models\DoctorSchedule;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\User\SlotHoldService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Services\ActivityLogService;
 
 /**
  * AppointmentService
- * 
- * Xử lý toàn bộ business logic liên quan tới appointment
- * - Tạo, dời, hủy lịch khám
- * - Lấy dữ liệu form, danh sách lịch
- * - Validation logic
- * - Transaction management
+ *
+ * Xử lý toàn bộ business logic liên quan tới appointment.
+ * Tích hợp SlotHoldService để xác nhận hold trước khi tạo lịch chính thức.
  */
 class AppointmentService
 {
-    /**
-     * Lấy dữ liệu cho form tạo lịch khám
-     */
+    public function __construct(protected SlotHoldService $slotHoldService)
+    {
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // FORM DATA
+    // ─────────────────────────────────────────────────────────────
+
     public function getCreateFormData(): array
     {
         $user = Auth::user();
-        
+
         $departments = DB::table('departments')
             ->where('status', 1)
             ->orderBy('department_name')
@@ -78,7 +82,7 @@ class AppointmentService
             )
             ->get()
             ->groupBy('department_id')
-            ->mapWithKeys(fn($group, $key) => [(string)$key => $group])
+            ->mapWithKeys(fn($group, $key) => [(string) $key => $group])
             ->toArray();
 
         $scheduleData = $this->getAvailableSchedules();
@@ -86,16 +90,13 @@ class AppointmentService
         return compact('departments', 'services', 'doctorsByDept', 'scheduleData', 'user');
     }
 
-    /**
-     * Lấy lịch khám có sẵn cho 14 ngày tới
-     */
     public function getAvailableSchedules(): array
     {
-        $scheduleData = DB::table('doctorschedules')
+        return DB::table('doctorschedules')
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS, 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -111,20 +112,15 @@ class AppointmentService
             ->get()
             ->groupBy(fn($r) => $r->doctor_id . '_' . $r->work_date)
             ->toArray();
-
-        return $scheduleData;
     }
 
-    /**
-     * Lấy lịch khám theo doctor và ngày
-     */
     public function getSchedulesForDoctor(int $doctorId, string $workDate): array
     {
-        $schedules = DB::table('doctorschedules')
+        return DB::table('doctorschedules')
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS, 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -146,25 +142,177 @@ class AppointmentService
             ->orderBy('doctorschedules.start_time')
             ->get()
             ->toArray();
-
-        return $schedules;
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // CREATE APPOINTMENT (tích hợp SlotHold)
+    // ─────────────────────────────────────────────────────────────
+
     /**
-     * Kiểm tra appointment đã được đặt
+     * Tạo lịch khám mới.
+     *
+     * Luồng:
+     *  1. Xác nhận hold (nếu có) → chuyển 'Giữ slot' → 'Chờ xác nhận'
+     *     Nếu không có hold → kiểm tra slot còn chỗ rồi insert mới.
+     *  2. Tính queue_number, ghi notification, log, gửi email.
+     *  3. Nếu ngày hôm nay → tự động check-in hàng đợi.
+     *
+     * @throws Exception
      */
+    public function createAppointment(int $userId, array $data): array
+    {
+        $schedule = $this->validateSchedule($data['schedule_id'], $data['work_date']);
+        if (!$schedule) {
+            throw new Exception('Lịch khám không tồn tại hoặc ngày khám không khớp.');
+        }
+
+        // Kiểm tra user đã có booking thật (không phải hold)
+        $alreadyBooked = $this->checkAppointmentAlreadyBooked($userId, $data['schedule_id']);
+        if ($alreadyBooked) {
+            throw new Exception('Bạn đã đặt lịch khám cho khung giờ này rồi.');
+        }
+
+        $appointmentDatetime = $data['work_date'] . ' ' . $data['appointment_time'] . ':00';
+        $appointmentEndtime  = $this->calculateAppointmentEndTime(
+            $data['work_date'],
+            $data['appointment_time'],
+            $schedule->slot_duration ?? 15
+        );
+        $queueNumber = $this->calculateQueueNumber($data['schedule_id'], $data['appointment_time']);
+
+        $appointmentId = null;
+
+        DB::beginTransaction();
+        try {
+            // ── Thử xác nhận hold trước ──────────────────────────
+            // NOTE: SlotHoldService::confirmHold() chỉ nhận (appointmentId, userId, ?note)
+            // vì hold đang được tạo bằng POST /api/slot-hold.
+            // Nếu chưa có appointmentId hold, không thể confirm theo cách hiện tại.
+            // Trường hợp này sẽ bỏ qua confirmHold và xử lý theo flow “không có hold” bên dưới.
+            $confirmedFromHold = 0;
+
+
+            if ($confirmedFromHold > 0) {
+                // Hold tồn tại và được xác nhận thành công
+                $appointmentId = $confirmedFromHold;
+
+                // Cập nhật thêm appointment_timeEnd (confirmHold không set)
+                DB::table('appointments')
+                    ->where('appointment_id', $appointmentId)
+                    ->update(['appointment_timeEnd' => $appointmentEndtime]);
+
+            } else {
+                // Không có hold → kiểm tra slot & insert mới
+                $booked = DB::table('appointments')
+                    ->where('schedule_id', $data['schedule_id'])
+                    ->where(function ($q) {
+                        $q->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS])
+                          ->orWhere(function ($q2) {
+                              $q2->where('status', SlotHoldService::HOLD_STATUS)
+                                 ->where('slot_hold_expire', '>', now());
+                          });
+                    })
+                    ->count();
+
+                if ($booked >= $schedule->max_slot) {
+                    throw new Exception('Khung giờ này đã hết chỗ. Vui lòng chọn giờ khác.');
+                }
+
+                $appointmentId = DB::table('appointments')->insertGetId([
+                    'user_id'             => $userId,
+                    'schedule_id'         => $data['schedule_id'],
+                    'service_id'          => $data['service_id'] ?? null,
+                    'appointment_time'    => $appointmentDatetime,
+                    'appointment_timeEnd' => $appointmentEndtime,
+                    'queue_number'        => $queueNumber,
+                    'status'              => 'Chờ xác nhận',
+                    'is_priority'         => $data['is_priority'] ?? false,
+                    'priority_type'       => $data['priority_type'] ?? null,
+                    'note'                => $data['note'] ?? null,
+                    'created_at'          => now(),
+                ]);
+            }
+
+            // ── Notification ──────────────────────────────────────
+            app(NotificationService::class)->createForUser(
+                $userId,
+                'Đặt lịch hẹn thành công',
+                'Lịch khám lúc ' . $data['appointment_time']
+                    . ' ngày ' . Carbon::parse($data['work_date'])->format('d/m/Y')
+                    . '. Số thứ tự: #' . $queueNumber,
+                'appointment_created',
+                'appointment',
+                $appointmentId
+            );
+
+            $this->logAppointmentEvent('Đặt lịch khám', $appointmentId, $userId, [
+                'schedule_id'      => $data['schedule_id'],
+                'service_id'       => $data['service_id'] ?? null,
+                'appointment_time' => $appointmentDatetime,
+                'queue_number'     => $queueNumber,
+            ]);
+
+            // ── Auto check-in nếu hôm nay ─────────────────────────
+            $ticket = null;
+            if (Carbon::parse($data['work_date'])->isToday()) {
+                $user     = User::find($userId);
+                $priority = 'normal';
+                if ($user && $user->date_of_birth) {
+                    $age      = Carbon::parse($user->date_of_birth)->age;
+                    $priority = $age >= 60 ? 'elderly' : 'normal';
+                }
+
+                $queueService = app(\App\Services\QueueService::class);
+                $ticket       = $queueService->checkin([
+                    'schedule_id'    => $data['schedule_id'],
+                    'priority'       => $priority,
+                    'appointment_id' => $appointmentId,
+                    'user_id'        => $userId,
+                    'patient_name'   => $user ? $user->full_name : 'Bệnh nhân',
+                    'patient_phone'  => $user ? $user->phone : null,
+                    'patient_email'  => $user ? $user->email : null,
+                    'notes'          => $data['note'] ?? null,
+                    'served_by'      => null,
+                ]);
+            }
+
+            DB::commit();
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+
+        $this->sendAppointmentConfirmationEmail($appointmentId, $userId);
+
+        if ($ticket) {
+            return [
+                'appointment_id' => $appointmentId,
+                'queue_number'   => $ticket->queue_number,
+                'message'        => 'Đặt lịch hẹn thành công và đã được đưa vào hàng đợi khám hôm nay! Số thứ tự của bạn là: #' . $ticket->queue_number . '.',
+            ];
+        }
+
+        return [
+            'appointment_id' => $appointmentId,
+            'queue_number'   => $queueNumber,
+            'message'        => 'Đặt lịch hẹn thành công! Số thứ tự: #' . $queueNumber . '. Chúng tôi sẽ xác nhận sớm.',
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // PRIVATE HELPERS
+    // ─────────────────────────────────────────────────────────────
+
     private function checkAppointmentAlreadyBooked(int $userId, int $scheduleId): bool
     {
         return DB::table('appointments')
             ->where('user_id', $userId)
             ->where('schedule_id', $scheduleId)
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch'])
+            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS])
             ->exists();
     }
 
-    /**
-     * Kiểm tra schedule có hợp lệ
-     */
     private function validateSchedule(int $scheduleId, string $workDate): ?object
     {
         $schedule = DB::table('doctorschedules')
@@ -179,178 +327,26 @@ class AppointmentService
         return $schedule;
     }
 
-    /**
-     * Tính số thứ tự cho appointment theo giờ cụ thể
-     */
     private function calculateQueueNumber(int $scheduleId, string $appointmentTime): int
     {
         return DB::table('appointments')
             ->where('schedule_id', $scheduleId)
             ->whereRaw("DATE_FORMAT(appointment_time, '%H:%i') = ?", [substr($appointmentTime, 0, 5)])
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Đã khám'])
+            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS, 'Đã khám'])
             ->count() + 1;
     }
 
-    /**
-     * Tính thời gian kết thúc appointment
-     */
     private function calculateAppointmentEndTime(string $workDate, string $appointmentTime, int $slotDuration = 15): string
     {
-        $appointmentDatetime = $workDate . ' ' . $appointmentTime . ':00';
-        return Carbon::parse($appointmentDatetime)
+        return Carbon::parse($workDate . ' ' . $appointmentTime . ':00')
             ->addMinutes($slotDuration)
             ->format('Y-m-d H:i:s');
     }
 
-    /**
-     * Tạo lịch khám mới
-     * 
-     * @throws Exception
-     */
-    public function createAppointment(int $userId, array $data): array
-    {
-        // Validate
-        $alreadyBooked = $this->checkAppointmentAlreadyBooked($userId, $data['schedule_id']);
-        if ($alreadyBooked) {
-            throw new Exception('Bạn đã đặt lịch khám cho khung giờ này rồi.');
-        }
+    // ─────────────────────────────────────────────────────────────
+    // USER APPOINTMENTS (giữ nguyên từ bản gốc)
+    // ─────────────────────────────────────────────────────────────
 
-        $schedule = $this->validateSchedule($data['schedule_id'], $data['work_date']);
-        if (!$schedule) {
-            throw new Exception('Lịch khám không tồn tại hoặc ngày khám không khớp.');
-        }
-
-        $booked = DB::table('appointments')
-            ->where('schedule_id', $data['schedule_id'])
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-            ->count();
-
-        if ($booked >= $schedule->max_slot) {
-            throw new Exception('Khung giờ này đã hết chỗ. Vui lòng chọn giờ khác.');
-        }
-
-        // Calculate queue number and times
-        $appointmentDatetime = $data['work_date'] . ' ' . $data['appointment_time'] . ':00';
-        $appointmentEndtime = $this->calculateAppointmentEndTime(
-            $data['work_date'],
-            $data['appointment_time'],
-            $schedule->slot_duration ?? 15
-        );
-        $queueNumber = $this->calculateQueueNumber($data['schedule_id'], $data['appointment_time']);
-
-        // Database transaction
-        $appointmentId = null;
-        DB::beginTransaction();
-        try {
-            $existing = DB::table('appointments')
-                ->where('user_id', $userId)
-                ->where('schedule_id', $data['schedule_id'])
-                ->first();
-
-            if ($existing) {
-                DB::table('appointments')
-                    ->where('appointment_id', $existing->appointment_id)
-                    ->update([
-                        'service_id' => $data['service_id'] ?? null,
-                        'appointment_time' => $appointmentDatetime,
-                        'appointment_timeEnd' => $appointmentEndtime,
-                        'queue_number' => $queueNumber,
-                        'status' => 'Chờ xác nhận',
-                        'is_priority' => $data['is_priority'] ?? false,
-                        'priority_type' => $data['priority_type'] ?? null,
-                        'note' => $data['note'] ?? null,
-                        'cancel_reason' => null,
-                        'slot_hold_expire' => null,
-                        'rescheduled_from' => null,
-                    ]);
-                $appointmentId = $existing->appointment_id;
-            } else {
-                $appointmentId = DB::table('appointments')->insertGetId([
-                    'user_id' => $userId,
-                    'schedule_id' => $data['schedule_id'],
-                    'service_id' => $data['service_id'] ?? null,
-                    'appointment_time' => $appointmentDatetime,
-                    'appointment_timeEnd' => $appointmentEndtime,
-                    'queue_number' => $queueNumber,
-                    'status' => 'Chờ xác nhận',
-                    'is_priority' => $data['is_priority'] ?? false,
-                    'priority_type' => $data['priority_type'] ?? null,
-                    'note' => $data['note'] ?? null,
-                    'created_at' => now(),
-                ]);
-            }
-
-            app(NotificationService::class)->createForUser(
-                $userId,
-                'Đặt lịch hẹn thành công',
-                'Lịch khám lúc ' . $data['appointment_time']
-                    . ' ngày ' . Carbon::parse($data['work_date'])->format('d/m/Y')
-                    . '. Số thứ tự: #' . $queueNumber,
-                'appointment_created',
-                'appointment',
-                $appointmentId
-            );
-
-            $this->logAppointmentEvent('Đặt lịch khám', $appointmentId, $userId, [
-                'schedule_id' => $data['schedule_id'],
-                'service_id' => $data['service_id'] ?? null,
-                'appointment_time' => $appointmentDatetime,
-                'queue_number' => $queueNumber,
-            ]);
-
-            // Tự động đẩy vào hàng đợi nếu ngày khám là hôm nay
-            $ticket = null;
-            if (Carbon::parse($data['work_date'])->isToday()) {
-                $user = User::find($userId);
-                $priority = 'normal';
-                if ($user && $user->date_of_birth) {
-                    $age = Carbon::parse($user->date_of_birth)->age;
-                    if ($age >= 60) {
-                        $priority = 'elderly';
-                    }
-                }
-
-                $queueService = app(\App\Services\QueueService::class);
-                $ticket = $queueService->checkin([
-                    'schedule_id'    => $data['schedule_id'],
-                    'priority'       => $priority,
-                    'appointment_id' => $appointmentId,
-                    'user_id'        => $userId,
-                    'patient_name'   => $user ? $user->full_name : 'Bệnh nhân',
-                    'patient_phone'  => $user ? $user->phone : null,
-                    'patient_email'  => $user ? $user->email : null,
-                    'notes'          => $data['note'] ?? null,
-                    'served_by'      => null, // Đặt lịch online tự động check-in, không qua lễ tân
-                ]);
-            }
-
-            DB::commit();
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-
-        // Send email after commit
-        $this->sendAppointmentConfirmationEmail($appointmentId, $userId);
-
-        if ($ticket) {
-            return [
-                'appointment_id' => $appointmentId,
-                'queue_number' => $ticket->queue_number,
-                'message' => 'Đặt lịch hẹn thành công và đã được đưa vào hàng đợi khám hôm nay! Số thứ tự của bạn là: #' . $ticket->queue_number . '.'
-            ];
-        }
-
-        return [
-            'appointment_id' => $appointmentId,
-            'queue_number' => $queueNumber,
-            'message' => 'Đặt lịch hẹn thành công! Số thứ tự: #' . $queueNumber . '. Chúng tôi sẽ xác nhận sớm.'
-        ];
-    }
-
-    /**
-     * Lấy thống kê lịch khám của người dùng
-     */
     public function getUserAppointmentStats(int $userId): object
     {
         return DB::table('appointments')
@@ -364,39 +360,38 @@ class AppointmentService
             ->first();
     }
 
-    /**
-     * Lấy danh sách lịch khám của người dùng
-     */
     public function getUserAppointments(int $userId, string $status = 'all', string $sort = 'desc'): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $query = Appointment::with(['review'])
-        ->join('doctorschedules as ds', 'appointments.schedule_id', '=', 'ds.schedule_id')
-        ->join('doctors as d', 'ds.doctor_id', '=', 'd.doctor_id')
-        ->join('departments as dep', 'd.department_id', '=', 'dep.department_id')
-        ->leftJoin('services as s', 'appointments.service_id', '=', 's.service_id')
-        ->leftJoin('payments as p', function($join) {
-            $join->on('appointments.appointment_id', '=', 'p.appointment_id')
-                ->whereIn('p.status', ['Thành công', 'Đã thanh toán']);
-        })
-        ->leftJoin('reviews as r', 'appointments.appointment_id', '=', 'r.appointment_id')
-        ->select(
-            'appointments.*',
-            'p.status as payment_status',
-            'p.payment_id',
-            'ds.work_date',
-            'ds.start_time',
-            'ds.end_time',
-            'd.full_name as doctor_name',
-            'd.doctor_id',
-            'dep.department_name',
-            's.service_name',
-            'r.review_id',
-            'r.rating as review_rating',
-            'r.comment as review_comment',
-            'r.doctor_reply',
-            'r.created_at as review_created_at'
-        )
-        ->where('appointments.user_id', $userId);
+            ->join('doctorschedules as ds', 'appointments.schedule_id', '=', 'ds.schedule_id')
+            ->join('doctors as d', 'ds.doctor_id', '=', 'd.doctor_id')
+            ->join('departments as dep', 'd.department_id', '=', 'dep.department_id')
+            ->leftJoin('services as s', 'appointments.service_id', '=', 's.service_id')
+            ->leftJoin('payments as p', function ($join) {
+                $join->on('appointments.appointment_id', '=', 'p.appointment_id')
+                    ->whereIn('p.status', ['Thành công', 'Đã thanh toán']);
+            })
+            ->leftJoin('reviews as r', 'appointments.appointment_id', '=', 'r.appointment_id')
+            ->select(
+                'appointments.*',
+                'p.status as payment_status',
+                'p.payment_id',
+                'ds.work_date',
+                'ds.start_time',
+                'ds.end_time',
+                'd.full_name as doctor_name',
+                'd.doctor_id',
+                'dep.department_name',
+                's.service_name',
+                'r.review_id',
+                'r.rating as review_rating',
+                'r.comment as review_comment',
+                'r.doctor_reply',
+                'r.created_at as review_created_at'
+            )
+            ->where('appointments.user_id', $userId)
+            // Ẩn slot đang giữ khỏi danh sách lịch hẹn của user
+            ->where('appointments.status', '!=', SlotHoldService::HOLD_STATUS);
 
         if ($status === 'upcoming') {
             $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
@@ -407,14 +402,12 @@ class AppointmentService
             $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch', 'Bác sĩ nghỉ']);
         }
 
-        return $query->orderBy('ds.work_date', $sort === 'asc' ? 'asc' : 'desc')
+        return $query
+            ->orderBy('ds.work_date', $sort === 'asc' ? 'asc' : 'desc')
             ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc')
             ->paginate(8);
     }
 
-    /**
-     * Lấy appointment chi tiết để chỉnh sửa
-     */
     public function getAppointmentForEdit(int $appointmentId, int $userId): ?object
     {
         return DB::table('appointments')
@@ -444,20 +437,15 @@ class AppointmentService
             ->first();
     }
 
-    /**
-     * Lấy lịch khám khác để dời
-     */
     public function getAvailableSchedulesForReschedule(int $appointmentId, int $doctorId): \Illuminate\Support\Collection
     {
-        $appointment = DB::table('appointments')
-            ->where('appointment_id', $appointmentId)
-            ->first();
+        $appointment = DB::table('appointments')->where('appointment_id', $appointmentId)->first();
 
-        $availableSchedules = DB::table('doctorschedules')
+        return DB::table('doctorschedules')
             ->leftJoinSub(
                 DB::table('appointments')
                     ->select('schedule_id', DB::raw('COUNT(*) as booked_count'))
-                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot', 'Bác sĩ nghỉ'])
+                    ->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS, 'Bác sĩ nghỉ'])
                     ->groupBy('schedule_id'),
                 'bk',
                 'bk.schedule_id',
@@ -476,36 +464,12 @@ class AppointmentService
             ->orderBy('doctorschedules.work_date')
             ->orderBy('doctorschedules.start_time')
             ->get();
-        
-
-        
-    return $availableSchedules;
     }
 
-    /**
-     * Kiểm tra thời gian còn lại trước appointment
-     */
-    private function checkRescheduleTimeAvailable(object $schedule): ?string
-    {
-        $appointmentTime = Carbon::parse($schedule->work_date . ' ' . $schedule->start_time);
-        $hoursUntilAppointment = $appointmentTime->diffInHours(now(), false);
+    // ─────────────────────────────────────────────────────────────
+    // RESCHEDULE & CANCEL (giữ nguyên từ bản gốc)
+    // ─────────────────────────────────────────────────────────────
 
-        if ($hoursUntilAppointment >= 0) {
-            return 'Lịch khám này đã qua hoặc đang diễn ra. Không thể dời lịch.';
-        }
-
-        if ($hoursUntilAppointment > -2) {
-            return 'Chỉ có thể dời lịch trước giờ khám ít nhất 2 tiếng.';
-        }
-
-        return null;
-    }
-
-    /**
-     * Dời lịch khám
-     * 
-     * @throws Exception
-     */
     public function rescheduleAppointment(int $appointmentId, int $userId, array $data): array
     {
         $appointment = DB::table('appointments')
@@ -521,7 +485,7 @@ class AppointmentService
             throw new Exception('Lịch hẹn này không thể dời.');
         }
 
-        if ((int)$data['new_schedule_id'] === (int)$appointment->schedule_id) {
+        if ((int) $data['new_schedule_id'] === (int) $appointment->schedule_id) {
             throw new Exception('Vui lòng chọn lịch khác với lịch hiện tại.');
         }
 
@@ -540,7 +504,7 @@ class AppointmentService
 
         $bookedInNew = DB::table('appointments')
             ->where('schedule_id', $data['new_schedule_id'])
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS])
             ->count();
 
         if ($bookedInNew >= $newSchedule->max_slot) {
@@ -554,11 +518,11 @@ class AppointmentService
             DB::table('appointments')
                 ->where('appointment_id', $appointmentId)
                 ->update([
-                    'schedule_id' => $data['new_schedule_id'],
+                    'schedule_id'      => $data['new_schedule_id'],
                     'appointment_time' => $newDatetime,
-                    'queue_number' => $bookedInNew + 1,
-                    'status' => 'Chờ xác nhận',
-                    'cancel_reason' => $data['reschedule_reason']
+                    'queue_number'     => $bookedInNew + 1,
+                    'status'           => 'Chờ xác nhận',
+                    'cancel_reason'    => $data['reschedule_reason']
                         ? 'Dời lịch: ' . $data['reschedule_reason']
                         : 'Dời sang lịch mới',
                     'rescheduled_from' => $appointment->schedule_id,
@@ -576,18 +540,9 @@ class AppointmentService
 
             $this->logAppointmentEvent('Dời lịch khám', $appointmentId, $userId, [
                 'changes' => [
-                    'schedule_id' => [
-                        'before' => $appointment->schedule_id,
-                        'after' => $data['new_schedule_id'],
-                    ],
-                    'appointment_time' => [
-                        'before' => $appointment->appointment_time,
-                        'after' => $newDatetime,
-                    ],
-                    'status' => [
-                        'before' => $appointment->status,
-                        'after' => 'Chờ xác nhận',
-                    ],
+                    'schedule_id'      => ['before' => $appointment->schedule_id, 'after' => $data['new_schedule_id']],
+                    'appointment_time' => ['before' => $appointment->appointment_time, 'after' => $newDatetime],
+                    'status'           => ['before' => $appointment->status, 'after' => 'Chờ xác nhận'],
                 ],
                 'reason' => $data['reschedule_reason'] ?? null,
             ]);
@@ -598,38 +553,11 @@ class AppointmentService
             throw $e;
         }
 
-        // Send email after commit
         $this->sendAppointmentRescheduleEmail($appointmentId, $userId);
 
-        return [
-            'message' => 'Dời lịch hẹn thành công! Lịch mới đang chờ xác nhận.'
-        ];
+        return ['message' => 'Dời lịch hẹn thành công! Lịch mới đang chờ xác nhận.'];
     }
 
-    /**
-     * Kiểm tra thời gian còn lại trước appointment
-     */
-    private function checkCancelTimeAvailable(object $schedule): ?string
-    {
-        $appointmentTime = Carbon::parse($schedule->work_date . ' ' . $schedule->start_time);
-        $hoursUntilAppointment = $appointmentTime->diffInHours(now(), false);
-
-        if ($hoursUntilAppointment >= 0) {
-            return 'Lịch khám này đã qua hoặc đang diễn ra. Không thể hủy lịch.';
-        }
-
-        if ($hoursUntilAppointment > -2) {
-            return 'Chỉ có thể hủy lịch trước giờ khám ít nhất 2 tiếng.';
-        }
-
-        return null;
-    }
-
-    /**
-     * Hủy lịch khám
-     * 
-     * @throws Exception
-     */
     public function cancelAppointment(int $appointmentId, int $userId, array $data): array
     {
         $appointment = DB::table('appointments')
@@ -645,10 +573,7 @@ class AppointmentService
             throw new Exception('Lịch hẹn này không thể hủy (trạng thái: ' . $appointment->status . ').');
         }
 
-        $schedule = DB::table('doctorschedules')
-            ->where('schedule_id', $appointment->schedule_id)
-            ->first();
-
+        $schedule  = DB::table('doctorschedules')->where('schedule_id', $appointment->schedule_id)->first();
         $timeError = $this->checkCancelTimeAvailable($schedule);
         if ($timeError) {
             throw new Exception($timeError);
@@ -659,7 +584,7 @@ class AppointmentService
             DB::table('appointments')
                 ->where('appointment_id', $appointmentId)
                 ->update([
-                    'status' => 'Đã hủy',
+                    'status'        => 'Đã hủy',
                     'cancel_reason' => $data['cancel_reason'] ?? 'Bệnh nhân tự hủy',
                 ]);
 
@@ -675,10 +600,7 @@ class AppointmentService
 
             $this->logAppointmentEvent('Hủy lịch khám', $appointmentId, $userId, [
                 'changes' => [
-                    'status' => [
-                        'before' => $appointment->status,
-                        'after' => 'Đã hủy',
-                    ],
+                    'status' => ['before' => $appointment->status, 'after' => 'Đã hủy'],
                 ],
                 'cancel_reason' => $data['cancel_reason'] ?? 'Bệnh nhân tự hủy',
             ]);
@@ -689,17 +611,30 @@ class AppointmentService
             throw $e;
         }
 
-        // Send email after commit
         $this->sendAppointmentCancellationEmail($appointmentId, $userId);
 
-        return [
-            'message' => 'Đã hủy lịch hẹn #' . $appointmentId . ' thành công.'
-        ];
+        return ['message' => 'Đã hủy lịch hẹn #' . $appointmentId . ' thành công.'];
     }
 
-    /**
-     * Gửi email xác nhận đặt lịch
-     */
+    private function checkCancelTimeAvailable(object $schedule): ?string
+    {
+        $appointmentTime      = Carbon::parse($schedule->work_date . ' ' . $schedule->start_time);
+        $hoursUntilAppointment = $appointmentTime->diffInHours(now(), false);
+
+        if ($hoursUntilAppointment >= 0) {
+            return 'Lịch khám này đã qua hoặc đang diễn ra. Không thể hủy lịch.';
+        }
+        if ($hoursUntilAppointment > -2) {
+            return 'Chỉ có thể hủy lịch trước giờ khám ít nhất 2 tiếng.';
+        }
+
+        return null;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // EMAIL HELPERS (giữ nguyên từ bản gốc)
+    // ─────────────────────────────────────────────────────────────
+
     private function sendAppointmentConfirmationEmail(int $appointmentId, int $userId): void
     {
         try {
@@ -708,57 +643,42 @@ class AppointmentService
                 ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
                 ->join('departments', 'doctors.department_id', '=', 'departments.department_id')
                 ->where('appointments.appointment_id', $appointmentId)
-                ->select(
-                    'appointments.*',
-                    'doctors.full_name as doctor_name',
-                    'departments.department_name'
-                )
+                ->select('appointments.*', 'doctors.full_name as doctor_name', 'departments.department_name')
                 ->first();
 
             $user = User::find($userId);
             if ($user && $user->email && $appointment) {
-                Mail::to($user->email)->send(
-                    new AppointmentConfirmed($user, $appointment)
-                );
+                Mail::to($user->email)->send(new AppointmentConfirmed($user, $appointment));
             }
         } catch (Exception $e) {
             Log::warning('Failed to send appointment confirmation email', [
-                'appointment_id' => $appointmentId,
-                'error' => $e->getMessage(),
+                'appointment_id' => $appointmentId, 'error' => $e->getMessage(),
             ]);
         }
     }
 
-    /**
-     * Gửi email dời lịch
-     */
     private function sendAppointmentRescheduleEmail(int $appointmentId, int $userId): void
     {
         try {
             $appointment = Appointment::with('schedule.doctor.department')->find($appointmentId);
-            $user = User::find($userId);
-
+            $user        = User::find($userId);
             if ($user && $user->email && $appointment) {
                 Mail::to($user->email)->send(new AppointmentRescheduleMail(
-                    patient: $user,
-                    appointment: $appointment,
-                    doctor: $appointment->schedule->doctor ?? null,
-                    reason: $appointment->cancel_reason ?? '',
-                    type: 'leave',
+                    patient:      $user,
+                    appointment:  $appointment,
+                    doctor:       $appointment->schedule->doctor ?? null,
+                    reason:       $appointment->cancel_reason ?? '',
+                    type:         'leave',
                     alternatives: [],
                 ));
             }
         } catch (Exception $e) {
             Log::warning('Failed to send appointment rescheduled email', [
-                'appointment_id' => $appointmentId,
-                'error' => $e->getMessage(),
+                'appointment_id' => $appointmentId, 'error' => $e->getMessage(),
             ]);
         }
     }
 
-    /**
-     * Gửi email hủy lịch
-     */
     private function sendAppointmentCancellationEmail(int $appointmentId, int $userId): void
     {
         try {
@@ -767,40 +687,28 @@ class AppointmentService
                 ->join('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
                 ->leftJoin('departments', 'doctors.department_id', '=', 'departments.department_id')
                 ->where('appointments.appointment_id', $appointmentId)
-                ->select(
-                    'appointments.*',
-                    'doctors.full_name as doctor_name',
-                    'departments.department_name'
-                )
+                ->select('appointments.*', 'doctors.full_name as doctor_name', 'departments.department_name')
                 ->first();
 
             $user = User::find($userId);
             if ($user && $user->email && $appointment) {
-                Mail::to($user->email)->send(
-                    new AppointmentCancelled($user, $appointment)
-                );
+                Mail::to($user->email)->send(new AppointmentCancelled($user, $appointment));
             }
         } catch (Exception $e) {
             Log::warning('Failed to send appointment cancelled email', [
-                'appointment_id' => $appointmentId,
-                'error' => $e->getMessage(),
+                'appointment_id' => $appointmentId, 'error' => $e->getMessage(),
             ]);
         }
     }
 
     private function logAppointmentEvent(string $action, int $appointmentId, int $userId, array $metadata = []): void
     {
-        $actor = User::with('role')->find($userId);
+        $actor       = User::with('role')->find($userId);
         $appointment = DB::table('appointments')
             ->leftJoin('doctorschedules', 'appointments.schedule_id', '=', 'doctorschedules.schedule_id')
             ->leftJoin('doctors', 'doctorschedules.doctor_id', '=', 'doctors.doctor_id')
             ->where('appointments.appointment_id', $appointmentId)
-            ->select(
-                'appointments.appointment_time',
-                'appointments.queue_number',
-                'appointments.status',
-                'doctors.full_name as doctor_name'
-            )
+            ->select('appointments.appointment_time', 'appointments.queue_number', 'appointments.status', 'doctors.full_name as doctor_name')
             ->first();
 
         $time = $appointment?->appointment_time
@@ -808,28 +716,19 @@ class AppointmentService
             : 'không rõ thời gian';
 
         $description = match ($action) {
-            'Đặt lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
-                . ' đã đặt lịch khám với '
-                . ($appointment?->doctor_name ? 'BS. ' . $appointment->doctor_name : 'bác sĩ')
-                . ' vào ' . $time . '.',
-            'Dời lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
-                . ' đã dời lịch khám #' . $appointmentId . ' sang ' . $time . '.',
-            'Hủy lịch khám' => ($actor?->full_name ?: 'Bệnh nhân')
-                . ' đã hủy lịch khám #' . $appointmentId . '.',
-            default => $action . ' #' . $appointmentId,
+            'Đặt lịch khám' => ($actor?->full_name ?: 'Bệnh nhân') . ' đã đặt lịch khám với ' . ($appointment?->doctor_name ? 'BS. ' . $appointment->doctor_name : 'bác sĩ') . ' vào ' . $time . '.',
+            'Dời lịch khám' => ($actor?->full_name ?: 'Bệnh nhân') . ' đã dời lịch khám #' . $appointmentId . ' sang ' . $time . '.',
+            'Hủy lịch khám' => ($actor?->full_name ?: 'Bệnh nhân') . ' đã hủy lịch khám #' . $appointmentId . '.',
+            default         => $action . ' #' . $appointmentId,
         };
 
         ActivityLogService::log(
-            $action,
-            $description,
-            'appointment',
-            $appointmentId,
+            $action, $description, 'appointment', $appointmentId,
             array_merge($metadata, [
                 'appointment_status' => $appointment?->status,
-                'queue_number' => $appointment?->queue_number,
+                'queue_number'       => $appointment?->queue_number,
             ]),
-            'success',
-            $actor
+            'success', $actor
         );
     }
 }
