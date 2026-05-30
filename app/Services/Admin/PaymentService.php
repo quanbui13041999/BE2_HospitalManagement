@@ -112,7 +112,7 @@ class PaymentService
 
             if ($payOsResult['success']) {
                 $payment->update([
-                    'transaction_ref' => $payOsResult['paymentLinkId'] ?: $ref
+                    'transaction_ref' => ($payOsResult['paymentLinkId'] ?? null) ?: $ref
                 ]);
                 $result['qr_content'] = $payOsResult['qrContent'];
                 $result['checkout_url'] = $payOsResult['checkoutUrl'] ?? null;

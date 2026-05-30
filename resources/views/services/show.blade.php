@@ -191,16 +191,80 @@
                     </div>
                 </div>
 
-                {{-- Nút đặt lịch --}}
+                {{-- Nút đặt lịch kèm bác sĩ --}}
                 <div class="card border-0 shadow-sm rounded-4 mb-4">
                     <div class="card-body text-center">
                         <i class="bi bi-calendar-check fs-1 text-primary mb-2 d-block"></i>
-                        <h6 class="fw-bold">Bạn muốn đặt lịch khám?</h6>
-                        <p class="small text-muted">Đặt lịch nhanh chóng, dễ dàng</p>
+                        <h6 class="fw-bold">Bạn muốn khám cùng Bác sĩ?</h6>
+                        <p class="small text-muted">Đặt hẹn bác sĩ & chọn giờ khám</p>
                         <a href="{{ route('appointments.create', ['service_id' => $service->service_id]) }}" 
-                           class="btn btn-primary btn-lg w-100">
-                            <i class="bi bi-calendar-plus me-2"></i> Đặt lịch ngay
+                           class="btn btn-primary btn-lg w-100 rounded-3">
+                            <i class="bi bi-calendar-plus me-2"></i> Đặt lịch bác sĩ ngay
                         </a>
+                    </div>
+                </div>
+
+                {{-- Đăng ký & Thanh toán dịch vụ riêng biệt --}}
+                <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(145deg, #ffffff, #f8fafc); border: 1.5px solid #e2e8f0;">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-3">
+                            <i class="bi bi-credit-card-2-front fs-1 text-success mb-2 d-block"></i>
+                            <h6 class="fw-bold" style="color: #1e293b;">Đăng ký & Thanh toán nhanh</h6>
+                            <p class="small text-muted mb-0">Thực hiện dịch vụ trực tiếp không cần bác sĩ</p>
+                        </div>
+                        
+                        <form action="{{ route('user.services.book', $service->service_id) }}" method="POST">
+                            @csrf
+                            
+                            {{-- Loại giá --}}
+                            <div class="mb-3 text-start">
+                                <label class="small fw-bold text-muted mb-1 d-block">Chọn loại mức giá:</label>
+                                <select name="price_type" class="form-select rounded-3" required style="border: 1.5px solid #cbd5e1; font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                                    @foreach($service->activePrices as $price)
+                                        <option value="{{ $price->price_type }}">
+                                            Giá {{ $price->price_type }} - {{ number_format($price->price, 0, ',', '.') }}đ
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- Ngày hẹn --}}
+                            <div class="mb-3 text-start">
+                                <label class="small fw-bold text-muted mb-1 d-block">Chọn ngày thực hiện:</label>
+                                <input type="date" name="work_date" class="form-control rounded-3" min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" required style="border: 1.5px solid #cbd5e1; font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                            </div>
+
+                            {{-- Giờ hẹn --}}
+                            <div class="mb-3 text-start">
+                                <label class="small fw-bold text-muted mb-1 d-block">Chọn giờ hẹn:</label>
+                                <select name="appointment_time" class="form-select rounded-3" required style="border: 1.5px solid #cbd5e1; font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                                    <option value="08:00">08:00 (Sáng)</option>
+                                    <option value="09:00">09:00 (Sáng)</option>
+                                    <option value="10:00">10:00 (Sáng)</option>
+                                    <option value="11:00">11:00 (Sáng)</option>
+                                    <option value="13:30" selected>13:30 (Chiều)</option>
+                                    <option value="14:30">14:30 (Chiều)</option>
+                                    <option value="15:30">15:30 (Chiều)</option>
+                                    <option value="16:30">16:30 (Chiều)</option>
+                                </select>
+                            </div>
+
+                            {{-- Ghi chú --}}
+                            <div class="mb-3 text-start">
+                                <label class="small fw-bold text-muted mb-1 d-block">Ghi chú (nếu có):</label>
+                                <textarea name="note" class="form-control rounded-3" rows="2" placeholder="Ví dụ: Cần chuẩn bị gì trước khi khám..." style="border: 1.5px solid #cbd5e1; font-size: .85rem; padding: 0.5rem 0.75rem;"></textarea>
+                            </div>
+
+                            @auth
+                                <button type="submit" class="btn btn-success btn-lg w-100 rounded-3 fw-bold" style="background: #10b981; border: none; font-size: 0.95rem; padding: 0.75rem;">
+                                    <i class="bi bi-wallet2 me-2"></i> Thanh toán & Đăng ký
+                                </button>
+                            @else
+                                <a href="{{ route('login', ['redirect' => url()->current()]) }}" class="btn btn-warning btn-lg w-100 rounded-3 fw-bold text-white" style="border: none; font-size: 0.95rem; padding: 0.75rem;">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i> Đăng nhập để thanh toán
+                                </a>
+                            @endauth
+                        </form>
                     </div>
                 </div>
 

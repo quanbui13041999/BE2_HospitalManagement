@@ -48,9 +48,9 @@ class PaymentWebhookController extends Controller
             if (!$payment) {
                 Log::warning("PayOS Webhook: Không tìm thấy Payment ID #{$paymentId} trong hệ thống!");
                 return response()->json([
-                    'success' => false,
-                    'message' => "Không tìm thấy giao dịch #{$paymentId}"
-                ], 404);
+                    'success' => true,
+                    'message' => "Không tìm thấy giao dịch #{$paymentId} (Bỏ qua cho luồng Test/Validation của PayOS)"
+                ]);
             }
 
             // 3. Cơ chế Idempotency: Kiểm tra nếu giao dịch đã xử lý thành công trước đó

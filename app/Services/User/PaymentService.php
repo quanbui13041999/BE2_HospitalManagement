@@ -35,7 +35,7 @@ class PaymentService
         $existing = Payment::where('appointment_id', $appointmentId)->first();
 
         // Tính tổng tiền: giá bác sĩ + dịch vụ (nếu có)
-        $doctorFee   = (float) ($appointment->schedule->doctor->price ?? 0);
+        $doctorFee   = (float) ($appointment->schedule?->doctor?->price ?? 0);
         $serviceFee  = 0;
 
         if ($appointment->service) {
@@ -96,7 +96,7 @@ class PaymentService
             ->firstOrFail();
 
         // Tính lại giá
-        $doctorFee  = (float) ($appointment->schedule->doctor->price ?? 0);
+        $doctorFee  = (float) ($appointment->schedule?->doctor?->price ?? 0);
         $serviceFee = 0;
         if ($appointment->service) {
             $serviceFee = (float) ($appointment->service->latestPrice->price ?? 0);
@@ -120,9 +120,10 @@ class PaymentService
 
         $ref = 'PAY-' . strtoupper(Str::random(10));
 
-        // Tạo bản ghi payment
-        $payment = Payment::create([
-            'appointment_id'  => $appointmentId,
+        // Tái sử dụng bản ghi cũ nếu đã có (tránh lỗi Unique Constraint trên appointment_id)
+        $payment = Payment::where('appointment_id', $appointmentId)->first();
+        
+        $paymentData = [
             'insurance_id'    => $insurance?->insurance_id,
             'membership_id'   => $membership?->card_id,
             'subtotal'        => $subtotal,
@@ -132,7 +133,17 @@ class PaymentService
             'status'          => 'Chờ thanh toán',
             'transaction_ref' => $ref,
             'payment_date'    => now(),
-        ]);
+        ];
+
+        if ($payment) {
+            $payment->update($paymentData);
+            // Xóa các items cũ để nạp lại mới
+            $payment->items()->delete();
+        } else {
+            $payment = Payment::create(array_merge([
+                'appointment_id' => $appointmentId,
+            ], $paymentData));
+        }
 
         $this->notifications->createForUser(
             $userId,
@@ -147,22 +158,20 @@ class PaymentService
         if ($doctorFee > 0) {
             PaymentItem::create([
                 'payment_id'  => $payment->payment_id,
-                'item_type'   => 'Khám bệnh',
-                'item_name'   => 'Phí khám - BS. ' . ($appointment->schedule->doctor->full_name ?? ''),
+                'item_name'   => 'Phí khám - BS. ' . ($appointment->schedule?->doctor?->full_name ?? ''),
                 'quantity'    => 1,
                 'unit_price'  => $doctorFee,
-                'total_price' => $doctorFee,
+                'subtotal'    => $doctorFee,
             ]);
         }
 
         if ($serviceFee > 0) {
             PaymentItem::create([
                 'payment_id'  => $payment->payment_id,
-                'item_type'   => 'Dịch vụ',
                 'item_name'   => $appointment->service->service_name ?? 'Dịch vụ',
                 'quantity'    => 1,
                 'unit_price'  => $serviceFee,
-                'total_price' => $serviceFee,
+                'subtotal'    => $serviceFee,
             ]);
         }
 
@@ -181,7 +190,7 @@ class PaymentService
             if ($payOsResult['success']) {
                 // Lưu payment link id từ PayOS vào trường transaction_ref để đối soát webhook
                 $payment->update([
-                    'transaction_ref' => $payOsResult['paymentLinkId'] ?: $ref
+                    'transaction_ref' => ($payOsResult['paymentLinkId'] ?? null) ?: $ref
                 ]);
                 
                 $result['qr_content'] = $payOsResult['qrContent'];
@@ -269,5 +278,13 @@ class PaymentService
             ->with(['appointment.schedule.doctor'])
             ->orderByDesc('payment_date')
             ->paginate(10);
+    }
+
+    /**
+     * Kiểm tra xem PayOS đã được cấu hình API thực tế chưa.
+     */
+    public function isPayOsConfigured(): bool
+    {
+        return $this->payOsService->isConfigured();
     }
 }

@@ -103,6 +103,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/schedules', [AppointmentController::class, 'getSchedules'])->name('schedules');
     });
 
+    // Đăng ký dịch vụ & Thanh toán riêng lẻ (không qua bác sĩ)
+    Route::post('/dich-vu/{id}/dat-mua', [UserServiceController::class, 'bookService'])->name('user.services.book');
+
     // API gợi ý (AJAX)
     Route::get('/api/appointments/suggest',    [AppointmentController::class, 'suggest'])->name('appointments.suggest');
     Route::get('/api/appointments/timeslots',  [AppointmentController::class, 'timeslots'])->name('appointments.timeslots');

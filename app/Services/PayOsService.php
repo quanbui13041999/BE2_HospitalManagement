@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use PayOS\PayOS;
+use PayOS\PayOSOptions;
+use GuzzleHttp\Client as GuzzleClient;
 use PayOS\Models\V2\PaymentRequests\CreatePaymentLinkRequest;
 use Illuminate\Support\Facades\Log;
 use Exception;
@@ -26,7 +28,23 @@ class PayOsService
             !str_contains($checksumKey, 'your_')
         ) {
             try {
-                $this->payOS = new PayOS($clientId, $apiKey, $checksumKey);
+                // Tạo Guzzle HTTP Client tùy chỉnh, vô hiệu hóa xác minh SSL để chạy ổn định trên môi trường Localhost Wamp64
+                $httpClient = new GuzzleClient([
+                    'verify' => false,
+                    'timeout' => 30,
+                ]);
+
+                // Khởi chạy kích hoạt autoload lớp PayOS để định nghĩa hằng số PAYOS_BASE_URL
+                class_exists(PayOS::class);
+
+                $options = new PayOSOptions(
+                    clientId: $clientId,
+                    apiKey: $apiKey,
+                    checksumKey: $checksumKey,
+                    httpClient: $httpClient
+                );
+
+                $this->payOS = PayOS::options($options);
                 $this->isConfigured = true;
             } catch (Exception $e) {
                 Log::error('Lỗi khởi tạo PayOS SDK: ' . $e->getMessage());

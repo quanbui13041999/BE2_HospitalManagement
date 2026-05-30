@@ -370,9 +370,9 @@ class AppointmentService
     public function getUserAppointments(int $userId, string $status = 'all', string $sort = 'desc'): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $query = Appointment::with(['review'])
-        ->join('doctorschedules as ds', 'appointments.schedule_id', '=', 'ds.schedule_id')
-        ->join('doctors as d', 'ds.doctor_id', '=', 'd.doctor_id')
-        ->join('departments as dep', 'd.department_id', '=', 'dep.department_id')
+        ->leftJoin('doctorschedules as ds', 'appointments.schedule_id', '=', 'ds.schedule_id')
+        ->leftJoin('doctors as d', 'ds.doctor_id', '=', 'd.doctor_id')
+        ->leftJoin('departments as dep', 'd.department_id', '=', 'dep.department_id')
         ->leftJoin('services as s', 'appointments.service_id', '=', 's.service_id')
         ->leftJoin('payments as p', function($join) {
             $join->on('appointments.appointment_id', '=', 'p.appointment_id')
@@ -400,15 +400,14 @@ class AppointmentService
 
         if ($status === 'upcoming') {
             $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
-                ->where('ds.work_date', '>=', now()->toDateString());
+                ->where('appointments.appointment_time', '>=', now()->toDateString());
         } elseif ($status === 'completed') {
             $query->where('appointments.status', 'Đã khám');
         } elseif ($status === 'cancelled') {
             $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch', 'Bác sĩ nghỉ']);
         }
 
-        return $query->orderBy('ds.work_date', $sort === 'asc' ? 'asc' : 'desc')
-            ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc')
+        return $query->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc')
             ->paginate(8);
     }
 

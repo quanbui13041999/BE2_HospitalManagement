@@ -928,6 +928,7 @@
                         <tr>
                             {{-- CỘT BÁC SĨ --}}
                             <td>
+                                @if(!empty($item->doctor_name))
                                 <div class="doctor-cell">
                                     @php
                                     $words = explode(' ', trim($item->doctor_name));
@@ -941,6 +942,15 @@
                                         <div style="font-size:.7rem;color:var(--gray-400)">{{ $item->department_name }}</div>
                                     </div>
                                 </div>
+                                @else
+                                <div class="doctor-cell">
+                                    <div class="avatar" style="background: linear-gradient(145deg, #10b981, #059669);">DV</div>
+                                    <div>
+                                        <div class="doctor-name text-success">Dịch vụ độc lập</div>
+                                        <div style="font-size:.7rem;color:var(--gray-400)">Không chỉ định bác sĩ</div>
+                                    </div>
+                                </div>
+                                @endif
                             </td>
 
                             {{-- CỘT DỊCH VỤ --}}
@@ -949,13 +959,13 @@
                             {{-- CỘT NGÀY KHÁM --}}
                             <td>
                                 <div class="date-cell">
-                                    <div class="date">{{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}</div>
+                                    <div class="date">{{ \Carbon\Carbon::parse($item->appointment_time)->format('d/m/Y') }}</div>
                                     <div class="time">
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="12" r="10" />
                                             <polyline points="12 6 12 12 16 14" />
                                         </svg>
-                                        {{ \Carbon\Carbon::parse($item->start_time)->format('H:i') }}
+                                        {{ \Carbon\Carbon::parse($item->appointment_time)->format('H:i') }}
                                     </div>
                                 </div>
                             </td>

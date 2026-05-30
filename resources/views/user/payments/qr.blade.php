@@ -136,10 +136,19 @@
         </div>
 
         <div class="gw-body">
-            {{-- Demo notice --}}
-            <div class="demo-notice">
-                ⚠️ <span>Đây là môi trường <strong>demo</strong>. Mã QR này dùng API để hiển thị. Nhấn "Xác nhận thanh toán thành công" để mô phỏng quét QR xong.</span>
-            </div>
+            {{-- Demo/Real notice --}}
+            @if($isRealMode)
+                <div class="demo-notice" style="background: #ecfdf5; border: 1.5px solid #a7f3d0; color: #065f46; display: block; text-align: left;">
+                    🚀 <span style="font-weight: 700;">Cổng thanh toán thực tế (ACB Bank) đã hoạt động!</span>
+                    <p style="margin: .35rem 0 0 0; font-size: .8rem; opacity: .9; line-height: 1.4;">
+                        Mã VietQR bên dưới liên kết trực tiếp với tài khoản **ACB** của bạn. Hãy mở app ngân hàng quét mã để thanh toán. Màn hình này sẽ tự động đóng và chuyển tiếp ngay khi ngân hàng nhận được tiền!
+                    </p>
+                </div>
+            @else
+                <div class="demo-notice">
+                    ⚠️ <span>Đây là môi trường <strong>demo</strong>. Mã QR này dùng API để hiển thị. Nhấn "Giả lập đã quét QR thành công" để mô phỏng quét QR xong.</span>
+                </div>
+            @endif
 
             <div class="amount-display">
                 <div class="amount-label">Số tiền cần thanh toán</div>
@@ -156,13 +165,23 @@
                 Sử dụng App ngân hàng hoặc ví điện tử (MoMo, ZaloPay, Viettel Money...) hỗ trợ VietQR để quét mã.
             </p>
 
-            <form id="confirmForm" action="{{ route('user.payments.confirm', $payment->payment_id) }}" method="POST">
-                @csrf
-                <input type="hidden" name="ref" value="{{ $payment->transaction_ref }}">
-                <button type="submit" class="btn-pay">
-                    ✓ Giả lập đã quét QR thành công
-                </button>
-            </form>
+            @if($isRealMode)
+                @if($checkoutUrl)
+                    <div style="margin-bottom: 1rem;">
+                        <a href="{{ $checkoutUrl }}" target="_blank" class="btn-pay" style="display: block; text-decoration: none; background: #2563eb; text-align: center; line-height: 1.5;">
+                            ➡️ Mở trang thanh toán cổng PayOS
+                        </a>
+                    </div>
+                @endif
+            @else
+                <form id="confirmForm" action="{{ route('user.payments.confirm', $payment->payment_id) }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="ref" value="{{ $payment->transaction_ref }}">
+                    <button type="submit" class="btn-pay">
+                        ✓ Giả lập đã quét QR thành công
+                    </button>
+                </form>
+            @endif
 
             <div style="text-align:center;margin-top:1.5rem">
                 <a href="{{ route('user.payments.fail', $payment->payment_id) }}"
@@ -178,11 +197,14 @@
 
 @push('scripts')
 <script>
-    document.getElementById('confirmForm').addEventListener('submit', function (e) {
-        const btn = this.querySelector('button');
-        btn.disabled = true;
-        btn.textContent = 'Đang xử lý...';
-    });
+    const confirmForm = document.getElementById('confirmForm');
+    if (confirmForm) {
+        confirmForm.addEventListener('submit', function (e) {
+            const btn = this.querySelector('button');
+            btn.disabled = true;
+            btn.textContent = 'Đang xử lý...';
+        });
+    }
 
     // Tự động quét đối soát giao dịch thực tế từ tài khoản ACB Bank
     const paymentId = {{ $payment->payment_id }};
