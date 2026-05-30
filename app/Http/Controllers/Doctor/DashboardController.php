@@ -419,7 +419,7 @@ public function destroyDoctor(int $id): JsonResponse
 
     // Kiểm tra còn lịch hẹn active không
     $hasActive = Appointment::whereHas('schedule', fn($q) => $q->where('doctor_id', $id))
-        ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'])
+        ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám','Đã thanh toán'])
         ->exists();
 
     if ($hasActive) {

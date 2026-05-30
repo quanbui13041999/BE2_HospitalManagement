@@ -358,6 +358,29 @@
             }
         }
 
+        #hold-countdown-banner.hold-urgent {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #991b1b;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .75;
+            }
+        }
+
+        .hold-timer {
+            font-variant-numeric: tabular-nums;
+        }
+
         .suggest-card {
             background: var(--white);
             border: 2px solid var(--gray-200);
@@ -1163,7 +1186,8 @@
                 <div class="panel">
                     <div class="panel-head">
                         <div class="icon-wrap">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                 <circle cx="12" cy="7" r="4" />
                             </svg>
@@ -1190,7 +1214,9 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Ngày Sinh</div>
-                                <div class="info-val">{{ $user->date_of_birth ? \Carbon\Carbon::parse($user->date_of_birth)->format('d/m/Y') : '—' }}</div>
+                                <div class="info-val">
+                                    {{ $user->date_of_birth ? \Carbon\Carbon::parse($user->date_of_birth)->format('d/m/Y') : '—' }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1333,6 +1359,18 @@
                                 <div class="legend-dot sel-dot"></div>Đang chọn
                             </div>
                         </div>
+                        <div id="hold-countdown-banner" style="display:none;align-items:center;gap:12px;
+                            background:#fffbeb;border:1px solid #fcd34d;
+                            border-radius:14px;padding:12px 18px;margin-top:14px;
+                            font-size:.82rem;color:#92400e;transition:background .3s">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            <span id="hold-banner-msg">Khung giờ đang được giữ cho bạn.</span>
+                            <strong>Thời gian còn lại:&nbsp;<span class="hold-timer">05:00</span></strong>
+                        </div>
 
                         <div id="slot-error" style="font-size:.72rem;color:#e5484d;margin-top:10px;display:none">
                             ⚠️ Vui lòng chọn khung giờ trước khi đặt lịch.
@@ -1340,11 +1378,12 @@
 
                         <div class="form-group" style="margin-top:22px">
                             <label class="form-label">
-                                <input type="checkbox" name="is_priority" id="is_priority" value="1" {{ old('is_priority') ? 'checked' : '' }} onchange="togglePriorityType()"> 
+                                <input type="checkbox" name="is_priority" id="is_priority" value="1" {{ old('is_priority') ? 'checked' : '' }} onchange="togglePriorityType()">
                                 Đăng ký đối tượng ưu tiên
                             </label>
-                            
-                            <div id="priority_type_container" style="display: {{ old('is_priority') ? 'block' : 'none' }}; margin-top: 10px;">
+
+                            <div id="priority_type_container"
+                                style="display: {{ old('is_priority') ? 'block' : 'none' }}; margin-top: 10px;">
                                 <label class="form-label">Loại ưu tiên</label>
                                 <select name="priority_type" class="form-control">
                                     <option value="">-- Chọn đối tượng --</option>
@@ -1352,7 +1391,8 @@
                                     <option value="Người già trên 80 tuổi" {{ old('priority_type') == 'Người già trên 80 tuổi' ? 'selected' : '' }}>Người già trên 80 tuổi</option>
                                     <option value="Phụ nữ có thai" {{ old('priority_type') == 'Phụ nữ có thai' ? 'selected' : '' }}>Phụ nữ có thai</option>
                                     <option value="Người khuyết tật" {{ old('priority_type') == 'Người khuyết tật' ? 'selected' : '' }}>Người khuyết tật nặng</option>
-                                    <option value="Cấp cứu" {{ old('priority_type') == 'Cấp cứu' ? 'selected' : '' }}>Tình trạng cấp cứu</option>
+                                    <option value="Cấp cứu" {{ old('priority_type') == 'Cấp cứu' ? 'selected' : '' }}>Tình
+                                        trạng cấp cứu</option>
                                 </select>
                             </div>
                         </div>
@@ -1477,6 +1517,8 @@
             scheduleId: null,
             time: null,
             timeEnd: null,
+            holdAppointmentId: null,
+            holdExpiresAt: null,
         };
 
         // AJAX caches — tránh gọi lại khi đã có data
@@ -1662,32 +1704,32 @@
             document.getElementById('slot-wrap').innerHTML =
                 '<div style="display:flex;align-items:center;gap:10px;font-size:.82rem;color:var(--gray-400)">' +
                 '<div class="mini-spin"></div>Đang tải khung giờ...</div>';
-            document.getElementById('slot-legend').style.display  = 'none';
+            document.getElementById('slot-legend').style.display = 'none';
             document.getElementById('slot-stats-bar').style.display = 'none';
 
             fetch(`${ROUTE_TIMESLOTS}?doctor_id=${state.doctor.doctor_id}&work_date=${state.date}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' }
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.day_off) {
-                    timeslotCache[key] = null;
-                    showSlotDayOff();
-                    return;
-                }
-                timeslotCache[key] = data.slots || [];
-                renderTimeslots(timeslotCache[key]);
-            })
-            .catch(() => {
-                document.getElementById('slot-wrap').innerHTML =
-                    '<span class="slot-placeholder" style="color:#e5484d">⚠️ Lỗi tải khung giờ. Vui lòng thử lại.</span>';
-            });
+                .then(r => r.json())
+                .then(data => {
+                    if (data.day_off) {
+                        timeslotCache[key] = null;
+                        showSlotDayOff();
+                        return;
+                    }
+                    timeslotCache[key] = data.slots || [];
+                    renderTimeslots(timeslotCache[key]);
+                })
+                .catch(() => {
+                    document.getElementById('slot-wrap').innerHTML =
+                        '<span class="slot-placeholder" style="color:#e5484d">⚠️ Lỗi tải khung giờ. Vui lòng thử lại.</span>';
+                });
         }
 
         function showSlotDayOff() {
             document.getElementById('slot-wrap').innerHTML =
                 '<span class="slot-placeholder">🚫 Bác sĩ nghỉ ngày này. Vui lòng chọn ngày khác.</span>';
-            document.getElementById('slot-legend').style.display    = 'none';
+            document.getElementById('slot-legend').style.display = 'none';
             document.getElementById('slot-stats-bar').style.display = 'none';
         }
 
@@ -1697,20 +1739,39 @@
         function fetchQueueInfo(scheduleId, appointmentTime = null) {
             const card = document.getElementById('queue-card');
             const spinner = document.getElementById('queue-loading-spinner');
-            
+
             // Show card & spinner
             card.classList.remove('hidden');
             spinner.style.display = 'flex';
             document.getElementById('queue-list-container').style.display = 'none';
 
             // Build query string with schedule_id and optional appointment_time
-            let queryUrl = `${ROUTE_QUEUE_INFO}?schedule_id=${scheduleId}`;
+            if (!scheduleId || !Number.isInteger(Number(scheduleId)) || Number(scheduleId) <= 0) {
+                spinner.innerHTML = '<span class="slot-placeholder" style="color:#e5484d">⚠️ Thiếu thông tin khung giờ.</span>';
+                console.warn('[fetchQueueInfo] invalid scheduleId', scheduleId);
+                return;
+            }
+
+            let queryUrl = `${ROUTE_QUEUE_INFO}?schedule_id=${encodeURIComponent(scheduleId)}`;
             if (appointmentTime) {
                 queryUrl += `&appointment_time=${encodeURIComponent(appointmentTime)}`;
             }
 
-            fetch(queryUrl)
-                .then(res => res.json())
+            fetch(queryUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            })
+                .then(res => {
+                    const contentType = res.headers.get('content-type') || '';
+                    if (!contentType.includes('application/json')) {
+                        return res.text().then(text => {
+                            throw new Error('Unexpected response: ' + text.slice(0, 200));
+                        });
+                    }
+                    return res.json();
+                })
                 .then(data => {
                     if (!data.success) {
                         spinner.innerHTML = '<span style="color:#e5484d">❌ Không thể tải thông tin hàng đợi</span>';
@@ -1723,7 +1784,7 @@
                 })
                 .catch(err => {
                     console.error('Queue fetch error:', err);
-                    spinner.innerHTML = '<span style="color:#e5484d">❌ Lỗi kết nối</span>';
+                    spinner.innerHTML = '<span class="slot-placeholder" style="color:#e5484d">❌ Lỗi kết nối</span>';
                 });
         }
 
@@ -1757,7 +1818,7 @@
             // Cập nhật danh sách người đứng trước
             const listContainer = document.getElementById('queue-list-container');
             const peopleList = document.getElementById('queue-people-list');
-            
+
             if (queue_details && queue_details.length > 0) {
                 listContainer.style.display = 'block';
                 peopleList.innerHTML = queue_details.map((person, idx) => `
@@ -1783,27 +1844,26 @@
         }
 
         function renderTimeslots(slots) {
-            const wrap   = document.getElementById('slot-wrap');
+            const wrap = document.getElementById('slot-wrap');
             const legend = document.getElementById('slot-legend');
-            const stats  = document.getElementById('slot-stats-bar');
+            const stats = document.getElementById('slot-stats-bar');
             clearSlotState();
 
             if (!slots || slots.length === 0) {
-                wrap.innerHTML = `<span class="slot-placeholder">${
-                    state.doctor ? 'Không có lịch khám cho ngày này' : 'Vui lòng chọn bác sĩ và ngày'
-                }</span>`;
+                wrap.innerHTML = `<span class="slot-placeholder">${state.doctor ? 'Không có lịch khám cho ngày này' : 'Vui lòng chọn bác sĩ và ngày'
+                    }</span>`;
                 legend.style.display = 'none';
-                stats.style.display  = 'none';
+                stats.style.display = 'none';
                 return;
             }
 
             // Cập nhật stats
             const totalCount = slots.length;
-            const fullCount  = slots.filter(s => s.is_booked).length;
+            const fullCount = slots.filter(s => s.is_booked).length;
             const availCount = totalCount - fullCount;
             document.getElementById('stat-total').textContent = totalCount;
             document.getElementById('stat-avail').textContent = availCount;
-            document.getElementById('stat-full').textContent  = fullCount;
+            document.getElementById('stat-full').textContent = fullCount;
             stats.style.display = 'flex';
 
             // Nhóm theo buổi
@@ -1838,31 +1898,57 @@
             updateSummary();
         }
 
-        function selectTimeslot(el) {
+        async function selectTimeslot(el) {
             if (el.disabled || el.classList.contains('slot-full')) return;
             document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
             el.classList.add('selected');
 
-            state.scheduleId = el.dataset.sid;
-            state.time       = el.dataset.time;
-            state.timeEnd    = el.dataset.end || '';
+            const scheduleId = parseInt(el.dataset.sid, 10);
+            const appointmentTime = el.dataset.time?.trim() || null;
+            const appointmentEnd = el.dataset.end?.trim() || '';
 
-            document.getElementById('schedule_id').value      = state.scheduleId;
+            if (!Number.isInteger(scheduleId) || scheduleId <= 0 || !appointmentTime) {
+                console.warn('[selectTimeslot] invalid slot data', {
+                    scheduleId: el.dataset.sid,
+                    appointmentTime: el.dataset.time,
+                    scheduleIdParsed: scheduleId,
+                });
+                showHoldError('Dữ liệu khung giờ không hợp lệ. Vui lòng chọn lại.');
+                clearSlotSelection();
+                return;
+            }
+
+            if (state.scheduleId && (state.scheduleId !== scheduleId || state.time !== appointmentTime)) {
+                await releaseCurrentHold();
+            }
+
+            state.scheduleId = scheduleId;
+            state.time = appointmentTime;
+            state.timeEnd = appointmentEnd;
+
+            document.getElementById('schedule_id').value = state.scheduleId;
             document.getElementById('appointment_time').value = state.time;
             document.getElementById('slot-error').style.display = 'none';
             updateSummary();
 
+            const holdSuccess = await holdSelectedSlot(state.scheduleId, state.time);
+            if (!holdSuccess) {
+                return;
+            }
+
             // ✅ Fetch queue info khi chọn slot (gửi cả appointment_time để filter chính xác)
-            fetchQueueInfo(state.scheduleId, state.time);
+            if (Number.isInteger(state.scheduleId) && state.scheduleId > 0) {
+                fetchQueueInfo(state.scheduleId, state.time);
+            }
         }
 
         function clearSlotState() {
             state.scheduleId = null;
-            state.time       = null;
-            state.timeEnd    = null;
-            document.getElementById('schedule_id').value      = '';
+            state.time = null;
+            state.timeEnd = null;
+            document.getElementById('schedule_id').value = '';
             document.getElementById('appointment_time').value = '';
-            
+
             // Hide queue card when slot is cleared
             document.getElementById('queue-card').classList.add('hidden');
         }
@@ -1936,17 +2022,235 @@
             else { el.textContent = '—'; el.classList.add('empty'); }
         }
 
-        // ══════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════════
+        // SLOT HOLD — Giữ slot tạm thời
+        // ══════════════════════════════════════════════════════════════════
+
+        const ROUTE_SLOT_HOLD = '{{ route("slot.hold") }}';
+        const ROUTE_SLOT_RELEASE = '{{ route("slot.release") }}';
+        const ROUTE_SLOT_STATUS = '{{ route("slot.status") }}';
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+        let holdCountdownTimer = null;   // setInterval handle
+
+        // ── Gọi khi bệnh nhân click vào một slot ─────────────────────────
+        // Thay thế / bổ sung vào hàm selectTimeslot() hiện có.
+        // Thêm dòng: holdSelectedSlot(state.scheduleId, state.time);
+        // Ở cuối hàm selectTimeslot().
+
+        async function holdSelectedSlot(scheduleId, appointmentTime) {
+            if (!scheduleId || !appointmentTime) return false;
+
+            try {
+                const res = await fetch(ROUTE_SLOT_HOLD, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ schedule_id: scheduleId, appointment_time: appointmentTime }),
+                });
+
+                const contentType = res.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    const text = await res.text();
+                    throw new Error('Unexpected non-JSON response: ' + text.slice(0, 200));
+                }
+
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    stopHoldCountdown();
+                    clearSlotSelection();
+                    showHoldError(data.message ?? 'Không thể giữ khung giờ này.');
+                    return false;
+                }
+
+                state.holdAppointmentId = data.appointment_id ?? null;
+                state.holdExpiresAt = data.expires_at ? new Date(data.expires_at) : null;
+                startHoldCountdown(data.seconds_remaining ?? 300, data.expires_at);
+                showHoldBanner(data.message);
+                return true;
+
+            } catch (err) {
+                console.error('[SlotHold] hold error:', err);
+                stopHoldCountdown();
+                clearSlotSelection();
+                showHoldError('Không thể giữ khung giờ này. Vui lòng thử lại.');
+                return false;
+            }
+        }
+
+        // ── Giải phóng hold khi user rời trang ───────────────────────────
+        function releaseCurrentHold() {
+            if (!state.scheduleId && !state.holdAppointmentId) return;
+
+            const payload = state.holdAppointmentId
+                ? JSON.stringify({ appointment_id: state.holdAppointmentId })
+                : JSON.stringify({ schedule_id: state.scheduleId });
+
+            fetch(ROUTE_SLOT_RELEASE, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF_TOKEN,
+                },
+                body: payload,
+                keepalive: true,
+            }).catch(err => {
+                console.warn('[SlotHold] release failed on unload:', err);
+            });
+
+            state.holdAppointmentId = null;
+            state.holdExpiresAt = null;
+            stopHoldCountdown();
+        }
+
+        // Tự động giải phóng khi đóng tab / chuyển trang
+        window.addEventListener('beforeunload', releaseCurrentHold);
+        window.addEventListener('pagehide', releaseCurrentHold);
+
+        // ── Countdown UI ─────────────────────────────────────────────────
+        function startHoldCountdown(secondsRemaining, expiresAt) {
+            stopHoldCountdown();
+
+            if (expiresAt) {
+                state.holdExpiresAt = new Date(expiresAt);
+            }
+
+            if (!state.holdExpiresAt) {
+                secondsRemaining = parseInt(secondsRemaining, 10);
+                if (Number.isNaN(secondsRemaining)) {
+                    secondsRemaining = 0;
+                }
+                state.holdExpiresAt = new Date(Date.now() + secondsRemaining * 1000);
+            }
+
+            const updateTimer = () => {
+                if (!state.holdExpiresAt) {
+                    onHoldExpired();
+                    return;
+                }
+                const diffMs = state.holdExpiresAt - new Date();
+                const remainingSeconds = Math.max(0, Math.ceil(diffMs / 1000));
+                if (remainingSeconds <= 0) {
+                    onHoldExpired();
+                    return;
+                }
+                renderCountdown(remainingSeconds);
+            };
+
+            updateTimer();
+            holdCountdownTimer = setInterval(updateTimer, 1000);
+        }
+
+        function stopHoldCountdown() {
+            if (holdCountdownTimer) {
+                clearInterval(holdCountdownTimer);
+                holdCountdownTimer = null;
+            }
+        }
+
+        function renderCountdown(seconds) {
+            const banner = document.getElementById('hold-countdown-banner');
+            if (!banner) return;
+
+            // Ensure we never render negative or non-numeric values
+            const remaining = Math.max(0, Math.floor(Number(seconds) || 0));
+            const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+            const s = String(remaining % 60).padStart(2, '0');
+
+            banner.style.display = 'flex';
+            const timerEl = banner.querySelector('.hold-timer');
+            if (timerEl) timerEl.textContent = `${m}:${s}`;
+
+            // Đổi màu đỏ khi còn < 60 giây
+            banner.classList.toggle('hold-urgent', remaining < 60);
+        }
+
+        function onHoldExpired() {
+            const banner = document.getElementById('hold-countdown-banner');
+            if (banner) {
+                banner.style.display = 'none';
+            }
+            state.holdAppointmentId = null;
+            state.holdExpiresAt = null;
+            // Reset lựa chọn slot
+            clearSlotSelection();
+            // Thông báo
+            showHoldError('Thời gian giữ khung giờ đã hết. Vui lòng chọn lại khung giờ.');
+            // Reload timeslots để cập nhật trạng thái
+            if (state.doctor && state.date) {
+                const key = `${state.doctor.doctor_id}_${state.date}`;
+                delete timeslotCache[key];   // Xoá cache để fetch lại
+                loadTimeslots();
+            }
+        }
+
+        // ── Helper: xoá lựa chọn slot hiện tại (không xoá state.scheduleId ngay) ──
+        function clearSlotSelection() {
+            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+            state.scheduleId = null;
+            state.time = null;
+            state.timeEnd = null;
+            state.holdAppointmentId = null;
+            state.holdExpiresAt = null;
+            document.getElementById('schedule_id').value = '';
+            document.getElementById('appointment_time').value = '';
+            document.getElementById('queue-card').classList.add('hidden');
+            stopHoldCountdown();
+            const banner = document.getElementById('hold-countdown-banner');
+            if (banner) banner.style.display = 'none';
+        }
+
+        // ── Banner & Error UI ─────────────────────────────────────────────
+        function showHoldBanner(message) {
+            // Banner được inject từ Blade (xem HTML bên dưới)
+            const banner = document.getElementById('hold-countdown-banner');
+            const msg = document.getElementById('hold-banner-msg');
+            const errorEl = document.getElementById('slot-error');
+            if (msg) msg.textContent = message;
+            if (banner) banner.style.display = 'flex';
+            if (errorEl) {
+                errorEl.style.display = 'none';
+                errorEl.textContent = '';
+            }
+        }
+
+        function showHoldError(msg) {
+            const errEl = document.getElementById('slot-error');
+            if (!errEl) return;
+            errEl.textContent = '⚠️ ' + msg;
+            errEl.style.display = 'block';
+            errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
         // FORM SUBMIT
         // ══════════════════════════════════════════════════════════════
         document.getElementById('booking-form').addEventListener('submit', function (e) {
+            const svcSel = document.getElementById('service_id_select');
+            const serviceId = svcSel ? svcSel.value : '';
+
+            if (!serviceId) {
+                e.preventDefault();
+                const errEl = document.getElementById('slot-error');
+                errEl.textContent = '⚠️ Vui lòng chọn dịch vụ trước khi đặt lịch.';
+                errEl.style.display = 'block';
+                svcSel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
             if (!state.scheduleId || !state.time) {
                 e.preventDefault();
                 const errEl = document.getElementById('slot-error');
+                errEl.textContent = '⚠️ Vui lòng chọn khung giờ trước khi đặt lịch.';
                 errEl.style.display = 'block';
                 document.getElementById('slot-wrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
+
             const btn = document.getElementById('submit-btn');
             const spinner = document.getElementById('spinner');
             const icon = document.getElementById('submit-icon');
@@ -1954,6 +2258,7 @@
             spinner.style.display = 'inline-block';
             icon.style.display = 'none';
         });
+
 
         // Service dropdown → cập nhật summary
         document.getElementById('service_id_select')?.addEventListener('change', updateSummary);

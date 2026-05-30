@@ -12,7 +12,36 @@ use Illuminate\Support\Facades\Log;
 
 class SlotHoldService
 {
+    public const HOLD_STATUS = 'Giữ slot';
+    public const HOLD_DURATION_MINUTES = 5;
+
     // ── Public API ─────────────────────────────────────────────────
+
+    /**
+     * Controller API: Hold a slot for a user
+     * Returns a response-ready array
+     */
+    public function holdSlot(
+        int    $userId,
+        int    $scheduleId,
+        string $appointmentTime
+    ): array {
+        $hold = $this->createHold(
+            userId:         $userId,
+            scheduleId:     $scheduleId,
+            serviceId:      1,  // Default to first service - frontend should pass this
+            appointmentTime: $appointmentTime,
+        );
+
+        return [
+            'success'           => true,
+            'appointment_id'    => $hold->appointment_id,
+            'expires_at'        => $hold->slot_hold_expire->toIso8601String(),
+            'seconds_remaining' => $hold->slot_hold_expire->diffInSeconds(now()),
+            'hold_minutes'      => self::HOLD_DURATION_MINUTES,
+            'message'           => 'Khung giờ đã được giữ cho bạn trong ' . self::HOLD_DURATION_MINUTES . ' phút.',
+        ];
+    }
 
     /**
      * Tạo hold tạm thời cho một slot.
@@ -43,8 +72,16 @@ class SlotHoldService
             // 3. Kiểm tra slot còn trống (tính cả các hold chưa expire)
             $occupied = $this->countOccupiedSlots($scheduleId);
             if ($occupied >= $schedule->max_slot) {
-                throw new \RuntimeException('Slot này đã đầy, vui lòng chọn khung giờ khác.');
+                    // Nếu slot đã đầy nhưng một số hold vừa hết hạn (do client countdown lệch),
+                    // hãy thử dọn expired holds nhanh để phản ánh “dữ liệu mới nhất”.
+                    Appointment::expiredHolds()->delete();
+
+                    $occupied = $this->countOccupiedSlots($scheduleId);
+                    if ($occupied >= $schedule->max_slot) {
+                        throw new \RuntimeException('Slot này đã đầy, vui lòng chọn khung giờ khác.');
+                    }
             }
+
 
             // 4. Xóa hold cũ (nếu có) của cùng user trên cùng schedule
             $this->releaseExistingHoldForUser($userId, $scheduleId);
@@ -52,17 +89,38 @@ class SlotHoldService
             // 5. Tính số thứ tự hàng đợi
             $queueNumber = $this->nextQueueNumber($scheduleId);
 
+            $workDate = $schedule->work_date instanceof Carbon
+                ? $schedule->work_date->toDateString()
+                : Carbon::parse($schedule->work_date)->toDateString();
+
+            $appointmentDateTime = Carbon::createFromFormat(
+                'Y-m-d H:i',
+                $workDate . ' ' . $appointmentTime
+            );
+
+            if (!$appointmentDateTime) {
+                throw new \RuntimeException('Dữ liệu giờ khám không hợp lệ. Vui lòng chọn lại khung giờ.');
+            }
+
+            $appointmentTimeEnd = $appointmentDateTime->copy()->addMinutes($schedule->slot_duration ?: 15);
+
             // 6. Tạo hold mới
             $hold = Appointment::create([
-                'user_id'          => $userId,
-                'schedule_id'      => $scheduleId,
-                'service_id'       => $serviceId,
-                'appointment_time' => $appointmentTime,
-                'queue_number'     => $queueNumber,
-                'status'           => Appointment::STATUS_HOLD,
-                'slot_hold_expire' => now()->addMinutes(Appointment::HOLD_DURATION_MINUTES),
-                'created_at'       => now(),
+                'user_id'            => $userId,
+                'schedule_id'        => $scheduleId,
+                'service_id'         => $serviceId,
+                'appointment_time'   => $appointmentDateTime,
+                'appointment_timeEnd'=> $appointmentTimeEnd,
+                'queue_number'       => $queueNumber,
+                'status'             => Appointment::STATUS_HOLD,
+                'slot_hold_expire'   => now()->addMinutes(Appointment::HOLD_DURATION_MINUTES),
+                'created_at'         => now(),
             ]);
+
+            // Đảm bảo value còn active theo thời gian thực (đề phòng timezone/DB lag)
+            // giúp tránh trường hợp vừa giữ xong nhưng isHoldActive() trả false.
+            $hold->refresh();
+
 
             Log::info('SlotHold: created', [
                 'appointment_id' => $hold->appointment_id,
@@ -143,7 +201,35 @@ class SlotHoldService
      *
      * @throws \RuntimeException
      */
-    public function releaseHold(int $appointmentId, int $userId): void
+    public function releaseHold(int $userId, ?int $scheduleId = null, ?int $appointmentId = null): bool
+    {
+        // If appointmentId is provided, use the old behavior
+        if ($appointmentId !== null) {
+            $this->releaseHoldByAppointment($appointmentId, $userId);
+            return true;
+        }
+
+        // Otherwise find by userId and scheduleId
+        $hold = Appointment::where('user_id', $userId)
+            ->where('schedule_id', $scheduleId)
+            ->where('status', Appointment::STATUS_HOLD)
+            ->first();
+
+        if (!$hold) {
+            return false;
+        }
+
+        $hold->delete();
+
+        Log::info('SlotHold: released manually', [
+            'appointment_id' => $hold->appointment_id,
+            'user_id'        => $userId,
+        ]);
+
+        return true;
+    }
+
+    private function releaseHoldByAppointment(int $appointmentId, int $userId): void
     {
         DB::transaction(function () use ($appointmentId, $userId) {
 
@@ -183,6 +269,11 @@ class SlotHoldService
         return $count;
     }
 
+    public function releaseExpired(): int
+    {
+        return $this->cleanExpiredHolds();
+    }
+
     /**
      * Lấy thông tin hold hiện tại của user cho một schedule.
      */
@@ -192,6 +283,30 @@ class SlotHoldService
             ->where('schedule_id', $scheduleId)
             ->activeHolds()
             ->first();
+    }
+
+    /**
+     * Controller API: Get hold status for countdown display
+     * Returns a response-ready array
+     */
+    public function getHoldStatus(int $userId, int $scheduleId): array
+    {
+        $hold = $this->getActiveHoldForUser($userId, $scheduleId);
+
+        if (!$hold) {
+            return [
+                'held'              => false,
+                'expires_at'        => null,
+                'seconds_remaining' => 0,
+            ];
+        }
+
+        return [
+            'held'              => true,
+            'appointment_id'    => $hold->appointment_id,
+            'expires_at'        => $hold->slot_hold_expire->toIso8601String(),
+            'seconds_remaining' => max(0, $hold->slot_hold_expire->diffInSeconds(now())),
+        ];
     }
 
     /**
