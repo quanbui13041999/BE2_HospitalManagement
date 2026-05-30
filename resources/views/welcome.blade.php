@@ -108,11 +108,14 @@
             position: relative;
             z-index: 10;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
-            padding: 28px 40px;
-            max-width: 1280px;
+            gap: clamp(12px, 1.4vw, 22px);
+            padding: 28px clamp(24px, 4vw, 64px);
+            max-width: none;
             margin: 0 auto;
+            width: 100%;
+            min-width: 0;
         }
 
         .logo {
@@ -124,6 +127,7 @@
             display: flex;
             align-items: baseline;
             gap: 2px;
+            flex: 0 0 auto;
         }
 
         .logo .logo-mark {
@@ -153,8 +157,17 @@
         .nav-links {
             display: flex;
             align-items: center;
-            gap: 36px;
+            justify-content: center;
+            gap: clamp(10px, 1.35vw, 22px);
             list-style: none;
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: visible;
+            white-space: nowrap;
+        }
+
+        .nav-links li {
+            flex: 0 0 auto;
         }
 
         .nav-links a {
@@ -165,6 +178,24 @@
             text-decoration: none;
             transition: color 0.2s ease;
             letter-spacing: 0.01em;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 1180px) {
+            .nav-links a,
+            .btn-outline,
+            .btn-primary {
+                font-size: 0.8rem;
+            }
+
+            .nav-cta {
+                gap: 8px;
+            }
+
+            .btn-primary {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
         }
 
         .nav-links a:first-child,
@@ -180,6 +211,25 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 960px) {
+            nav {
+                align-items: stretch;
+                flex-wrap: wrap;
+                padding: 18px 20px;
+            }
+
+            .nav-links {
+                order: 3;
+                flex-basis: 100%;
+            }
+
+            .nav-cta {
+                margin-left: auto;
+            }
         }
 
         .btn-outline {
@@ -683,8 +733,8 @@
                 <li><a href="{{ route('home') }}" class="active">Trang chủ</a></li>
                 @auth
                 <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
-                <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
-                    @if(!Auth::user()->is_admin)
+                    @if(Auth::user()->isPatient())
+                    <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
                     <li><a href="{{ route('patient.nutrition.index') }}">Dinh dưỡng</a></li>
                     @endif
                 
@@ -704,8 +754,8 @@
             <div class="nav-cta" style="display: flex; align-items: center; gap: 16px;">
                 @auth
                 <x-notification-bell :direct="true" />
-                @if (Auth::user()->is_admin || Auth::user()->role_id == 1 || Auth::user()->role_id == 2)
-                <a href="{{ route('admin.news.index') }}" class="btn-outline">Dashboard</a>
+                @if (Auth::user()->is_admin)
+                <a href="{{ route('admin.dashboard') }}" class="btn-outline">Dashboard</a>
                 @else
                 <a href="{{ route('Home.trangchu') }}" class="btn-outline">Trang của tôi</a>
                 @endif
@@ -829,6 +879,7 @@
     @auth
         @include('components.chat-widget')
     @endauth
+    @include('components.back-to-previous')
 </body>
 
 </html>

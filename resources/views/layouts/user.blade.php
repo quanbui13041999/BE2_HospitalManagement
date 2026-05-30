@@ -179,10 +179,10 @@
                             </a>
                         </li>
 
-                        <!-- Dashboard (Chỉ cho Admin & Bác sĩ) -->
-                        @if(Auth::user()->role_id == 1 || Auth::user()->role_id == 2)
+                        <!-- Dashboard (Chỉ cho Admin) -->
+                        @if(Auth::user()->is_admin)
                             <li class="nav-item">
-                                <a class="nav-link {{ (request()->routeIs('admin.news.*') || request()->routeIs('admin.dashboard')) ? 'active' : '' }}" href="{{ route('admin.news.index') }}">
+                                <a class="nav-link {{ request()->routeIs('admin.*') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
                                     Dashboard
                                 </a>
                             </li>

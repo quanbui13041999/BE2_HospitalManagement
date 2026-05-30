@@ -17,7 +17,8 @@ class IsAdmin
         $roleName = auth()->user()->role?->role_name ?? '';
 
         if ($roleName !== 'Admin') {
-            abort(403, 'Bạn không có quyền truy cập trang này.');
+            return redirect()->route('Home.trangchu')
+                ->with('error', 'Bạn không có quyền truy cập trang quản trị.');
         }
 
         return $next($request);

@@ -837,7 +837,6 @@
 @push('scripts')
 <script>
 let currentActiveServiceId = null;
-const savedMarkups = {};
 
 /* ── SWITCH TAB ────────────────────────────────────────────── */
 function switchTab(name, event) {
@@ -1162,29 +1161,16 @@ function renderPriceTableRows(prices) {
     prices.sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date));
     
     prices.forEach(price => {
-        // Safe date formatter & parser helper to avoid timezone offset shifts
-        const formatDateStr = (dateStr) => {
-            if (!dateStr) return '—';
-            const parts = dateStr.split('T')[0].split('-');
-            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-            return dateStr;
-        };
-        const parseDateOnly = (dateStr) => {
-            if (!dateStr) return null;
-            const parts = dateStr.split('T')[0].split('-');
-            if (parts.length === 3) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-            return new Date(dateStr);
-        };
-
-        const endDateStr = price.end_date ? formatDateStr(price.end_date) : '—';
-        const effDateStr = formatDateStr(price.effective_date);
+        const effDate = new Date(price.effective_date);
+        const endDateStr = price.end_date ? new Date(price.end_date).toLocaleDateString('vi-VN') : '—';
+        const effDateStr = effDate.toLocaleDateString('vi-VN');
         
         // Active indicator logic
         const now = new Date();
         now.setHours(0,0,0,0);
-        const effTime = parseDateOnly(price.effective_date);
-        if (effTime) effTime.setHours(0,0,0,0);
-        const endTime = price.end_date ? parseDateOnly(price.end_date) : null;
+        const effTime = new Date(price.effective_date);
+        effTime.setHours(0,0,0,0);
+        const endTime = price.end_date ? new Date(price.end_date) : null;
         if (endTime) endTime.setHours(0,0,0,0);
         
         const isActive = effTime <= now && (!endTime || endTime >= now);
@@ -1296,7 +1282,7 @@ function editPriceInline(priceId, type, priceVal, effDate, endDate) {
     if (!tr) return;
     
     // Save previous html markup to cancel back
-    savedMarkups[priceId] = tr.innerHTML;
+    const previousMarkup = tr.innerHTML;
     
     tr.className = "bg-warning-subtle";
     tr.innerHTML = `
@@ -1308,11 +1294,10 @@ function editPriceInline(priceId, type, priceVal, effDate, endDate) {
             </select>
         </td>
         <td>
-            <div class="input-group input-group-sm" title="Không cho phép sửa đổi số tiền trực tiếp. Để thay đổi giá, vui lòng khai báo một mức giá mới.">
-                <input type="number" class="form-control form-control-sm fw-bold font-monospace bg-light" id="inline-price-${priceId}" value="${priceVal}" readonly style="cursor: not-allowed;" required>
+            <div class="input-group input-group-sm">
+                <input type="number" class="form-control form-control-sm fw-bold font-monospace" id="inline-price-${priceId}" value="${priceVal}" min="0" step="1000" required>
                 <span class="input-group-text">đ</span>
             </div>
-            <div class="text-muted" style="font-size:8px; line-height:1.2; margin-top:2px;">(Không được sửa số tiền)</div>
         </td>
         <td>
             <div class="mb-1">
@@ -1329,10 +1314,10 @@ function editPriceInline(priceId, type, priceVal, effDate, endDate) {
         </td>
         <td class="text-center">
             <div class="d-flex gap-1 justify-content-center">
-                <button type="button" class="btn btn-sm btn-success px-2 py-1" onclick="savePriceInline(${priceId})" title="Lưu lại">
+                <button type="button" class="btn btn-sm btn-success px-2 py-1" onclick="savePriceInline(${priceId}, '${previousMarkup}')" title="Lưu lại">
                     <i class="bi bi-check-lg"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-1" onclick="cancelPriceInline(${priceId})" title="Huỷ bỏ">
+                <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-1" onclick="cancelPriceInline('${priceId}', \`${previousMarkup.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)" title="Huỷ bỏ">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -1341,15 +1326,14 @@ function editPriceInline(priceId, type, priceVal, effDate, endDate) {
     `;
 }
 
-function cancelPriceInline(priceId) {
+function cancelPriceInline(priceId, previousMarkup) {
     const tr = document.getElementById(`price-tr-${priceId}`);
-    if (!tr || !savedMarkups[priceId]) return;
+    if (!tr) return;
     tr.className = "";
-    tr.innerHTML = savedMarkups[priceId];
-    delete savedMarkups[priceId];
+    tr.innerHTML = previousMarkup;
 }
 
-async function savePriceInline(priceId) {
+async function savePriceInline(priceId, previousMarkup) {
     const tr = document.getElementById(`price-tr-${priceId}`);
     const inlineErr = document.getElementById(`inline-err-${priceId}`);
     inlineErr.textContent = '';

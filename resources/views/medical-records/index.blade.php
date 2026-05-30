@@ -27,6 +27,9 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
         <form method="GET" action="{{ route('medical-records.index') }}" id="searchForm">
+            @if(request('patient_id'))
+                <input type="hidden" name="patient_id" value="{{ request('patient_id') }}">
+            @endif
             <div class="row g-3">
                 <!-- Ô tìm kiếm chính -->
                 <div class="col-md-4">
@@ -165,7 +168,7 @@
                     <th>
                         <a href="{{ route('medical-records.index', array_merge(request()->all(), ['sort_by' => 'exam_date', 'sort_order' => (request('sort_by') == 'exam_date' && request('sort_order') == 'asc') ? 'desc' : 'asc'])) }}" 
                            class="text-decoration-none text-dark">
-                            Ngày khám
+                            Ngày / giờ khám
                             @if(request('sort_by', 'exam_date') == 'exam_date')
                                 <i class="bi bi-arrow-{{ request('sort_order', 'desc') == 'asc' ? 'up' : 'down' }}"></i>
                             @endif
@@ -188,7 +191,12 @@
                     </td>
                     <td>{{ $record->patient_name }}</td>
                     <td>BS. {{ $record->doctor_name }}</td>
-                    <td>{{ $record->exam_date->format('d/m/Y') }}</td>
+                    <td>
+                        {{ $record->exam_date?->format('d/m/Y') ?? '—' }}
+                        @if($record->exam_time)
+                            <div class="text-muted" style="font-size:12px">{{ \Carbon\Carbon::parse($record->exam_time)->format('H:i') }}</div>
+                        @endif
+                    </td>
                     <td>
                         <span style="background:#eaf4ff;color:#1a6fb3;padding:2px 8px;border-radius:10px;font-size:12px">
                             {{ $record->visit_type }}
@@ -222,7 +230,11 @@
                         <a href="{{ route('medical-records.show', $record->record_id) }}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-eye"></i> Xem
                         </a>
-                        @if(auth()->user()->role === 'doctor' || auth()->user()->user_type === 'doctor' || auth()->user()->isDoctor())
+                        @php
+                            $canEditRecord = auth()->user()->isAdmin()
+                                || (auth()->user()->isDoctor() && (int) $record->doctor_id === (int) auth()->id());
+                        @endphp
+                        @if($canEditRecord)
                             <a href="{{ route('medical-records.edit', $record->record_id) }}" class="btn btn-sm btn-outline-secondary">
                                 <i class="bi bi-pencil"></i> Sửa
                             </a>

@@ -74,8 +74,11 @@
                     </div>
                     <form method="POST" :action="'/queue/doctor/schedule/' + scheduleId + '/call-next'">
                         @csrf
-                        <button type="submit" class="btn btn-white text-primary font-black px-4 py-2.5 rounded-pill shadow-sm transition-all duration-200 hover:bg-blue-50">
-                            📣 GỌI SỐ TIẾP THEO
+                        <button type="submit"
+                                class="btn btn-white text-primary font-black px-4 py-2.5 rounded-pill shadow-sm transition-all duration-200 hover:bg-blue-50"
+                                :disabled="current || stats.total_callable === 0"
+                                :title="current ? 'Đang có bệnh nhân được gọi hoặc đang khám' : (stats.total_callable === 0 ? 'Không có bệnh nhân đã thanh toán để gọi khám' : '')">
+                            <span x-text="current ? 'ĐANG XỬ LÝ BỆNH NHÂN' : (stats.total_callable === 0 ? 'CHỜ THANH TOÁN' : '📣 GỌI SỐ TIẾP THEO')">📣 GỌI SỐ TIẾP THEO</span>
                         </button>
                     </form>
                 </div>
@@ -174,8 +177,14 @@
                                             </span>
                                         </div>
 
+                                        <div x-show="ticket.payment_required && !ticket.can_start_exam" class="flex-shrink-0">
+                                            <span class="badge bg-warning-subtle text-warning-emphasis px-3 py-2 rounded-pill font-bold text-xs uppercase tracking-wider">
+                                                Chưa thanh toán
+                                            </span>
+                                        </div>
+
                                         {{-- Kế tiếp --}}
-                                        <div x-show="index === 0" class="flex-shrink-0">
+                                        <div x-show="index === 0 && ticket.can_start_exam" class="flex-shrink-0">
                                             <span class="badge bg-amber-400 text-gray-900 px-3 py-2 rounded-pill font-bold text-xs uppercase tracking-wider animate-pulse">Kế Tiếp</span>
                                         </div>
                                     </div>
@@ -212,7 +221,7 @@ function doctorSchedule(scheduleId) {
         scheduleId: scheduleId,
         current: null,
         waiting: [],
-        stats: { total_waiting: 0, total_completed: 0, total_today: 0 },
+        stats: { total_waiting: 0, total_callable: 0, total_completed: 0, total_today: 0 },
 
         init() {
             this.refresh();

@@ -25,4 +25,9 @@ class PaymentItem extends Model
     {
         return $this->belongsTo(Payment::class, 'payment_id', 'payment_id');
     }
+
+    public function getTotalPriceAttribute($value)
+    {
+        return $value ?? $this->subtotal;
+    }
 }

@@ -29,6 +29,10 @@ class AppointmentController extends Controller
     // ================================================================
     public function create()
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $data = $this->appointmentService->getCreateFormData();
         return view('appointments.create', $data);
     }
@@ -38,6 +42,10 @@ class AppointmentController extends Controller
     // ================================================================
     public function getSchedules(Request $request)
     {
+        if ($response = $this->jsonIfNotPatientAppointmentFlow()) {
+            return $response;
+        }
+
         $request->validate([
             'doctor_id' => 'required|integer|exists:doctors,doctor_id',
             'work_date' => 'required|date|after_or_equal:today',
@@ -59,6 +67,10 @@ class AppointmentController extends Controller
         if (!Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Vui lòng đăng nhập để đặt lịch hẹn.');
+        }
+
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
         }
 
         $request->validate([
@@ -106,6 +118,10 @@ class AppointmentController extends Controller
     // ================================================================
     public function index(Request $request)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $userId = Auth::id();
         $status = $request->input('status', 'all');
         $sort = $request->input('sort', 'desc');
@@ -121,6 +137,10 @@ class AppointmentController extends Controller
     // ================================================================
     public function edit($id)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $userId = Auth::id();
         
         $appointment = $this->appointmentService->getAppointmentForEdit($id, $userId);
@@ -147,6 +167,10 @@ class AppointmentController extends Controller
 
     public function doctorOff($id)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $userId = Auth::id();
 
         $appointment = $this->appointmentService->getAppointmentForEdit($id, $userId);
@@ -168,6 +192,10 @@ class AppointmentController extends Controller
     // ================================================================
     public function update(Request $request, $id)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $request->validate([
             'new_schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
             'new_appointment_time' => 'required|string|max:10',
@@ -203,6 +231,10 @@ class AppointmentController extends Controller
     // ================================================================
     public function cancel(Request $request, $id)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $request->validate([
             'cancel_reason' => 'nullable|string|max:255',
         ]);
@@ -236,6 +268,10 @@ class AppointmentController extends Controller
      */
     public function suggest(Request $request, DoctorSuggestionService $suggestionService)
     {
+        if ($response = $this->jsonIfNotPatientAppointmentFlow()) {
+            return $response;
+        }
+
         $request->validate([
             'department_id' => 'required|integer|exists:departments,department_id',
             'work_date' => 'required|date|after_or_equal:today',
@@ -254,6 +290,10 @@ class AppointmentController extends Controller
      */
     public function timeslots(Request $request, DoctorTimeslotService $timeslotService)
     {
+        if ($response = $this->jsonIfNotPatientAppointmentFlow()) {
+            return $response;
+        }
+
         $request->validate([
             'doctor_id' => 'required|integer|exists:doctors,doctor_id',
             'work_date' => 'required|date|after_or_equal:today',
@@ -285,6 +325,10 @@ class AppointmentController extends Controller
      */
     public function getQueueInfo(Request $request, AppointmentQueueService $queueService)
     {
+        if ($response = $this->jsonIfNotPatientAppointmentFlow()) {
+            return $response;
+        }
+
         $request->validate([
             'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
             'appointment_time' => 'nullable|string',
@@ -302,5 +346,40 @@ class AppointmentController extends Controller
         }
 
         return response()->json($queueInfo);
+    }
+
+    private function redirectIfNotPatientAppointmentFlow()
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->isPatient()) {
+            return null;
+        }
+
+        if ($user->isDoctor()) {
+            return redirect()->route('doctor.dashboard')
+                ->with('error', 'Tài khoản bác sĩ không dùng chức năng đặt lịch của bệnh nhân.');
+        }
+
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Tài khoản quản trị không dùng chức năng đặt lịch của bệnh nhân.');
+        }
+
+        abort(403);
+    }
+
+    private function jsonIfNotPatientAppointmentFlow()
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->isPatient()) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Chỉ bệnh nhân được dùng chức năng đặt lịch.',
+        ], 403);
     }
 }

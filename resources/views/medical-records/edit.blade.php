@@ -174,8 +174,9 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Mã bệnh nhân</label>
-                        <input type="text" name="patient_code" class="form-control"
-                            value="{{ old('patient_code', $record->patient_code) }}">
+                        <input type="text" class="form-control" readonly
+                            value="{{ $record->patient_code ?: 'BN' . str_pad((string) $record->patient_id, 6, '0', STR_PAD_LEFT) }}">
+                        <small class="text-muted">Mã bệnh nhân tự động, không cho phép sửa.</small>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Ngày khám <span class="text-danger">*</span></label>

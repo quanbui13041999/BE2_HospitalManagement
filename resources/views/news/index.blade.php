@@ -105,8 +105,96 @@
             padding: 0.5rem 1rem;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: clamp(0.75rem, 1.4vw, 1.35rem);
             background: rgba(0, 0, 0, 0.62);
+            min-width: 0;
+        }
+
+        .news-glass-links {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(0.75rem, 1.25vw, 1.35rem);
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: visible;
+        }
+
+        .news-fixed-nav > a {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        .news-glass-links li {
+            flex: 0 0 auto;
+        }
+
+        .news-glass-links a,
+        .news-glass-outline {
+            font-size: clamp(0.78rem, 0.9vw, 0.875rem);
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .news-glass-links a:hover,
+        .news-glass-links a.active,
+        .news-glass-outline:hover {
+            color: #d1d5db;
+        }
+
+        .news-glass-cta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+
+        .news-glass-outline {
+            background: transparent;
+            border: none;
+            padding: 10px 0;
+        }
+
+        .news-glass-profile,
+        .news-glass-primary {
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .news-glass-profile {
+            background: #fff;
+            color: #000;
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background 0.2s ease;
+        }
+
+        .news-glass-profile:hover {
+            background: #f3f4f6;
+            color: #000;
+        }
+
+        .news-glass-primary {
+            color: #fff;
+            background: #f44336;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1.5rem;
+            cursor: pointer;
+        }
+
+        .news-glass-primary:hover {
+            color: #fff;
+            background: #dc2626;
         }
 
         .weather-widget {
@@ -348,6 +436,23 @@
                 justify-content: flex-end;
             }
         }
+
+        @media (max-width: 1024px) {
+            .news-fixed-nav {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .news-glass-links {
+                flex-wrap: wrap;
+                gap: 0.75rem 1.25rem;
+            }
+
+            .news-glass-cta {
+                flex-wrap: wrap;
+            }
+        }
     </style>
 
     {{-- Hero Section --}}
@@ -360,22 +465,47 @@
             {{-- Navbar --}}
             <div class="news-fixed-nav-wrap">
                 <nav class="liquid-glass news-fixed-nav">
-                    <span style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.04em; color: #fff;">HOPITALC</span>
-                    
-                    <div class="hidden md:flex items-center gap-8 text-sm">
-                        @php $navLinks = ['Trang chủ' => 'home', 'Dịch vụ' => 'user.services.index', 'Bản tin' => 'news.index', 'Đặt lịch' => 'appointments.create']; @endphp
-                        @foreach($navLinks as $label => $route)
-                            <a href="{{ route($route) }}" class="nav-link-hover" style="font-size: 0.875rem; color: #fff; text-decoration: none; transition: color 200ms;">{{ $label }}</a>
-                        @endforeach
-                    </div>
+                    <a href="{{ route('home') }}" style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.04em; color: #fff; text-decoration: none;">HOPITALC</a>
 
-                    <div class="flex items-center gap-4">
+                    <ul class="news-glass-links">
+                        <li><a href="{{ route('home') }}">Trang chủ</a></li>
+                        @auth
+                            <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
+                            @if(Auth::user()->isPatient())
+                                <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
+                                <li><a href="{{ route('patient.nutrition.index') }}">Dinh dưỡng</a></li>
+                            @endif
+                        @endauth
+                        <li><a href="{{ route('news.index') }}" class="active">Bản tin</a></li>
+                        @auth
+                            @if (Auth::user()->isDoctor || Auth::user()->is_admin)
+                                <li><a href="{{ route('doctor.dashboard') }}">Quản lý bác sĩ</a></li>
+                            @endif
+                        @endauth
+                        <li><a href="{{ route('user.services.index') }}">Khoa phòng</a></li>
+                        @auth
+                            <li><a href="{{ route('treatment.index') }}">Tuân thủ điều trị</a></li>
+                        @else
+                            <li><a href="{{ route('appointments.create') }}">Đặt lịch</a></li>
+                        @endauth
+                    </ul>
+
+                    <div class="news-glass-cta">
                         @auth
                             <x-notification-bell :direct="true" />
+                            @if (Auth::user()->is_admin)
+                                <a href="{{ route('admin.dashboard') }}" class="news-glass-outline">Dashboard</a>
+                            @else
+                                <a href="{{ route('Home.trangchu') }}" class="news-glass-outline">Trang của tôi</a>
+                            @endif
+                            <form method="POST" action="{{ route('logout') }}" style="display:inline;">
+                                @csrf
+                                <button type="submit" class="news-glass-primary">Đăng xuất</button>
+                            </form>
+                        @else
+                            <a href="{{ route('login') }}" class="news-glass-outline">Đăng nhập</a>
+                            <a href="{{ route('register') }}" class="news-glass-profile">Đăng ký</a>
                         @endauth
-                        <a href="{{ route('profile.show') }}" class="btn-hover-white" style="background: #fff; color: #000; padding: 0.5rem 1.5rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: background 200ms;">
-                            Hồ sơ
-                        </a>
                     </div>
                 </nav>
             </div>

@@ -1,114 +1,37 @@
-<!DOCTYPE html>
-<html lang="vi">
+@extends('layouts.admin')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thống kê & Dashboard - MediBook</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f9fafb;
-            color: #111827;
-        }
-        .nav-link.active {
-            border-bottom: 2px solid #2563eb;
-            color: #2563eb;
-        }
-        .nav-link:not(.active) {
-            border-bottom: 2px solid transparent;
-            color: #6b7280;
-        }
-        .nav-link:not(.active):hover {
-            color: #111827;
-            border-bottom-color: #d1d5db;
-        }
-        .stat-card { animation: fadeIn 0.5s ease-in; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        .chart-container { position: relative; height: 300px; }
-        .time-range-btn.active {
-            background-color: #2563eb;
-            color: white;
-        }
-        .time-range-btn:not(.active) {
-            background-color: white;
-            color: #374151;
-            border: 1px solid #d1d5db;
-        }
-        /* FIX: badge thay đổi so kỳ trước */
-        .change-badge-up   { background:#dcfce7; color:#15803d; }
-        .change-badge-down { background:#fee2e2; color:#b91c1c; }
-        .change-badge-flat { background:#f3f4f6; color:#6b7280; }
-    </style>
-</head>
+@section('title', 'Thống kê tổng quan')
 
-<body>
-    <!-- Header -->
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                    </div>
-                    <div>
-                        <a href="{{ route('home') }}">
-                            <h1 class="text-xl font-bold text-gray-900">HospitalC</h1>
-                        </a>
-                        <p class="text-xs text-gray-500">Quản lý bác sĩ</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
+@push('styles')
+<script>
+    window.tailwind = window.tailwind || {};
+    tailwind.config = { corePlugins: { preflight: false } };
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    .stat-card { animation: fadeIn 0.5s ease-in; }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .chart-container { position: relative; height: 300px; }
+    .time-range-btn.active {
+        background-color: #2563eb;
+        color: white;
+    }
+    .time-range-btn:not(.active) {
+        background-color: white;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+    .change-badge-up { background: #dcfce7; color: #15803d; }
+    .change-badge-down { background: #fee2e2; color: #b91c1c; }
+    .change-badge-flat { background: #f3f4f6; color: #6b7280; }
+</style>
+@endpush
 
-    <!-- Navigation -->
-    <nav class="bg-white border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex gap-1 overflow-x-auto">
-                <a href="{{ route('doctor.dashboard') }}"
-                    class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Bác sĩ
-                </a>
-                <a href="{{ route('doctor.schedule') }}"
-                    class="nav-link flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Lịch làm việc
-                </a>
-                @auth
-                    @if(auth()->user()->is_admin ?? false)
-                        <a href="{{ route('admin.dashboard') }}"
-                            class="nav-link active flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                            </svg>
-                            Thống kê
-                        </a>
-                    @endif
-                @endauth
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+@section('content')
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="mb-6">
             <h1 class="text-3xl font-bold mb-2">Thống kê & Báo cáo</h1>
             <p class="text-gray-600">Tổng quan hiệu suất và hoạt động hệ thống</p>
@@ -556,9 +479,12 @@
             </div>
         </div>
     </main>
+@endsection
 
-    <script>
-        // ── Helpers ──────────────────────────────────────────────────
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ── Helpers ──────────────────────────────────────────────────
         const CHART_COLORS = {
             blue:   '#3b82f6',
             green:  '#10b981',
@@ -738,6 +664,5 @@
         function setTimeRange(range) {
             window.location.href = '{{ route("admin.dashboard") }}?time_range=' + range;
         }
-    </script>
-</body>
-</html>
+</script>
+@endpush

@@ -915,6 +915,7 @@
             loadDayOffs();
         });
     </script>
+    @include('components.back-to-previous')
 </body>
 
 </html>

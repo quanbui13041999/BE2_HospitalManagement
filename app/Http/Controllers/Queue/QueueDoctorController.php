@@ -50,7 +50,7 @@ class QueueDoctorController extends Controller
         $ticket = $this->queueService->callNext($scheduleId);
 
         if (!$ticket) {
-            return back()->with('info', 'Không còn bệnh nhân đang chờ.');
+            return back()->with('info', 'Không còn bệnh nhân đủ điều kiện khám. Bệnh nhân chưa thanh toán vẫn ở hàng đợi; ca cấp cứu được gọi ngay.');
         }
 
         return back()->with('success', "Đã gọi số #{$ticket->queue_number} - {$ticket->patient_name}");

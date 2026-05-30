@@ -203,6 +203,12 @@
                                 </span>
                             </div>
 
+                            <div x-show="ticket.payment_required && !ticket.can_start_exam" class="flex-shrink-0">
+                                <span class="badge bg-warning-subtle text-warning-emphasis px-3 py-2 rounded-pill font-bold text-xs uppercase tracking-wider">
+                                    Chưa thanh toán
+                                </span>
+                            </div>
+
                             {{-- Actions --}}
                             <div class="flex-shrink-0">
                                 <form method="POST" :action="'/queue/manage/ticket/' + ticket.ticket_id + '/skip'" onsubmit="return confirm('Bạn có chắc chắn muốn bỏ qua bệnh nhân này?')">
@@ -234,7 +240,7 @@ function queueManage() {
     return {
         current: null,
         waiting: [],
-        stats: { total_waiting: 0, total_completed: 0, total_today: 0 },
+        stats: { total_waiting: 0, total_callable: 0, total_completed: 0, total_today: 0 },
         scheduleId: {{ $schedule->schedule_id }},
 
         init() {
