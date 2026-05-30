@@ -21,21 +21,6 @@
             color: #111827;
         }
 
-        .nav-link.active {
-            border-bottom: 2px solid #2563eb;
-            color: #2563eb;
-        }
-
-        .nav-link:not(.active) {
-            border-bottom: 2px solid transparent;
-            color: #6b7280;
-        }
-
-        .nav-link:not(.active):hover {
-            color: #111827;
-            border-bottom-color: #d1d5db;
-        }
-
         .tab-btn.active {
             background: #2563eb;
             color: white;
