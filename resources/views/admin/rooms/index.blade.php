@@ -52,6 +52,7 @@
         transition: .2s;
         border: 2px solid transparent;
         user-select: none;
+        position: relative;
     }
 
     .room-card:hover {
@@ -336,6 +337,23 @@
                     @endphp
                     <div class="room-card {{ $cls }}"
                         onclick="window.location='{{ route('admin.rooms.show', $room) }}'">
+                        
+                        <div class="dropdown" style="position: absolute; top: 10px; right: 10px;" onclick="event.stopPropagation()">
+                            <button class="btn btn-sm btn-link text-muted p-0 m-0 border-0 shadow-none" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 13px;">
+                                <li><a class="dropdown-item" href="{{ route('admin.rooms.edit', $room) }}"><i class="bi bi-pencil me-2 text-primary"></i>Sửa phòng</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ route('admin.rooms.destroy', $room) }}" onsubmit="return confirm('Bạn có chắc chắn muốn xóa phòng này?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Xóa phòng</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+
                         <div class="room-card-code">{{ $room->room_code }}</div>
                         <div class="room-card-label">{{ $room->status }}</div>
                         @if($todayDoc)
@@ -368,7 +386,7 @@
                             {{ now()->format('d/m/Y') }}
                         </span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                         @php
                         $caGroups = $todaySchedules->groupBy(function($s) {
                         $h = (int) substr($s->start_time, 0, 2);
