@@ -9,7 +9,7 @@ class PaymentItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'paymentitems';  // ← PHẢI CÓ DÒNG NÀY
+    protected $table = 'payment_items';
     protected $primaryKey = 'item_id';
     public $timestamps = false;
 
@@ -24,5 +24,10 @@ class PaymentItem extends Model
     public function payment()
     {
         return $this->belongsTo(Payment::class, 'payment_id', 'payment_id');
+    }
+
+    public function getTotalPriceAttribute($value)
+    {
+        return $value ?? $this->subtotal;
     }
 }

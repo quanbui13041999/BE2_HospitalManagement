@@ -2,8 +2,10 @@
 
 namespace App\Services\Admin;
 
+use App\Events\QueueUpdated;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\QueueTicket;
 use App\Repositories\PaymentRepository;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
@@ -118,13 +120,18 @@ class PaymentService
 
         if ($updated) {
             // Đánh dấu hóa đơn và lịch hẹn đã thanh toán
-            $payment = Payment::with(['invoice', 'appointment'])->find($paymentId);
+            $payment = Payment::with(['appointment'])->find($paymentId);
             if ($payment) {
-                if ($payment->invoice) {
-                    $payment->invoice->update(['status' => 'Đã thanh toán']);
-                }
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
+                    QueueTicket::where('appointment_id', $payment->appointment_id)
+                        ->whereDate('queue_date', today())
+                        ->where('status', 'waiting')
+                        ->get()
+                        ->each(function (QueueTicket $ticket) {
+                            broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
+                        });
+
                     $this->notifications->createForUser(
                         $payment->appointment->user_id,
                         'Thanh toán thành công',
@@ -177,7 +184,7 @@ class PaymentService
             'HOSPITAL|%s|%d|%s',
             $payment->transaction_ref,
             (int) ($payment->total_amount ?? 0),
-            'Thanh toan hoa don ' . ($payment->invoice?->invoice_number ?? '')
+            'Thanh toan lich kham ' . ($payment->appointment_id ?? '')
         );
     }
 }

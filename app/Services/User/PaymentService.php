@@ -2,9 +2,11 @@
 
 namespace App\Services\User;
 
+use App\Events\QueueUpdated;
 use App\Models\Appointment;
 use App\Models\Payment;
 use App\Models\PaymentItem;
+use App\Models\QueueTicket;
 use App\Repositories\PaymentRepository;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
@@ -119,8 +121,7 @@ class PaymentService
 
         $ref = 'PAY-' . strtoupper(Str::random(10));
 
-        // Tạo bản ghi payment
-        $payment = Payment::create([
+        $paymentData = [
             'appointment_id'  => $appointmentId,
             'insurance_id'    => $insurance?->insurance_id,
             'membership_id'   => $membership?->card_id,
@@ -131,7 +132,16 @@ class PaymentService
             'status'          => 'Chờ thanh toán',
             'transaction_ref' => $ref,
             'payment_date'    => now(),
-        ]);
+        ];
+
+        $payment = Payment::where('appointment_id', $appointmentId)->first();
+
+        if ($payment) {
+            $payment->update($paymentData);
+            PaymentItem::where('payment_id', $payment->payment_id)->delete();
+        } else {
+            $payment = Payment::create($paymentData);
+        }
 
         $this->notifications->createForUser(
             $userId,
@@ -146,22 +156,20 @@ class PaymentService
         if ($doctorFee > 0) {
             PaymentItem::create([
                 'payment_id'  => $payment->payment_id,
-                'item_type'   => 'Khám bệnh',
                 'item_name'   => 'Phí khám - BS. ' . ($appointment->schedule->doctor->full_name ?? ''),
                 'quantity'    => 1,
                 'unit_price'  => $doctorFee,
-                'total_price' => $doctorFee,
+                'subtotal'    => $doctorFee,
             ]);
         }
 
         if ($serviceFee > 0) {
             PaymentItem::create([
                 'payment_id'  => $payment->payment_id,
-                'item_type'   => 'Dịch vụ',
                 'item_name'   => $appointment->service->service_name ?? 'Dịch vụ',
                 'quantity'    => 1,
                 'unit_price'  => $serviceFee,
-                'total_price' => $serviceFee,
+                'subtotal'    => $serviceFee,
             ]);
         }
 
@@ -189,10 +197,18 @@ class PaymentService
         
         if ($updated) {
             // Đánh dấu lịch hẹn và hóa đơn đã thanh toán
-            $payment = Payment::with(['appointment', 'invoice'])->find($paymentId);
+            $payment = Payment::with(['appointment'])->find($paymentId);
             if ($payment) {
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
+                    QueueTicket::where('appointment_id', $payment->appointment_id)
+                        ->whereDate('queue_date', today())
+                        ->where('status', 'waiting')
+                        ->get()
+                        ->each(function (QueueTicket $ticket) {
+                            broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
+                        });
+
                     $this->notifications->createForUser(
                         $payment->appointment->user_id,
                         'Thanh toán thành công',
@@ -201,9 +217,6 @@ class PaymentService
                         'payment',
                         $payment->payment_id
                     );
-                }
-                if ($payment->invoice) {
-                    $payment->invoice->update(['status' => 'Đã thanh toán']);
                 }
 
                 ActivityLogService::log(
