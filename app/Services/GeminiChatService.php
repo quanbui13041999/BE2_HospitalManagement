@@ -10,7 +10,7 @@ use Throwable;
 
 class GeminiChatService
 {
-    protected string $apiKey;
+    protected ?string $apiKey = null;
     protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
     public function __construct()

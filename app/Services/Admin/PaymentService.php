@@ -2,10 +2,8 @@
 
 namespace App\Services\Admin;
 
-use App\Events\QueueUpdated;
 use App\Models\Invoice;
 use App\Models\Payment;
-use App\Models\QueueTicket;
 use App\Repositories\PaymentRepository;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
@@ -21,7 +19,8 @@ class PaymentService
 
     public function __construct(
         protected PaymentRepository $repo,
-        protected NotificationService $notifications
+        protected NotificationService $notifications,
+        protected \App\Services\PayOsService $payOsService
     ) {}
 
     // ----------------------------------------------------------------
@@ -101,9 +100,25 @@ class PaymentService
 
         $result = ['payment' => $payment, 'ref' => $ref];
 
-        // Với QR: tạo nội dung QR để frontend render
+        // Với QR: gọi PayOS sinh mã VietQR thật
         if ($data['payment_method'] === 'QR') {
-            $result['qr_content'] = $this->buildVietQrContent($payment);
+            $payOsResult = $this->payOsService->createPaymentLink(
+                $payment->payment_id,
+                (int) $payment->total_amount,
+                "Thanh toan hoa don " . ($invoice->invoice_id ?? $payment->payment_id),
+                route('admin.payments.show', $payment->payment_id),
+                route('admin.payments.checkout', $invoice->invoice_id)
+            );
+
+            if ($payOsResult['success']) {
+                $payment->update([
+                    'transaction_ref' => ($payOsResult['paymentLinkId'] ?? null) ?: $ref
+                ]);
+                $result['qr_content'] = $payOsResult['qrContent'];
+                $result['checkout_url'] = $payOsResult['checkoutUrl'] ?? null;
+            } else {
+                $result['qr_content'] = $this->buildVietQrContent($payment);
+            }
         }
 
         return $result;
@@ -124,14 +139,6 @@ class PaymentService
             if ($payment) {
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
-                    QueueTicket::where('appointment_id', $payment->appointment_id)
-                        ->whereDate('queue_date', today())
-                        ->where('status', 'waiting')
-                        ->get()
-                        ->each(function (QueueTicket $ticket) {
-                            broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
-                        });
-
                     $this->notifications->createForUser(
                         $payment->appointment->user_id,
                         'Thanh toán thành công',
@@ -184,7 +191,7 @@ class PaymentService
             'HOSPITAL|%s|%d|%s',
             $payment->transaction_ref,
             (int) ($payment->total_amount ?? 0),
-            'Thanh toan lich kham ' . ($payment->appointment_id ?? '')
+            'Thanh toan lich kham #' . ($payment->appointment_id ?? '')
         );
     }
 }

@@ -52,6 +52,24 @@
         transition: .2s;
         border: 2px solid transparent;
         user-select: none;
+        position: relative;
+    }
+
+    .room-actions-overlay {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        display: none;
+        gap: 3px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 3px 5px;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        z-index: 10;
+    }
+
+    .room-card:hover .room-actions-overlay {
+        display: flex;
     }
 
     .room-card:hover {
@@ -60,8 +78,24 @@
         transform: translateY(-2px);
     }
 
+    .today-schedule-list {
+        max-height: 280px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+
+    .today-schedule-list::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .today-schedule-list::-webkit-scrollbar-thumb {
+        background: #cfd8dc;
+        border-radius: 4px;
+    }
+
     .room-card.s-using {
-        background: #F0F4FF;
+        background: #E1EFFF;
+        border: 2px solid #84B5FF;
     }
 
     .room-card.s-empty {
@@ -259,7 +293,7 @@
         @php
         $statDefs = [
         ['label'=>'Tổng số phòng', 'val'=>$stats['total'], 'icon'=>'bi-door-open', 'bg'=>'#E3F2FD','color'=>'#0D47A1'],
-        ['label'=>'Đang sử dụng', 'val'=>$stats['in_use'], 'icon'=>'bi-person-check','bg'=>'#E8F5E9','color'=>'#2e7d32'],
+        ['label'=>'Đang hoạt động', 'val'=>$stats['in_use'], 'icon'=>'bi-person-check','bg'=>'#E8F5E9','color'=>'#2e7d32'],
         ['label'=>'Trống', 'val'=>$stats['empty'], 'icon'=>'bi-check-circle','bg'=>'#E8F5E9','color'=>'#388e3c'],
         ['label'=>'Bảo trì / Vệ sinh','val'=>$stats['maintain']+$stats['clean'],'icon'=>'bi-wrench','bg'=>'#FFEBEE','color'=>'#c62828'],
         ];
@@ -305,7 +339,7 @@
                         @endforeach
                     </select>
                     <div class="d-flex gap-1 ms-auto small text-muted align-items-center">
-                        <span class="d-inline-block" style="width:10px;height:10px;background:#F0F4FF;border:1px solid #90CAF9;border-radius:2px"></span> Đang dùng &nbsp;
+                        <span class="d-inline-block" style="width:10px;height:10px;background:#F0F4FF;border:1px solid #90CAF9;border-radius:2px"></span> Đang hoạt động &nbsp;
                         <span class="d-inline-block" style="width:10px;height:10px;background:#E8F5E9;border:1px solid #a5d6a7;border-radius:2px"></span> Trống &nbsp;
                         <span class="d-inline-block" style="width:10px;height:10px;background:#FFEBEE;border:1px solid #ef9a9a;border-radius:2px"></span> Bảo trì &nbsp;
                         <span class="d-inline-block" style="width:10px;height:10px;background:#FFFDE7;border:1px solid #ffe082;border-radius:2px"></span> Vệ sinh
@@ -318,7 +352,7 @@
             $roomsByFloor = $rooms->groupBy(function($r) {
             return intdiv((int) filter_var($r->room_code, FILTER_SANITIZE_NUMBER_INT), 100) * 100;
             });
-            $statusMap = ['Đang sử dụng'=>'s-using','Trống'=>'s-empty','Bảo trì'=>'s-maintain','Vệ sinh'=>'s-clean'];
+            $statusMap = ['Hoạt động'=>'s-using','Trống'=>'s-empty','Bảo trì'=>'s-maintain','Vệ sinh'=>'s-clean'];
             @endphp
 
             @forelse($roomsByFloor->sortKeys() as $floor => $floorRooms)
@@ -336,6 +370,21 @@
                     @endphp
                     <div class="room-card {{ $cls }}"
                         onclick="window.location='{{ route('admin.rooms.show', $room) }}'">
+                        
+                        <!-- Quick Actions Overlay -->
+                        <div class="room-actions-overlay" onclick="event.stopPropagation();">
+                            <a href="{{ route('admin.rooms.edit', $room) }}" class="btn btn-light text-primary border py-0 px-1" style="font-size: 11px;" title="Sửa phòng">
+                                <i class="bi bi-pencil-fill"></i>
+                            </a>
+                            <form method="POST" action="{{ route('admin.rooms.destroy', $room) }}" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xoá phòng {{ $room->room_code }}?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-light text-danger border py-0 px-1" style="font-size: 11px;" title="Xoá phòng">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                            </form>
+                        </div>
+
                         <div class="room-card-code">{{ $room->room_code }}</div>
                         <div class="room-card-label">{{ $room->status }}</div>
                         @if($todayDoc)
@@ -368,7 +417,7 @@
                             {{ now()->format('d/m/Y') }}
                         </span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body today-schedule-list">
                         @php
                         $caGroups = $todaySchedules->groupBy(function($s) {
                         $h = (int) substr($s->start_time, 0, 2);
@@ -734,47 +783,87 @@
                     });
             }
 
+            function openQuickAssignModal(roomId, dateKey, shiftKey) {
+                const roomSelect = document.getElementById('assign_room');
+                roomSelect.value = roomId;
+                
+                const dateInput = document.getElementById('assign_date');
+                dateInput.value = dateKey;
+                
+                const caSelect = document.getElementById('assign_ca');
+                caSelect.value = shiftKey;
+                
+                updateCaTime();
+                
+                const modal = new bootstrap.Modal(document.getElementById('modalAssign'));
+                modal.show();
+            }
+
             function updateWeeklyTable(data) {
-                const timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-                    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
+                const shifts = [
+                    { key: 'sang', label: 'Ca Sáng', time: '07:00 - 12:00', bg: 'bg-primary-subtle text-primary' },
+                    { key: 'chieu', label: 'Ca Chiều', time: '13:00 - 17:00', bg: 'bg-info-subtle text-info' },
+                    { key: 'toi', label: 'Ca Tối', time: '17:00 - 22:00', bg: 'bg-warning-subtle text-warning' }
                 ];
                 const weekDates = data.week_dates;
                 const schedules = data.schedules;
+                const roomId = data.room_id;
 
                 let html = `<div class="card-body p-0" style="overflow-x:auto">
-                        <div class="week-grid" style="min-width:600px">
-                            <div class="week-header" style="border-bottom:2px solid #e0e7ef">Giờ</div>`;
+                        <div class="week-grid" style="min-width:600px; grid-template-columns: 120px repeat(7, 1fr);">
+                            <div class="week-header d-flex align-items-center justify-content-center" style="border-bottom:2px solid #e0e7ef; background: #f8fafc; font-weight: bold;">Ca Trực</div>`;
 
                 for (let i = 0; i < weekDates.length; i++) {
                     const d = weekDates[i];
-                    html += `<div class="week-header" style="border-bottom:2px solid #e0e7ef">
+                    const isToday = d.date === data.today;
+                    html += `<div class="week-header ${isToday ? 'bg-primary text-white' : ''}" style="border-bottom:2px solid #e0e7ef">
                             ${d.day}<br>
                             <span style="font-size:11px;font-weight:400">${d.date}</span>
                         </div>`;
                 }
 
-                for (let t = 0; t < timeSlots.length; t++) {
-                    const time = timeSlots[t];
-                    html += `<div class="week-time">${time}</div>`;
+                for (let s = 0; s < shifts.length; s++) {
+                    const shift = shifts[s];
+                    html += `<div class="week-time d-flex flex-column align-items-center justify-content-center" style="font-size: 11px; font-weight: 600; padding: 12px 6px;">
+                        <span class="badge ${shift.bg} mb-1" style="font-size: 10px;">${shift.label}</span>
+                        <small class="text-muted" style="font-size: 9px;">${shift.time}</small>
+                    </div>`;
 
                     for (let d = 0; d < weekDates.length; d++) {
                         const dateKey = weekDates[d].full_date;
-                        const slot = schedules[dateKey]?.find(s => s.start_time <= time + ':00' && s.end_time > time + ':00');
+                        const slot = schedules[dateKey] ? schedules[dateKey][shift.key] : null;
 
                         if (slot && slot.status === 'Hoạt động') {
-                            html += `<div class="week-cell">
-                                <span class="week-slot has-dr" title="${slot.doctor_name}">
-                                    <i class="bi bi-person-fill me-1"></i>
-                                    ${slot.doctor_name.substring(0, 10)}
-                                </span>
+                            const percent = Math.min(100, Math.round((slot.booked_slots / slot.max_slot) * 100));
+                            const progressColor = percent >= 100 ? 'bg-danger' : (percent >= 70 ? 'bg-warning' : 'bg-success');
+                            
+                            html += `<div class="week-cell d-flex flex-column justify-content-between p-2" style="background: #f8fafc; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                                <div class="week-slot has-dr p-2 rounded mb-1" style="cursor: pointer; background: #e0f2fe; color: #0369a1; border-left: 3px solid #0284c7; font-size: 11px;" 
+                                     title="Bác sĩ: ${slot.doctor_name}&#10;Số ca đã đặt: ${slot.booked_slots}/${slot.max_slot} slot"
+                                     onclick="window.location='/admin/rooms/schedules/${slot.schedule_id}/edit'">
+                                    <div class="fw-bold mb-1"><i class="bi bi-person-fill me-1"></i>${slot.doctor_name}</div>
+                                    <div class="d-flex justify-content-between text-muted" style="font-size: 9.5px;">
+                                        <span>Slot:</span>
+                                        <span class="fw-bold text-dark">${slot.booked_slots}/${slot.max_slot}</span>
+                                    </div>
+                                    <div class="progress mt-1" style="height: 3px;">
+                                        <div class="progress-bar ${progressColor}" role="progressbar" style="width: ${percent}%"></div>
+                                    </div>
+                                </div>
                             </div>`;
                         } else if (slot && slot.status !== 'Hoạt động') {
-                            html += `<div class="week-cell">
-                                <span class="week-slot locked">Tạm dừng</span>
+                            html += `<div class="week-cell d-flex align-items-center justify-content-center p-2" style="background: #f8fafc; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                                <span class="week-slot locked text-center p-1 w-100 rounded text-muted" style="font-size: 10px; background: #f1f5f9; border-left: 3px solid #94a3b8;">
+                                    <i class="bi bi-pause-fill me-1"></i>Tạm dừng
+                                </span>
                             </div>`;
                         } else {
-                            html += `<div class="week-cell">
-                                <span class="week-slot empty" style="opacity:0.4;">Trống</span>
+                            html += `<div class="week-cell d-flex align-items-center justify-content-center p-2" style="border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                                <span class="week-slot empty text-center p-2 w-100 rounded" style="cursor: pointer; font-size: 11px; background: #f0fdf4; color: #166534; border-left: 3px solid #22c55e; transition: .2s; opacity: 0.65;" 
+                                      onclick="openQuickAssignModal('${roomId}', '${dateKey}', '${shift.key}')"
+                                      title="Click để phân bổ bác sĩ nhanh cho ca này">
+                                    <i class="bi bi-plus-circle me-1"></i>Trống
+                                </span>
                             </div>`;
                         }
                     }
@@ -782,11 +871,14 @@
 
                 html += `</div></div>
                  <div class="card-footer bg-white text-muted small">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="d-flex gap-3">
-                            <span><i class="bi bi-square-fill text-primary me-1" style="font-size:10px;"></i> Có bác sĩ</span>
-                            <span><i class="bi bi-square-fill text-success me-1" style="font-size:10px; opacity:0.4;"></i> Trống</span>
+                            <span><i class="bi bi-square-fill text-primary me-1" style="font-size:10px;"></i> Đã phân ca</span>
+                            <span><i class="bi bi-square-fill text-success me-1" style="font-size:10px; opacity:0.65;"></i> Ca trống</span>
                             <span><i class="bi bi-square-fill text-secondary me-1" style="font-size:10px;"></i> Tạm dừng</span>
+                        </div>
+                        <div class="text-muted" style="font-size: 11px;">
+                            <i class="bi bi-info-circle me-1"></i> Mẹo: Click vào ca trống để gán ca nhanh!
                         </div>
                     </div>
                 </div>`;

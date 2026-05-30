@@ -44,12 +44,13 @@ class PaymentRepository
     }
 
     /**
-     * Tạo bản ghi thanh toán mới.
+     * Tạo bản ghi thanh toán mới hoặc tái sử dụng bản ghi cũ (tránh lỗi trùng Unique Constraint).
      */
     public function createPayment(array $data): Payment
     {
-        return Payment::create([
-            'appointment_id'   => $data['appointment_id'],
+        $payment = Payment::where('appointment_id', $data['appointment_id'])->first();
+
+        $paymentData = [
             'method'           => $data['payment_method'],
             'total_amount'     => $data['amount'],
             'subtotal'         => $data['amount'] ?? 0,
@@ -57,7 +58,18 @@ class PaymentRepository
             'status'           => 'Chờ xử lý',
             'payment_date'     => now(),
             'transaction_ref'  => $data['transaction_ref'] ?? null,
-        ]);
+        ];
+
+        if ($payment) {
+            $payment->update($paymentData);
+            // Xóa các items cũ nếu có
+            $payment->items()->delete();
+            return $payment;
+        }
+
+        return Payment::create(array_merge([
+            'appointment_id'   => $data['appointment_id'],
+        ], $paymentData));
     }
 
     /**

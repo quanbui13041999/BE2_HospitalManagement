@@ -103,6 +103,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/schedules', [AppointmentController::class, 'getSchedules'])->name('schedules');
     });
 
+    // Đăng ký dịch vụ & Thanh toán riêng lẻ (không qua bác sĩ)
+    Route::post('/dich-vu/{id}/dat-mua', [UserServiceController::class, 'bookService'])->name('user.services.book');
+
     // API gợi ý (AJAX)
     Route::get('/api/appointments/suggest',    [AppointmentController::class, 'suggest'])->name('appointments.suggest');
     Route::get('/api/appointments/timeslots',  [AppointmentController::class, 'timeslots'])->name('appointments.timeslots');
@@ -137,6 +140,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/store',                           [UserPaymentController::class, 'store'])->name('store');
         Route::get('/{paymentId}/qr',                  [UserPaymentController::class, 'qr'])->name('qr');
         Route::get('/{paymentId}/gateway',             [UserPaymentController::class, 'gateway'])->name('gateway');
+        Route::get('/{paymentId}/check',               [UserPaymentController::class, 'check'])->name('check');
         Route::post('/{paymentId}/confirm',             [UserPaymentController::class, 'confirm'])->name('confirm');
         Route::get('/{paymentId}/fail',                [UserPaymentController::class, 'fail'])->name('fail');
         Route::post('/{paymentId}/fail',               [UserPaymentController::class, 'fail'])->name('fail.post');
@@ -305,7 +309,9 @@ require_once __DIR__ . "/medical_history.php";
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
-    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/', function () {
+        return redirect()->route('admin.news.index');
+    })->name('dashboard');
     Route::get('/dashboard/data', [AdminDashboardController::class, 'data'])->name('dashboard.data');
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
@@ -359,6 +365,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::get('/{room}/edit',     [RoomController::class, 'edit'])->name('edit');
         Route::put('/{room}',          [RoomController::class, 'update'])->name('update');
         Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
+        Route::delete('/{room}',       [RoomController::class, 'destroy'])->name('destroy');
     });
 
     // --------------------------------------------------------

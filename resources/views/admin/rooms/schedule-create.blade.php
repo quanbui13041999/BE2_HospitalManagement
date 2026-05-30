@@ -70,7 +70,7 @@
                     <label class="form-label">Ngày làm việc <span class="text-danger">*</span></label>
                     <input type="date" name="work_date"
                            class="form-control @error('work_date') is-invalid @enderror"
-                           value="{{ old('work_date', today()->toDateString()) }}"
+                           value="{{ old('work_date', request('work_date', today()->toDateString())) }}"
                            min="{{ today()->toDateString() }}" required>
                     @error('work_date')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -82,7 +82,7 @@
                     <label class="form-label">Giờ bắt đầu <span class="text-danger">*</span></label>
                     <input type="time" name="start_time"
                            class="form-control @error('start_time') is-invalid @enderror"
-                           value="{{ old('start_time', '08:00') }}" required>
+                           value="{{ old('start_time', request('start_time', '08:00')) }}" required>
                     @error('start_time')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -93,7 +93,7 @@
                     <label class="form-label">Giờ kết thúc <span class="text-danger">*</span></label>
                     <input type="time" name="end_time"
                            class="form-control @error('end_time') is-invalid @enderror"
-                           value="{{ old('end_time', '12:00') }}" required>
+                           value="{{ old('end_time', request('end_time', '12:00')) }}" required>
                     @error('end_time')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
