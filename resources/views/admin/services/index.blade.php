@@ -1277,12 +1277,14 @@ async function reloadModalPrices() {
 }
 
 /* ── INLINE EDIT PRICE ROW VIA AJAX (SLICK UX) ──────────────── */
+window.priceRowBackups = window.priceRowBackups || {};
+
 function editPriceInline(priceId, type, priceVal, effDate, endDate) {
     const tr = document.getElementById(`price-tr-${priceId}`);
     if (!tr) return;
     
     // Save previous html markup to cancel back
-    const previousMarkup = tr.innerHTML;
+    window.priceRowBackups[priceId] = tr.innerHTML;
     
     tr.className = "bg-warning-subtle";
     tr.innerHTML = `
@@ -1314,10 +1316,10 @@ function editPriceInline(priceId, type, priceVal, effDate, endDate) {
         </td>
         <td class="text-center">
             <div class="d-flex gap-1 justify-content-center">
-                <button type="button" class="btn btn-sm btn-success px-2 py-1" onclick="savePriceInline(${priceId}, '${previousMarkup}')" title="Lưu lại">
+                <button type="button" class="btn btn-sm btn-success px-2 py-1" onclick="savePriceInline(${priceId})" title="Lưu lại">
                     <i class="bi bi-check-lg"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-1" onclick="cancelPriceInline('${priceId}', \`${previousMarkup.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)" title="Huỷ bỏ">
+                <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-1" onclick="cancelPriceInline('${priceId}')" title="Huỷ bỏ">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -1326,14 +1328,14 @@ function editPriceInline(priceId, type, priceVal, effDate, endDate) {
     `;
 }
 
-function cancelPriceInline(priceId, previousMarkup) {
+function cancelPriceInline(priceId) {
     const tr = document.getElementById(`price-tr-${priceId}`);
     if (!tr) return;
     tr.className = "";
-    tr.innerHTML = previousMarkup;
+    tr.innerHTML = window.priceRowBackups[priceId];
 }
 
-async function savePriceInline(priceId, previousMarkup) {
+async function savePriceInline(priceId) {
     const tr = document.getElementById(`price-tr-${priceId}`);
     const inlineErr = document.getElementById(`inline-err-${priceId}`);
     inlineErr.textContent = '';

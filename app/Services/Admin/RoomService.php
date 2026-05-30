@@ -248,32 +248,18 @@ class RoomService
         ]);
 
         $schedules = $this->repo->weekSchedulesForRoom($roomId, $weekStart)->map(function ($items) {
-            $grouped = [
-                'sang' => null,
-                'chieu' => null,
-                'toi' => null
-            ];
-            foreach ($items as $item) {
-                $h = (int) substr($item->start_time, 0, 2);
-                $data = [
-                    'schedule_id' => $item->schedule_id,
-                    'start_time'  => substr($item->start_time, 0, 5),
-                    'end_time'    => substr($item->end_time, 0, 5),
-                    'status'      => $item->status,
-                    'doctor_name' => $item->doctor->full_name ?? '',
-                    'room_code'   => $item->room->room_code ?? '',
+            return $items->map(function ($item) {
+                return [
+                    'schedule_id'  => $item->schedule_id,
+                    'start_time'   => $item->start_time,
+                    'end_time'     => $item->end_time,
+                    'status'       => $item->status,
+                    'doctor_name'  => $item->doctor->full_name ?? '',
+                    'room_code'    => $item->room->room_code ?? '',
                     'booked_slots' => $item->booked_slots,
-                    'max_slot'    => $item->max_slot,
+                    'max_slot'     => $item->max_slot,
                 ];
-                if ($h < 12) {
-                    $grouped['sang'] = $data;
-                } elseif ($h < 17) {
-                    $grouped['chieu'] = $data;
-                } else {
-                    $grouped['toi'] = $data;
-                }
-            }
-            return $grouped;
+            })->values();
         });
 
         return [
