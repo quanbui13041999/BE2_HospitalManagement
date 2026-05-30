@@ -2,12 +2,14 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Màn hình hiển thị hàng đợi - {{ $schedule->doctor->full_name }}</title>
+    <title>Màn hình hiển thị hàng đợi - {{ $schedule->doctor?->full_name ?? 'Bác sĩ' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://js.pusher.com/8.2/pusher.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;700;900&display=swap');
         body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .bg-gray-750 { background-color: #1f2937; }
+        .bg-gray-850 { background-color: #111827; }
         .blink { animation: blink 1s step-start infinite; }
         @keyframes blink { 50% { opacity: 0; } }
         .slide-in { animation: slideIn 0.5s ease-out; }
@@ -20,9 +22,9 @@
     {{-- Header --}}
     <div class="bg-blue-800 px-8 py-4 flex justify-between items-center shadow-lg border-b border-blue-900">
         <div>
-            <h1 class="text-3xl font-extrabold tracking-tight">{{ $schedule->doctor->full_name }}</h1>
+            <h1 class="text-3xl font-extrabold tracking-tight">{{ $schedule->doctor?->full_name ?? 'Bác sĩ' }}</h1>
             <p class="text-blue-200 text-sm mt-1">
-                {{ $schedule->doctor->department->department_name ?? 'Khoa Khám Bệnh' }} •
+                {{ $schedule->doctor?->department?->department_name ?? 'Khoa Khám Bệnh' }} •
                 Phòng {{ $schedule->room->room_code ?? '—' }} •
                 {{ \Carbon\Carbon::parse($schedule->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($schedule->end_time)->format('H:i') }}
             </p>
@@ -130,18 +132,33 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
+    <script type="application/json" id="queue-display-config">
+        {!! json_encode([
+            'scheduleId' => $schedule->schedule_id,
+            'snapshot' => $snapshot,
+            'pusherKey' => config('broadcasting.connections.pusher.key'),
+            'pusherCluster' => config('broadcasting.connections.pusher.options.cluster', 'mt1'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+    </script>
     <script>
-    function queueDisplay() {
+    const queueDisplayConfigEl = document.getElementById('queue-display-config');
+    const queueDisplayConfig = queueDisplayConfigEl
+        ? JSON.parse(queueDisplayConfigEl.textContent || '{}')
+        : {};
+
+    window.queueDisplay = function () {
         return {
             current: null,
             waiting: [],
             stats: { total_waiting: 0, total_completed: 0, total_today: 0 },
             currentTime: '',
-            scheduleId: {{ $schedule->schedule_id }},
+            scheduleId: queueDisplayConfig.scheduleId,
+            initialSnapshot: queueDisplayConfig.snapshot || null,
 
             init() {
                 this.currentTime = new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+                this.applySnapshot(this.initialSnapshot);
+
                 // Cập nhật đồng hồ
                 setInterval(() => {
                     this.currentTime = new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
@@ -152,10 +169,14 @@
 
                 // Pusher realtime
                 try {
-                    const pusher = new Pusher('{{ config("broadcasting.connections.pusher.key") }}', {
-                        cluster: '{{ config("broadcasting.connections.pusher.options.cluster", "mt1") }}',
-                        forceTLS: true
-                    });
+                    const pusherKey = queueDisplayConfig.pusherKey;
+                    const pusherCluster = queueDisplayConfig.pusherCluster || 'mt1';
+
+                    if (!pusherKey) {
+                        throw new Error('Missing Pusher key');
+                    }
+
+                    const pusher = new Pusher(pusherKey, { cluster: pusherCluster, forceTLS: true });
 
                     const channel = pusher.subscribe(`queue.${this.scheduleId}`);
 
@@ -177,13 +198,21 @@
                     const res = await fetch(`/api/queue/${this.scheduleId}/snapshot`);
                     if (res.ok) {
                         const data = await res.json();
-                        this.current = data.current;
-                        this.waiting = data.waiting;
-                        this.stats   = data.stats;
+                        this.applySnapshot(data);
                     }
                 } catch (e) {
                     console.error("Failed to fetch queue snapshot", e);
                 }
+            },
+
+            applySnapshot(data) {
+                data = data || {};
+                this.current = data.current || null;
+                this.waiting = Array.isArray(data.waiting) ? data.waiting : [];
+                this.stats = Object.assign(
+                    { total_waiting: 0, total_completed: 0, total_today: 0 },
+                    data.stats || {}
+                );
             },
 
             playBeep() {
@@ -223,5 +252,6 @@
         }
     }
     </script>
+    <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
 </body>
 </html>

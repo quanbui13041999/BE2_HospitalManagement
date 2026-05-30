@@ -41,9 +41,16 @@
     </a>
     <div class="hidden md:flex gap-1 bg-gray-100/80 p-1 rounded-full">
         <a href="{{ route('home') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🏠 Trang chủ</a>
-        <a href="{{ route('appointments.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📋 Lịch hẹn</a>
-        <a href="{{ route('appointments.create') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">✨ Đặt lịch mới</a>
+        @auth
+            @if(auth()->user()->isPatient())
+                <a href="{{ route('appointments.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📋 Lịch hẹn</a>
+            @endif
+            @if(auth()->user()->isPatient() || auth()->user()->isAdmin())
+                <a href="{{ route('appointments.create') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">✨ Đặt lịch mới</a>
+            @endif
+        @endauth
         <a href="{{ route('news.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📰 Bản tin</a>
+        <a href="{{ route('queue.display.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📺 Hàng đợi</a>
         @auth
             @if(auth()->user()->isDoctor())
                 <a href="{{ route('doctor.dashboard') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🩺 Dashboard bác sĩ</a>

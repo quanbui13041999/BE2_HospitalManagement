@@ -475,14 +475,18 @@
                                 <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
                                 <li><a href="{{ route('patient.nutrition.index') }}">Dinh dưỡng</a></li>
                             @endif
+                            @if(Auth::user()->isPatient() || Auth::user()->isAdmin())
+                                <li><a href="{{ route('appointments.create') }}">Đặt lịch</a></li>
+                            @endif
                         @endauth
                         <li><a href="{{ route('news.index') }}" class="active">Bản tin</a></li>
                         @auth
-                            @if (Auth::user()->isDoctor || Auth::user()->is_admin)
+                            @if (Auth::user()->isDoctor() || Auth::user()->isAdmin())
                                 <li><a href="{{ route('doctor.dashboard') }}">Quản lý bác sĩ</a></li>
                             @endif
                         @endauth
                         <li><a href="{{ route('user.services.index') }}">Khoa phòng</a></li>
+                        <li><a href="{{ route('queue.display.index') }}">Màn hình hàng đợi</a></li>
                         @auth
                             <li><a href="{{ route('treatment.index') }}">Tuân thủ điều trị</a></li>
                         @else
@@ -493,7 +497,7 @@
                     <div class="news-glass-cta">
                         @auth
                             <x-notification-bell :direct="true" />
-                            @if (Auth::user()->is_admin)
+                            @if (Auth::user()->isAdmin())
                                 <a href="{{ route('admin.dashboard') }}" class="news-glass-outline">Dashboard</a>
                             @else
                                 <a href="{{ route('Home.trangchu') }}" class="news-glass-outline">Trang của tôi</a>

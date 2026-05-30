@@ -129,6 +129,10 @@
            class="nav-link {{ request()->routeIs('admin.rooms.weekly') ? 'active' : '' }}">
             <i class="bi bi-calendar-week"></i> Lịch trực tuần
         </a>
+        <a href="{{ route('appointments.create') }}"
+           class="nav-link {{ request()->routeIs('appointments.create') ? 'active' : '' }}">
+            <i class="bi bi-calendar-plus"></i> Đặt lịch
+        </a>
         <a href="{{ route('admin.payments.index') }}"
            class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
             <i class="bi bi-credit-card"></i> Thanh toán
@@ -136,6 +140,10 @@
         <a href="{{ route('admin.queue.index') }}"
            class="nav-link {{ request()->routeIs('admin.queue.*') ? 'active' : '' }}">
             <i class="bi bi-collection-play"></i> Hàng đợi
+        </a>
+        <a href="{{ route('queue.display.index') }}"
+           class="nav-link {{ request()->routeIs('queue.display*') ? 'active' : '' }}">
+            <i class="bi bi-tv"></i> Màn hình hàng đợi
         </a>
         <a href="{{ route('admin.news.index') }}"
            class="nav-link {{ request()->routeIs('admin.news.*') ? 'active' : '' }}">

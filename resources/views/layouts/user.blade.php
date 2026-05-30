@@ -138,12 +138,21 @@
                             </a>
                         </li>
                         
-                        <!-- Lịch hẹn -->
+                        @if(Auth::user()->isPatient())
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen">
                                 Lịch hẹn
                             </a>
                         </li>
+                        @endif
+
+                        @if(Auth::user()->isPatient() || Auth::user()->isAdmin())
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('appointments.create') ? 'active' : '' }}" href="{{ route('appointments.create') }}">
+                                Đặt lịch
+                            </a>
+                        </li>
+                        @endif
                     @endauth
 
                     <!-- Bản tin -->
@@ -155,7 +164,7 @@
 
                     @auth
                         <!-- Quản lý bác sĩ (chỉ cho Bác sĩ & Admin) -->
-                        @if(Auth::user()->role_id == 2 || Auth::user()->role_id == 1 || Auth::user()->isDoctor)
+                        @if(Auth::user()->isDoctor() || Auth::user()->isAdmin())
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('doctor.dashboard') ? 'active' : '' }}" href="{{ route('doctor.dashboard') }}">
                                     Quản lý bác sĩ
@@ -171,6 +180,12 @@
                         </a>
                     </li>
 
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('queue.display*') ? 'active' : '' }}" href="{{ route('queue.display.index') }}">
+                            Màn hình hàng đợi
+                        </a>
+                    </li>
+
                     @auth
                         <!-- Tuân thủ điều trị -->
                         <li class="nav-item">
@@ -180,7 +195,7 @@
                         </li>
 
                         <!-- Dashboard (Chỉ cho Admin) -->
-                        @if(Auth::user()->is_admin)
+                        @if(Auth::user()->isAdmin())
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.*') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
                                     Dashboard
@@ -255,6 +270,7 @@
     @auth
         @include('components.chat-widget')
     @endauth
+    @include('components.back-to-previous')
 </body>
 
 </html>

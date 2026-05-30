@@ -803,9 +803,16 @@
         </a>
         <div class="topbar-center">
             <a href="{{ route('home') }}">🏠 Trang chủ</a>
-            <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
-            <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
+            @auth
+                @if(auth()->user()->isPatient())
+                    <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
+                @endif
+                @if(auth()->user()->isPatient() || auth()->user()->isAdmin())
+                    <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
+                @endif
+            @endauth
             <a href="{{ route('news.index') }}">📰 Bản tin</a>
+            <a href="{{ route('queue.display.index') }}">📺 Hàng đợi</a>
             @auth
                 @if(auth()->user()->isDoctor())
                     <a href="{{ route('doctor.dashboard') }}">🩺 Dashboard bác sĩ</a>
