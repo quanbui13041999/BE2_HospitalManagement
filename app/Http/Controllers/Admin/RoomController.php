@@ -107,6 +107,18 @@ class RoomController extends Controller
         return back()->with('success', 'Đã cập nhật trạng thái phòng.');
     }
 
+    public function destroy(Room $room)
+    {
+        $error = $this->roomService->destroyRoom($room);
+
+        if ($error) {
+            return back()->with('error', $error);
+        }
+
+        return redirect()->route('admin.rooms.index')
+            ->with('success', 'Xoá phòng khám thành công!');
+    }
+
     // ================================================================
     //  CA TRỰC (DoctorSchedules)
     // ================================================================

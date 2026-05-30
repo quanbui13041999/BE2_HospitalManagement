@@ -25,7 +25,7 @@ class Room extends Model
     ];
 
     const ROOM_STATUSES = [
-        'Đang sử dụng',
+        'Hoạt động',
         'Trống',
         'Bảo trì',
         'Vệ sinh',

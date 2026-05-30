@@ -2,11 +2,9 @@
 
 namespace App\Services\User;
 
-use App\Events\QueueUpdated;
 use App\Models\Appointment;
 use App\Models\Payment;
 use App\Models\PaymentItem;
-use App\Models\QueueTicket;
 use App\Repositories\PaymentRepository;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
@@ -16,7 +14,8 @@ class PaymentService
 {
     public function __construct(
         protected PaymentRepository $repo,
-        protected NotificationService $notifications
+        protected NotificationService $notifications,
+        protected \App\Services\PayOsService $payOsService
     ) {}
 
     /**
@@ -36,7 +35,7 @@ class PaymentService
         $existing = Payment::where('appointment_id', $appointmentId)->first();
 
         // Tính tổng tiền: giá bác sĩ + dịch vụ (nếu có)
-        $doctorFee   = (float) ($appointment->schedule->doctor->price ?? 0);
+        $doctorFee   = (float) ($appointment->schedule?->doctor?->price ?? 0);
         $serviceFee  = 0;
 
         if ($appointment->service) {
@@ -97,7 +96,7 @@ class PaymentService
             ->firstOrFail();
 
         // Tính lại giá
-        $doctorFee  = (float) ($appointment->schedule->doctor->price ?? 0);
+        $doctorFee  = (float) ($appointment->schedule?->doctor?->price ?? 0);
         $serviceFee = 0;
         if ($appointment->service) {
             $serviceFee = (float) ($appointment->service->latestPrice->price ?? 0);
@@ -121,8 +120,10 @@ class PaymentService
 
         $ref = 'PAY-' . strtoupper(Str::random(10));
 
+        // Tái sử dụng bản ghi cũ nếu đã có (tránh lỗi Unique Constraint trên appointment_id)
+        $payment = Payment::where('appointment_id', $appointmentId)->first();
+        
         $paymentData = [
-            'appointment_id'  => $appointmentId,
             'insurance_id'    => $insurance?->insurance_id,
             'membership_id'   => $membership?->card_id,
             'subtotal'        => $subtotal,
@@ -134,13 +135,14 @@ class PaymentService
             'payment_date'    => now(),
         ];
 
-        $payment = Payment::where('appointment_id', $appointmentId)->first();
-
         if ($payment) {
             $payment->update($paymentData);
-            PaymentItem::where('payment_id', $payment->payment_id)->delete();
+            // Xóa các items cũ để nạp lại mới
+            $payment->items()->delete();
         } else {
-            $payment = Payment::create($paymentData);
+            $payment = Payment::create(array_merge([
+                'appointment_id' => $appointmentId,
+            ], $paymentData));
         }
 
         $this->notifications->createForUser(
@@ -156,7 +158,7 @@ class PaymentService
         if ($doctorFee > 0) {
             PaymentItem::create([
                 'payment_id'  => $payment->payment_id,
-                'item_name'   => 'Phí khám - BS. ' . ($appointment->schedule->doctor->full_name ?? ''),
+                'item_name'   => 'Phí khám - BS. ' . ($appointment->schedule?->doctor?->full_name ?? ''),
                 'quantity'    => 1,
                 'unit_price'  => $doctorFee,
                 'subtotal'    => $doctorFee,
@@ -176,12 +178,32 @@ class PaymentService
         $result = ['payment' => $payment, 'ref' => $ref];
 
         if ($method === 'QR') {
-            $result['qr_content'] = sprintf(
-                'HOSPITAL|%s|%d|Thanh toan lich kham %s',
-                $ref,
+            // Gọi API PayOS thực tế để sinh mã VietQR động
+            $payOsResult = $this->payOsService->createPaymentLink(
+                $payment->payment_id,
                 (int) $totalAmount,
-                $appointmentId
+                "Thanh toan lich kham {$appointmentId}",
+                route('user.payments.success', $payment->payment_id),
+                route('user.payments.show', $appointmentId)
             );
+
+            if ($payOsResult['success']) {
+                // Lưu payment link id từ PayOS vào trường transaction_ref để đối soát webhook
+                $payment->update([
+                    'transaction_ref' => ($payOsResult['paymentLinkId'] ?? null) ?: $ref
+                ]);
+                
+                $result['qr_content'] = $payOsResult['qrContent'];
+                $result['checkout_url'] = $payOsResult['checkoutUrl'] ?? null;
+            } else {
+                // Fallback nếu API PayOS bị gián đoạn kết nối
+                $result['qr_content'] = sprintf(
+                    'HOSPITAL|%s|%d|Thanh toan lich kham %s',
+                    $ref,
+                    (int) $totalAmount,
+                    $appointmentId
+                );
+            }
         }
 
         return $result;
@@ -196,19 +218,11 @@ class PaymentService
         $updated = $this->repo->confirmPayment($paymentId, $ref);
         
         if ($updated) {
-            // Đánh dấu lịch hẹn và hóa đơn đã thanh toán
+            // Đánh dấu lịch hẹn đã thanh toán
             $payment = Payment::with(['appointment'])->find($paymentId);
             if ($payment) {
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
-                    QueueTicket::where('appointment_id', $payment->appointment_id)
-                        ->whereDate('queue_date', today())
-                        ->where('status', 'waiting')
-                        ->get()
-                        ->each(function (QueueTicket $ticket) {
-                            broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
-                        });
-
                     $this->notifications->createForUser(
                         $payment->appointment->user_id,
                         'Thanh toán thành công',
@@ -264,5 +278,13 @@ class PaymentService
             ->with(['appointment.schedule.doctor'])
             ->orderByDesc('payment_date')
             ->paginate(10);
+    }
+
+    /**
+     * Kiểm tra xem PayOS đã được cấu hình API thực tế chưa.
+     */
+    public function isPayOsConfigured(): bool
+    {
+        return $this->payOsService->isConfigured();
     }
 }

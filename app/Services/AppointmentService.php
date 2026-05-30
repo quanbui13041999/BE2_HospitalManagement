@@ -5,10 +5,8 @@ namespace App\Services;
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentConfirmed;
 use App\Mail\AppointmentRescheduleMail;
-use App\Events\QueueUpdated;
 use App\Models\Appointment;
 use App\Models\DoctorSchedule;
-use App\Models\QueueTicket;
 use App\Models\User;
 use App\Services\NotificationService;
 use Carbon\Carbon;
@@ -359,7 +357,7 @@ class AppointmentService
             ->where('user_id', $userId)
             ->select(
                 DB::raw('COUNT(*) as total'),
-                DB::raw("SUM(CASE WHEN status IN ('Chờ xác nhận','Đã xác nhận','Đã thanh toán') AND appointment_time >= NOW() THEN 1 ELSE 0 END) as upcoming"),
+                DB::raw("SUM(CASE WHEN status IN ('Chờ xác nhận','Đã xác nhận') AND appointment_time >= NOW() THEN 1 ELSE 0 END) as upcoming"),
                 DB::raw("SUM(CASE WHEN status = 'Đã khám' THEN 1 ELSE 0 END) as completed"),
                 DB::raw("SUM(CASE WHEN status IN ('Đã hủy','Dời lịch','Bác sĩ nghỉ') THEN 1 ELSE 0 END) as cancelled")
             )
@@ -372,9 +370,9 @@ class AppointmentService
     public function getUserAppointments(int $userId, string $status = 'all', string $sort = 'desc'): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $query = Appointment::with(['review'])
-        ->join('doctorschedules as ds', 'appointments.schedule_id', '=', 'ds.schedule_id')
-        ->join('doctors as d', 'ds.doctor_id', '=', 'd.doctor_id')
-        ->join('departments as dep', 'd.department_id', '=', 'dep.department_id')
+        ->leftJoin('doctorschedules as ds', 'appointments.schedule_id', '=', 'ds.schedule_id')
+        ->leftJoin('doctors as d', 'ds.doctor_id', '=', 'd.doctor_id')
+        ->leftJoin('departments as dep', 'd.department_id', '=', 'dep.department_id')
         ->leftJoin('services as s', 'appointments.service_id', '=', 's.service_id')
         ->leftJoin('payments as p', function($join) {
             $join->on('appointments.appointment_id', '=', 'p.appointment_id')
@@ -401,16 +399,15 @@ class AppointmentService
         ->where('appointments.user_id', $userId);
 
         if ($status === 'upcoming') {
-            $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])
-                ->where('ds.work_date', '>=', now()->toDateString());
+            $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
+                ->where('appointments.appointment_time', '>=', now()->toDateString());
         } elseif ($status === 'completed') {
             $query->where('appointments.status', 'Đã khám');
         } elseif ($status === 'cancelled') {
             $query->whereIn('appointments.status', ['Đã hủy', 'Dời lịch', 'Bác sĩ nghỉ']);
         }
 
-        return $query->orderBy('ds.work_date', $sort === 'asc' ? 'asc' : 'desc')
-            ->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc')
+        return $query->orderBy('appointments.appointment_time', $sort === 'asc' ? 'asc' : 'desc')
             ->paginate(8);
     }
 
@@ -611,18 +608,17 @@ class AppointmentService
     /**
      * Kiểm tra thời gian còn lại trước appointment
      */
-    private function checkCancelTimeAvailable(object $appointment): ?string
+    private function checkCancelTimeAvailable(object $schedule): ?string
     {
-        $appointmentTime = Carbon::parse($appointment->appointment_time);
-        $latestCancellationTime = $appointmentTime->copy()->subHour();
+        $appointmentTime = Carbon::parse($schedule->work_date . ' ' . $schedule->start_time);
+        $hoursUntilAppointment = $appointmentTime->diffInHours(now(), false);
 
-        if (now()->gte($appointmentTime)) {
+        if ($hoursUntilAppointment >= 0) {
             return 'Lịch khám này đã qua hoặc đang diễn ra. Không thể hủy lịch.';
         }
 
-        if (now()->gt($latestCancellationTime)) {
-            return 'Chỉ có thể hủy lịch khi còn cách giờ khám ít nhất 1 tiếng. Hạn hủy của lịch này là '
-                . $latestCancellationTime->format('H:i d/m/Y') . '.';
+        if ($hoursUntilAppointment > -2) {
+            return 'Chỉ có thể hủy lịch trước giờ khám ít nhất 2 tiếng.';
         }
 
         return null;
@@ -644,11 +640,15 @@ class AppointmentService
             throw new Exception('Không tìm thấy lịch hẹn.');
         }
 
-        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])) {
+        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
             throw new Exception('Lịch hẹn này không thể hủy (trạng thái: ' . $appointment->status . ').');
         }
 
-        $timeError = $this->checkCancelTimeAvailable($appointment);
+        $schedule = DB::table('doctorschedules')
+            ->where('schedule_id', $appointment->schedule_id)
+            ->first();
+
+        $timeError = $this->checkCancelTimeAvailable($schedule);
         if ($timeError) {
             throw new Exception($timeError);
         }
@@ -661,19 +661,6 @@ class AppointmentService
                     'status' => 'Đã hủy',
                     'cancel_reason' => $data['cancel_reason'] ?? 'Bệnh nhân tự hủy',
                 ]);
-
-            $cancelledTickets = QueueTicket::where('appointment_id', $appointmentId)
-                ->whereIn('status', ['waiting', 'calling'])
-                ->get();
-
-            foreach ($cancelledTickets as $ticket) {
-                $ticket->update([
-                    'status' => 'cancelled',
-                    'completed_at' => now(),
-                    'notes' => $data['cancel_reason'] ?? $ticket->notes,
-                ]);
-                broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
-            }
 
             app(NotificationService::class)->createForUser(
                 $userId,
@@ -693,7 +680,6 @@ class AppointmentService
                     ],
                 ],
                 'cancel_reason' => $data['cancel_reason'] ?? 'Bệnh nhân tự hủy',
-                'queue_tickets_cancelled' => $cancelledTickets->pluck('ticket_id')->all(),
             ]);
 
             DB::commit();

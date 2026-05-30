@@ -4,7 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Service;
 use App\Repositories\ServiceRepository;
+use App\Models\Appointment;
+use App\Models\Payment;
+use App\Models\PaymentItem;
+use App\Services\PayOsService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class ServiceController extends Controller
 {
@@ -64,5 +72,143 @@ class ServiceController extends Controller
             'price'       => $price->price,
             'effective'   => $price->effective_date->toDateString(),
         ]);
+    }
+
+    /**
+     * Đặt và thanh toán trực tiếp dịch vụ y tế độc lập (không cần bác sĩ)
+     */
+    public function bookService(Request $request, int $id)
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login')
+                ->with('error', 'Vui lòng đăng nhập để đặt và thanh toán dịch vụ.');
+        }
+
+        $request->validate([
+            'price_type' => 'required|string',
+            'work_date' => 'required|date|after_or_equal:today',
+            'appointment_time' => 'required|string',
+            'note' => 'nullable|string|max:255',
+        ], [
+            'price_type.required' => 'Vui lòng chọn loại mức giá dịch vụ.',
+            'work_date.required' => 'Vui lòng chọn ngày thực hiện.',
+            'work_date.after_or_equal' => 'Ngày thực hiện phải từ hôm nay trở đi.',
+            'appointment_time.required' => 'Vui lòng chọn giờ hẹn.',
+        ]);
+
+        $service = Service::find($id);
+        if (!$service || !$service->status) {
+            return back()->with('error', 'Dịch vụ không tồn tại hoặc đã ngừng hoạt động.');
+        }
+
+        $priceRecord = $service->activePrices()
+            ->where('price_type', $request->price_type)
+            ->first();
+
+        if (!$priceRecord) {
+            return back()->with('error', 'Mức giá đã chọn hiện không khả dụng.');
+        }
+
+        $subtotal = (float) $priceRecord->price;
+
+        // 1. Tạo bản ghi đặt lịch hẹn cho dịch vụ (schedule_id = null)
+        $appointmentDatetime = $request->work_date . ' ' . $request->appointment_time . ':00';
+        $duration = $service->duration_minutes ?? 30;
+        $appointmentEndtime = Carbon::parse($appointmentDatetime)->addMinutes($duration)->format('Y-m-d H:i:s');
+
+        $appointment = Appointment::create([
+            'user_id' => Auth::id(),
+            'service_id' => $id,
+            'schedule_id' => null, // Dịch vụ độc lập không có ca trực bác sĩ
+            'appointment_time' => $appointmentDatetime,
+            'appointment_timeEnd' => $appointmentEndtime,
+            'queue_number' => null,
+            'status' => 'Chờ thanh toán',
+            'is_priority' => false,
+            'note' => $request->note ?? ('Đăng ký dịch vụ: ' . $service->service_name),
+        ]);
+
+        // 2. Tính giảm giá BHYT & Thành viên nếu có
+        $user = Auth::user();
+        
+        $insurance = null;
+        $insuranceDiscount = 0;
+        if ($request->price_type === 'BHYT') {
+            $insurance = $user->insuranceCards()
+                ->where('status', 'Còn hạn')
+                ->first();
+            $insuranceDiscount = $insurance
+                ? round($subtotal * $insurance->discount_pct / 100, 2)
+                : 0;
+        }
+
+        $membership = $user->membershipCard ?? null;
+        $membershipDiscount = ($membership && $membership->status == 1)
+            ? round($subtotal * $membership->discount_pct / 100, 2)
+            : 0;
+
+        $discountAmount = $insuranceDiscount + $membershipDiscount;
+        $totalAmount = max(0, $subtotal - $discountAmount);
+
+        $ref = 'PAY-' . strtoupper(Str::random(10));
+
+        // 3. Tạo Hóa đơn thanh toán
+        $payment = Payment::create([
+            'appointment_id' => $appointment->appointment_id,
+            'insurance_id' => $insurance?->insurance_id,
+            'membership_id' => $membership?->card_id,
+            'subtotal' => $subtotal,
+            'discount_amount' => $discountAmount,
+            'total_amount' => $totalAmount,
+            'method' => 'QR',
+            'status' => 'Chờ thanh toán',
+            'transaction_ref' => $ref,
+            'payment_date' => now(),
+        ]);
+
+        // 4. Tạo Payment Item
+        PaymentItem::create([
+            'payment_id' => $payment->payment_id,
+            'item_name' => $service->service_name . ' (' . $request->price_type . ')',
+            'quantity' => 1,
+            'unit_price' => $subtotal,
+            'subtotal' => $subtotal,
+        ]);
+
+        // 5. Bắn notification cho bệnh nhân
+        app(NotificationService::class)->createForUser(
+            Auth::id(),
+            'Đăng ký dịch vụ thành công',
+            'Bạn đã đăng ký dịch vụ ' . $service->service_name . ' vào ' . Carbon::parse($appointmentDatetime)->format('H:i d/m/Y') . '. Số tiền cần thanh toán: ' . number_format($totalAmount, 0, ',', '.') . 'đ.',
+            'payment_created',
+            'payment',
+            $payment->payment_id
+        );
+
+        // 6. Gọi PayOS sinh QR động real-time
+        try {
+            $payOsService = app(PayOsService::class);
+            $payOsResult = $payOsService->createPaymentLink(
+                $payment->payment_id,
+                (int) $totalAmount,
+                "Thanh toan DV " . $appointment->appointment_id,
+                route('user.payments.success', $payment->payment_id),
+                route('user.payments.fail', $payment->payment_id)
+            );
+
+            return redirect()->route('user.payments.qr', $payment->payment_id)
+                ->with([
+                    'qr_content' => $payOsResult['qrContent'],
+                    'total_amount' => $totalAmount,
+                    'checkout_url' => $payOsResult['checkoutUrl'] ?? null,
+                ]);
+        } catch (\Exception $e) {
+            // Fallback giả lập nếu gọi API PayOS lỗi
+            return redirect()->route('user.payments.qr', $payment->payment_id)
+                ->with([
+                    'qr_content' => 'HOSPITAL|STANDALONE_' . $payment->payment_id . '|' . $totalAmount . '|Thanh toan dich vu',
+                    'total_amount' => $totalAmount,
+                ]);
+        }
     }
 }
