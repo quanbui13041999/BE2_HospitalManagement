@@ -43,8 +43,8 @@ class AppointmentReminderService
     public function send1HourReminders(): int
     {
         $now = Carbon::now();
-        $from = $now->copy()->startOfMinute()->addMinutes(45);
-        $to = $now->copy()->endOfMinute()->addMinutes(75);
+        $from = $now->copy()->addMinutes(1);
+        $to = $now->copy()->addMinutes(65);
 
         $appointments = Appointment::with(['user', 'schedule.doctor.department', 'service'])
             ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận'])
@@ -63,10 +63,10 @@ class AppointmentReminderService
         return $sent;
     }
 
-    protected function sendReminder(Appointment $appointment, string $type): bool
+    public function sendReminder(Appointment $appointment, string $type): bool
     {
         $user = $appointment->user;
-        if (! $user || ! $user->email || ! filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+        if (!$user || !$user->email || !filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
             Log::warning('[AppointmentReminder] Bỏ qua appointment_id ' . $appointment->appointment_id . ' vì email không hợp lệ.');
             return false;
         }
@@ -104,7 +104,7 @@ class AppointmentReminderService
             'doctor_name' => $doctor->full_name ?? 'Bác sĩ',
             'department_name' => $department->department_name ?? 'Chuyên khoa',
             'service_name' => $service->service_name ?? 'Khám tổng quát',
-            'clinic_address' => config('app.clinic_address', config('app.name', 'Phòng khám')), 
+            'clinic_address' => config('app.clinic_address', config('app.name', 'Phòng khám')),
             'appointment_date' => optional($appointment->appointment_time)->format('d/m/Y'),
             'appointment_time' => optional($appointment->appointment_time)->format('H:i'),
             'queue_number' => $appointment->queue_number,
