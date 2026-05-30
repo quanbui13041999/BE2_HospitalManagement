@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Dời Lịch Khám – HospitalBooking</title>
+    <title>Dời Lịch Khám – HospitalC</title>
     <!-- Tailwind CSS + Font -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
@@ -35,7 +35,7 @@
             </svg>
         </div>
         <div>
-            <div class="font-extrabold text-gray-800 tracking-tight text-lg leading-5">HospitalBooking</div>
+            <div class="font-extrabold text-gray-800 tracking-tight text-lg leading-5">HospitalC</div>
             <div class="text-[11px] font-medium text-gray-400">Đặt lịch thông minh</div>
         </div>
     </a>
@@ -233,7 +233,7 @@
 </div>
 
 <footer class="text-center py-8 text-xs text-gray-400 border-t border-gray-100 mt-10 bg-white/50">
-    © {{ date('Y') }} HospitalBooking · Nền tảng đặt lịch khám hiện đại · <a href="#" class="text-blue-600 hover:underline">Chính sách bảo mật</a>
+    © {{ date('Y') }} HospitalC · Nền tảng đặt lịch khám hiện đại · <a href="#" class="text-blue-600 hover:underline">Chính sách bảo mật</a>
 </footer>
 
 <script>

@@ -360,7 +360,7 @@
             {{-- Navbar --}}
             <div class="news-fixed-nav-wrap">
                 <nav class="liquid-glass news-fixed-nav">
-                    <span style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.04em; color: #fff;">HOPITAL</span>
+                    <span style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.04em; color: #fff;">HOPITALC</span>
                     
                     <div class="hidden md:flex items-center gap-8 text-sm">
                         @php $navLinks = ['Trang chủ' => 'home', 'Dịch vụ' => 'user.services.index', 'Bản tin' => 'news.index', 'Đặt lịch' => 'appointments.create']; @endphp

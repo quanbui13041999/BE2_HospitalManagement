@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Admin') — Hospital Booking</title>
+    <title>@yield('title', 'Admin') — HospitalC</title>
 
     {{-- Bootstrap 5 --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
@@ -63,7 +63,7 @@
 {{-- ══ SIDEBAR ══════════════════════════════════════════════════════ --}}
 <div id="sidebar">
     <div class="brand">
-        <i class="bi bi-hospital me-2"></i>HospitalAdmin
+        <i class="bi bi-hospital me-2"></i>HospitalC Admin
     </div>
 
     <nav class="mt-2 flex-fill">

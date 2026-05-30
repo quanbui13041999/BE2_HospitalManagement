@@ -62,7 +62,7 @@
                     </div>
                     <div>
                         <a href="{{ route('home') }}">
-                            <h1 class="text-xl font-bold text-gray-900">MediCore<sup>®</sup></h1>
+                            <h1 class="text-xl font-bold text-gray-900">HospitalC</h1>
                         </a>
                         <p class="text-xs text-gray-500">Quản lý bác sĩ</p>
                     </div>

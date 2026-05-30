@@ -1051,7 +1051,7 @@
                 <div>
                     <a href="{{ route('home') }}" class="active">
                         <h1 style="font-size:1.25rem;font-weight:700;color:#111827;margin:0;">
-                            MediCore<sup>®</sup>
+                            HospitalC
                         </h1>
                     </a>
 
