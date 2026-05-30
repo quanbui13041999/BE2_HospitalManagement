@@ -968,6 +968,7 @@
                                 'Đã xác nhận' => 'badge-confirmed',
                                 'Đã hủy' => 'badge-cancelled',
                                 'Dời lịch' => 'badge-cancelled',
+                                'Đã thanh toán' => 'badge-confirmed',
                                 'Đã khám' => 'badge-done',
                                 'Hoàn thành' => 'badge-done',
                                 ];
@@ -988,7 +989,15 @@
 
                             {{-- CỘT THAO TÁC --}}
                             <td>
-                                @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
+                                @php
+                                    $appointmentTime = \Carbon\Carbon::parse($item->appointment_time);
+                                    $canCancelAppointment = in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])
+                                        && now()->lt($appointmentTime)
+                                        && now()->lte($appointmentTime->copy()->subHour());
+                                    $canManageAppointment = in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán']);
+                                @endphp
+
+                                @if($canManageAppointment)
                                 {{-- Dời / Huỷ --}}
                                  <div class="actions">
                                     @if(empty($item->payment_status))
@@ -996,14 +1005,20 @@
                                             💳 Thanh toán
                                         </a>
                                     @endif
-                                    <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
-                                        📅 Dời lịch
-                                    </a>
-                                    <button type="button" class="btn-cancel"
-                                        onclick="openModal(this)"
-                                        data-action="{{ route('appointments.cancel', $item->appointment_id) }}">
-                                        ✕ Huỷ
-                                    </button>
+                                    @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
+                                        <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
+                                            📅 Dời lịch
+                                        </a>
+                                    @endif
+                                    @if($canCancelAppointment)
+                                        <button type="button" class="btn-cancel"
+                                            onclick="openModal(this)"
+                                            data-action="{{ route('appointments.cancel', $item->appointment_id) }}">
+                                            ✕ Huỷ
+                                        </button>
+                                    @else
+                                        <span class="payment-status payment-unpaid">Không thể hủy trong vòng 1 giờ trước giờ khám</span>
+                                    @endif
                                 </div>
 
                                 @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
