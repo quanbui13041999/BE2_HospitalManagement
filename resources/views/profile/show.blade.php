@@ -61,6 +61,12 @@
     </div>
     @endif
 
+    @if(session('warning'))
+    <div class="profile-alert" role="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;">
+        <span>{{ session('warning') }}</span>
+    </div>
+    @endif
+
     {{-- Hero Section --}}
     <section class="profile-card hero-card">
         <div class="hero-left">
