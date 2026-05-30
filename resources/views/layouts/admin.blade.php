@@ -260,5 +260,6 @@ if (document.getElementById('admin-unread-badge')) {
     @auth
         @include('components.chat-widget')
     @endauth
+@include('components.back-to-previous')
 </body>
 </html>

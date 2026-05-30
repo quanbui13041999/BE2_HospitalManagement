@@ -733,8 +733,8 @@
                 <li><a href="{{ route('home') }}" class="active">Trang chủ</a></li>
                 @auth
                 <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
-                <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
-                    @if(!Auth::user()->is_admin)
+                    @if(Auth::user()->isPatient())
+                    <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
                     <li><a href="{{ route('patient.nutrition.index') }}">Dinh dưỡng</a></li>
                     @endif
                 
@@ -879,6 +879,7 @@
     @auth
         @include('components.chat-widget')
     @endauth
+    @include('components.back-to-previous')
 </body>
 
 </html>

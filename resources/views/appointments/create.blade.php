@@ -1102,9 +1102,7 @@
             <a href="{{ route('appointments.create') }}" class="active">✨ Đặt lịch mới</a>
             <a href="{{ route('news.index') }}">📰 Bản tin</a>
             @auth
-                @if(auth()->user()->isPatient())
-                    <a href="{{ route('medical_history.index') }}">📄 Hồ sơ bệnh án</a>
-                @elseif(auth()->user()->isDoctor())
+                @if(auth()->user()->isDoctor())
                     <a href="{{ route('doctor.dashboard') }}">🩺 Dashboard bác sĩ</a>
                 @endif
             @endauth
@@ -1969,6 +1967,7 @@
             container.style.display = isPriority ? 'block' : 'none';
         }
     </script>
+    @include('components.back-to-previous')
 </body>
 
 </html>

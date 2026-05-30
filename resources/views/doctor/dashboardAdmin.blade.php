@@ -885,5 +885,6 @@
         }
     </script>
     </div>
+    @include('components.back-to-previous')
 </body>
 </html>

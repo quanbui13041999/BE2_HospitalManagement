@@ -80,5 +80,6 @@
             </div>
         </main>
     </div>
+    @include('components.back-to-previous')
 </body>
 </html>

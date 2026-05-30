@@ -132,12 +132,13 @@
                     <li class="nav-item d-flex align-items-center">
                         <x-notification-bell />
                     </li>
-                    {{-- Nút DEMO MỚI (bên trái nút lịch hẹn) --}}
+                    @if(Auth::user()->isPatient())
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen"> 
+                        <a class="nav-link {{ request()->is('lich-hen*') ? 'active' : '' }}" href="/lich-hen">
                             <i class="bi bi-calendar-check"></i> Lịch hẹn
                         </a>
                     </li>
+                    @endif
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('treatment.index') ? 'active' : '' }}" href="{{ route('treatment.index') }}">
                             <i class="bi bi-alarm"></i> Tuân thủ điều trị
@@ -263,6 +264,7 @@
     @auth
         @include('components.chat-widget')
     @endauth
+    @include('components.back-to-previous')
 </body>
 
 </html>

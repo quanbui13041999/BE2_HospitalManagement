@@ -94,5 +94,6 @@
         // Tự động focus vào email khi load trang
         document.querySelector('input[name="email"]').focus();
     </script>
+    @include('components.back-to-previous')
 </body>
 </html>
