@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Services\QueueService;
 use App\Models\{DoctorSchedule, QueueTicket};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class QueueManageController extends Controller
@@ -85,7 +86,7 @@ class QueueManageController extends Controller
         } catch (\Throwable $e) {
             Log::error('Queue check-in failed', [
                 'schedule_id' => $validated['schedule_id'] ?? null,
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
             ]); /* fixed: ghi log noi bo va khong lo loi that */
 
@@ -113,7 +114,7 @@ class QueueManageController extends Controller
         } catch (\Throwable $e) {
             Log::error('Queue ticket skip failed', [
                 'ticket_id' => $ticketId,
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
             ]);
 
