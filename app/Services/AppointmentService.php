@@ -616,6 +616,141 @@ class AppointmentService
         return ['message' => 'Đã hủy lịch hẹn #' . $appointmentId . ' thành công.'];
     }
 
+    /**
+     * Tự động dời lịch từ notification của bác sĩ nghỉ.
+     * 
+     * Quy trình:
+     * 1. Xác thực appointment cũ thuộc về user
+     * 2. Xác thực appointment cũ có trạng thái 'Bác sĩ nghỉ'
+     * 3. Tạo appointment mới
+     * 4. Cập nhật appointment cũ thành 'Dời lịch'
+     * 5. Gửi email xác nhận
+     * 
+     * @return array { appointment_id, queue_number, message }
+     */
+    public function quickRescheduleFromDayOff(int $oldAppointmentId, int $newScheduleId, int $userId): array
+    {
+        // 1. Xác thực appointment cũ
+        $oldAppt = DB::table('appointments')
+            ->where('appointment_id', $oldAppointmentId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$oldAppt) {
+            throw new Exception('Không tìm thấy lịch hẹn cũ hoặc bạn không có quyền.');
+        }
+
+        if ($oldAppt->status !== 'Bác sĩ nghỉ') {
+            throw new Exception('Chỉ có thể dời lịch cho appointment có trạng thái "Bác sĩ nghỉ".');
+        }
+
+        // 2. Xác thực schedule mới
+        $newSchedule = DB::table('doctorschedules')
+            ->where('schedule_id', $newScheduleId)
+            ->where('status', '!=', 'blocked')
+            ->first();
+
+        if (!$newSchedule) {
+            throw new Exception('Lịch mới không tồn tại hoặc không khả dụng.');
+        }
+
+        // 3. Kiểm tra slot còn trống
+        $booked = DB::table('appointments')
+            ->where('schedule_id', $newScheduleId)
+            ->where(function ($q) {
+                $q->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS])
+                  ->orWhere(function ($q2) {
+                      $q2->where('status', SlotHoldService::HOLD_STATUS)
+                         ->where('slot_hold_expire', '>', now());
+                  });
+            })
+            ->count();
+
+        if ($booked >= $newSchedule->max_slot) {
+            throw new Exception('Lịch này đã hết slot. Vui lòng chọn lịch khác.');
+        }
+
+        // 4. Tính toán thông tin appointment mới
+        $workDate = $newSchedule->work_date;
+        // Dùng start_time của schedule làm appointment_time
+        $appointmentDatetime = $workDate . ' ' . $newSchedule->start_time;
+        $appointmentEndtime = $this->calculateAppointmentEndTime(
+            $workDate,
+            substr($newSchedule->start_time, 0, 5),
+            $newSchedule->slot_duration ?? 15
+        );
+        $queueNumber = $this->calculateQueueNumber($newScheduleId, substr($newSchedule->start_time, 0, 5));
+
+        $newAppointmentId = null;
+
+        DB::beginTransaction();
+        try {
+            // 5. Tạo appointment mới
+            $newAppointmentId = DB::table('appointments')->insertGetId([
+                'user_id'             => $userId,
+                'schedule_id'         => $newScheduleId,
+                'service_id'          => $oldAppt->service_id,
+                'appointment_time'    => $appointmentDatetime,
+                'appointment_timeEnd' => $appointmentEndtime,
+                'queue_number'        => $queueNumber,
+                'status'              => 'Chờ xác nhận',
+                'is_priority'         => $oldAppt->is_priority ?? false,
+                'priority_type'       => $oldAppt->priority_type ?? null,
+                'note'                => ($oldAppt->note ? $oldAppt->note . ' | ' : '') 
+                                      . 'Dời lịch từ: ' . $oldAppt->appointment_time,
+                'created_at'          => now(),
+            ]);
+
+            // 6. Đánh dấu appointment cũ là 'Dời lịch'
+            DB::table('appointments')
+                ->where('appointment_id', $oldAppointmentId)
+                ->update([
+                    'status' => 'Dời lịch',
+                    'cancel_reason' => 'Bác sĩ nghỉ - tự động dời sang lịch mới #' . $newAppointmentId,
+                ]);
+
+            // 7. Tạo notification
+            app(NotificationService::class)->createForUser(
+                $userId,
+                'Dời lịch hẹn thành công',
+                'Lịch khám của bạn đã được dời sang ngày ' 
+                    . Carbon::parse($workDate)->format('d/m/Y') 
+                    . ' lúc ' . substr($newSchedule->start_time, 0, 5)
+                    . '. Số thứ tự mới: #' . $queueNumber,
+                'appointment_rescheduled',
+                'appointment',
+                $newAppointmentId
+            );
+
+            $this->logAppointmentEvent('Dời lịch tự động (bác sĩ nghỉ)', $newAppointmentId, $userId, [
+                'old_appointment_id' => $oldAppointmentId,
+                'old_schedule_id'    => $oldAppt->schedule_id,
+                'new_schedule_id'    => $newScheduleId,
+            ]);
+
+            DB::commit();
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+
+        // 8. Gửi email xác nhận
+        $this->sendAppointmentConfirmationEmail($newAppointmentId, $userId);
+
+        return [
+            'old_appointment_id' => $oldAppointmentId,
+            'new_appointment_id' => $newAppointmentId,
+            'queue_number'       => $queueNumber,
+            'work_date'          => $workDate,
+            'appointment_time'   => substr($newSchedule->start_time, 0, 5),
+            'message'            => 'Dời lịch hẹn thành công! Lịch mới: ' 
+                                  . Carbon::parse($workDate)->format('d/m/Y') 
+                                  . ' lúc ' . substr($newSchedule->start_time, 0, 5) 
+                                  . ' (số thứ tự: #' . $queueNumber . ')',
+        ];
+    }
+
     private function checkCancelTimeAvailable(object $schedule): ?string
     {
         $appointmentTime      = Carbon::parse($schedule->work_date . ' ' . $schedule->start_time);

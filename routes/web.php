@@ -102,6 +102,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/',          [AppointmentController::class, 'create'])->name('create');
         Route::post('/',         [AppointmentController::class, 'store'])->name('store');
         Route::get('/schedules', [AppointmentController::class, 'getSchedules'])->name('schedules');
+        // Quick reschedule from day-off notification email
+        Route::get('/xac-nhan-doi-lich', [AppointmentController::class, 'confirmRescheduleFromEmail'])->name('reschedule-confirm');
     });
 
     // API gợi ý (AJAX)
@@ -295,6 +297,11 @@ Route::prefix('api/v1')->middleware('auth')->group(function () {
 
         // Utility
         Route::get('doctors',                     [DoctorScheduleController::class, 'listDoctors']);
+    });
+
+    // Appointments
+    Route::prefix('appointments')->group(function () {
+        Route::post('reschedule-confirm',         [AppointmentController::class, 'quickRescheduleFromDayOff']);
     });
 });
 

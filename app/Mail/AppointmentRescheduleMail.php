@@ -58,13 +58,8 @@ class AppointmentRescheduleMail extends Mailable
             ],
         ];
 
-        // Nếu alternatives đã có score, dùng email template mới (smart)
-        // Nếu không, dùng template cũ
-        $hasScoring = !empty($this->alternatives) && isset($this->alternatives[0]['score']);
-        $viewName = $hasScoring ? 'emails.appointment-reschedule-smart' : 'emails.appointment-reschedule';
-
         return new Content(
-            view: $viewName,
+            view: 'emails.appointment-reschedule-smart',
             with: [
                 'patient'      => $this->patient,
                 'appointment'  => $this->appointment,
