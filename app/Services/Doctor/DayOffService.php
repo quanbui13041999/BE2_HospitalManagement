@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\Mail;
 
 class DayOffService
 {
+    public function __construct(
+        private readonly DoctorScoringService $scoringService
+    ) {}
+
     /**
      * Luồng chính khi bác sĩ đăng ký nghỉ:
      *
@@ -26,8 +30,8 @@ class DayOffService
      *  2. Lọc schedule theo session (all / morning / afternoon)
      *  3. Block schedule (status = 'blocked')
      *  4. Tìm appointment bị ảnh hưởng
-     *  5. Tìm bác sĩ cùng khoa → gợi ý lịch thay thế
-     *  6. Gửi email hỏi bệnh nhân có muốn dời lịch không
+     *  5. Tìm bác sĩ cùng khoa → gợi ý lịch thay thế (dùng scoring)
+     *  6. Gửi email gợi ý lịch mới cho bệnh nhân
      *
      * @return array { blocked_schedules: int, affected_appointments: int, emails_sent: int }
      */
@@ -402,40 +406,23 @@ class DayOffService
 
     /**
      * Tìm slot trống của bác sĩ thay thế gần ngày bị huỷ nhất.
+     * Dùng hệ thống scoring để sắp xếp bác sĩ.
      *
-     * Trả mảng tối đa 3 gợi ý, mỗi gợi ý gồm:
-     *  { doctor, schedule, available_slots }
+     * Trả mảng tối đa 5 gợi ý, mỗi gợi ý gồm:
+     *  { doctor, schedule, available_slots, score, score_breakdown }
      *
      * @param  Collection  $alterDoctors  Bác sĩ cùng khoa
      * @param  \Carbon\Carbon  $originalTime  Thời điểm hẹn cũ
      */
     private function findAlternativeSlots(Collection $alterDoctors, $originalTime): array
     {
-        $searchFrom = Carbon::parse($originalTime)->startOfDay();
-        $searchTo   = $searchFrom->copy()->addDays(7);   // tìm trong vòng 7 ngày
+        $scored = $this->scoringService->findScoredAlternatives(
+            $alterDoctors,
+            Carbon::parse($originalTime),
+            daysAhead: 7,
+            limit: 5
+        );
 
-        $suggestions = [];
-
-        foreach ($alterDoctors as $altDoctor) {
-            $schedule = DoctorSchedule::forDoctor($altDoctor->doctor_id)
-                ->active()
-                ->betweenDates($searchFrom->toDateString(), $searchTo->toDateString())
-                ->get()
-                ->filter(fn ($s) => $s->availableSlots() > 0)
-                ->sortBy('work_date')
-                ->first();
-
-            if ($schedule) {
-                $suggestions[] = [
-                    'doctor'           => $altDoctor,
-                    'schedule'         => $schedule,
-                    'available_slots'  => $schedule->availableSlots(),
-                ];
-            }
-
-            if (count($suggestions) >= 3) break;
-        }
-
-        return $suggestions;
+        return $scored->toArray();
     }
 }
