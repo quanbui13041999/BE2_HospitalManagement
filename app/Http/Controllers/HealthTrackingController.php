@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\HealthTrackingRequest;
 use App\Models\HealthTracking;
+use App\Models\MedicalRecord;
 use App\Services\HealthRiskService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,8 +21,17 @@ class HealthTrackingController extends Controller
     {
         $this->authorize('viewAny', HealthTracking::class);
 
+        $user = auth()->user();
+
         $query = HealthTracking::with('patient')
-            ->when(auth()->user()->isPatient(), fn($q) => $q->where('patient_id', auth()->user()->user_id))
+            ->when($this->isPatientUser($user), fn($q) => $q->where('patient_id', $user->user_id))
+            ->when($this->isDoctorUser($user), function ($q) use ($user) {
+                $q->whereIn('patient_id', MedicalRecord::query()
+                    ->select('patient_id')
+                    ->where('doctor_id', $user->user_id)
+                    ->whereNotNull('patient_id')
+                    ->distinct());
+            })
             ->when($request->risk_level, fn($q) => $q->where('risk_level', $request->risk_level))
             ->when($request->date_from,  fn($q) => $q->whereDate('created_at', '>=', $request->date_from))
             ->when($request->date_to,    fn($q) => $q->whereDate('created_at', '<=', $request->date_to));
@@ -251,5 +261,19 @@ class HealthTrackingController extends Controller
     private function releaseHealthLock(string $lockKey): void
     {
         DB::selectOne('SELECT RELEASE_LOCK(?) AS released', [$lockKey]);
+    }
+
+    private function isPatientUser($user): bool
+    {
+        return method_exists($user, 'isPatient')
+            ? $user->isPatient()
+            : (int) ($user->role_id ?? 0) === 3;
+    }
+
+    private function isDoctorUser($user): bool
+    {
+        return method_exists($user, 'isDoctor')
+            ? $user->isDoctor()
+            : (int) ($user->role_id ?? 0) === 2;
     }
 }
