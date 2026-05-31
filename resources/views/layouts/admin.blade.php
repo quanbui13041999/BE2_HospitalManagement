@@ -186,6 +186,12 @@
            class="nav-link {{ request()->routeIs('admin.patients.search*') ? 'active' : '' }}">
             <i class="bi bi-person-bounding-box"></i> Tìm kiếm bệnh nhân (AI)
         </a>
+        @if(Auth::user()->role_id == 1)
+        <a href="{{ route('medical-records.index') }}"
+           class="nav-link {{ request()->routeIs('medical-records.*') ? 'active' : '' }}">
+            <i class="bi bi-folder2-open"></i> Danh sách phiếu khám
+        </a>
+        @endif
         @endif
 
         <div class="nav-section">Hỗ trợ</div>
