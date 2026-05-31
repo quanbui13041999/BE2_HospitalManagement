@@ -28,6 +28,18 @@
                     <i class="bi bi-clipboard2-pulse me-2"></i>Nhập chỉ số hôm nay — {{ now()->format('d/m/Y H:i') }}
                 </div>
                 <div class="card-body p-4">
+                    @if(session('warning'))
+                        <div class="alert alert-warning alert-dismissible fade show d-flex gap-2">
+                            <i class="bi bi-exclamation-circle-fill"></i> {{ session('warning') }}
+                            <button class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show d-flex gap-2">
+                            <i class="bi bi-exclamation-triangle-fill"></i> {{ session('error') }}
+                            <button class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
                     @include('health-tracking._form', [
                         'action' => route('health-tracking.store'),
                         'method' => 'POST',
