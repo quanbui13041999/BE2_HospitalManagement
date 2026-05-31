@@ -844,6 +844,8 @@
                         id: sess.schedule_id,
                         type: sess.note?.match(/\[(.*?)\]/)?.[1] || 'leave',
                         date: group.date,
+                        start_time: sess.start_time,
+                        end_time: sess.end_time,
                         reason: sess.note?.replace(/\[.*?\]\s*/, '') || '',
                         affected: 0,
                         session: sess.start_time < '12:00:00' ? 'morning' : (sess.start_time >= '12:00:00' && sess.start_time < '17:00:00' ? 'afternoon' : 'all'),
@@ -870,6 +872,12 @@
             const colorText = { red: 'text-red-600', green: 'text-green-600', purple: 'text-purple-600' };
             const colorBadge = { red: 'bg-red-100 text-red-700 border-red-200', green: 'bg-green-100 text-green-700 border-green-200', purple: 'bg-purple-100 text-purple-700 border-purple-200' };
             const sessionLabel = { all: 'Cả ngày', morning: 'Buổi sáng', afternoon: 'Buổi chiều' };
+            const formatDateTime = dt => dt ? dt.split(' ')[0] : '';
+            const formatTime = t => {
+                if (!t) return '';
+                const [h, m] = t.split(':');
+                return `${Number(h)}h${m === '00' ? '' : m}`;
+            };
 
             document.getElementById('dayoff-count').textContent = `${list.length} lịch sắp tới`;
 
@@ -878,12 +886,16 @@
                 return;
             }
 
-            document.getElementById('dayoff-list').innerHTML = list.map(d => `
+            document.getElementById('dayoff-list').innerHTML = list.map(d => {
+                const dateOnly = formatDateTime(d.date);
+                const timeOnly = formatTime(d.start_time);
+                const dateLabel = timeOnly ? `${dateOnly} ${timeOnly}` : dateOnly;
+                return `
         <div class="flex items-start gap-3 p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
             <div class="w-10 h-10 rounded-xl ${colorBg[d.color] || 'bg-gray-100'} flex items-center justify-center text-xl flex-shrink-0">${d.icon}</div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                    <span class="font-semibold text-sm">${d.endDate ? d.date + ' → ' + d.endDate : d.date}</span>
+                    <span class="font-semibold text-sm">${dateLabel}</span>
                     <span class="text-xs px-2 py-0.5 rounded-full border ${colorBadge[d.color] || ''}">${sessionLabel[d.session]}</span>
                 </div>
                 ${d.reason ? `<p class="text-xs text-gray-500 truncate">${d.reason}</p>` : ''}
@@ -892,7 +904,8 @@
             <button onclick="deleteDayOff(${d.id})" class="text-gray-300 hover:text-red-500 transition-colors p-1 flex-shrink-0" title="Xoá">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             </button>
-        </div>`).join('');
+        </div>`;
+            }).join('');
         }
 
         function showToast(msg, type = 'success') {
