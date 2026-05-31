@@ -40,6 +40,9 @@ class PatientNutritionController extends Controller
 
         foreach ($latestDiagnoses as $diagnosis) {
             $rules = DiseaseNutritionRule::with('food')
+                ->whereHas('food', function ($q) {
+                    $q->where('status', 1);
+                })
                 ->where(function ($q) use ($diagnosis) {
                     $q->where('disease_name', 'LIKE', "%{$diagnosis->diagnosis_name}%");
                     if ($diagnosis->icd_code) {
@@ -52,8 +55,8 @@ class PatientNutritionController extends Controller
             $shouldAvoidFoods = $shouldAvoidFoods->merge($rules->where('recommendation_type', 'should_avoid'));
         }
 
-        $shouldEatFoods = $shouldEatFoods->unique('food_id');
-        $shouldAvoidFoods = $shouldAvoidFoods->unique('food_id');
+        $shouldEatFoods = $shouldEatFoods->filter(fn ($rule) => $rule->food)->unique('food_id');
+        $shouldAvoidFoods = $shouldAvoidFoods->filter(fn ($rule) => $rule->food)->unique('food_id');
 
         $todayLogs = MealLog::with('food')
             ->where('user_id', Auth::id())

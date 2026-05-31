@@ -72,7 +72,13 @@ class AdminNutritionController extends Controller
 
     public function edit(int $article)
     {
-        $article = NutritionArticle::findOrFail($article);
+        $article = NutritionArticle::find($article);
+
+        if (! $article) {
+            return redirect()->route('admin.nutrition.index')
+                ->with('warning', 'Bài viết đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+        }
+
         $doctors = Doctor::where('status', 1)->get(['doctor_id', 'full_name']);
         $articleSnapshot = $this->articleSnapshot($article);
 
@@ -194,7 +200,13 @@ class AdminNutritionController extends Controller
 
     public function rulesEdit(int $rule)
     {
-        $rule = DiseaseNutritionRule::findOrFail($rule);
+        $rule = DiseaseNutritionRule::find($rule);
+
+        if (! $rule) {
+            return redirect()->route('admin.nutrition.rules.index')
+                ->with('warning', 'Quy tắc dinh dưỡng đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+        }
+
         $foods = Food::active()->orderBy('food_name')->get();
         $ruleSnapshot = $this->ruleSnapshot($rule);
 
@@ -318,7 +330,13 @@ class AdminNutritionController extends Controller
 
     public function foodsEdit(int $food)
     {
-        $food = Food::findOrFail($food);
+        $food = Food::find($food);
+
+        if (! $food) {
+            return redirect()->route('admin.nutrition.foods.index')
+                ->with('warning', 'Thực phẩm đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+        }
+
         $foodSnapshot = $this->foodSnapshot($food);
 
         return view('nutrition.admin.foods.edit', compact('food', 'foodSnapshot'));

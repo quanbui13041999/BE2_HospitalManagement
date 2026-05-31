@@ -67,8 +67,10 @@
                             <div class="d-flex align-items-start mb-2 p-2 rounded" style="background:var(--primary-light)">
                                 <i class="bi bi-leaf text-success me-2 mt-1"></i>
                                 <div>
-                                    <strong>{{ $rule->food->food_name }}</strong>
-                                    <span class="text-muted ms-2 small">{{ $rule->food->calories_per_100g }} kcal/100g</span>
+                                    <strong>{{ $rule->food?->food_name ?? 'Thực phẩm đã bị xóa' }}</strong>
+                                    @if($rule->food)
+                                        <span class="text-muted ms-2 small">{{ $rule->food->calories_per_100g }} kcal/100g</span>
+                                    @endif
                                     @if($rule->reason)
                                         <p class="mb-0 small text-muted">{{ $rule->reason }}</p>
                                     @endif
@@ -86,8 +88,10 @@
                             <div class="d-flex align-items-start mb-2 p-2 rounded" style="background:var(--danger-light)">
                                 <i class="bi bi-exclamation-triangle text-danger me-2 mt-1"></i>
                                 <div>
-                                    <strong>{{ $rule->food->food_name }}</strong>
-                                    <span class="text-muted ms-2 small">{{ $rule->food->calories_per_100g }} kcal/100g</span>
+                                    <strong>{{ $rule->food?->food_name ?? 'Thực phẩm đã bị xóa' }}</strong>
+                                    @if($rule->food)
+                                        <span class="text-muted ms-2 small">{{ $rule->food->calories_per_100g }} kcal/100g</span>
+                                    @endif
                                     @if($rule->reason)
                                         <p class="mb-0 small text-muted">{{ $rule->reason }}</p>
                                     @endif
@@ -245,7 +249,7 @@
                 @forelse($todayLogs as $log)
                     <div class="d-flex justify-content-between align-items-center meal-card p-3 rounded mb-2">
                         <div>
-                            <strong>{{ $log->food->food_name }}</strong>
+                            <strong>{{ $log->food?->food_name ?? 'Thực phẩm đã bị xóa' }}</strong>
                             <span class="badge bg-light text-dark ms-2">{{ $log->meal_label }}</span>
                             <p class="mb-0 small text-muted">{{ $log->weight_gram }}g</p>
                         </div>
