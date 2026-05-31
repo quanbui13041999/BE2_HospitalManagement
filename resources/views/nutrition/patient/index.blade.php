@@ -27,6 +27,14 @@
     @endif
 </div>
 
+@if(session('success'))
+    <div class="alert alert-success">{{ session('success') }}</div>
+@endif
+
+@if(session('warning'))
+    <div class="alert alert-warning">{{ session('warning') }}</div>
+@endif
+
 <div class="row g-4">
 
     {{-- ══════════════════════════════════════════════════════════ --}}
@@ -208,7 +216,7 @@
                             <label class="form-label fw-semibold">Gram</label>
                             <input type="number" name="weight_gram" id="weight_gram"
                                    class="form-control @error('weight_gram') is-invalid @enderror"
-                                   min="1" max="5000" placeholder="150"
+                                   min="1" max="5000" step="1" inputmode="numeric" placeholder="150"
                                    value="{{ old('weight_gram') }}" required>
                             @error('weight_gram')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>

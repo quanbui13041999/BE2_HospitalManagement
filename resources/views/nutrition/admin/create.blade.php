@@ -24,6 +24,10 @@
 
 <div class="card">
     <div class="card-body p-4">
+        @if(session('warning'))
+            <div class="alert alert-warning">{{ session('warning') }}</div>
+        @endif
+
         <form action="{{ route('admin.nutrition.store') }}" method="POST">
             @csrf
 
@@ -34,7 +38,8 @@
                     <input type="text" name="title"
                            class="form-control form-control-lg @error('title') is-invalid @enderror"
                            value="{{ old('title') }}"
-                           placeholder="Ví dụ: Chế độ ăn uống cho người bệnh Tiểu đường Type 2">
+                           required minlength="3" maxlength="150" pattern="^[A-Za-zÀ-ỹ\s]+$"
+                           placeholder="Ví dụ: Chế độ ăn uống cho người bệnh tiểu đường">
                     @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
@@ -58,7 +63,8 @@
                     <input type="text" name="target_disease"
                            class="form-control @error('target_disease') is-invalid @enderror"
                            value="{{ old('target_disease') }}"
-                           placeholder="Ví dụ: Đái tháo đường, Tăng huyết áp...">
+                           maxlength="120" pattern="^[A-Za-zÀ-ỹ\s]+$"
+                           placeholder="Ví dụ: Đái tháo đường">
                     <div class="form-text">Bài viết sẽ được gợi ý cho bệnh nhân có chẩn đoán khớp với từ khóa này.</div>
                     @error('target_disease')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
@@ -69,6 +75,7 @@
                     <textarea name="content" id="editor"
                               class="form-control @error('content') is-invalid @enderror"
                               rows="12">{{ old('content') }}</textarea>
+                    <div id="content-client-error" class="invalid-feedback d-block" style="display:none !important;"></div>
                     @error('content')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
@@ -98,9 +105,51 @@
 
 @push('scripts')
 <script>
+let nutritionEditor;
+
 ClassicEditor.create(document.querySelector('#editor'), {
     toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'blockQuote', 'undo', 'redo'],
     placeholder: 'Nhập nội dung bài viết dinh dưỡng...'
+}).then(editor => {
+    nutritionEditor = editor;
 }).catch(err => console.error(err));
+
+document.querySelector('form').addEventListener('submit', function (event) {
+    if (!nutritionEditor) return;
+
+    const text = htmlToText(nutritionEditor.getData());
+    const errorBox = document.getElementById('content-client-error');
+    errorBox.style.setProperty('display', 'none', 'important');
+    errorBox.textContent = '';
+
+    if (text.length < 10) {
+        event.preventDefault();
+        return showContentError(errorBox, 'Nội dung phải có ít nhất 10 ký tự.');
+    }
+
+    if (text.length > 5000) {
+        event.preventDefault();
+        return showContentError(errorBox, 'Nội dung tối đa 5000 ký tự.');
+    }
+
+    if (!/^[\p{L}\s]+$/u.test(text)) {
+        event.preventDefault();
+        return showContentError(errorBox, 'Nội dung chỉ được nhập chữ và khoảng trắng, không nhập số hoặc ký tự đặc biệt.');
+    }
+
+    nutritionEditor.updateSourceElement();
+});
+
+function htmlToText(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
+}
+
+function showContentError(errorBox, message) {
+    errorBox.textContent = message;
+    errorBox.style.setProperty('display', 'block', 'important');
+    document.querySelector('.ck-editor__editable')?.focus();
+}
 </script>
 @endpush
