@@ -69,7 +69,7 @@
 
                         <div class="mb-4">
                             <label class="form-label fw-bold">Nội dung nhắc nhở</label>
-                            <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="3" required minlength="5" maxlength="255" placeholder="Ví dụ: Uống thuốc Paracetamol 500mg sau khi ăn sáng">{{ old('message') }}</textarea>
+                            <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="3" required minlength="5" maxlength="255" pattern="^[A-Za-zÀ-ỹ\s]+$" placeholder="Ví dụ: Uống thuốc sau khi ăn sáng">{{ old('message') }}</textarea>
                             <div class="form-text">Gợi ý: Thêm cụm từ "NGUY HIỂM" để làm nổi bật cảnh báo.</div>
                             @error('message') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>

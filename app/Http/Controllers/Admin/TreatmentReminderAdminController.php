@@ -134,7 +134,7 @@ class TreatmentReminderAdminController extends Controller
 
             $reminder->update($data);
 
-            return 'updated';
+            return ['status' => 'updated', 'user_id' => $reminder->user_id];
         });
 
         if ($result === 'missing') {
@@ -146,7 +146,10 @@ class TreatmentReminderAdminController extends Controller
             return redirect()->route('admin.treatment.edit', $reminderId)
                 ->with('warning', 'Nhắc nhở đã được người khác cập nhật trước đó. Vui lòng tải lại dữ liệu rồi sửa lại.');
         }
-        return back()->with('success', 'Đã cập nhật!');
+
+        return redirect()
+            ->route('admin.treatment.show', $result['user_id'])
+            ->with('success', 'Đã cập nhật nhắc nhở!');
     }
 
     private function reminderSnapshot(TreatmentReminder $reminder): string
@@ -171,6 +174,11 @@ class TreatmentReminderAdminController extends Controller
         ]);
     }
 
+    private function reminderDeleteLockKey(int $reminderId): string
+    {
+        return 'treatment_reminder_delete:' . $reminderId;
+    }
+
     private function acquireReminderLock(string $lockKey): bool
     {
         $result = DB::selectOne('SELECT GET_LOCK(?, 10) AS acquired', [$lockKey]);
@@ -186,9 +194,38 @@ class TreatmentReminderAdminController extends Controller
     /** Xóa nhắc nhở */
     public function destroy(int $reminderId)
     {
-        $reminder = TreatmentReminder::findOrFail($reminderId);
-        $reminder->delete();
-        return back()->with('success', 'Đã xóa nhắc nhở!');
+        $lockKey = $this->reminderDeleteLockKey($reminderId);
+
+        if (! $this->acquireReminderLock($lockKey)) {
+            return back()->with('warning', 'Đang có người khác xóa nhắc nhở này. Vui lòng tải lại dữ liệu.');
+        }
+
+        try {
+            $result = DB::transaction(function () use ($reminderId) {
+                $reminder = TreatmentReminder::where('reminder_id', $reminderId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $reminder) {
+                    return ['status' => 'missing', 'user_id' => null];
+                }
+
+                $userId = $reminder->user_id;
+                $reminder->delete();
+
+                return ['status' => 'deleted', 'user_id' => $userId];
+            });
+        } finally {
+            $this->releaseReminderLock($lockKey);
+        }
+
+        if ($result['status'] === 'missing') {
+            return back()->with('warning', 'Nhắc nhở đã được người khác xóa trước đó. Vui lòng tải lại dữ liệu.');
+        }
+
+        return redirect()
+            ->route('admin.treatment.show', $result['user_id'])
+            ->with('success', 'Đã xóa nhắc nhở!');
     }
 
     /**
