@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\GeminiChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
 {
@@ -25,24 +26,39 @@ class ChatController extends Controller
     {
         $userId = Auth::id();
 
-        // Tìm phòng chat đang mở của user
-        $room = ChatRoom::where('user_id', $userId)
-            ->where('status', 'Mở')
-            ->first();
+        try {
+            // Tìm phòng chat đang mở của user
+            $room = ChatRoom::where('user_id', $userId)
+                ->where('status', 'Mở')
+                ->first();
 
-        // Nếu chưa có thì tạo mới
-        if (!$room) {
-            $room = ChatRoom::create([
-                'user_id'    => $userId,
-                'doctor_id'  => null,
-                'status'     => 'Mở',
-                'created_at' => now(),
-            ]);
+            // Nếu chưa có thì tạo mới
+            if (!$room) {
+                $room = ChatRoom::create([
+                    'user_id'    => $userId,
+                    'doctor_id'  => null,
+                    'status'     => 'Mở',
+                    'created_at' => now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Create chat room failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi chat noi bo */
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi, vui lòng thử lại sau.',
+                'data' => null,
+            ], 500);
         }
 
         return response()->json([
             'success' => true,
+            'message' => 'OK',
             'room_id' => $room->room_id,
+            'data' => ['room_id' => $room->room_id],
         ]);
     }
 
@@ -57,7 +73,7 @@ class ChatController extends Controller
         // Kiểm tra quyền truy cập phòng
         $room = ChatRoom::where('room_id', $roomId)
             ->where('user_id', $userId)
-            ->firstOrFail();
+            ->firstOrFail(); /* fixed: authorization theo owner phong */
 
         $query = ChatMessage::where('room_id', $roomId)
             ->with('sender:user_id,full_name,avatar_url,role_id');
@@ -87,7 +103,12 @@ class ChatController extends Controller
             ->where('is_read', 0)
             ->update(['is_read' => 1]);
 
-        return response()->json(['success' => true, 'messages' => $messages]);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'messages' => $messages,
+            'data' => ['messages' => $messages],
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 
     /**
@@ -145,13 +166,22 @@ class ChatController extends Controller
                     'is_ai'        => 1,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Error generating AI reply: ' . $e->getMessage());
+                Log::error('Error generating AI reply', [
+                    'room_id' => $roomId,
+                    'user_id' => $userId,
+                    'error' => $e->getMessage(),
+                ]); /* fixed: log loi AI, khong gui chi tiet ve client */
                 // Nếu AI gặp lỗi, không tạo message - chỉ log lỗi
                 // Staff sẽ thấy tin nhắn từ user và có thể trả lời
             }
         }
 
-        return response()->json(['success' => true, 'message_id' => $message->message_id]);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'message_id' => $message->message_id,
+            'data' => ['message_id' => $message->message_id],
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 
     /**
@@ -173,6 +203,10 @@ class ChatController extends Controller
 
         $message->delete();
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'data' => null,
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 }

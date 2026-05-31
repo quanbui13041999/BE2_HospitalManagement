@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Services\QueueService;
 use App\Models\{DoctorSchedule, Doctor, QueueTicket};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class QueueDoctorController extends Controller
 {
@@ -47,7 +48,17 @@ class QueueDoctorController extends Controller
      */
     public function callNext(Request $request, int $scheduleId)
     {
-        $ticket = $this->queueService->callNext($scheduleId);
+        try {
+            $ticket = $this->queueService->callNext($scheduleId);
+        } catch (\Throwable $e) {
+            Log::error('Queue call next failed', [
+                'schedule_id' => $scheduleId,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: bat loi nghiep vu hang doi */
+
+            return back()->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
+        }
 
         if (!$ticket) {
             return back()->with('info', 'Không còn bệnh nhân đủ điều kiện khám. Bệnh nhân chưa thanh toán vẫn ở hàng đợi; ca cấp cứu được gọi ngay.');
@@ -61,7 +72,18 @@ class QueueDoctorController extends Controller
      */
     public function startExam(int $ticketId)
     {
-        $ticket = $this->queueService->startExam($ticketId);
+        try {
+            $ticket = $this->queueService->startExam($ticketId);
+        } catch (\Throwable $e) {
+            Log::error('Queue start exam failed', [
+                'ticket_id' => $ticketId,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
+        }
+
         return back()->with('success', 'Đã bắt đầu khám.');
     }
 
@@ -70,7 +92,18 @@ class QueueDoctorController extends Controller
      */
     public function complete(int $ticketId)
     {
-        $ticket = $this->queueService->complete($ticketId);
+        try {
+            $ticket = $this->queueService->complete($ticketId);
+        } catch (\Throwable $e) {
+            Log::error('Queue complete failed', [
+                'ticket_id' => $ticketId,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
+        }
+
         return back()->with('success', "Hoàn thành khám cho #{$ticket->queue_number}.");
     }
 
@@ -79,6 +112,15 @@ class QueueDoctorController extends Controller
      */
     public function apiSnapshot(int $scheduleId)
     {
-        return response()->json($this->queueService->getQueueSnapshot($scheduleId));
+        $snapshot = $this->queueService->getQueueSnapshot($scheduleId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'current' => $snapshot['current'],
+            'waiting' => $snapshot['waiting'],
+            'stats' => $snapshot['stats'],
+            'data' => $snapshot,
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 }

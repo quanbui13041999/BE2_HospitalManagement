@@ -43,6 +43,11 @@ class NotificationController extends Controller
     public function show(Notification $notification)
     {
         $user = Auth::user();
+        abort_unless(
+            $this->notifications->visibleQuery($user)->whereKey($notification->getKey())->exists(),
+            403
+        ); /* fixed: chi cho xem thong bao thuoc pham vi user */
+
         $this->notifications->markAsRead($notification, $user);
 
         $notification->load('sender');
@@ -78,26 +83,44 @@ class NotificationController extends Controller
         });
 
         return response()->json([
+            'success' => true,
+            'message' => 'OK',
             'unread_count' => $this->notifications->unreadCount($user),
             'items' => $items,
             'all_url' => route('notifications.index'),
+            'data' => [
+                'unread_count' => $this->notifications->unreadCount($user),
+                'items' => $items,
+                'all_url' => route('notifications.index'),
+            ],
         ]);
     }
 
     public function unreadCount()
     {
         return response()->json([
+            'success' => true,
+            'message' => 'OK',
             'unread_count' => $this->notifications->unreadCount(Auth::user()),
+            'data' => ['unread_count' => $this->notifications->unreadCount(Auth::user())],
         ]);
     }
 
     public function markRead(Notification $notification)
     {
-        $this->notifications->markAsRead($notification, Auth::user());
+        $user = Auth::user();
+        abort_unless(
+            $this->notifications->visibleQuery($user)->whereKey($notification->getKey())->exists(),
+            403
+        ); /* fixed: ngan user mark-read thong bao khong thuoc ve minh */
+
+        $this->notifications->markAsRead($notification, $user);
 
         return response()->json([
             'success' => true,
+            'message' => 'OK',
             'unread_count' => $this->notifications->unreadCount(Auth::user()),
+            'data' => ['unread_count' => $this->notifications->unreadCount(Auth::user())],
         ]);
     }
 
@@ -107,8 +130,10 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => 'OK',
             'marked_count' => $count,
             'unread_count' => 0,
+            'data' => ['marked_count' => $count, 'unread_count' => 0],
         ]);
     }
 }

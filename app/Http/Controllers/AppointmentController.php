@@ -8,6 +8,7 @@ use App\Services\Doctor\DoctorTimeslotService;
 use App\Services\Doctor\AppointmentQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 /**
  * AppointmentController
@@ -107,8 +108,13 @@ class AppointmentController extends Controller
                 ->with('success', $result['message'])
                 ->with('appointment_id', $result['appointment_id']);
         } catch (\Exception $e) {
+            Log::error('Create appointment failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi noi bo, khong tra stack/message that ra user */
+
             return back()
-                ->withErrors(['msg' => $e->getMessage()])
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
                 ->withInput();
         }
     }
@@ -158,8 +164,14 @@ class AppointmentController extends Controller
         try {
             $availableSchedules = $this->appointmentService->getAvailableSchedulesForReschedule($id, $appointment->doctor_id);
         } catch (\Exception $e) {
+            Log::error('Load reschedule options failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: an loi he thong khoi response */
+
             return redirect()->route('appointments.index')
-                ->withErrors(['msg' => $e->getMessage()]);
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
         }
 
         return view('appointments.edit', compact('appointment', 'availableSchedules'));
@@ -220,8 +232,14 @@ class AppointmentController extends Controller
             return redirect()->route('appointments.index')
                 ->with('success', $result['message']);
         } catch (\Exception $e) {
+            Log::error('Reschedule appointment failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi noi bo, tra thong bao chung */
+
             return back()
-                ->withErrors(['msg' => $e->getMessage()])
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
                 ->withInput();
         }
     }
@@ -252,8 +270,14 @@ class AppointmentController extends Controller
             return redirect()->route('appointments.index')
                 ->with('success', $result['message']);
         } catch (\Exception $e) {
+            Log::error('Cancel appointment failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: khong lo ly do loi noi bo qua UI */
+
             return redirect()->route('appointments.index')
-                ->withErrors(['msg' => $e->getMessage()]);
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
         }
     }
 

@@ -134,12 +134,12 @@
     </div>
 
     <script type="application/json" id="queue-display-config">
-        {!! json_encode([
+        @json([
             'scheduleId' => $schedule->schedule_id,
             'snapshot' => $snapshot,
             'pusherKey' => config('broadcasting.connections.pusher.key'),
             'pusherCluster' => config('broadcasting.connections.pusher.options.cluster', 'mt1'),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+        ])
     </script>
     <script>
     const queueDisplayConfigEl = document.getElementById('queue-display-config');
@@ -198,7 +198,8 @@
                 try {
                     const res = await fetch(`/api/queue/${this.scheduleId}/snapshot`);
                     if (res.ok) {
-                        const data = await res.json();
+                        const payload = await res.json();
+                        const data = payload.data || payload; // fixed: ho tro JSON wrapper {success,message,data}
                         this.applySnapshot(data);
                     }
                 } catch (e) {

@@ -6,6 +6,8 @@ use App\Models\ChatRoom;
 use App\Models\ChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ChatRoomController extends Controller
 {
@@ -58,7 +60,12 @@ class ChatRoomController extends Controller
                                         : null,
             ]);
 
-        return response()->json(['success' => true, 'rooms' => $rooms]);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'rooms' => $rooms,
+            'data' => ['rooms' => $rooms],
+        ]); /* fixed: JSON API co cau truc nhat quan va giu tuong thich key cu */
     }
 
     /**
@@ -100,13 +107,23 @@ class ChatRoomController extends Controller
 
         return response()->json([
             'success'  => true,
+            'message'  => 'OK',
             'messages' => $messages,
             'room'     => [
                 'room_id'      => $room->room_id,
                 'patient_name' => $room->patient->full_name ?? 'Ẩn danh',
                 'status'       => $room->status,
                 'doctor_id'    => $room->doctor_id,
-            ]
+            ],
+            'data' => [
+                'messages' => $messages,
+                'room' => [
+                    'room_id'      => $room->room_id,
+                    'patient_name' => $room->patient->full_name ?? 'Ẩn danh',
+                    'status'       => $room->status,
+                    'doctor_id'    => $room->doctor_id,
+                ],
+            ],
         ]);
     }
 
@@ -118,23 +135,46 @@ class ChatRoomController extends Controller
     {
         $request->validate(['message_text' => 'required|string|max:2000']);
 
-        $room = ChatRoom::findOrFail($roomId);
+        $room = ChatRoom::where('room_id', $roomId)
+            ->where('status', 'Mở')
+            ->firstOrFail(); /* fixed: khong cho gui vao phong da dong */
 
-        // Assign phòng cho staff nếu chưa có. Cột doctor_id đang lưu user_id của CSKH/admin.
-        if (!$room->doctor_id) {
-            $room->update(['doctor_id' => Auth::id()]);
+        try {
+            return DB::transaction(function () use ($request, $room, $roomId) {
+                // Assign phòng cho staff nếu chưa có. Cột doctor_id đang lưu user_id của CSKH/admin.
+                if (!$room->doctor_id) {
+                    $room->update(['doctor_id' => Auth::id()]);
+                }
+
+                $message = ChatMessage::create([
+                    'room_id'      => $roomId,
+                    'sender_id'    => Auth::id(),
+                    'message_text' => trim($request->message_text),
+                    'is_read'      => 0,
+                    'sent_at'      => now(),
+                    'is_ai'        => 0,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'OK',
+                    'message_id' => $message->message_id,
+                    'data' => ['message_id' => $message->message_id],
+                ]); /* fixed: transaction cho assign + message */
+            });
+        } catch (\Throwable $e) {
+            Log::error('Admin chat send failed', [
+                'room_id' => $roomId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi, vui lòng thử lại sau.',
+                'data' => null,
+            ], 500);
         }
-
-        $message = ChatMessage::create([
-            'room_id'      => $roomId,
-            'sender_id'    => Auth::id(),
-            'message_text' => trim($request->message_text),
-            'is_read'      => 0,
-            'sent_at'      => now(),
-            'is_ai'        => 0,
-        ]);
-
-        return response()->json(['success' => true, 'message_id' => $message->message_id]);
     }
 
     /**
@@ -146,7 +186,7 @@ class ChatRoomController extends Controller
         $room = ChatRoom::findOrFail($roomId);
         $room->update(['status' => 'Đóng', 'closed_at' => now()]);
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
     }
 
     /**
@@ -155,12 +195,14 @@ class ChatRoomController extends Controller
      */
     public function deleteRoom(int $roomId): \Illuminate\Http\JsonResponse
     {
-        $room = ChatRoom::findOrFail($roomId);
-        // Xóa tất cả tin nhắn trong phòng trước (nếu database không dùng Cascade delete)
-        ChatMessage::where('room_id', $roomId)->delete();
-        $room->delete();
+        DB::transaction(function () use ($roomId) {
+            $room = ChatRoom::findOrFail($roomId);
+            // Xóa tất cả tin nhắn trong phòng trước (nếu database không dùng Cascade delete)
+            ChatMessage::where('room_id', $roomId)->delete();
+            $room->delete();
+        }); /* fixed: xoa phong va tin nhan cung transaction */
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
     }
 
     /**
@@ -172,6 +214,6 @@ class ChatRoomController extends Controller
         $message = ChatMessage::findOrFail($messageId);
         $message->delete();
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
     }
 }
