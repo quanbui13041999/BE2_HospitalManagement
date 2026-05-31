@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Services\QueueService;
 use App\Models\{DoctorSchedule, Doctor, QueueTicket};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class QueueDoctorController extends Controller
@@ -18,11 +19,12 @@ class QueueDoctorController extends Controller
      */
     public function index()
     {
-        $userId = auth()->id();
+        $userId = Auth::id();
+        $user = Auth::user();
 
         // Nếu là bác sĩ (role_id = 2) → lấy schedule của bác sĩ đó
         // Nếu là admin (role_id = 1) → lấy tất cả schedule hôm nay
-        if (auth()->user()->role_id == 2) {
+        if ((int) $user->role_id === 2) {
             $doctor = Doctor::where('user_id', $userId)->firstOrFail();
             $schedules = DoctorSchedule::with(['room'])
                 ->where('doctor_id', $doctor->doctor_id)
@@ -53,7 +55,7 @@ class QueueDoctorController extends Controller
         } catch (\Throwable $e) {
             Log::error('Queue call next failed', [
                 'schedule_id' => $scheduleId,
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
             ]); /* fixed: bat loi nghiep vu hang doi */
 
@@ -77,7 +79,7 @@ class QueueDoctorController extends Controller
         } catch (\Throwable $e) {
             Log::error('Queue start exam failed', [
                 'ticket_id' => $ticketId,
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
             ]);
 
@@ -97,7 +99,7 @@ class QueueDoctorController extends Controller
         } catch (\Throwable $e) {
             Log::error('Queue complete failed', [
                 'ticket_id' => $ticketId,
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
             ]);
 
