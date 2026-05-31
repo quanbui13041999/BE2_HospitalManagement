@@ -17,6 +17,10 @@
     <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+@if(session('warning'))
+    <div class="alert alert-warning">{{ session('warning') }}</div>
+@endif
+
 <div class="row g-3 mb-4">
     <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Tong bai</div><h3>{{ $stats['total'] }}</h3></div></div>
     <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Cong khai</div><h3>{{ $stats['published'] }}</h3></div></div>
