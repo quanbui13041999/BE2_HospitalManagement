@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\{QueueTicket, QueueCounter, DoctorSchedule, Appointment, User};
 use App\Events\{QueueUpdated, TicketCalled};
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -79,7 +80,7 @@ class QueueService
                 'checkin_time'    => now(),
                 'est_wait_minutes'=> $estWait,
                 'notes'           => $data['notes'] ?? null,
-                'served_by'       => array_key_exists('served_by', $data) ? $data['served_by'] : auth()->id(),
+                'served_by'       => array_key_exists('served_by', $data) ? $data['served_by'] : Auth::id(),
             ]);
 
             // Nếu có appointment → cập nhật status

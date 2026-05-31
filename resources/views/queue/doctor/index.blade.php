@@ -20,7 +20,7 @@
         </div>
         <div class="text-end">
             <span class="badge bg-primary rounded-pill px-4 py-2 font-bold shadow-sm">
-                Bác sĩ: {{ auth()->user()->full_name }}
+                Bác sĩ: {{ Auth::user()->full_name }}
             </span>
         </div>
     </div>

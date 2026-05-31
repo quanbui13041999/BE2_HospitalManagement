@@ -875,8 +875,9 @@
                                 $reviewCreatedAt = $rawReviewDate ? \Carbon\Carbon::parse($rawReviewDate) : null;
                                 $canEdit = !empty($rawReviewDate)
                                 && $reviewCreatedAt && $reviewCreatedAt->diffInHours(now()) <= 24;
-                                    $isAdmin=auth()->user()->role === 'admin';
-                                    $isDoctor = auth()->user()->role === 'doctor';
+                                    $currentUser = Auth::user();
+                                    $isAdmin = (int) ($currentUser->role_id ?? 0) === 1;
+                                    $isDoctor = (int) ($currentUser->role_id ?? 0) === 2;
                                     @endphp
 
                                     <div class="actions" style="flex-wrap:wrap">
@@ -942,7 +943,7 @@
                                         'replyUrl' => route('reviews.reply', $item->review_id ?? 0),
                                         'stars' => $item->review_rating ?? 0,
                                         'comment' => $item->review_comment ?? '',
-                                        'userName' => auth()->user()->full_name ?? auth()->user()->name ?? '',
+                                        'userName' => $currentUser->full_name ?? $currentUser->name ?? '',
                                         'existingReply' => $item->doctor_reply ?? '',
                                         ];
                                         @endphp

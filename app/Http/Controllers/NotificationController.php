@@ -60,7 +60,7 @@ class NotificationController extends Controller
     {
         $roleName = mb_strtolower((string) ($user->role?->role_name ?? ''), 'UTF-8');
 
-        if ((method_exists($user, 'isAdmin') && $user->isAdmin()) || $user->role_id === 1 || $roleName === 'admin') {
+        if ((int) $user->role_id === 1 || $roleName === 'admin') {
             return 'layouts.admin';
         }
 

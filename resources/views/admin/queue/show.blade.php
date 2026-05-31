@@ -330,7 +330,7 @@
             .then(r => r.json())
             .then(payload => {
                 const data = payload.data || payload; // fixed: ho tro JSON wrapper {success,message,data}
-                // fixed: removed console.log de khong lo du lieu hang doi tren DevTools
+                // fixed: removed debug output de khong lo du lieu hang doi tren DevTools
                 // You can update specific parts without full page reload
             });
     }, 5000);

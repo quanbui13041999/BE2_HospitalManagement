@@ -470,18 +470,22 @@
                     <ul class="news-glass-links">
                         <li><a href="{{ route('home') }}">Trang chủ</a></li>
                         @auth
+                            @php
+                                $currentUser = Auth::user();
+                                $currentRoleId = (int) ($currentUser->role_id ?? 0);
+                            @endphp
                             <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
-                            @if(Auth::user()->isPatient())
+                            @if($currentRoleId === 3)
                                 <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
                                 <li><a href="{{ route('patient.nutrition.index') }}">Dinh dưỡng</a></li>
                             @endif
-                            @if(Auth::user()->isPatient() || Auth::user()->isAdmin())
+                            @if(in_array($currentRoleId, [1, 3], true))
                                 <li><a href="{{ route('appointments.create') }}">Đặt lịch</a></li>
                             @endif
                         @endauth
                         <li><a href="{{ route('news.index') }}" class="active">Bản tin</a></li>
                         @auth
-                            @if (Auth::user()->isDoctor() || Auth::user()->isAdmin())
+                            @if (in_array($currentRoleId, [1, 2], true))
                                 <li><a href="{{ route('doctor.dashboard') }}">Quản lý bác sĩ</a></li>
                             @endif
                         @endauth
@@ -497,7 +501,7 @@
                     <div class="news-glass-cta">
                         @auth
                             <x-notification-bell :direct="true" />
-                            @if (Auth::user()->isAdmin())
+                            @if ($currentRoleId === 1)
                                 <a href="{{ route('admin.dashboard') }}" class="news-glass-outline">Dashboard</a>
                             @else
                                 <a href="{{ route('Home.trangchu') }}" class="news-glass-outline">Trang của tôi</a>
