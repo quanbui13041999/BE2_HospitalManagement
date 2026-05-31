@@ -5,7 +5,9 @@ use App\Http\Controllers\Controller;
 use App\Models\{TreatmentReminder, User, MedicalRecord, TreatmentHomeInstruction};
 use App\Services\{TreatmentReminderService, ComplianceReportService};
 use App\Http\Requests\Admin\StoreTreatmentReminderRequest;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TreatmentReminderAdminController extends Controller
 {
@@ -50,8 +52,53 @@ class TreatmentReminderAdminController extends Controller
     /** Lưu nhắc nhở mới */
     public function store(StoreTreatmentReminderRequest $request)
     {
-        TreatmentReminder::create($request->validated());
-        return redirect()->route('admin.treatment.index')
+        $data = $request->validated();
+        $remindAt = Carbon::parse($data['remind_at']);
+        $data['remind_at'] = $remindAt->format('Y-m-d H:i:s');
+        $lockKey = $this->reminderCreateLockKey($data['user_id'], $data['reminder_type'], $remindAt);
+
+        if (! $this->acquireReminderLock($lockKey)) {
+            return back()
+                ->withInput()
+                ->with('warning', 'Đang có người khác tạo nhắc nhở cho bệnh nhân ở thời điểm này. Vui lòng tải lại dữ liệu.');
+        }
+
+        try {
+            $created = DB::transaction(function () use ($data, $remindAt) {
+                User::where('user_id', $data['user_id'])
+                    ->where('role_id', 3)
+                    ->where('status', 1)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $alreadyExists = TreatmentReminder::where('user_id', $data['user_id'])
+                    ->where('reminder_type', $data['reminder_type'])
+                    ->whereBetween('remind_at', [
+                        $remindAt->copy()->startOfMinute()->format('Y-m-d H:i:s'),
+                        $remindAt->copy()->endOfMinute()->format('Y-m-d H:i:s'),
+                    ])
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($alreadyExists) {
+                    return false;
+                }
+
+                TreatmentReminder::create($data);
+
+                return true;
+            });
+        } finally {
+            $this->releaseReminderLock($lockKey);
+        }
+
+        if (! $created) {
+            return redirect()
+                ->route('admin.treatment.show', $data['user_id'])
+                ->withInput()
+                ->with('warning', 'Nhắc nhở này đã tồn tại cho bệnh nhân trong cùng phút. Hệ thống không tạo trùng, vui lòng tải lại dữ liệu.');
+        }
+        return redirect()->route('admin.treatment.show', $data['user_id'])
             ->with('success', 'Đã tạo nhắc nhở thành công!');
     }
 
@@ -59,15 +106,81 @@ class TreatmentReminderAdminController extends Controller
     public function edit(int $reminderId)
     {
         $reminder = TreatmentReminder::findOrFail($reminderId);
-        return view('admin.treatment_reminder.edit', compact('reminder'));
+        $reminderSnapshot = $this->reminderSnapshot($reminder);
+
+        return view('admin.treatment_reminder.edit', compact('reminder', 'reminderSnapshot'));
     }
 
     /** Cập nhật nhắc nhở */
     public function update(StoreTreatmentReminderRequest $request, int $reminderId)
     {
-        $reminder = TreatmentReminder::findOrFail($reminderId);
-        $reminder->update($request->validated());
+        $data = $request->validated();
+        $snapshot = $data['reminder_snapshot'];
+        unset($data['reminder_snapshot']);
+        $data['remind_at'] = Carbon::parse($data['remind_at'])->format('Y-m-d H:i:s');
+
+        $result = DB::transaction(function () use ($reminderId, $data, $snapshot) {
+            $reminder = TreatmentReminder::where('reminder_id', $reminderId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $reminder) {
+                return 'missing';
+            }
+
+            if (! hash_equals($this->reminderSnapshot($reminder), $snapshot)) {
+                return 'stale';
+            }
+
+            $reminder->update($data);
+
+            return 'updated';
+        });
+
+        if ($result === 'missing') {
+            return redirect()->route('admin.treatment.index')
+                ->with('warning', 'Nhắc nhở đã bị xóa trước đó. Vui lòng tải lại danh sách.');
+        }
+
+        if ($result === 'stale') {
+            return redirect()->route('admin.treatment.edit', $reminderId)
+                ->with('warning', 'Nhắc nhở đã được người khác cập nhật trước đó. Vui lòng tải lại dữ liệu rồi sửa lại.');
+        }
         return back()->with('success', 'Đã cập nhật!');
+    }
+
+    private function reminderSnapshot(TreatmentReminder $reminder): string
+    {
+        return hash_hmac('sha256', implode('|', [
+            $reminder->reminder_id,
+            $reminder->user_id,
+            $reminder->record_id,
+            $reminder->reminder_type,
+            optional($reminder->remind_at)->format('Y-m-d H:i:s'),
+            $reminder->message,
+            (int) $reminder->is_sent,
+        ]), config('app.key'));
+    }
+
+    private function reminderCreateLockKey(int $userId, string $type, Carbon $remindAt): string
+    {
+        return 'treatment_reminder_create:' . implode(':', [
+            $userId,
+            $type,
+            $remindAt->copy()->format('YmdHi'),
+        ]);
+    }
+
+    private function acquireReminderLock(string $lockKey): bool
+    {
+        $result = DB::selectOne('SELECT GET_LOCK(?, 10) AS acquired', [$lockKey]);
+
+        return (int) ($result->acquired ?? 0) === 1;
+    }
+
+    private function releaseReminderLock(string $lockKey): void
+    {
+        DB::selectOne('SELECT RELEASE_LOCK(?) AS released', [$lockKey]);
     }
 
     /** Xóa nhắc nhở */

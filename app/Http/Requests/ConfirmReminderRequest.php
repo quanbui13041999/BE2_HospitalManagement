@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Contracts\Validation\ValidationRule;
+use App\Models\TreatmentReminder;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class ConfirmReminderRequest extends FormRequest
 {
@@ -13,8 +14,11 @@ class ConfirmReminderRequest extends FormRequest
     public function authorize(): bool
     {
         $reminderId = $this->route('reminder');
-        $reminder = \App\Models\TreatmentReminder::find($reminderId);
-        return $reminder && $reminder->user_id === \Illuminate\Support\Facades\Auth::id();
+
+        return is_numeric($reminderId)
+            && TreatmentReminder::where('reminder_id', (int) $reminderId)
+                ->where('user_id', Auth::id())
+                ->exists();
     }
 
     /**
@@ -25,7 +29,20 @@ class ConfirmReminderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // reminder_id is already validated in authorize
+            'note' => ['prohibited'],
+            'message' => ['prohibited'],
+            'confirmed_at' => ['prohibited'],
+            'confirm_type' => ['prohibited'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'note.prohibited' => 'Không được gửi thêm ghi chú từ trình duyệt.',
+            'message.prohibited' => 'Không được tự ý sửa nội dung nhắc nhở.',
+            'confirmed_at.prohibited' => 'Thời gian xác nhận do hệ thống tự ghi nhận.',
+            'confirm_type.prohibited' => 'Loại xác nhận do hệ thống tự xác định.',
         ];
     }
 }
