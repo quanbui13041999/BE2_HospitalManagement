@@ -317,4 +317,87 @@ class AppointmentController extends Controller
 
         return response()->json($queueInfo);
     }
+
+    // ================================================================
+    // QUICK RESCHEDULE FROM DAY-OFF
+    // ================================================================
+    /**
+     * GET /dat-lich/xac-nhan-doi-lich?old_id=X&new_schedule_id=Y&token=...
+     * 
+     * Xác nhận dời lịch từ email notification.
+     * User click nút "Xác nhận chọn lịch này" trong email → redirect tới endpoint này
+     * → endpoint xác thực token → tự động tạo appointment mới → redirect tới trang xác nhận
+     */
+    public function confirmRescheduleFromEmail(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để dời lịch');
+        }
+
+        $oldAppointmentId = $request->integer('old_id');
+        $newScheduleId = $request->integer('new_schedule_id');
+        $token = $request->string('token');
+
+        // Xác thực token
+        $expectedToken = hash_hmac('sha256', $oldAppointmentId . '|' . $newScheduleId, config('app.key'));
+        if (!hash_equals($token, $expectedToken)) {
+            return redirect()->route('appointments.index')->with('error', 'Link không hợp lệ hoặc đã hết hạn');
+        }
+
+        try {
+            $result = $this->appointmentService->quickRescheduleFromDayOff(
+                $oldAppointmentId,
+                $newScheduleId,
+                $user->user_id
+            );
+
+            return redirect()->route('appointments.index')->with('success', $result['message']);
+
+        } catch (\Exception $e) {
+            return redirect()->route('appointments.index')->with('error', 'Lỗi: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * POST /api/v1/appointments/reschedule-confirm
+     * 
+     * API endpoint cho quick reschedule (backup nếu email không thể submit form).
+     * Yêu cầu authentication.
+     */
+    public function quickRescheduleFromDayOff(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lòng đăng nhập để dời lịch.',
+            ], 401);
+        }
+
+        $request->validate([
+            'old_appointment_id' => 'required|integer|exists:appointments,appointment_id',
+            'new_schedule_id'    => 'required|integer|exists:doctorschedules,schedule_id',
+        ]);
+
+        try {
+            $result = $this->appointmentService->quickRescheduleFromDayOff(
+                $request->integer('old_appointment_id'),
+                $request->integer('new_schedule_id'),
+                $user->user_id
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'],
+                'data'    => $result,
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
 }

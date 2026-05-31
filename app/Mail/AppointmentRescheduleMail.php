@@ -59,7 +59,7 @@ class AppointmentRescheduleMail extends Mailable
         ];
 
         return new Content(
-            view: 'emails.appointment-reschedule',
+            view: 'emails.appointment-reschedule-smart',
             with: [
                 'patient'      => $this->patient,
                 'appointment'  => $this->appointment,
