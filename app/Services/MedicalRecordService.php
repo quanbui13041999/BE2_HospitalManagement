@@ -210,6 +210,9 @@ class MedicalRecordService
                 }
             }
 
+            // Bắt buộc đổi updated_at kể cả khi chỉ sửa bảng con như sinh tồn/chẩn đoán/thuốc.
+            $record->touch();
+
             $fresh = $record->fresh([
                 'vitalSigns',
                 'diagnoses',
@@ -271,10 +274,14 @@ class MedicalRecordService
     /**
      * Danh sách hồ sơ bệnh nhân với bộ lọc nâng cao
      */
-    public function getPatientRecords(int $patientId, array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    public function getPatientRecords(int $patientId, array $filters = [], ?int $doctorId = null): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $query = MedicalRecord::with(['vitalSigns', 'diagnoses', 'doctor'])
             ->where('patient_id', $patientId);
+
+        if ($doctorId !== null) {
+            $query->where('doctor_id', $doctorId);
+        }
         
         $query = $this->applyFilters($query, $filters);
         

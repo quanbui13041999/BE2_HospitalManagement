@@ -14,6 +14,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class MedicalRecordController extends Controller
 {
@@ -46,19 +48,23 @@ class MedicalRecordController extends Controller
         ];
 
         // Lấy records dựa trên role
-        if ($user->role_id === 3) {
+        if ((int) $user->role_id === 3) {
             // Bệnh nhân: xem hồ sơ của mình
             $records = $this->service->getPatientRecords($user->user_id, $filters);
-        } else {
+        } elseif ((int) $user->role_id === 2) {
+            // Bác sĩ: chỉ xem phiếu khám do chính bác sĩ đó phụ trách.
             $patientId = $request->query('patient_id');
             if ($patientId) {
-                // Xem hồ sơ của bệnh nhân cụ thể (bác sĩ hoặc admin)
-                $records = $this->service->getPatientRecords((int) $patientId, $filters);
-            } elseif ($user->role_id === 2) {
-                // Bác sĩ: xem hồ sơ mình tạo
-                $records = $this->service->getDoctorRecords($user->user_id, $filters);
+                $records = $this->service->getPatientRecords((int) $patientId, $filters, (int) $user->user_id);
             } else {
-                // Admin: xem tất cả
+                $records = $this->service->getDoctorRecords($user->user_id, $filters);
+            }
+        } else {
+            // Admin: xem tất cả, nếu có patient_id thì xem tất cả phiếu của bệnh nhân đó.
+            $patientId = $request->query('patient_id');
+            if ($patientId) {
+                $records = $this->service->getPatientRecords((int) $patientId, $filters);
+            } else {
                 $records = $this->service->getAllRecords($filters);
             }
         }
@@ -100,22 +106,22 @@ class MedicalRecordController extends Controller
             return view('medical-records.show', compact('record'));
         } catch (\Exception $e) {
             return redirect()->route('medical-records.index')
-                ->with('error', 'Không tìm thấy hồ sơ bệnh án!');
+                ->with('warning', 'Hồ sơ bệnh án đã bị xóa hoặc không còn tồn tại. Vui lòng tải lại danh sách.');
         }
     }
 
     private function canViewRecord($user, MedicalRecord $record): bool
     {
-        if ($user->role_id === 1) {
+        if ((int) $user->role_id === 1) {
             return true;
         }
 
-        if ($user->role_id === 2) {
-            return true;
+        if ((int) $user->role_id === 2) {
+            return (int) $record->doctor_id === (int) $user->user_id;
         }
 
-        if ($user->role_id === 3) {
-            return $record->patient_id === $user->user_id;
+        if ((int) $user->role_id === 3) {
+            return (int) $record->patient_id === (int) $user->user_id;
         }
 
         return false;
@@ -182,22 +188,45 @@ class MedicalRecordController extends Controller
                 ->with('error', 'Vui lòng đăng nhập để tạo hồ sơ!');
         }
 
-        $data = array_merge(
-            $request->validated(),
-            ['appointment_id' => $request->input('appointment_id')]
-        );
+        $data = $request->validated();
+        $examMinute = substr((string) ($data['exam_time'] ?? now()->format('H:i')), 0, 5);
+        $lockKey = $this->lockKey('medical_record_create', implode('|', [
+            $data['patient_id'],
+            $data['doctor_id'],
+            $data['exam_date'],
+            $examMinute,
+        ]));
 
-        $record = $this->service->createRecord($data);
-
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $this->service->uploadAttachment($record, $file);
-            }
+        if (! $this->acquireMedicalRecordLock($lockKey)) {
+            return back()->withInput()
+                ->with('warning', 'Đang có người tạo phiếu khám cho bệnh nhân này trong cùng khung giờ. Vui lòng tải lại danh sách.');
         }
 
-        return redirect()
-            ->route('medical-records.show', $record->record_id)
-            ->with('success', 'Hồ sơ bệnh án đã được tạo thành công.');
+        try {
+            if ($this->recordExistsInMinute((int) $data['patient_id'], (int) $data['doctor_id'], (string) $data['exam_date'], $examMinute)) {
+                return back()->withInput()
+                    ->with('warning', 'Phiếu khám của bệnh nhân này trong cùng phút đã được người khác tạo trước đó. Vui lòng tải lại danh sách.');
+            }
+
+            if (! empty($data['appointment_id']) && MedicalRecord::where('appointment_id', $data['appointment_id'])->exists()) {
+                return back()->withInput()
+                    ->with('warning', 'Lịch hẹn này đã có hồ sơ bệnh án được tạo trước đó. Vui lòng tải lại danh sách.');
+            }
+
+            $record = $this->service->createRecord($data);
+
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    $this->service->uploadAttachment($record, $file);
+                }
+            }
+
+            return redirect()
+                ->route('medical-records.show', $record->record_id)
+                ->with('success', 'Hồ sơ bệnh án đã được tạo thành công.');
+        } finally {
+            $this->releaseMedicalRecordLock($lockKey);
+        }
     }
 
     // ── EDIT / UPDATE ─────────────────────────────────────────────
@@ -220,10 +249,12 @@ class MedicalRecordController extends Controller
                     ->with('error', 'Bạn không có quyền chỉnh sửa hồ sơ này!');
             }
 
-            return view('medical-records.edit', compact('record'));
+            $recordSnapshot = $this->recordSnapshot($record);
+
+            return view('medical-records.edit', compact('record', 'recordSnapshot'));
         } catch (\Exception $e) {
             return redirect()->route('medical-records.index')
-                ->with('error', 'Không tìm thấy hồ sơ bệnh án!');
+                ->with('warning', 'Hồ sơ bệnh án đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
         }
     }
 
@@ -237,7 +268,12 @@ class MedicalRecordController extends Controller
         }
 
         try {
-            $record = MedicalRecord::findOrFail($id);
+            $record = MedicalRecord::find($id);
+
+            if (! $record) {
+                return redirect()->route('medical-records.index')
+                    ->with('warning', 'Hồ sơ bệnh án đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+            }
 
             $isAdmin = ($user->role_id == 1 || $user->role === 'admin');
             if ($record->doctor_id !== $user->user_id && !$isAdmin) {
@@ -245,7 +281,33 @@ class MedicalRecordController extends Controller
                     ->with('error', 'Bạn không có quyền cập nhật hồ sơ này!');
             }
 
-            $this->service->updateRecord($record, $request->validated());
+            $validated = $request->validated();
+            $snapshot = $validated['record_snapshot'];
+            unset($validated['record_snapshot']);
+
+            $result = DB::transaction(function () use ($id, $snapshot, $validated) {
+                $current = MedicalRecord::lockForUpdate()->find($id);
+
+                if (! $current) {
+                    return 'missing';
+                }
+
+                if (! hash_equals($this->recordSnapshot($current), $snapshot)) {
+                    return 'stale';
+                }
+
+                return $this->service->updateRecord($current, $validated);
+            });
+
+            if ($result === 'missing') {
+                return redirect()->route('medical-records.index')
+                    ->with('warning', 'Hồ sơ bệnh án đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+            }
+
+            if ($result === 'stale') {
+                return redirect()->route('medical-records.edit', $id)
+                    ->with('warning', 'Hồ sơ bệnh án đã được người khác cập nhật trước đó. Hệ thống đã tải lại dữ liệu mới nhất, vui lòng kiểm tra rồi sửa lại.');
+            }
 
             return redirect()
                 ->route('medical-records.show', $id)
@@ -269,7 +331,12 @@ class MedicalRecordController extends Controller
         }
 
         try {
-            $record = MedicalRecord::findOrFail($id);
+            $record = MedicalRecord::find($id);
+
+            if (! $record) {
+                return redirect()->route('medical-records.index')
+                    ->with('warning', 'Hồ sơ bệnh án đã được người khác xóa trước đó. Vui lòng tải lại danh sách.');
+            }
 
             $isAdmin = ($user->role_id == 1 || $user->role === 'admin');
             if ($record->doctor_id !== $user->user_id && !$isAdmin) {
@@ -277,7 +344,33 @@ class MedicalRecordController extends Controller
                     ->with('error', 'Bạn không có quyền xóa hồ sơ này!');
             }
 
-            $record->delete();
+            $lockKey = $this->lockKey('medical_record_delete', (string) $id);
+
+            if (! $this->acquireMedicalRecordLock($lockKey)) {
+                return redirect()->route('medical-records.index')
+                    ->with('warning', 'Đang có người xóa hồ sơ bệnh án này. Vui lòng tải lại danh sách.');
+            }
+
+            try {
+                $result = DB::transaction(function () use ($id) {
+                    $current = MedicalRecord::lockForUpdate()->find($id);
+
+                    if (! $current) {
+                        return 'missing';
+                    }
+
+                    $current->delete();
+
+                    return 'deleted';
+                });
+            } finally {
+                $this->releaseMedicalRecordLock($lockKey);
+            }
+
+            if ($result === 'missing') {
+                return redirect()->route('medical-records.index')
+                    ->with('warning', 'Hồ sơ bệnh án đã được người khác xóa trước đó. Vui lòng tải lại danh sách.');
+            }
 
             return redirect()
                 ->route('medical-records.index')
@@ -313,13 +406,22 @@ class MedicalRecordController extends Controller
 
         try {
             $request->validate([
-                'result' => 'nullable|string|max:1000',
+                'result' => ['nullable', 'string', 'max:1000', 'regex:/\A[\pL\pN\s.,;:()\/+\-%]+\z/u'],
             ]);
 
-            $order = MedicalOrder::where('record_id', $recordId)->findOrFail($orderId);
+            $record = MedicalRecord::find($recordId);
+
+            if (! $record) {
+                return response()->json(['error' => 'Hồ sơ bệnh án đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.'], 404);
+            }
+
+            $order = MedicalOrder::where('record_id', $recordId)->find($orderId);
+
+            if (! $order) {
+                return response()->json(['error' => 'Chỉ định đã bị người khác xóa trước đó. Vui lòng tải lại trang.'], 404);
+            }
 
             // Kiểm tra quyền với record (bác sĩ chỉ sửa được của mình)
-            $record = MedicalRecord::findOrFail($recordId);
             if (!$isAdmin && $record->doctor_id !== $user->user_id) {
                 return response()->json(['error' => 'Bạn không có quyền sửa kết quả của hồ sơ này!'], 403);
             }
@@ -361,9 +463,18 @@ class MedicalRecordController extends Controller
         }
 
         try {
-            $order = MedicalOrder::where('record_id', $recordId)->findOrFail($orderId);
+            $record = MedicalRecord::find($recordId);
 
-            $record = MedicalRecord::findOrFail($recordId);
+            if (! $record) {
+                return response()->json(['error' => 'Hồ sơ bệnh án đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.'], 404);
+            }
+
+            $order = MedicalOrder::where('record_id', $recordId)->find($orderId);
+
+            if (! $order) {
+                return response()->json(['error' => 'Chỉ định đã bị người khác xóa trước đó. Vui lòng tải lại trang.'], 404);
+            }
+
             if (!$isAdmin && $record->doctor_id !== $user->user_id) {
                 return response()->json(['error' => 'Bạn không có quyền xóa kết quả của hồ sơ này!'], 403);
             }
@@ -402,10 +513,14 @@ class MedicalRecordController extends Controller
 
         try {
             $request->validate([
-                'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx',
+                'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
             ]);
 
-            $record = MedicalRecord::findOrFail($id);
+            $record = MedicalRecord::find($id);
+
+            if (! $record) {
+                return response()->json(['error' => 'Hồ sơ bệnh án đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.'], 404);
+            }
 
             // ✅ Bác sĩ chỉ upload cho hồ sơ của mình, admin upload tất cả
             if (!$isAdmin && $record->doctor_id !== $user->user_id) {
@@ -421,12 +536,50 @@ class MedicalRecordController extends Controller
                     'file_name' => $attachment->file_name,
                     'file_size' => $attachment->file_size_formatted ?? $this->formatFileSize($attachment->file_size),
                     'file_type' => $attachment->file_type,
-                    'url'       => asset('storage/' . $attachment->file_path),
+                    'url'       => route('medical-records.attachments.view', [$record->record_id, $attachment->attachment_id]),
                 ],
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    public function viewAttachment(int $recordId, int $attachmentId)
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return redirect()->route('login')
+                ->with('error', 'Vui lòng đăng nhập để xem tập đính kèm!');
+        }
+
+        $record = MedicalRecord::find($recordId);
+
+        if (! $record) {
+            return redirect()->route('medical-records.index')
+                ->with('warning', 'Hồ sơ bệnh án đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+        }
+
+        if (! $this->canViewRecord($user, $record)) {
+            return redirect()->route('medical-records.index')
+                ->with('error', 'Bạn không có quyền xem tập đính kèm của hồ sơ này.');
+        }
+
+        $attachment = MedicalAttachment::where('record_id', $recordId)->find($attachmentId);
+
+        if (! $attachment) {
+            return redirect()->route('medical-records.show', $recordId)
+                ->with('warning', 'Tập đính kèm đã được người khác xóa trước đó. Trang đã được tải lại.');
+        }
+
+        if (! Storage::disk('public')->exists($attachment->file_path)) {
+            return redirect()->route('medical-records.show', $recordId)
+                ->with('warning', 'File đính kèm đã bị xóa khỏi hệ thống. Vui lòng tải lại trang.');
+        }
+
+        return response()->file(Storage::disk('public')->path($attachment->file_path), [
+            'Content-Disposition' => 'inline; filename="' . addslashes($attachment->file_name) . '"',
+        ]);
     }
 
     public function deleteAttachment(int $recordId, int $attachmentId): JsonResponse|RedirectResponse
@@ -445,8 +598,17 @@ class MedicalRecordController extends Controller
         }
 
         try {
-            $attachment = MedicalAttachment::where('record_id', $recordId)->findOrFail($attachmentId);
-            $record     = MedicalRecord::findOrFail($recordId);
+            $record = MedicalRecord::find($recordId);
+
+            if (! $record) {
+                return response()->json(['error' => 'Hồ sơ bệnh án đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.'], 404);
+            }
+
+            $attachment = MedicalAttachment::where('record_id', $recordId)->find($attachmentId);
+
+            if (! $attachment) {
+                return response()->json(['error' => 'Tập đính kèm đã bị người khác xóa trước đó. Vui lòng tải lại trang.'], 404);
+            }
 
             if (!$isAdmin && $record->doctor_id !== $user->user_id) {
                 return response()->json(['error' => 'Không có quyền xóa file này!'], 403);
@@ -484,11 +646,48 @@ class MedicalRecordController extends Controller
             return view('medical-records.print', compact('record'));
         } catch (\Exception $e) {
             return redirect()->route('medical-records.index')
-                ->with('error', 'Không tìm thấy hồ sơ bệnh án!');
+                ->with('warning', 'Hồ sơ bệnh án đã bị xóa hoặc không còn tồn tại. Vui lòng tải lại danh sách.');
         }
     }
 
     // ── HELPER ────────────────────────────────────────────────────
+
+    private function recordExistsInMinute(int $patientId, int $doctorId, string $examDate, string $examMinute): bool
+    {
+        return MedicalRecord::where('patient_id', $patientId)
+            ->where('doctor_id', $doctorId)
+            ->whereDate('exam_date', $examDate)
+            ->whereTime('exam_time', '>=', $examMinute . ':00')
+            ->whereTime('exam_time', '<=', $examMinute . ':59')
+            ->exists();
+    }
+
+    private function recordSnapshot(MedicalRecord $record): string
+    {
+        return hash_hmac('sha256', implode('|', [
+            $record->record_id,
+            $record->patient_id,
+            $record->doctor_id,
+            optional($record->updated_at)->format('Y-m-d H:i:s.u'),
+        ]), config('app.key'));
+    }
+
+    private function lockKey(string $prefix, string $value): string
+    {
+        return 'medical:' . sha1($prefix . '|' . $value);
+    }
+
+    private function acquireMedicalRecordLock(string $lockKey): bool
+    {
+        $result = DB::selectOne('SELECT GET_LOCK(?, 10) AS acquired', [$lockKey]);
+
+        return (int) ($result->acquired ?? 0) === 1;
+    }
+
+    private function releaseMedicalRecordLock(string $lockKey): void
+    {
+        DB::selectOne('SELECT RELEASE_LOCK(?) AS released', [$lockKey]);
+    }
 
     /**
      * Format file size helper
