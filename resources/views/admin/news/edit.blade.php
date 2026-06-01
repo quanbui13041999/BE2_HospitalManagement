@@ -15,7 +15,7 @@
         <form action="{{ route('admin.news.update', $article->news_id) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
-            <input type="hidden" name="version" value="{{ optional($article->updated_at)->format('Y-m-d H:i:s') }}"> {{-- fixed: phat hien form cu khi nhieu admin cung sua --}}
+            <input type="hidden" name="version" value="{{ $article->news_version }}"> {{-- fixed: phat hien form cu khi nhieu admin cung sua --}}
             
             <div class="row">
                 <div class="col-md-8">

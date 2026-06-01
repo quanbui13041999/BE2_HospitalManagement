@@ -17,19 +17,18 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Exception;
-use Carbon\Carbon;
 
 class NewsController extends Controller
 {
     public function __construct(private NotificationService $notifications) {}
 
-    private function assertFreshVersion(?string $expectedVersion, mixed $actualVersion): void
+    private function assertFreshVersion(mixed $expectedVersion, HospitalNews $article): void
     {
-        if (!$expectedVersion || !$actualVersion) {
-            return;
+        if (!$expectedVersion) {
+            throw new ConcurrentModificationException('Thiếu phiên bản dữ liệu. Trang sẽ được tải lại để cập nhật dữ liệu mới.');
         }
 
-        if (Carbon::parse($expectedVersion)->format('Y-m-d H:i:s') !== Carbon::parse($actualVersion)->format('Y-m-d H:i:s')) {
+        if ((int) $expectedVersion !== (int) $article->news_version) {
             throw new ConcurrentModificationException('Bài viết đã được người khác thay đổi. Trang sẽ được tải lại để cập nhật dữ liệu mới.');
         }
     }
@@ -51,8 +50,8 @@ class NewsController extends Controller
     public function store(StoreNewsRequest $request)
     {
         $data = $request->validated();
+        unset($data['version']);
         $data['author_id']    = Auth::id();
-        $data['created_at']   = now();
         $data['is_published'] = $request->boolean('is_published');
 
         if ($data['is_published']) {
@@ -101,7 +100,8 @@ class NewsController extends Controller
 
     public function update(StoreNewsRequest $request, $id)
     {
-        $data    = $request->validated();
+        $data = $request->validated();
+        unset($data['version']);
 
         $oldThumbnail = null;
         $article = null;
@@ -111,7 +111,7 @@ class NewsController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail(); /* fixed: khoa bai viet khi cap nhat de tranh ghi de song song */
 
-                $this->assertFreshVersion($request->input('version'), $article->updated_at);
+                $this->assertFreshVersion($request->input('version'), $article);
 
                 $data['is_published'] = $request->boolean('is_published');
 
@@ -124,7 +124,9 @@ class NewsController extends Controller
                     $data['thumbnail'] = $this->storeThumbnail($request);
                 }
 
-                $article->update($data);
+                $article->fill($data);
+                $article->news_version = ((int) $article->news_version) + 1;
+                $article->save(); /* fixed: tang version rieng de bat 2 admin sua cung luc */
             });
         } catch (Exception $e) {
             if ($e instanceof ConcurrentModificationException) {
@@ -161,7 +163,7 @@ class NewsController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail(); /* fixed: khoa bai viet khi xoa */
 
-                $this->assertFreshVersion($request->input('version'), $article->updated_at);
+                $this->assertFreshVersion($request->input('version'), $article);
                 $thumbnail = $article->thumbnail;
                 $article->delete();
             });
@@ -201,13 +203,14 @@ class NewsController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail(); /* fixed: tranh 2 admin toggle trang thai cung luc */
 
-                $this->assertFreshVersion($request->input('version'), $article?->updated_at);
+                $this->assertFreshVersion($request->input('version'), $article);
 
-                $wasPublished = (bool) $article?->is_published;
-                $article->is_published = !($article?->is_published ?? false);
+                $wasPublished = (bool) $article->is_published;
+                $article->is_published = ! $article->is_published;
                 if ($article->is_published && !$article->published_at) {
                     $article->published_at = now();
                 }
+                $article->news_version = ((int) $article->news_version) + 1;
                 $article->save();
             });
         } catch (ConcurrentModificationException $e) {
@@ -255,7 +258,7 @@ class NewsController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail(); /* fixed: khoa bai viet khi gui mail de tranh bam gui song song */
 
-                $this->assertFreshVersion($request->input('version'), $article->updated_at);
+                $this->assertFreshVersion($request->input('version'), $article);
 
                 if (!$article->is_published) {
                     throw new ConcurrentModificationException('Bài viết vừa chuyển về nháp. Trang sẽ được tải lại để cập nhật trạng thái.');
@@ -265,7 +268,9 @@ class NewsController extends Controller
                     throw new ConcurrentModificationException('Email đã được người khác gửi trước đó. Trang sẽ được tải lại.');
                 }
 
-                $article->update(['email_sent' => 1]); /* fixed: danh dau trong lock de request sau khong gui trung */
+                $article->email_sent = 1;
+                $article->news_version = ((int) $article->news_version) + 1;
+                $article->save(); /* fixed: danh dau va tang version trong lock de request sau khong gui trung */
                 return $article->fresh();
             });
         } catch (ConcurrentModificationException $e) {

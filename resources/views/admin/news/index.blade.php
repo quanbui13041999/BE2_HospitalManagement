@@ -66,7 +66,7 @@
                             <form action="{{ route('admin.news.toggle', $item->news_id) }}" method="POST" class="d-inline">
                                 @csrf
                                 @method('PATCH')
-                                <input type="hidden" name="version" value="{{ optional($item->updated_at)->format('Y-m-d H:i:s') }}">
+                                <input type="hidden" name="version" value="{{ $item->news_version }}">
                                 <button type="submit" class="btn btn-sm {{ $item->is_published ? 'btn-success' : 'btn-outline-secondary' }}">
                                     {{ $item->is_published ? 'Đã đăng' : 'Nháp' }}
                                 </button>
@@ -78,7 +78,7 @@
                             @else
                             <form action="{{ route('admin.news.sendEmail', $item->news_id) }}" method="POST" class="d-inline">
                                 @csrf
-                                <input type="hidden" name="version" value="{{ optional($item->updated_at)->format('Y-m-d H:i:s') }}">
+                                <input type="hidden" name="version" value="{{ $item->news_version }}">
                                 <button type="submit" class="btn btn-sm btn-outline-primary" {{ !$item->is_published ? 'disabled' : '' }} title="Gửi email cho bệnh nhân">
                                     <i class="bi bi-envelope"></i> Gửi
                                 </button>
@@ -95,7 +95,7 @@
                                 <form action="{{ route('admin.news.destroy', $item->news_id) }}" method="POST" class="d-inline" data-confirm="Bạn có chắc chắn muốn xóa bài viết này?">
                                     @csrf
                                     @method('DELETE')
-                                    <input type="hidden" name="version" value="{{ optional($item->updated_at)->format('Y-m-d H:i:s') }}">
+                                    <input type="hidden" name="version" value="{{ $item->news_version }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
                                         <i class="bi bi-trash"></i>
                                     </button>
