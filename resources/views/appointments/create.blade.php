@@ -1248,7 +1248,7 @@
                                 <select name="service_id" class="form-control" id="service_id_select">
                                     <option value="">-- Không chọn --</option>
                                     @foreach($services as $svc)
-                                        <option value="{{ $svc->service_id }}" {{ old('service_id') == $svc->service_id ? 'selected' : '' }}>
+                                        <option value="{{ $svc->service_id }}" data-dept="{{ $svc->department_id }}" {{ old('service_id') == $svc->service_id ? 'selected' : '' }}>
                                             {{ $svc->service_name }}
                                             @if($svc->price) – {{ number_format($svc->price, 0, ',', '.') }}₫ @endif
                                         </option>
@@ -1958,6 +1958,30 @@
 
         // ── INIT ──
         updateSummary();
+
+        // Auto pre-select service and department from URL query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const svcParam = urlParams.get('service_id');
+        if (svcParam) {
+            const svcSelect = document.getElementById('service_id_select');
+            if (svcSelect) {
+                svcSelect.value = svcParam;
+                updateSummary();
+                
+                // Get the corresponding department id
+                const selectedOpt = svcSelect.options[svcSelect.selectedIndex];
+                if (selectedOpt) {
+                    const deptId = selectedOpt.getAttribute('data-dept');
+                    if (deptId) {
+                        const deptSelect = document.getElementById('dept');
+                        if (deptSelect) {
+                            deptSelect.value = deptId;
+                            onDeptChange();
+                        }
+                    }
+                }
+            }
+        }
     </script>
 
     <script>

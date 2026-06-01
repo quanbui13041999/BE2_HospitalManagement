@@ -95,7 +95,7 @@ class AuthController extends Controller
             );
             $redirectRoute = Auth::user()->is_admin ? 'admin.dashboard' : 'Home.trangchu';
 
-            return redirect()->route($redirectRoute)
+            return redirect()->intended(route($redirectRoute))
                 ->with('success', 'Đăng nhập thành công!');
         }
 

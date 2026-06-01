@@ -39,7 +39,9 @@ class ServiceController extends Controller
         $services = $this->repo->filteredPublicServices($request);
 
         $list = $services->getCollection()->map(function ($s) {
-            $priceNormal = $s->activePrices->firstWhere('price_type', 'Thường');
+            $priceNormal = $s->activePrices->first(fn($p) => str_contains(strtolower($p->price_type), 'thường') || str_contains(strtolower($p->price_type), 'normal')) ?? $s->activePrices->first();
+            $priceBhyt = $s->activePrices->first(fn($p) => str_contains(strtolower($p->price_type), 'bhyt') || str_contains(strtolower($p->price_type), 'bảo hiểm'));
+            $priceVip = $s->activePrices->first(fn($p) => str_contains(strtolower($p->price_type), 'vip') || str_contains(strtolower($p->price_type), 'cao cấp'));
             $lowestPrice = $s->activePrices->min('price');
             return [
                 'service_id'       => $s->service_id,
@@ -49,9 +51,11 @@ class ServiceController extends Controller
                 'duration_minutes' => $s->duration_minutes,
                 'department'       => $s->department?->department_name,
                 'price_normal'     => $priceNormal?->price,
+                'price_bhyt'       => $priceBhyt?->price,
+                'price_vip'        => $priceVip?->price,
                 'lowest_price'     => $lowestPrice,
                 'show_url'         => route('user.services.show', $s->service_id),
-                'book_url'         => route('appointments.create') . '?service_id=' . $s->service_id,
+                'book_url'         => route('user.services.show', $s->service_id),
             ];
         });
 
