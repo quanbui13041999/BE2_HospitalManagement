@@ -254,15 +254,29 @@
         if (checkedRadio) onScheduleSelect(checkedRadio);
     });
 
+    let isSubmitting = false;
+
     document.getElementById('reschedule-form')?.addEventListener('submit', function(e) {
+        if (isSubmitting) {
+            e.preventDefault();
+            return;
+        }
+
         const btn = document.getElementById('submit-btn');
         const spinner = document.getElementById('spinner');
         const icon = document.getElementById('submit-icon');
-        if (btn.disabled) return;
+
+        if (btn.disabled) {
+            e.preventDefault();
+            return;
+        }
+
+        isSubmitting = true;
         btn.disabled = true;
         spinner.style.display = 'inline-block';
         icon.style.display = 'none';
     });
+
 </script>
 </body>
 </html>

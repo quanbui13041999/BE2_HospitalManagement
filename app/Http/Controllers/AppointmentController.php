@@ -337,7 +337,7 @@ class AppointmentController extends Controller
 
         $oldAppointmentId = $request->integer('old_id');
         $newScheduleId = $request->integer('new_schedule_id');
-        $token = $request->string('token');
+        $token = (string) $request->string('token');
 
         // Xác thực token
         $expectedToken = hash_hmac('sha256', $oldAppointmentId . '|' . $newScheduleId, config('app.key'));
