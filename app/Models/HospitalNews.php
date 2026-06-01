@@ -55,6 +55,10 @@ class HospitalNews extends Model
             return asset($this->thumbnail);
         }
 
+        if (str_starts_with($this->thumbnail, 'news/')) {
+            return asset('storage/' . $this->thumbnail); /* fixed: thumbnail moi nam trong storage/app/public */
+        }
+
         return asset('storage/' . $this->thumbnail);
     }
 

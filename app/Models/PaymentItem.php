@@ -13,7 +13,13 @@ class PaymentItem extends Model
     protected $primaryKey = 'item_id';
     public $timestamps = false;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'payment_id',
+        'item_name',
+        'quantity',
+        'unit_price',
+        'subtotal',
+    ]; /* fixed: dong mass assignment, khong dung guarded rong */
 
     protected $casts = [
         'quantity' => 'integer',

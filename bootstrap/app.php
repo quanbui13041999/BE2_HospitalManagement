@@ -21,5 +21,20 @@ return Application::configure(basePath: dirname(__DIR__))
     })
 
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (Throwable $e, \Illuminate\Http\Request $request) {
+            if (! $request->expectsJson()) {
+                return null;
+            }
+
+            report($e); /* fixed: API log loi noi bo va tra JSON chung */
+
+            $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+            $message = $status >= 500 ? 'Đã xảy ra lỗi, vui lòng thử lại sau.' : 'Yêu cầu không hợp lệ.';
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'data' => null,
+            ], $status);
+        });
     })->create();

@@ -60,8 +60,7 @@ class GeminiChatService
         ];
 
         try {
-            $response = Http::withoutVerifying()
-                ->withQueryParameters(['key' => $this->apiKey])
+            $response = Http::withQueryParameters(['key' => $this->apiKey]) /* fixed: bat verify TLS khi goi API ngoai */
                 ->timeout(15)
                 ->post($this->apiUrl, $payload);
 

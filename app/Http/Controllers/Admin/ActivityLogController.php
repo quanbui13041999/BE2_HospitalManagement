@@ -142,6 +142,16 @@ class ActivityLogController extends Controller
 
     private function normalizeFilters(Request $request): array
     {
+        $request->validate([
+            'search' => 'nullable|string|max:150',
+            'role_name' => 'nullable|string|max:80',
+            'action' => 'nullable|string|max:80',
+            'subject_type' => 'nullable|string|max:80',
+            'status' => 'nullable|string|max:80',
+            'date_from' => 'nullable|date_format:Y-m-d',
+            'date_to' => 'nullable|date_format:Y-m-d|after_or_equal:date_from',
+        ]); /* fixed: validate filter log truoc khi dua vao query */
+
         $roleName = (string) $request->query('role_name', '');
         $action = (string) $request->query('action', '');
         $subjectType = (string) $request->query('subject_type', '');

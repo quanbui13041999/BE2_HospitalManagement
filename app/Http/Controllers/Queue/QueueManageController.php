@@ -5,6 +5,8 @@ use App\Http\Controllers\Controller;
 use App\Services\QueueService;
 use App\Models\{DoctorSchedule, QueueTicket};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class QueueManageController extends Controller
 {
@@ -68,7 +70,7 @@ class QueueManageController extends Controller
      */
     public function checkin(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'schedule_id'  => 'required|exists:doctorschedules,schedule_id',
             'patient_name' => 'required|string|max:100',
             'priority'     => 'required|in:normal,elderly,disabled,emergency',
@@ -79,10 +81,22 @@ class QueueManageController extends Controller
             'user_id'      => 'nullable|exists:users,user_id',
         ]);
 
-        $ticket = $this->queueService->checkin($request->all());
+        try {
+            $ticket = $this->queueService->checkin($validated); /* fixed: chi truyen input da validate, tranh mass assignment/input poisoning */
+        } catch (\Throwable $e) {
+            Log::error('Queue check-in failed', [
+                'schedule_id' => $validated['schedule_id'] ?? null,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: ghi log noi bo va khong lo loi that */
+
+            return back()
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
+                ->withInput();
+        }
 
         return redirect()
-            ->route('queue.manage.show', $request->schedule_id)
+            ->route('queue.manage.show', $validated['schedule_id'])
             ->with('success', "Check-in thành công! Số thứ tự: #{$ticket->queue_number}");
     }
 
@@ -91,7 +105,22 @@ class QueueManageController extends Controller
      */
     public function skip(Request $request, int $ticketId)
     {
-        $this->queueService->skip($ticketId, $request->input('reason', ''));
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $this->queueService->skip($ticketId, $validated['reason'] ?? ''); /* fixed: validate ly do skip truoc khi luu */
+        } catch (\Throwable $e) {
+            Log::error('Queue ticket skip failed', [
+                'ticket_id' => $ticketId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
+        }
+
         return back()->with('success', 'Đã bỏ qua ticket.');
     }
 
@@ -100,6 +129,15 @@ class QueueManageController extends Controller
      */
     public function apiSnapshot(int $scheduleId)
     {
-        return response()->json($this->queueService->getQueueSnapshot($scheduleId));
+        $snapshot = $this->queueService->getQueueSnapshot($scheduleId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'current' => $snapshot['current'],
+            'waiting' => $snapshot['waiting'],
+            'stats' => $snapshot['stats'],
+            'data' => $snapshot,
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 }

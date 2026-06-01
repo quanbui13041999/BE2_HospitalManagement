@@ -27,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (function_exists('header_remove')) {
+            header_remove('X-Powered-By'); /* fixed: han che lo framework/runtime qua response header */
+        }
 
         \Illuminate\Support\Facades\Schema::defaultStringLength(191);
 

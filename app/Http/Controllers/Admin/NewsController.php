@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Exception;
 
 class NewsController extends Controller
@@ -47,7 +49,18 @@ class NewsController extends Controller
             $data['thumbnail'] = $this->storeThumbnail($request);
         }
 
-        $article = HospitalNews::create($data);
+        try {
+            $article = HospitalNews::create($data);
+        } catch (Exception $e) {
+            Log::error('Create news failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi DB noi bo, khong lo ra UI */
+
+            return back()
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
+                ->withInput();
+        }
 
         if ($article->is_published) {
             $this->notifications->createForAll(
@@ -87,7 +100,19 @@ class NewsController extends Controller
             $data['thumbnail'] = $this->storeThumbnail($request);
         }
 
-        $article->update($data);
+        try {
+            $article->update($data);
+        } catch (Exception $e) {
+            Log::error('Update news failed', [
+                'news_id' => $article->news_id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
+                ->withInput();
+        }
 
         return redirect()->route('admin.news.index')
             ->with('success', 'Đã cập nhật bài viết.');
@@ -99,7 +124,17 @@ class NewsController extends Controller
         if ($article->thumbnail) {
             $this->deleteThumbnail($article->thumbnail);
         }
-        $article->delete();
+        try {
+            $article->delete();
+        } catch (Exception $e) {
+            Log::error('Delete news failed', [
+                'news_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
+        }
 
         return redirect()->route('admin.news.index')
             ->with('success', 'Đã xóa bài viết.');
@@ -198,16 +233,9 @@ class NewsController extends Controller
     private function storeThumbnail(Request $request): string
     {
         $file = $request->file('thumbnail');
-        $directory = public_path('uploads/news');
+        $filename = 'news_' . Str::random(32) . '.' . $file->extension();
 
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
-
-        $filename = uniqid('news_', true) . '.' . $file->getClientOriginalExtension();
-        $file->move($directory, $filename);
-
-        return asset('uploads/news/' . $filename);
+        return $file->storePubliclyAs('news', $filename, 'public'); /* fixed: upload qua storage/app/public, khong move truc tiep vao public/ */
     }
 
     private function deleteThumbnail(?string $thumbnail): void
@@ -216,20 +244,14 @@ class NewsController extends Controller
             return;
         }
 
-        $relativePath = $thumbnail;
+        $relativePath = filter_var($thumbnail, FILTER_VALIDATE_URL)
+            ? ltrim(parse_url($thumbnail, PHP_URL_PATH) ?: '', '/')
+            : $thumbnail;
 
-        if (filter_var($thumbnail, FILTER_VALIDATE_URL)) {
-            $relativePath = ltrim(parse_url($thumbnail, PHP_URL_PATH) ?: '', '/');
-        }
+        $relativePath = str($relativePath)->after('storage/')->toString();
 
-        if (! str_starts_with($relativePath, 'uploads/news/')) {
-            return;
-        }
-
-        $path = public_path($relativePath);
-
-        if (is_file($path)) {
-            unlink($path);
+        if (str_starts_with($relativePath, 'news/')) {
+            Storage::disk('public')->delete($relativePath); /* fixed: xoa file qua Storage de tranh path traversal */
         }
     }
 }

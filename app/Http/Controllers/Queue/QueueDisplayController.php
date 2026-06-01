@@ -31,6 +31,15 @@ class QueueDisplayController extends Controller
 
     public function apiSnapshot(int $scheduleId, QueueService $queueService)
     {
-        return response()->json($queueService->getQueueSnapshot($scheduleId));
+        $snapshot = $queueService->getQueueSnapshot($scheduleId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'current' => $snapshot['current'],
+            'waiting' => $snapshot['waiting'],
+            'stats' => $snapshot['stats'],
+            'data' => $snapshot,
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 }

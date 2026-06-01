@@ -8,6 +8,7 @@ use App\Services\Doctor\DoctorTimeslotService;
 use App\Services\Doctor\AppointmentQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 /**
  * AppointmentController
@@ -107,8 +108,13 @@ class AppointmentController extends Controller
                 ->with('success', $result['message'])
                 ->with('appointment_id', $result['appointment_id']);
         } catch (\Exception $e) {
+            Log::error('Create appointment failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi noi bo, khong tra stack/message that ra user */
+
             return back()
-                ->withErrors(['msg' => $e->getMessage()])
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
                 ->withInput();
         }
     }
@@ -135,7 +141,7 @@ class AppointmentController extends Controller
     // ================================================================
     // 3. FORM DỜI LỊCH — GET /lich-hen/{id}/doi
     // ================================================================
-    public function edit($id)
+    public function edit(int $id)
     {
         if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
             return $redirect;
@@ -158,14 +164,20 @@ class AppointmentController extends Controller
         try {
             $availableSchedules = $this->appointmentService->getAvailableSchedulesForReschedule($id, $appointment->doctor_id);
         } catch (\Exception $e) {
+            Log::error('Load reschedule options failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: an loi he thong khoi response */
+
             return redirect()->route('appointments.index')
-                ->withErrors(['msg' => $e->getMessage()]);
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
         }
 
         return view('appointments.edit', compact('appointment', 'availableSchedules'));
     }
 
-    public function doctorOff($id)
+    public function doctorOff(int $id)
     {
         if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
             return $redirect;
@@ -190,7 +202,7 @@ class AppointmentController extends Controller
     // ================================================================
     // 3b. XỬ LÝ DỜI LỊCH — PUT /lich-hen/{id}/doi
     // ================================================================
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
             return $redirect;
@@ -220,8 +232,14 @@ class AppointmentController extends Controller
             return redirect()->route('appointments.index')
                 ->with('success', $result['message']);
         } catch (\Exception $e) {
+            Log::error('Reschedule appointment failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi noi bo, tra thong bao chung */
+
             return back()
-                ->withErrors(['msg' => $e->getMessage()])
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
                 ->withInput();
         }
     }
@@ -229,7 +247,7 @@ class AppointmentController extends Controller
     // ================================================================
     // 4. HỦY LỊCH HẸN — POST /lich-hen/{id}/huy
     // ================================================================
-    public function cancel(Request $request, $id)
+    public function cancel(Request $request, int $id)
     {
         if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
             return $redirect;
@@ -252,8 +270,14 @@ class AppointmentController extends Controller
             return redirect()->route('appointments.index')
                 ->with('success', $result['message']);
         } catch (\Exception $e) {
+            Log::error('Cancel appointment failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: khong lo ly do loi noi bo qua UI */
+
             return redirect()->route('appointments.index')
-                ->withErrors(['msg' => $e->getMessage()]);
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
         }
     }
 
@@ -352,11 +376,11 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->isPatient() || $user->isAdmin()) {
+        if (!$user || in_array((int) $user->role_id, [1, 3], true)) {
             return null;
         }
 
-        if ($user->isDoctor()) {
+        if ((int) $user->role_id === 2) {
             return redirect()->route('doctor.dashboard')
                 ->with('error', 'Tài khoản bác sĩ không dùng chức năng đặt lịch của bệnh nhân.');
         }
@@ -368,7 +392,7 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->isPatient() || $user->isAdmin()) {
+        if (!$user || in_array((int) $user->role_id, [1, 3], true)) {
             return null;
         }
 

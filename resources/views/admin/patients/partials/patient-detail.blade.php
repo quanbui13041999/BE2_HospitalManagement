@@ -275,7 +275,9 @@
                                         <div>
                                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                                 <h6 class="fw-bold text-slate-800 mb-0">Hồ sơ khám bệnh <code class="small fw-bold">{{ $record->record_code }}</code></h6>
-                                                {!! $record->status_badge !!}
+                                                <span style="background:{{ $record->status_bg }}; color:{{ $record->status_color }}; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:500; display:inline-flex; align-items:center; gap:4px;">
+                                                    <span>{{ $record->status_icon }}</span> <span>{{ $record->status_label }}</span>
+                                                </span> {{-- fixed: khong render raw HTML tu accessor --}}
                                             </div>
                                             <div class="text-slate-500 mt-1 small">
                                                 <i class="bi bi-calendar2-event text-primary-subtle me-1.5"></i>Ngày khám: <strong>{{ $record->exam_date ? $record->exam_date->format('d/m/Y') : '---' }}</strong>

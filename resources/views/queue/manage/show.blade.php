@@ -275,7 +275,8 @@ function queueManage() {
             try {
                 const res = await fetch(`/queue/manage/api/${this.scheduleId}/snapshot`);
                 if (res.ok) {
-                    const data = await res.json();
+                    const payload = await res.json();
+                    const data = payload.data || payload; // fixed: ho tro JSON wrapper {success,message,data}
                     this.current = data.current;
                     this.waiting = data.waiting.map(t => {
                         const checkin = new Date(t.checkin_time);

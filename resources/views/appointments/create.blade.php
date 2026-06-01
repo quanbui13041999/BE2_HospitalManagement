@@ -1298,7 +1298,7 @@
         // BASE DATA — truyền từ PHP (preload 14 ngày đầu cho các route
         // bác sĩ → không cần AJAX lần đầu)
         // ══════════════════════════════════════════════════════════════
-        const doctorsByDept = JSON.parse('{!! json_encode($doctorsByDept, JSON_UNESCAPED_SLASHES) !!}');
+        const doctorsByDept = @json($doctorsByDept); // fixed: encode JSON an toan cho JavaScript
 
         // Route URLs
         const ROUTE_SUGGEST = '{{ route("appointments.suggest") }}';

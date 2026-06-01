@@ -5,15 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Appointment;
-use App\Models\MedicalRecord;
-use App\Models\PatientAllergy;
-use App\Models\PatientMedicalHistory;
-use App\Models\InsuranceCard;
-use App\Models\MembershipCard;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class PatientSearchController extends Controller
@@ -48,6 +43,28 @@ class PatientSearchController extends Controller
      */
     public function search(Request $request)
     {
+        $filters = $request->validate([
+            'keyword' => 'nullable|string|max:100',
+            'gender' => ['nullable', Rule::in(['Nam', 'Nữ', 'Khác'])],
+            'age_from' => 'nullable|integer|min:0|max:130',
+            'age_to' => 'nullable|integer|min:0|max:130',
+            'registered_from' => 'nullable|date',
+            'registered_to' => 'nullable|date|after_or_equal:registered_from',
+            'status' => 'nullable|in:0,1',
+            'department_id' => 'nullable|integer|exists:departments,department_id',
+            'doctor_id' => 'nullable|integer|exists:doctors,doctor_id',
+            'appointment_status' => 'nullable|string|max:50',
+            'appointment_from' => 'nullable|date',
+            'appointment_to' => 'nullable|date|after_or_equal:appointment_from',
+            'membership_tier' => 'nullable|string|max:50',
+            'has_insurance' => 'nullable|in:0,1',
+            'chronic_disease' => 'nullable|string|max:100',
+            'allergy' => 'nullable|string|max:100',
+            'sort_by' => 'nullable|in:full_name,created_at,date_of_birth,user_id',
+            'sort_dir' => 'nullable|in:asc,desc',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]); /* fixed: validate toan bo filter, khong trust query thô */
+
         $query = User::query()
             ->where('role_id', 3) // Chỉ lấy bệnh nhân
             ->with([
@@ -59,7 +76,7 @@ class PatientSearchController extends Controller
             ]);
 
         // -- 1. Từ khóa tổng quát (tìm trong nhiều trường cùng lúc)
-        if ($keyword = $request->get('keyword')) {
+        if ($keyword = ($filters['keyword'] ?? null)) {
             $keyword = trim($keyword);
             $query->where(function ($q) use ($keyword) {
                 $q->where('full_name', 'LIKE', "%{$keyword}%")
@@ -71,98 +88,95 @@ class PatientSearchController extends Controller
         }
 
         // -- 2. Lọc theo giới tính
-        if ($gender = $request->get('gender')) {
+        if ($gender = ($filters['gender'] ?? null)) {
             $query->where('gender', $gender);
         }
 
         // -- 3. Lọc theo khoảng tuổi
-        if ($ageFrom = $request->get('age_from')) {
+        if ($ageFrom = ($filters['age_from'] ?? null)) {
             $query->whereDate('date_of_birth', '<=', now()->subYears((int)$ageFrom));
         }
-        if ($ageTo = $request->get('age_to')) {
+        if ($ageTo = ($filters['age_to'] ?? null)) {
             $query->whereDate('date_of_birth', '>=', now()->subYears((int)$ageTo + 1)->addDay());
         }
 
         // -- 4. Lọc theo ngày đăng ký (bệnh nhân mới/cũ)
-        if ($regFrom = $request->get('registered_from')) {
+        if ($regFrom = ($filters['registered_from'] ?? null)) {
             $query->whereDate('created_at', '>=', $regFrom);
         }
-        if ($regTo = $request->get('registered_to')) {
+        if ($regTo = ($filters['registered_to'] ?? null)) {
             $query->whereDate('created_at', '<=', $regTo);
         }
 
         // -- 5. Lọc theo trạng thái tài khoản
-        if ($request->filled('status')) {
-            $query->where('status', $request->get('status'));
+        if (array_key_exists('status', $filters)) {
+            $query->where('status', $filters['status']);
         }
 
         // -- 6. Lọc theo khoa khám
-        if ($deptId = $request->get('department_id')) {
+        if ($deptId = ($filters['department_id'] ?? null)) {
             $query->whereHas('appointments.schedule.doctor', function ($q) use ($deptId) {
                 $q->where('department_id', $deptId);
             });
         }
 
         // -- 7. Lọc theo bác sĩ đã từng khám
-        if ($doctorId = $request->get('doctor_id')) {
+        if ($doctorId = ($filters['doctor_id'] ?? null)) {
             $query->whereHas('appointments.schedule', function ($q) use ($doctorId) {
                 $q->where('doctor_id', $doctorId);
             });
         }
 
         // -- 8. Lọc theo trạng thái lịch hẹn
-        if ($apptStatus = $request->get('appointment_status')) {
+        if ($apptStatus = ($filters['appointment_status'] ?? null)) {
             $query->whereHas('appointments', function ($q) use ($apptStatus) {
                 $q->where('status', $apptStatus);
             });
         }
 
         // -- 9. Lọc theo khoảng thời gian có lịch khám
-        if ($apptFrom = $request->get('appointment_from')) {
+        if ($apptFrom = ($filters['appointment_from'] ?? null)) {
             $query->whereHas('appointments', function ($q) use ($apptFrom) {
                 $q->whereDate('appointment_time', '>=', $apptFrom);
             });
         }
-        if ($apptTo = $request->get('appointment_to')) {
+        if ($apptTo = ($filters['appointment_to'] ?? null)) {
             $query->whereHas('appointments', function ($q) use ($apptTo) {
                 $q->whereDate('appointment_time', '<=', $apptTo);
             });
         }
 
         // -- 10. Lọc theo hạng thẻ thành viên
-        if ($tier = $request->get('membership_tier')) {
+        if ($tier = ($filters['membership_tier'] ?? null)) {
             $query->whereHas('membershipCard', fn($q) => $q->where('tier', $tier));
         }
 
         // -- 11. Lọc theo bảo hiểm còn hạn
-        if ($request->get('has_insurance') === '1') {
+        if (($filters['has_insurance'] ?? null) === '1') {
             $query->whereHas('insuranceCards', fn($q) => $q->where('status', 'Còn hạn'));
         }
 
         // -- 12. Lọc theo bệnh mãn tính (tìm trong patientmedicalhistory)
-        if ($chronic = $request->get('chronic_disease')) {
+        if ($chronic = ($filters['chronic_disease'] ?? null)) {
             $query->whereHas('patientMedicalHistories', function ($q) use ($chronic) {
                 $q->where('is_chronic', 1)->where('condition', 'LIKE', "%{$chronic}%");
             });
         }
 
         // -- 13. Lọc theo dị ứng
-        if ($allergy = $request->get('allergy')) {
+        if ($allergy = ($filters['allergy'] ?? null)) {
             $query->whereHas('patientAllergies', function ($q) use ($allergy) {
                 $q->where('allergen', 'LIKE', "%{$allergy}%");
             });
         }
 
         // -- 14. Sắp xếp
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortDir = $request->get('sort_dir', 'desc');
-        $allowedSorts = ['full_name', 'created_at', 'date_of_birth', 'user_id'];
-        if (in_array($sortBy, $allowedSorts)) {
-            $query->orderBy($sortBy, $sortDir);
-        }
+        $sortBy = $filters['sort_by'] ?? 'created_at';
+        $sortDir = $filters['sort_dir'] ?? 'desc';
+        $query->orderBy($sortBy, $sortDir); /* fixed: sort_by/sort_dir whitelist de tranh SQL injection qua orderBy */
 
         // -- 15. Phân trang
-        $perPage = (int)$request->get('per_page', 12);
+        $perPage = (int)($filters['per_page'] ?? 12);
         $patients = $query->paginate($perPage)->withQueryString();
 
         // Tính toán thêm thông tin cho từng bệnh nhân
@@ -269,7 +283,7 @@ SYSTEM;
             if (empty($apiKey)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Lỗi: GEMINI_API_KEY chưa được cấu hình trong file .env!',
+                    'message' => 'Đã xảy ra lỗi, vui lòng thử lại sau.',
                 ], 400);
             }
 
@@ -292,8 +306,7 @@ SYSTEM;
                 ]
             ];
 
-            $response = Http::withoutVerifying()
-                ->withQueryParameters(['key' => $apiKey])
+            $response = Http::withQueryParameters(['key' => $apiKey]) /* fixed: bat verify TLS, khong bo qua chung chi SSL */
                 ->timeout(15)
                 ->post($apiUrl, $payload);
 
@@ -318,10 +331,13 @@ SYSTEM;
             ]);
 
         } catch (\Exception $e) {
-            Log::error('AI Patient Search Error: ' . $e->getMessage());
+            Log::error('AI Patient Search Error', [
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi that noi bo */
+
             return response()->json([
                 'success' => false,
-                'message' => 'Không thể kết nối AI: ' . $e->getMessage() . '. Vui lòng thử tìm kiếm thường.',
+                'message' => 'Đã xảy ra lỗi, vui lòng thử lại sau.',
             ], 500);
         }
     }

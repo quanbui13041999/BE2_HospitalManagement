@@ -207,6 +207,7 @@
 
                 @if($isPatient)
                     <a href="{{ route('appointments.index') }}" class="hc-site-nav__link {{ request()->routeIs('appointments.index') || request()->routeIs('appointments.edit') ? 'is-active' : '' }}">📋 Lịch hẹn</a>
+                    <a href="{{ route('medical_history.index') }}" class="hc-site-nav__link {{ request()->routeIs('medical_history.*') ? 'is-active' : '' }}">📁 Hồ sơ bệnh án</a>
                 @endif
 
                 @if($isPatient || $isAdmin)
@@ -221,6 +222,9 @@
             @auth
                 @if($isDoctor || $isAdmin)
                     <a href="{{ route('doctor.dashboard') }}" class="hc-site-nav__link {{ request()->routeIs('doctor.dashboard') ? 'is-active' : '' }}">🩺 Dashboard bác sĩ</a>
+                    @if($isDoctor)
+                        <a href="{{ route('queue.doctor.index') }}" class="hc-site-nav__link {{ request()->routeIs('queue.doctor.*') ? 'is-active' : '' }}">🧑‍⚕️ Khám bệnh</a>
+                    @endif
                     <a href="{{ route('doctor.schedule') }}" class="hc-site-nav__link {{ request()->routeIs('doctor.schedule') ? 'is-active' : '' }}">🗓️ Lịch làm việc</a>
                     <a href="{{ route('medical-records.index') }}" class="hc-site-nav__link {{ request()->routeIs('medical-records.*') ? 'is-active' : '' }}">📁 Hồ sơ bệnh án</a>
                 @endif

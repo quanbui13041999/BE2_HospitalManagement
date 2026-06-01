@@ -20,7 +20,7 @@
         </div>
         <div class="text-end">
             <span class="badge bg-primary rounded-pill px-4 py-2 font-bold shadow-sm">
-                Bác sĩ: {{ auth()->user()->full_name }}
+                Bác sĩ: {{ Auth::user()->full_name }}
             </span>
         </div>
     </div>
@@ -247,7 +247,8 @@ function doctorSchedule(scheduleId) {
             try {
                 const res = await fetch(`/queue/doctor/api/${this.scheduleId}/snapshot`);
                 if (res.ok) {
-                    const data = await res.json();
+                    const payload = await res.json();
+                    const data = payload.data || payload; // fixed: ho tro JSON wrapper {success,message,data}
                     this.current = data.current;
                     this.waiting = data.waiting.map(t => ({
                         ...t,
