@@ -179,37 +179,37 @@
     <!-- KPI Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="kpi-card">
+            <div class="kpi-card shadow-sm border-0 bg-white">
                 <div class="kpi-icon blue"><i class="bi bi-people-fill"></i></div>
                 <div>
-                    <div class="kpi-value">{{ number_format($totalAppointments) }}</div>
+                    <div class="kpi-value text-primary">{{ number_format($totalAppointments) }}</div>
                     <div class="kpi-label">Lượt khám tháng này</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="kpi-card">
+            <div class="kpi-card shadow-sm border-0 bg-white">
                 <div class="kpi-icon green"><i class="bi bi-cash-stack"></i></div>
                 <div>
-                    <div class="kpi-value">{{ number_format($totalRevenue / 1000000, 1) }}M</div>
+                    <div class="kpi-value text-success" style="font-size: 1.35rem;">{{ number_format($totalRevenue, 0, ',', '.') }} đ</div>
                     <div class="kpi-label">Doanh thu tạo ra</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="kpi-card">
+            <div class="kpi-card shadow-sm border-0 bg-white">
                 <div class="kpi-icon orange"><i class="bi bi-clock-history"></i></div>
                 <div>
-                    <div class="kpi-value">24 phút</div>
+                    <div class="kpi-value text-warning">{{ $avgDuration }} phút</div>
                     <div class="kpi-label">TG khám trung bình</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="kpi-card">
+            <div class="kpi-card shadow-sm border-0 bg-white">
                 <div class="kpi-icon red"><i class="bi bi-x-circle-fill"></i></div>
                 <div>
-                    <div class="kpi-value">{{ $cancelRate }}%</div>
+                    <div class="kpi-value text-danger">{{ $cancelRate }}%</div>
                     <div class="kpi-label">Tỷ lệ hủy lịch</div>
                 </div>
             </div>
@@ -256,7 +256,7 @@
                                 </td>
                                 <td class="text-center fw-bold">{{ $doc->total_appointments }}</td>
                                 <td class="text-center text-danger">{{ $doc->cancel_rate }}%</td>
-                                <td class="text-end fw-bold">{{ number_format($doc->revenue / 1000000, 1) }}M</td>
+                                <td class="text-end fw-bold text-success">{{ number_format($doc->revenue, 0, ',', '.') }} đ</td>
                             </tr>
                             @endforeach
                             @if($doctorStats->isEmpty())

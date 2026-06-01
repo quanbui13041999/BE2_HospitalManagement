@@ -32,6 +32,37 @@ class ServiceController extends Controller
     }
 
     /**
+     * JSON endpoint cho realtime polling từ trang công khai /dich-vu.
+     */
+    public function publicServicesData(Request $request)
+    {
+        $services = $this->repo->filteredPublicServices($request);
+
+        $list = $services->getCollection()->map(function ($s) {
+            $priceNormal = $s->activePrices->firstWhere('price_type', 'Thường');
+            $lowestPrice = $s->activePrices->min('price');
+            return [
+                'service_id'       => $s->service_id,
+                'service_code'     => $s->service_code,
+                'service_name'     => $s->service_name,
+                'description'      => $s->description,
+                'duration_minutes' => $s->duration_minutes,
+                'department'       => $s->department?->department_name,
+                'price_normal'     => $priceNormal?->price,
+                'lowest_price'     => $lowestPrice,
+                'show_url'         => route('user.services.show', $s->service_id),
+                'book_url'         => route('appointments.create') . '?service_id=' . $s->service_id,
+            ];
+        });
+
+        return response()->json([
+            'total'     => $services->total(),
+            'services'  => $list,
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
      * Hiển thị chi tiết dịch vụ.
      */
     public function show(Request $request, int $id)

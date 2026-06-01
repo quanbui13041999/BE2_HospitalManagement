@@ -332,6 +332,35 @@
         listBtn.classList.add('active');
         localStorage.setItem('serviceViewMode', 'list');
     });
+
+    // ── Realtime polling: cập nhật ngay khi admin thay đổi dịch vụ ──────────
+    const PUBLIC_DATA_URL = '{{ route("user.services.data") }}';
+    let svcSnapshot = {{ $services->total() }};
+    let realtimeEl = document.createElement('div');
+    realtimeEl.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#0D47A1;color:#fff;'
+        + 'padding:6px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .4s;z-index:9999;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);';
+    realtimeEl.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang đồng bộ dữ liệu...';
+    document.body.appendChild(realtimeEl);
+
+    setInterval(() => {
+        fetch(PUBLIC_DATA_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data.total !== svcSnapshot) {
+                    // Có thay đổi → reload trang ngay lập tức
+                    svcSnapshot = data.total;
+                    realtimeEl.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Dữ liệu mới – đang cập nhật...';
+                    realtimeEl.style.background = '#2e7d32';
+                    realtimeEl.style.opacity = '1';
+                    setTimeout(() => window.location.reload(), 800);
+                } else {
+                    realtimeEl.style.opacity = '1';
+                    setTimeout(() => { realtimeEl.style.opacity = '0'; }, 1800);
+                }
+            })
+            .catch(() => {});
+    }, 15000); // 15 giây – nhanh hơn vì đây là trang công khai
+
 </script>
 @endpush
 

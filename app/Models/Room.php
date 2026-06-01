@@ -11,7 +11,7 @@ class Room extends Model
 
     protected $table = 'rooms';
     protected $primaryKey = 'room_id';
-    public $timestamps = true;
+    public $timestamps = false;
 
     const ROOM_TYPES = [
         'Khám bệnh',

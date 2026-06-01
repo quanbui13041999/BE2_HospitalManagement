@@ -62,6 +62,7 @@ Route::post('/logout',   [AuthController::class, 'logout'])->name('logout');
 
 // Dịch vụ công khai (không cần đăng nhập)
 Route::prefix('dich-vu')->name('user.services.')->controller(UserServiceController::class)->group(function () {
+    Route::get('/data',    'publicServicesData')->name('data');   // Realtime polling
     Route::get('/',        'index')->name('index');
     Route::get('/{id}',    'show')->name('show');
     Route::get('/{id}/gia/{priceType}', 'getPrice')->name('get-price');
@@ -318,6 +319,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     // Quản lý Dịch vụ (CRUD + bảng giá)
     // --------------------------------------------------------
     Route::prefix('services')->name('services.')->group(function () {
+        Route::get('/data',           [AdminServiceController::class, 'servicesData'])->name('data');   // Realtime polling
         Route::get('/',               [AdminServiceController::class, 'index'])->name('index');
         Route::get('/create',         [AdminServiceController::class, 'create'])->name('create');
         Route::post('/',              [AdminServiceController::class, 'store'])->name('store');
@@ -349,6 +351,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
             Route::get('/',                [RoomController::class, 'scheduleIndex'])->name('index');
             Route::get('/create',          [RoomController::class, 'createSchedule'])->name('create');
             Route::post('/',               [RoomController::class, 'storeSchedule'])->name('store');
+            Route::post('/auto-allocate',  [RoomController::class, 'autoAllocate'])->name('auto-allocate');
             Route::get('/{schedule}/edit', [RoomController::class, 'editSchedule'])->name('edit');
             Route::put('/{schedule}',      [RoomController::class, 'updateSchedule'])->name('update');
             Route::delete('/{schedule}',   [RoomController::class, 'destroySchedule'])->name('destroy');
@@ -356,6 +359,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         });
 
         // CRUD phòng
+        Route::get('/data',            [RoomController::class, 'roomsData'])->name('data');   // Realtime polling
         Route::get('/',                [RoomController::class, 'index'])->name('index');
         Route::get('/create',          [RoomController::class, 'create'])->name('create');
         Route::post('/',               [RoomController::class, 'store'])->name('store');

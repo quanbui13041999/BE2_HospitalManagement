@@ -36,8 +36,8 @@ class ServiceRepository
     {
         $result = [];
         foreach (['Thường', 'BHYT', 'VIP'] as $type) {
-            $result[$type] = DB::table('ServicePrices as sp')
-                ->join('Services as s', 's.service_id', '=', 'sp.service_id')
+            $result[$type] = DB::table('serviceprices as sp')
+                ->join('services as s', 's.service_id', '=', 'sp.service_id')
                 ->where('sp.price_type', $type)
                 ->where('s.status', 1)
                 ->where('sp.effective_date', '<=', now()->toDateString())
@@ -89,9 +89,9 @@ class ServiceRepository
 
     public function priceHistory()
     {
-        return DB::table('ServicePrices as sp')
-            ->join('Services as s', 's.service_id', '=', 'sp.service_id')
-            ->leftJoin('Users as u', 'u.user_id', '=', 'sp.created_by')
+        return DB::table('serviceprices as sp')
+            ->join('services as s', 's.service_id', '=', 'sp.service_id')
+            ->leftJoin('users as u', 'u.user_id', '=', 'sp.created_by')
             ->select([
                 'sp.created_at as changed_at',
                 's.service_name',
