@@ -133,13 +133,16 @@
         </div>
     </div>
 
-    <script type="application/json" id="queue-display-config">
-        @json([
+    @php
+        $queueDisplayConfig = [
             'scheduleId' => $schedule->schedule_id,
             'snapshot' => $snapshot,
             'pusherKey' => config('broadcasting.connections.pusher.key'),
             'pusherCluster' => config('broadcasting.connections.pusher.options.cluster', 'mt1'),
-        ])
+        ];
+    @endphp
+    <script type="application/json" id="queue-display-config">
+        @json($queueDisplayConfig)
     </script>
     <script>
     const queueDisplayConfigEl = document.getElementById('queue-display-config');
