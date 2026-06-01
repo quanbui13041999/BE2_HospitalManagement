@@ -1031,7 +1031,7 @@
             <form id="cancelForm" method="POST">
                 @csrf
                 <input type="hidden" name="version" id="cancelVersion">
-                <textarea name="cancel_reason" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
+                <textarea name="cancel_reason" maxlength="255" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
                 <div class="modal-btns">
                     <button type="button" class="modal-cancel-btn" onclick="closeModal()">Không, giữ lại</button>
                     <button type="submit" class="modal-confirm-btn">Xác nhận hủy</button>
@@ -1088,6 +1088,25 @@
         window.alert = function(message) {
             window.showAppNotification(message, 'error');
         };
+
+        function bindStandaloneInputLimitWarnings() {
+            document.querySelectorAll('input[maxlength], textarea[maxlength]').forEach(function(field) {
+                field.addEventListener('input', function() {
+                    if (field.maxLength <= 0 || field.value.length < field.maxLength || field.dataset.limitNotified === '1') {
+                        return;
+                    }
+
+                    field.dataset.limitNotified = '1';
+                    window.showAppNotification('Trường này tối đa ' + field.maxLength + ' ký tự. Vui lòng rút ngắn nội dung.', 'warning'); /* fixed: bao loi textbox qua dai tren man hinh */
+                });
+
+                field.addEventListener('blur', function() {
+                    field.dataset.limitNotified = '';
+                });
+            });
+        }
+
+        bindStandaloneInputLimitWarnings();
     </script>
     @if(session('reload_page'))
     <script>

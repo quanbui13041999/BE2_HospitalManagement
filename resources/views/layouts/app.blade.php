@@ -135,6 +135,40 @@
             window.showAppNotification(message, 'error');
         };
 
+        function appInputLimitMessage(field) {
+            const label = document.querySelector(`label[for="${field.id}"]`);
+            const name = label ? label.textContent.trim() : (field.getAttribute('name') || 'Trường này');
+            return `${name} tối đa ${field.maxLength} ký tự. Vui lòng rút ngắn nội dung.`;
+        }
+
+        document.addEventListener('input', function (event) {
+            const field = event.target;
+            if (!field || field.maxLength <= 0 || field.value.length < field.maxLength) return;
+            if (field.dataset.limitNotified === '1') return;
+
+            field.dataset.limitNotified = '1';
+            field.classList.add('is-invalid');
+            window.showAppNotification(appInputLimitMessage(field), 'warning');
+        });
+
+        document.addEventListener('blur', function (event) {
+            const field = event.target;
+            if (!field || field.maxLength <= 0 || field.value.length < field.maxLength) return;
+            field.dataset.limitNotified = '';
+        }, true);
+
+        document.addEventListener('submit', function (event) {
+            const invalidField = Array.from(event.target.querySelectorAll('input[maxlength], textarea[maxlength]'))
+                .find(field => field.value.length > field.maxLength);
+
+            if (invalidField) {
+                event.preventDefault();
+                invalidField.classList.add('is-invalid');
+                invalidField.focus();
+                window.showAppNotification(appInputLimitMessage(invalidField), 'warning');
+            }
+        });
+
         document.addEventListener('submit', function (event) {
             const form = event.target.closest('form[data-confirm]');
             if (!form || form.dataset.confirmed === '1') return;

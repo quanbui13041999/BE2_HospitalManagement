@@ -182,7 +182,7 @@
 
                 <div class="mt-6">
                     <label class="text-[11px] font-bold uppercase tracking-wide text-gray-500 block mb-2">Lý do dời lịch <span class="normal-case font-normal">(tùy chọn)</span></label>
-                    <textarea name="reschedule_reason" id="reschedule_reason" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" placeholder="VD: bận công việc đột xuất, trùng lịch khám khác, sức khỏe chưa ổn…">{{ old('reschedule_reason') }}</textarea>
+                    <textarea name="reschedule_reason" id="reschedule_reason" maxlength="255" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" placeholder="VD: bận công việc đột xuất, trùng lịch khám khác, sức khỏe chưa ổn…">{{ old('reschedule_reason') }}</textarea>
                 </div>
 
                 <div class="flex flex-col sm:flex-row justify-between gap-4 mt-8 pt-4 border-t border-gray-100">
@@ -261,6 +261,25 @@
     window.alert = function(message) {
         window.showAppNotification(message, 'error');
     };
+
+    function bindStandaloneInputLimitWarnings() {
+        document.querySelectorAll('input[maxlength], textarea[maxlength]').forEach(function(field) {
+            field.addEventListener('input', function() {
+                if (field.maxLength <= 0 || field.value.length < field.maxLength || field.dataset.limitNotified === '1') {
+                    return;
+                }
+
+                field.dataset.limitNotified = '1';
+                window.showAppNotification('Trường này tối đa ' + field.maxLength + ' ký tự. Vui lòng rút ngắn nội dung.', 'warning'); /* fixed: bao loi textbox qua dai tren man hinh */
+            });
+
+            field.addEventListener('blur', function() {
+                field.dataset.limitNotified = '';
+            });
+        });
+    }
+
+    bindStandaloneInputLimitWarnings();
 </script>
 @if(session('reload_page'))
 <div id="appointment-reload-message"

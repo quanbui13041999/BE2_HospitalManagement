@@ -14,7 +14,7 @@
     <form method="GET" action="{{ route('admin.activity-logs.index') }}" class="row g-3">
         <div class="col-lg-4">
             <label class="form-label small text-muted">Tìm kiếm</label>
-            <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" class="form-control"
+            <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" class="form-control" maxlength="150"
                    placeholder="Tên, email, hành động, nội dung...">
         </div>
         <div class="col-md-3 col-lg-2">

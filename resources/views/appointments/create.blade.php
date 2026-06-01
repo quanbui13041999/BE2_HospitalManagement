@@ -1205,6 +1205,7 @@
                         <div class="form-group" style="margin-top:12px">
                             <label class="form-label">Ghi Chú / Triệu Chứng</label>
                             <textarea name="note" class="form-control"
+                                maxlength="255"
                                 placeholder="VD: đau ngực, khó thở, tái khám sau điều trị...">{{ old('note') }}</textarea>
                         </div>
 
@@ -1869,6 +1870,25 @@
         window.alert = function(message) {
             window.showAppNotification(message, 'error');
         };
+
+        function bindStandaloneInputLimitWarnings() {
+            document.querySelectorAll('input[maxlength], textarea[maxlength]').forEach(function(field) {
+                field.addEventListener('input', function() {
+                    if (field.maxLength <= 0 || field.value.length < field.maxLength || field.dataset.limitNotified === '1') {
+                        return;
+                    }
+
+                    field.dataset.limitNotified = '1';
+                    window.showAppNotification('Trường này tối đa ' + field.maxLength + ' ký tự. Vui lòng rút ngắn nội dung.', 'warning'); /* fixed: bao loi textbox qua dai tren man hinh */
+                });
+
+                field.addEventListener('blur', function() {
+                    field.dataset.limitNotified = '';
+                });
+            });
+        }
+
+        bindStandaloneInputLimitWarnings();
     </script>
     @if(session('reload_page'))
     <div id="appointment-reload-message"

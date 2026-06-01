@@ -16,7 +16,7 @@
         </div>
 
         <div style="padding:8px 12px; border-bottom:1px solid #e2e8f0;">
-            <input type="text" id="search-rooms" placeholder="🔍 Tìm bệnh nhân..."
+            <input type="text" id="search-rooms" placeholder="🔍 Tìm bệnh nhân..." maxlength="100"
                 style="width:100%;border:1px solid #cbd5e1;border-radius:8px;
                        padding:7px 10px;font-size:13px;box-sizing:border-box;outline:none;">
         </div>
@@ -74,6 +74,7 @@
                         display:flex; gap:10px; align-items:flex-end; flex-shrink:0;">
                 <textarea id="admin-input" placeholder="Nhập tin nhắn trả lời bệnh nhân..."
                     rows="2"
+                    maxlength="2000"
                     style="flex:1;border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;
                            font-size:14px;resize:none;outline:none;max-height:100px;overflow-y:auto;"></textarea>
                 <button onclick="adminSendMessage()"
@@ -224,6 +225,10 @@ async function adminSendMessage() {
     const input = document.getElementById('admin-input');
     const text = input.value.trim();
     if (!text || !currentRoomId) return;
+    if (text.length > 2000) {
+        window.showAppNotification('Tin nhắn tối đa 2000 ký tự. Vui lòng rút ngắn nội dung.', 'warning');
+        return;
+    }
     input.value = '';
 
     try {
