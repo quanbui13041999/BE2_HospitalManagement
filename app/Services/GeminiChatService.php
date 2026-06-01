@@ -11,11 +11,13 @@ use Throwable;
 class GeminiChatService
 {
     protected ?string $apiKey = null;
+    protected ?string $caBundle = null;
     protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
     public function __construct()
     {
         $this->apiKey = config('services.gemini.api_key');
+        $this->caBundle = config('services.gemini.ca_bundle');
     }
 
     public function generateReply(int $roomId, string $userMessage): string
@@ -60,9 +62,11 @@ class GeminiChatService
         ];
 
         try {
-            $response = Http::withQueryParameters(['key' => $this->apiKey]) /* fixed: bat verify TLS khi goi API ngoai */
+            $request = Http::withQueryParameters(['key' => $this->apiKey]) /* fixed: bat verify TLS khi goi API ngoai */
                 ->timeout(15)
-                ->post($this->apiUrl, $payload);
+                ->withOptions($this->tlsOptions());
+
+            $response = $request->post($this->apiUrl, $payload);
 
             if ($response->failed()) {
                 $errorBody = $response->body();
@@ -85,9 +89,23 @@ class GeminiChatService
 
             return $data['candidates'][0]['content']['parts'][0]['text'];
         } catch (Throwable $e) {
-            Log::error('Gemini API Exception: ' . $e->getMessage(), ['exception' => $e]);
+            Log::error('Gemini API Exception: ' . $this->redactApiKey($e->getMessage())); /* fixed: khong ghi lo API key vao log */
             return 'Xin lỗi, hiện tại hệ thống AI tạm thời gián đoạn. Vui lòng thử lại sau hoặc chờ nhân viên CSKH hỗ trợ bạn.';
         }
+    }
+
+    private function tlsOptions(): array
+    {
+        if ($this->caBundle && is_file($this->caBundle)) {
+            return ['verify' => $this->caBundle]; /* fixed: dung CA bundle cuc bo thay vi tat SSL verify */
+        }
+
+        return [];
+    }
+
+    private function redactApiKey(string $message): string
+    {
+        return preg_replace('/([?&]key=)[^\s&)]+/i', '$1[redacted]', $message) ?? $message;
     }
 
     private function buildSystemPrompt(): string

@@ -37,6 +37,7 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
+        'ca_bundle' => env('GEMINI_CA_BUNDLE', storage_path('app/certs/cacert.pem')),
     ],
 
     'anthropic' => [

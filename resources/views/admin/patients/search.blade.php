@@ -818,7 +818,8 @@
                 
                 // Show AI Explanation Card
                 document.getElementById('ai-explanation-box').classList.remove('d-none');
-                document.getElementById('ai-explanation-text').textContent = `AI hiểu: ${data.explanation || ''}`; /* fixed: khong render text AI bang innerHTML de tranh XSS */
+                const prefix = data.fallback ? 'Phân tích dự phòng: ' : 'AI hiểu: ';
+                document.getElementById('ai-explanation-text').textContent = `${prefix}${data.explanation || data.message || ''}`; /* fixed: khong render text AI bang innerHTML de tranh XSS */
                 
                 // Build extracted parameter badges
                 const badgesContainer = document.getElementById('ai-extracted-badges');
@@ -876,15 +877,16 @@
                 // Instantly execute search with populated filters
                 triggerSearch(1);
             } else {
-                // Display error message
-                alert(data.message || 'Lỗi không rõ khi xử lý bằng AI');
+                document.getElementById('ai-explanation-box').classList.remove('d-none');
+                document.getElementById('ai-explanation-text').textContent = data.message || 'Không thể phân tích yêu cầu. Vui lòng thử lại hoặc dùng tìm kiếm thường.';
             }
         })
         .catch(err => {
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = originalHtml;
             console.error('AI Search Connection Error:', err);
-            alert('Không thể kết nối dịch vụ AI. Vui lòng sử dụng tính năng "Tìm kiếm thường" hoặc thử lại sau.');
+            document.getElementById('ai-explanation-box').classList.remove('d-none');
+            document.getElementById('ai-explanation-text').textContent = 'Kết nối AI chưa ổn định. Vui lòng thử lại hoặc dùng tìm kiếm thường.';
         });
     }
 
