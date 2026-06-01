@@ -382,17 +382,17 @@
             <div class="doctor-header">
               <div class="doctor-avatar">👨‍⚕️</div>
               <div class="doctor-info">
-                <div class="doctor-name">{{ $alt['doctor']->full_name }}</div>
-                <div class="doctor-dept">{{ $alt['doctor']->department->department_name ?? 'N/A' }}</div>
+                <div class="doctor-name">{{ $alt->doctor->full_name }}</div>
+                <div class="doctor-dept">{{ $alt->doctor->department->department_name ?? 'N/A' }}</div>
                 <div class="doctor-exp">
-                  {{ $alt['doctor']->experience ?? 0 }} năm kinh nghiệm
-                  @if(($alt['doctor']->total_reviews ?? 0) > 0)
-                    • {{ $alt['doctor']->total_reviews }} đánh giá
+                  {{ $alt->doctor->experience ?? 0 }} năm kinh nghiệm
+                  @if(($alt->doctor->total_reviews ?? 0) > 0)
+                    • {{ $alt->doctor->total_reviews }} đánh giá
                   @endif
                 </div>
               </div>
               <div class="score-badge">
-                {{ number_format($alt['score'], 1) }}/100
+                {{ number_format($alt->score, 1) }}/100
               </div>
             </div>
 
@@ -400,75 +400,75 @@
             <div class="schedule-info">
               <div class="schedule-item">
                 <span class="schedule-label">📅 Ngày khám</span>
-                <span class="schedule-value">{{ \Carbon\Carbon::parse($alt['schedule']->work_date)->format('d/m/Y') }}</span>
+                <span class="schedule-value">{{ \Carbon\Carbon::parse($alt->schedule->work_date)->format('d/m/Y') }}</span>
               </div>
               <div class="schedule-item">
                 <span class="schedule-label">⏰ Giờ khám</span>
-                <span class="schedule-value">{{ substr($alt['schedule']->start_time, 0, 5) }}–{{ substr($alt['schedule']->end_time, 0, 5) }}</span>
+                <span class="schedule-value">{{ substr($alt->schedule->start_time, 0, 5) }}–{{ substr($alt->schedule->end_time, 0, 5) }}</span>
               </div>
               <div class="schedule-item">
                 <span class="schedule-label">💺 Slot trống</span>
-                <span class="schedule-value">{{ $alt['available_slots'] }} chỗ trống</span>
+                <span class="schedule-value">{{ $alt->available_slots }} chỗ trống</span>
               </div>
               <div class="schedule-item">
                 <span class="schedule-label">⭐ Đánh giá</span>
-                <span class="schedule-value">{{ number_format($alt['doctor']->avg_rating ?? 0, 1) }}/5.0</span>
+                <span class="schedule-value">{{ number_format($alt->doctor->avg_rating ?? 0, 1) }}/5.0</span>
               </div>
             </div>
 
             <!-- Score breakdown -->
-            @if(isset($alt['score_breakdown']))
+            @if(isset($alt->score_breakdown))
               <div class="score-breakdown">
                 <div class="breakdown-item">
                   <span class="breakdown-label">
-                    {{ $alt['score_breakdown']['available_slots']['label'] }}
+                    {{ $alt->score_breakdown['available_slots']['label'] }}
                     (40%)
                   </span>
                   <span class="breakdown-value">
-                    {{ $alt['score_breakdown']['available_slots']['value'] }}
-                    ({{ $alt['score_breakdown']['available_slots']['ratio'] }}% đủ)
+                    {{ $alt->score_breakdown['available_slots']['value'] }}
+                    ({{ $alt->score_breakdown['available_slots']['ratio'] }}% đủ)
                   </span>
                   <div class="breakdown-bar">
-                    <div class="breakdown-bar-fill" style="width: {{ $alt['score_breakdown']['available_slots']['ratio'] }}%"></div>
+                    <div class="breakdown-bar-fill" style="width: {{ $alt->score_breakdown['available_slots']['ratio'] }}%"></div>
                   </div>
                 </div>
 
                 <div class="breakdown-item">
                   <span class="breakdown-label">
-                    {{ $alt['score_breakdown']['rating']['label'] }}
+                    {{ $alt->score_breakdown['rating']['label'] }}
                     (35%)
                   </span>
                   <span class="breakdown-value">
-                    {{ $alt['score_breakdown']['rating']['value'] }}/{{ $alt['score_breakdown']['rating']['max'] }} ⭐
+                    {{ $alt->score_breakdown['rating']['value'] }}/{{ $alt->score_breakdown['rating']['max'] }} ⭐
                   </span>
                   <div class="breakdown-bar">
-                    <div class="breakdown-bar-fill" style="width: {{ ($alt['score_breakdown']['rating']['value'] / 5) * 100 }}%"></div>
+                    <div class="breakdown-bar-fill" style="width: {{ ($alt->score_breakdown['rating']['value'] / 5) * 100 }}%"></div>
                   </div>
                 </div>
 
                 <div class="breakdown-item">
                   <span class="breakdown-label">
-                    {{ $alt['score_breakdown']['experience']['label'] }}
+                    {{ $alt->score_breakdown['experience']['label'] }}
                     (15%)
                   </span>
                   <span class="breakdown-value">
-                    {{ $alt['score_breakdown']['experience']['value'] }}
+                    {{ $alt->score_breakdown['experience']['value'] }}
                   </span>
                   <div class="breakdown-bar">
-                    <div class="breakdown-bar-fill" style="width: {{ min(($alt['doctor']->experience ?? 0) / 20 * 100, 100) }}%"></div>
+                    <div class="breakdown-bar-fill" style="width: {{ min(($alt->doctor->experience ?? 0) / 20 * 100, 100) }}%"></div>
                   </div>
                 </div>
 
                 <div class="breakdown-item">
                   <span class="breakdown-label">
-                    {{ $alt['score_breakdown']['reviews']['label'] }}
+                    {{ $alt->score_breakdown['reviews']['label'] }}
                     (10%)
                   </span>
                   <span class="breakdown-value">
-                    {{ $alt['score_breakdown']['reviews']['value'] }} reviews
+                    {{ $alt->score_breakdown['reviews']['value'] }} reviews
                   </span>
                   <div class="breakdown-bar">
-                    <div class="breakdown-bar-fill" style="width: {{ min(($alt['doctor']->total_reviews ?? 0) / 50 * 100, 100) }}%"></div>
+                    <div class="breakdown-bar-fill" style="width: {{ min(($alt->doctor->total_reviews ?? 0) / 50 * 100, 100) }}%"></div>
                   </div>
                 </div>
               </div>
@@ -479,8 +479,8 @@
               <div class="btn-group">
                 <a href="{{ route('appointments.reschedule-confirm', [
                     'old_id' => $appointment->appointment_id,
-                    'new_schedule_id' => $alt['schedule']->schedule_id,
-                    'token' => hash_hmac('sha256', $appointment->appointment_id . '|' . $alt['schedule']->schedule_id, config('app.key'))
+                    'new_schedule_id' => $alt->schedule->schedule_id,
+                    'token' => hash_hmac('sha256', $appointment->appointment_id . '|' . $alt->schedule->schedule_id, config('app.key'))
                 ]) }}" class="btn btn-primary" style="display: inline-block;">
                   ✅ Xác nhận chọn lịch này
                 </a>
