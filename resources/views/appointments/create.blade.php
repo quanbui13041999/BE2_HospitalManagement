@@ -2229,6 +2229,8 @@
 
         // FORM SUBMIT
         // ══════════════════════════════════════════════════════════════
+        let isSubmitting = false;
+
         document.getElementById('booking-form').addEventListener('submit', function (e) {
             const svcSel = document.getElementById('service_id_select');
             const serviceId = svcSel ? svcSel.value : '';
@@ -2251,9 +2253,17 @@
                 return;
             }
 
+            // Prevent double submission
+            if (isSubmitting) {
+                e.preventDefault();
+                return;
+            }
+
             const btn = document.getElementById('submit-btn');
             const spinner = document.getElementById('spinner');
             const icon = document.getElementById('submit-icon');
+
+            isSubmitting = true;
             btn.disabled = true;
             spinner.style.display = 'inline-block';
             icon.style.display = 'none';

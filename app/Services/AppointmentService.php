@@ -166,12 +166,6 @@ class AppointmentService
             throw new Exception('Lịch khám không tồn tại hoặc ngày khám không khớp.');
         }
 
-        // Kiểm tra user đã có booking thật (không phải hold)
-        $alreadyBooked = $this->checkAppointmentAlreadyBooked($userId, $data['schedule_id']);
-        if ($alreadyBooked) {
-            throw new Exception('Bạn đã đặt lịch khám cho khung giờ này rồi.');
-        }
-
         $appointmentDatetime = $data['work_date'] . ' ' . $data['appointment_time'] . ':00';
         $appointmentEndtime  = $this->calculateAppointmentEndTime(
             $data['work_date'],
@@ -184,6 +178,18 @@ class AppointmentService
 
         DB::beginTransaction();
         try {
+            // ── Check for duplicate INSIDE transaction to prevent race condition ──
+            $alreadyBooked = DB::table('appointments')
+                ->where('user_id', $userId)
+                ->where('schedule_id', $data['schedule_id'])
+                ->whereNotIn('status', ['Đã hủy', 'Dời lịch'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($alreadyBooked) {
+                throw new Exception('Bạn đã đặt lịch khám cho khung giờ này rồi.');
+            }
+
             // ── Thử xác nhận hold trước ──────────────────────────
             // NOTE: SlotHoldService::confirmHold() chỉ nhận (appointmentId, userId, ?note)
             // vì hold đang được tạo bằng POST /api/slot-hold.

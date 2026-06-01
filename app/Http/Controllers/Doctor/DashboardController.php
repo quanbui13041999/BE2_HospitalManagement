@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
@@ -394,7 +395,21 @@ public function updateDoctor(Request $request, int $id): JsonResponse
         'status'        => 'required|in:0,1',
     ]);
 
-    $doctor->update($validated);
+    DB::transaction(function () use ($doctor, $validated) {
+        $doctor->update($validated);
+
+        // Sync user data with doctor data
+        if ($doctor->user_id) {
+            $user = \App\Models\User::find($doctor->user_id);
+            if ($user) {
+                $user->update([
+                    'full_name'  => $validated['full_name'],
+                    'avatar_url' => $validated['avatar_url'] ?? $user->avatar_url,
+                    'status'     => $validated['status'],
+                ]);
+            }
+        }
+    });
 
     return response()->json([
         'success' => true,
