@@ -36,8 +36,8 @@ class ServiceRepository
     {
         $result = [];
         foreach (['Thường', 'BHYT', 'VIP'] as $type) {
-            $result[$type] = DB::table('ServicePrices as sp')
-                ->join('Services as s', 's.service_id', '=', 'sp.service_id')
+            $result[$type] = DB::table('serviceprices as sp')
+                ->join('services as s', 's.service_id', '=', 'sp.service_id')
                 ->where('sp.price_type', $type)
                 ->where('s.status', 1)
                 ->where('sp.effective_date', '<=', now()->toDateString())
@@ -61,6 +61,7 @@ class ServiceRepository
     {
         $query = Service::with(['department', 'activePrices'])->where('status', 1);
 
+        // 1. Tìm kiếm từ khóa nâng cao
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -70,11 +71,59 @@ class ServiceRepository
             });
         }
 
+        // 2. Lọc theo chuyên khoa
         if ($request->filled('department_id')) {
             $query->where('department_id', $request->department_id);
         }
 
-        return $query->orderBy('service_name')->paginate(12)->withQueryString();
+        // 3. Lọc theo phân khúc giá (BHYT / VIP)
+        if ($request->filled('price_tier')) {
+            $tier = $request->price_tier;
+            $query->whereHas('activePrices', function ($q) use ($tier) {
+                $q->where('price_type', 'like', "%{$tier}%");
+            });
+        }
+
+        // 4. Lọc theo thời lượng dịch vụ
+        if ($request->filled('duration_range')) {
+            $range = $request->duration_range;
+            if ($range === 'fast') {
+                $query->where('duration_minutes', '<', 30);
+            } elseif ($range === 'medium') {
+                $query->whereBetween('duration_minutes', [30, 60]);
+            } elseif ($range === 'long') {
+                $query->where('duration_minutes', '>', 60);
+            }
+        }
+
+        // 5. Sắp xếp chuyên nghiệp
+        if ($request->filled('sort_by')) {
+            $sortBy = $request->sort_by;
+            if ($sortBy === 'price_asc' || $sortBy === 'price_desc') {
+                $subquery = DB::table('serviceprices')
+                    ->select('service_id', DB::raw('MIN(price) as min_price'))
+                    ->where('effective_date', '<=', now()->toDateString())
+                    ->where(function($q) {
+                        $q->whereNull('end_date')
+                          ->orWhere('end_date', '>=', now()->toDateString());
+                    })
+                    ->groupBy('service_id');
+                
+                $query->joinSub($subquery, 'price_sub', function($join) {
+                    $join->on('services.service_id', '=', 'price_sub.service_id');
+                })->orderBy('price_sub.min_price', $sortBy === 'price_asc' ? 'asc' : 'desc');
+            } elseif ($sortBy === 'name_desc') {
+                $query->orderBy('service_name', 'desc');
+            } elseif ($sortBy === 'duration_asc') {
+                $query->orderBy('duration_minutes', 'asc');
+            } else {
+                $query->orderBy('service_name', 'asc');
+            }
+        } else {
+            $query->orderBy('service_name', 'asc');
+        }
+
+        return $query->paginate(12)->withQueryString();
     }
 
     public function relatedServices(Service $service, int $limit = 4)
@@ -89,9 +138,9 @@ class ServiceRepository
 
     public function priceHistory()
     {
-        return DB::table('ServicePrices as sp')
-            ->join('Services as s', 's.service_id', '=', 'sp.service_id')
-            ->leftJoin('Users as u', 'u.user_id', '=', 'sp.created_by')
+        return DB::table('serviceprices as sp')
+            ->join('services as s', 's.service_id', '=', 'sp.service_id')
+            ->leftJoin('users as u', 'u.user_id', '=', 'sp.created_by')
             ->select([
                 'sp.created_at as changed_at',
                 's.service_name',

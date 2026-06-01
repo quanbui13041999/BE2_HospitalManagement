@@ -32,10 +32,18 @@ class PaymentController extends Controller
         $payment = Payment::with([
             'appointment.user',
             'appointment.schedule.doctor',
+            'appointment.service',
             'items',
             'insurance',
             'membership'
         ])->findOrFail($paymentId);
+        
+        if (request()->ajax() || request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'payment' => $payment
+            ]);
+        }
         
         return view('admin.payments.show', compact('payment'));
     }

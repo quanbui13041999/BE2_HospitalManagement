@@ -251,7 +251,7 @@ class ServiceService
 
         $price->update([
             'price_type'     => $data['price_type'],
-            // DO NOT update price to preserve audit trail persistence!
+            'price'          => $data['price'],
             'effective_date' => $data['effective_date'],
             'end_date'       => $data['end_date'] ?? null,
         ]);

@@ -70,8 +70,8 @@
                     <label class="form-label">Ngày làm việc <span class="text-danger">*</span></label>
                     <input type="date" name="work_date"
                            class="form-control @error('work_date') is-invalid @enderror"
-                           value="{{ old('work_date', today()->toDateString()) }}"
-                           min="{{ today()->toDateString() }}" required>
+                           value="{{ old('work_date', request('work_date', today()->toDateString())) }}"
+                           required>
                     @error('work_date')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
