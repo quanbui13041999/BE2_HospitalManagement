@@ -207,6 +207,7 @@
 
                 @if($isPatient)
                     <a href="{{ route('appointments.index') }}" class="hc-site-nav__link {{ request()->routeIs('appointments.index') || request()->routeIs('appointments.edit') ? 'is-active' : '' }}">📋 Lịch hẹn</a>
+                    <a href="{{ route('medical_history.index') }}" class="hc-site-nav__link {{ request()->routeIs('medical_history.*') ? 'is-active' : '' }}">📁 Hồ sơ bệnh án</a>
                 @endif
 
                 @if($isPatient || $isAdmin)
