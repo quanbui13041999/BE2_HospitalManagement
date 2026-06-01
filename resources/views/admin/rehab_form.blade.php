@@ -12,11 +12,22 @@
     @csrf
     @if($isEdit)
         @method('PUT')
+        <input type="hidden" name="rehab_snapshot" value="{{ $rehabSnapshot }}">
+    @endif
+
+    @if(session('warning'))
+        <div class="alert alert-warning">{{ session('warning') }}</div>
     @endif
 
     <div class="mb-3">
         <label class="form-label">Tieu de</label>
-        <input name="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title', $exercise->title) }}">
+        <input name="title"
+               class="form-control @error('title') is-invalid @enderror"
+               value="{{ old('title', $exercise->title) }}"
+               required
+               minlength="3"
+               maxlength="120"
+               pattern="^[A-Za-zÀ-ỹ\s]+$">
         @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
@@ -52,19 +63,25 @@
     <div class="row">
         <div class="col-md-6 mb-3">
             <label class="form-label">Thoi luong tap (phut)</label>
-            <input type="number" name="duration_minutes" min="1" max="240" class="form-control @error('duration_minutes') is-invalid @enderror" value="{{ old('duration_minutes', $exercise->duration_minutes) }}">
+            <input type="number" name="duration_minutes" min="1" max="240" step="1" inputmode="numeric" class="form-control @error('duration_minutes') is-invalid @enderror" value="{{ old('duration_minutes', $exercise->duration_minutes) }}">
             @error('duration_minutes')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 mb-3">
             <label class="form-label">Anh dai dien</label>
-            <input type="file" name="thumbnail" class="form-control @error('thumbnail') is-invalid @enderror" accept="image/*">
+            <input type="file" name="thumbnail" class="form-control @error('thumbnail') is-invalid @enderror" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
             @error('thumbnail')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
     </div>
 
     <div class="mb-3">
         <label class="form-label">Noi dung huong dan</label>
-        <textarea name="content" rows="10" class="form-control @error('content') is-invalid @enderror">{{ old('content', $exercise->content) }}</textarea>
+        <textarea name="content"
+                  rows="10"
+                  class="form-control @error('content') is-invalid @enderror"
+                  required
+                  minlength="10"
+                  maxlength="5000">{{ old('content', $exercise->content) }}</textarea>
+        <div class="form-text">Toi da 5000 ky tu. Chi nhap chu cai va khoang trang, khong nhap so hoac ky tu dac biet.</div>
         @error('content')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 

@@ -22,7 +22,13 @@ class HealthTrackingRequest extends FormRequest
             'spo2'        => ['required', 'integer', 'min:50',  'max:100'],
             'weight'      => ['required', 'numeric', 'min:1',   'max:500'],
             'blood_sugar' => ['required', 'integer', 'min:20',  'max:1000'],
-            'symptoms'    => ['nullable', 'string',  'max:1000'],
+            'symptoms'    => ['nullable', 'string',  'max:1000', 'regex:/\A[\pL\s]+\z/u'],
+            'patient_id' => ['prohibited'],
+            'risk_level' => ['prohibited'],
+            'risk_warnings' => ['prohibited'],
+            'created_at' => ['prohibited'],
+            'updated_at' => ['prohibited'],
+            'deleted_at' => ['prohibited'],
         ];
 
         // Thêm version khi update (optimistic locking)
@@ -62,14 +68,18 @@ class HealthTrackingRequest extends FormRequest
             'blood_sugar.min'      => 'Đường huyết tối thiểu là :min mg/dL.',
             'blood_sugar.max'      => 'Đường huyết tối đa là :max mg/dL.',
             'symptoms.max'         => 'Triệu chứng không được vượt quá :max ký tự.',
+            'symptoms.regex'       => 'Triệu chứng chỉ được nhập chữ và khoảng trắng, không nhập số hoặc ký tự đặc biệt.',
+            'prohibited'           => 'Không được gửi dữ liệu hệ thống từ trình duyệt.',
             'version.required'     => 'Thiếu thông tin phiên bản bản ghi.',
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        if ($this->symptoms) {
-            $this->merge(['symptoms' => trim(strip_tags($this->symptoms))]);
+        if ($this->has('symptoms')) {
+            $symptoms = preg_replace('/\s+/u', ' ', trim(strip_tags((string) $this->symptoms)));
+
+            $this->merge(['symptoms' => $symptoms !== '' ? $symptoms : null]);
         }
     }
 

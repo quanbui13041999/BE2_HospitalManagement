@@ -63,7 +63,7 @@
             class="form-control @error('symptoms') is-invalid @enderror"
             placeholder="Mô tả triệu chứng bạn đang gặp phải...">{{ $errors->any() ? old('symptoms') : ($old['symptoms'] ?? '') }}</textarea>
         <div class="d-flex justify-content-between mt-1">
-            <div class="invalid-feedback d-block">{{ $errors->first('symptoms') }}</div>
+            <div class="invalid-feedback d-block" id="symptomsError">{{ $errors->first('symptoms') }}</div>
             <small class="text-muted ms-auto"><span id="symCount">0</span>/1000</small>
         </div>
     </div>
@@ -176,10 +176,41 @@ Object.keys(RULES).forEach(name => {
     input.addEventListener('blur',  e => applyState(input, validate(name, e.target.value)));
 });
 
-// Symptoms counter
+// Symptoms guard
 const symp = document.getElementById('symptoms'), sc = document.getElementById('symCount');
-symp.addEventListener('input', () => sc.textContent = symp.value.length);
-sc.textContent = symp.value.length;
+const symptomError = document.getElementById('symptomsError');
+const symptomPattern = /^[\p{L}\s]*$/u;
+
+function validateSymptoms() {
+    const value = symp.value.trim();
+    sc.textContent = symp.value.length;
+    symp.classList.remove('is-valid', 'is-invalid');
+
+    if (!value) {
+        symptomError.textContent = '';
+        return true;
+    }
+
+    if (symp.value.length > 1000) {
+        symp.classList.add('is-invalid');
+        symptomError.textContent = 'Triệu chứng không được vượt quá 1000 ký tự.';
+        return false;
+    }
+
+    if (!symptomPattern.test(value)) {
+        symp.classList.add('is-invalid');
+        symptomError.textContent = 'Triệu chứng chỉ được nhập chữ và khoảng trắng, không nhập số hoặc ký tự đặc biệt.';
+        return false;
+    }
+
+    symp.classList.add('is-valid');
+    symptomError.textContent = '';
+    return true;
+}
+
+symp.addEventListener('input', validateSymptoms);
+symp.addEventListener('paste', () => setTimeout(validateSymptoms, 0));
+validateSymptoms();
 
 // Submit guard
 document.getElementById('healthForm').addEventListener('submit', function(e) {
@@ -197,6 +228,7 @@ document.getElementById('healthForm').addEventListener('submit', function(e) {
         const r = validate(name, v);
         if (r && !r.ok) { applyState(input, r); bad = true; }
     });
+    if (!validateSymptoms()) bad = true;
     if (bad) {
         e.preventDefault();
         this.querySelector('.is-invalid')?.scrollIntoView({behavior:'smooth',block:'center'});

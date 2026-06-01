@@ -34,6 +34,7 @@
               method="POST" novalidate>
             @csrf
             @method('PUT')
+            <input type="hidden" name="document_snapshot" value="{{ old('document_snapshot', $documentSnapshot) }}">
 
             <div class="form-row">
                 <div class="form-group">

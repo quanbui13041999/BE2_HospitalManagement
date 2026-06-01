@@ -21,6 +21,7 @@ Route::prefix('medical-records')
 
         // File đính kèm
         Route::post('/{id}/attachments', [MedicalRecordController::class, 'uploadAttachment'])->name('attachments.upload');
+        Route::get('/{recordId}/attachments/{attachmentId}/view', [MedicalRecordController::class, 'viewAttachment'])->name('attachments.view');
         Route::delete('/{recordId}/attachments/{attachmentId}', [MedicalRecordController::class, 'deleteAttachment'])->name('attachments.destroy');
 
         // Kết quả xét nghiệm (chỉ Doctor/Admin)

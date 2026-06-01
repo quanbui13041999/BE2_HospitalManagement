@@ -542,6 +542,29 @@
     @endif
 </div>
 
+@if(session('success') || session('warning') || session('error'))
+<div style="padding: 12px 20px 0;">
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('warning'))
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        {{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+</div>
+@endif
+
 {{-- Page title --}}
 <div style="padding: 16px 20px 4px;">
     <h5 style="font-weight:700;color:#222;margin:0;">Hồ Sơ Bệnh Án Chi Tiết</h5>
@@ -839,7 +862,7 @@
                         </div>
                     </div>
                     <div class="d-flex gap-2">
-                        <a href="{{ asset('storage/' . $att->file_path) }}"
+                        <a href="{{ route('medical-records.attachments.view', [$record->record_id, $att->attachment_id]) }}"
                             target="_blank" class="att-btn">⬇ Xem</a>
                         <button class="att-btn danger"
                             onclick="deleteAttachment({{ $record->record_id }}, {{ $att->attachment_id }})">
@@ -855,10 +878,10 @@
             {{-- Upload zone --}}
             <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
                 <input type="file" id="fileInput" style="display:none" multiple
-                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    accept=".pdf,.jpg,.jpeg,.png"
                     onchange="handleFileUpload(this)">
                 📎 Kéo thả hoặc click để tải lên tập đính kèm
-                <div style="font-size:11px;margin-top:4px;color:#bbb">PDF, JPG, PNG, DOC — tối đa 10MB</div>
+                <div style="font-size:11px;margin-top:4px;color:#bbb">PDF, JPG, JPEG, PNG — tối đa 10MB</div>
             </div>
         </div>
     </div>
@@ -925,7 +948,10 @@
         });
         const data = await res.json();
         if (data.success) document.getElementById(`att-${attId}`)?.remove();
-        else alert('Lỗi: ' + (data.error || 'Không thể xóa'));
+        else {
+            alert(data.error || 'Tập đính kèm đã được người khác xóa trước đó. Trang sẽ được tải lại.');
+            window.location.reload();
+        }
     }
 
     // Drag & drop upload

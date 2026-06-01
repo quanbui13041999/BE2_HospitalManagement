@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\MedicalRecord;
+use App\Models\Doctor;
+use App\Models\User;
 use App\Models\VitalSigns;
 use App\Models\Diagnosis;
 use App\Models\Prescription;
@@ -210,6 +212,9 @@ class MedicalRecordService
                 }
             }
 
+            // Bắt buộc đổi updated_at kể cả khi chỉ sửa bảng con như sinh tồn/chẩn đoán/thuốc.
+            $record->touch();
+
             $fresh = $record->fresh([
                 'vitalSigns',
                 'diagnoses',
@@ -271,10 +276,14 @@ class MedicalRecordService
     /**
      * Danh sách hồ sơ bệnh nhân với bộ lọc nâng cao
      */
-    public function getPatientRecords(int $patientId, array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    public function getPatientRecords(int $patientId, array $filters = [], ?int $doctorId = null): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $query = MedicalRecord::with(['vitalSigns', 'diagnoses', 'doctor'])
             ->where('patient_id', $patientId);
+
+        if ($doctorId !== null) {
+            $this->scopeDoctorOwnedRecords($query, $doctorId);
+        }
         
         $query = $this->applyFilters($query, $filters);
         
@@ -288,7 +297,9 @@ class MedicalRecordService
     public function getDoctorRecords(int $doctorId, array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $query = MedicalRecord::with(['vitalSigns', 'diagnoses', 'patient'])
-            ->where('doctor_id', $doctorId);
+            ->where(function ($q) use ($doctorId) {
+                $this->scopeDoctorOwnedRecords($q, $doctorId);
+            });
         
         $query = $this->applyFilters($query, $filters);
         
@@ -365,7 +376,7 @@ class MedicalRecordService
         
         // Lọc theo role nếu cần
         if ($roleId == 2 && $userId) { // Doctor
-            $query->where('doctor_id', $userId);
+            $this->scopeDoctorOwnedRecords($query, (int) $userId);
         } elseif ($roleId == 3 && $userId) { // Patient
             $query->where('patient_id', $userId);
         }
@@ -397,7 +408,7 @@ class MedicalRecordService
         $query = MedicalRecord::query();
         
         if ($roleId == 2 && $userId) {
-            $query->where('doctor_id', $userId);
+            $this->scopeDoctorOwnedRecords($query, (int) $userId);
         } elseif ($roleId == 3 && $userId) {
             $query->where('patient_id', $userId);
         }
@@ -550,5 +561,22 @@ class MedicalRecordService
             ->value('patient_code');
 
         return $existingCode ?: 'BN' . str_pad((string) $patientId, 6, '0', STR_PAD_LEFT);
+    }
+
+    private function scopeDoctorOwnedRecords($query, int $doctorUserId): void
+    {
+        $doctorName = Doctor::where('user_id', $doctorUserId)->value('full_name')
+            ?: User::where('user_id', $doctorUserId)->value('full_name');
+
+        $query->where('doctor_id', $doctorUserId);
+
+        if ($doctorName) {
+            $query->where(function ($q) use ($doctorName) {
+                $q->where('doctor_name', $doctorName)
+                    ->orWhere('doctor_name', 'BS. ' . $doctorName)
+                    ->orWhereNull('doctor_name')
+                    ->orWhere('doctor_name', '');
+            });
+        }
     }
 }

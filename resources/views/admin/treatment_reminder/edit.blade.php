@@ -18,9 +18,14 @@
 
             <div class="card shadow-sm border-0" style="border-radius: 12px;">
                 <div class="card-body p-4">
+                    @if(session('warning'))
+                        <div class="alert alert-warning">{{ session('warning') }}</div>
+                    @endif
+
                     <form action="{{ route('admin.treatment.update', $reminder->reminder_id) }}" method="POST">
                         @csrf
                         @method('PUT')
+                        <input type="hidden" name="reminder_snapshot" value="{{ $reminderSnapshot }}">
 
                         <div class="mb-4">
                             <label class="form-label fw-bold">Bệnh nhân</label>
@@ -32,26 +37,26 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Loại nhắc nhở</label>
                                 <select name="reminder_type" class="form-select @error('reminder_type') is-invalid @enderror" required>
-                                    <option value="medicine" {{ $reminder->reminder_type == 'medicine' ? 'selected' : '' }}>Uống thuốc</option>
-                                    <option value="instruction" {{ $reminder->reminder_type == 'instruction' ? 'selected' : '' }}>Hướng dẫn khác</option>
+                                    <option value="medicine" {{ old('reminder_type', $reminder->reminder_type) == 'medicine' ? 'selected' : '' }}>Uống thuốc</option>
+                                    <option value="instruction" {{ old('reminder_type', $reminder->reminder_type) == 'instruction' ? 'selected' : '' }}>Hướng dẫn khác</option>
                                 </select>
                                 @error('reminder_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Thời gian nhắc</label>
-                                <input type="datetime-local" name="remind_at" class="form-control @error('remind_at') is-invalid @enderror" required value="{{ $reminder->remind_at->format('Y-m-d\TH:i') }}">
+                                <input type="datetime-local" name="remind_at" class="form-control @error('remind_at') is-invalid @enderror" required value="{{ old('remind_at', $reminder->remind_at->format('Y-m-d\TH:i')) }}">
                                 @error('remind_at') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
 
                         <div class="mb-4">
                             <label class="form-label fw-bold">Nội dung nhắc nhở</label>
-                            <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="3" required>{{ $reminder->message }}</textarea>
+                            <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="3" required minlength="5" maxlength="255" pattern="^[A-Za-zÀ-ỹ\s]+$">{{ old('message', $reminder->message) }}</textarea>
                             @error('message') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="d-flex justify-content-end gap-2">
-                            <a href="{{ url()->previous() }}" class="btn btn-light px-4">Quay lại</a>
+                            <a href="{{ route('admin.treatment.show', $reminder->user_id) }}" class="btn btn-light px-4">Quay lại</a>
                             <button type="submit" class="btn btn-primary px-4">Cập nhật nhắc nhở</button>
                         </div>
                     </form>

@@ -21,6 +21,14 @@
         </div>
     </div>
 
+    @if(session('warning'))
+        <div class="alert alert-warning">{{ session('warning') }}</div>
+    @endif
+
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+
     <div class="row g-4">
         {{-- Thông tin bệnh nhân & Thống kê --}}
         <div class="col-lg-4">
@@ -105,11 +113,17 @@
                                                 <span class="badge bg-warning-soft text-warning">Chưa thực hiện</span>
                                             @endif
                                         </td>
-                                        <td class="text-end pe-4">
+                                        <td class="text-end pe-4" style="width: 170px;">
+                                            <a href="{{ route('admin.treatment.edit', $reminder->reminder_id) }}"
+                                               class="btn btn-outline-primary btn-sm me-1">
+                                                <i class="fas fa-edit me-1"></i> Sửa
+                                            </a>
                                             <form action="{{ route('admin.treatment.destroy', $reminder->reminder_id) }}" method="POST" class="d-inline">
                                                 @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-link btn-sm text-danger p-0" onclick="return confirm('Xóa nhắc nhở này?')">
-                                                    <i class="fas fa-trash"></i>
+                                                <button type="submit"
+                                                        class="btn btn-outline-danger btn-sm"
+                                                        onclick="return confirm('Bạn chắc chắn muốn xóa nhắc nhở này?')">
+                                                    <i class="fas fa-trash me-1"></i> Xóa
                                                 </button>
                                             </form>
                                         </td>

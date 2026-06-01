@@ -55,6 +55,18 @@
                 <button class="btn-close ms-auto" data-bs-dismiss="alert"></button>
             </div>
             @endif
+            @if(session('warning'))
+            <div class="alert alert-warning alert-dismissible fade show d-flex gap-2">
+                <i class="bi bi-exclamation-circle-fill"></i> {{ session('warning') }}
+                <button class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+            @endif
+            @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show d-flex gap-2">
+                <i class="bi bi-exclamation-triangle-fill"></i> {{ session('error') }}
+                <button class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+            @endif
 
             {{-- Risk summary --}}
             @php

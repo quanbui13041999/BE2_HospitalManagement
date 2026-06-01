@@ -22,6 +22,18 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 @endif
+@if(session('warning'))
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    {{ session('warning') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
 
 <!-- FORM TÌM KIẾM NÂNG CAO -->
 <div class="card border-0 shadow-sm mb-4">
@@ -231,8 +243,20 @@
                             <i class="bi bi-eye"></i> Xem
                         </a>
                         @php
+                            $currentDoctorNameForRecord = preg_replace('/^\s*BS\.?\s*/iu', '', (string) ($currentDoctorName ?? ''));
+                            $currentDoctorNameForRecord = mb_strtolower(preg_replace('/\s+/u', ' ', trim($currentDoctorNameForRecord)), 'UTF-8');
+                            $recordDoctorNameForRecord = preg_replace('/^\s*BS\.?\s*/iu', '', (string) $record->doctor_name);
+                            $recordDoctorNameForRecord = mb_strtolower(preg_replace('/\s+/u', ' ', trim($recordDoctorNameForRecord)), 'UTF-8');
                             $canEditRecord = auth()->user()->isAdmin()
-                                || (auth()->user()->isDoctor() && (int) $record->doctor_id === (int) auth()->id());
+                                || (
+                                    auth()->user()->isDoctor()
+                                    && (int) $record->doctor_id === (int) auth()->id()
+                                    && (
+                                        $currentDoctorNameForRecord === ''
+                                        || $recordDoctorNameForRecord === ''
+                                        || $currentDoctorNameForRecord === $recordDoctorNameForRecord
+                                    )
+                                );
                         @endphp
                         @if($canEditRecord)
                             <a href="{{ route('medical-records.edit', $record->record_id) }}" class="btn btn-sm btn-outline-secondary">
