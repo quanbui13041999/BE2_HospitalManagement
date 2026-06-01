@@ -309,7 +309,7 @@ function handleChatKey(e) {
 }
 
 async function recallChatMessage(msgId, element) {
-    if (!confirm('Bạn muốn thu hồi tin nhắn này?')) return;
+    if (window.appConfirm && !await window.appConfirm('Bạn muốn thu hồi tin nhắn này?')) return;
     try {
         const res = await fetch(`/chat/messages/${msgId}`, {
             method: 'DELETE',

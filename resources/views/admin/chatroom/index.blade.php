@@ -240,7 +240,8 @@ async function adminSendMessage() {
 }
 
 async function closeCurrentRoom() {
-    if (!currentRoomId || !confirm('Đóng phòng chat này?')) return;
+    if (!currentRoomId) return;
+    if (window.appConfirm && !await window.appConfirm('Đóng phòng chat này?')) return;
     try {
         await fetch(`/admin/chatroom/${currentRoomId}/close`, {
             method: 'POST',
@@ -253,7 +254,8 @@ async function closeCurrentRoom() {
 }
 
 async function deleteCurrentRoom() {
-    if (!currentRoomId || !confirm('Xác nhận xóa vĩnh viễn phòng chat này và toàn bộ tin nhắn?')) return;
+    if (!currentRoomId) return;
+    if (window.appConfirm && !await window.appConfirm('Xác nhận xóa vĩnh viễn phòng chat này và toàn bộ tin nhắn?')) return;
     try {
         await fetch(`/admin/chatroom/${currentRoomId}`, {
             method: 'DELETE',
@@ -267,7 +269,7 @@ async function deleteCurrentRoom() {
 }
 
 async function deleteAdminMessage(msgId, element) {
-    if (!confirm('Xóa tin nhắn này?')) return;
+    if (window.appConfirm && !await window.appConfirm('Xóa tin nhắn này?')) return;
     try {
         const res = await fetch(`/admin/chatroom/messages/${msgId}`, {
             method: 'DELETE',

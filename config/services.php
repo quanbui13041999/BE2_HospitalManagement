@@ -37,6 +37,8 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-flash-latest'),
+        'fallback_models' => env('GEMINI_FALLBACK_MODELS', 'gemini-1.5-flash-latest'),
         'ca_bundle' => env('GEMINI_CA_BUNDLE', storage_path('app/certs/cacert.pem')),
     ],
 

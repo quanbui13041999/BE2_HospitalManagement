@@ -146,6 +146,23 @@
 </head>
 <body>
 <div id="app-notification-stack" class="app-notification-stack" aria-live="polite" aria-atomic="true"></div>
+<div class="modal fade" id="appConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận thao tác</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0" id="appConfirmMessage">Bạn có chắc muốn thực hiện thao tác này?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="appConfirmSubmit">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
 @if(session('reload_page'))
     <div id="app-reload-message"
          data-message="{{ e(session('warning') ?? session('error') ?? 'Dữ liệu đã thay đổi, trang sẽ được tải lại.') }}"
@@ -352,6 +369,56 @@ window.showAppNotification = function (message, type = 'error', options = {}) {
 
 window.alert = function (message) {
     window.showAppNotification(message, 'error');
+};
+
+document.addEventListener('submit', function (event) {
+    const form = event.target.closest('form[data-confirm]');
+    if (!form || form.dataset.confirmed === '1') return;
+
+    event.preventDefault();
+    const messageEl = document.getElementById('appConfirmMessage');
+    const submitBtn = document.getElementById('appConfirmSubmit');
+    const modalEl = document.getElementById('appConfirmModal');
+    if (!messageEl || !submitBtn || !modalEl || !window.bootstrap) return;
+
+    messageEl.textContent = form.dataset.confirm || 'Bạn có chắc muốn thực hiện thao tác này?';
+    submitBtn.onclick = function () {
+        form.dataset.confirmed = '1';
+        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        form.submit();
+    };
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+});
+
+window.appConfirm = function (message) {
+    return new Promise(function (resolve) {
+        const messageEl = document.getElementById('appConfirmMessage');
+        const submitBtn = document.getElementById('appConfirmSubmit');
+        const modalEl = document.getElementById('appConfirmModal');
+        if (!messageEl || !submitBtn || !modalEl || !window.bootstrap) {
+            resolve(false);
+            return;
+        }
+
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        const cleanup = function () {
+            submitBtn.onclick = null;
+            modalEl.removeEventListener('hidden.bs.modal', onHidden);
+        };
+        const onHidden = function () {
+            cleanup();
+            resolve(false);
+        };
+
+        messageEl.textContent = message || 'Bạn có chắc muốn thực hiện thao tác này?';
+        submitBtn.onclick = function () {
+            cleanup();
+            modal.hide();
+            resolve(true);
+        };
+        modalEl.addEventListener('hidden.bs.modal', onHidden);
+        modal.show();
+    });
 };
 </script>
 

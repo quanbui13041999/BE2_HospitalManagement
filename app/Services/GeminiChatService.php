@@ -12,12 +12,16 @@ class GeminiChatService
 {
     protected ?string $apiKey = null;
     protected ?string $caBundle = null;
-    protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+    protected string $primaryModel = 'gemini-flash-latest';
+    protected array $fallbackModels = [];
 
     public function __construct()
     {
         $this->apiKey = config('services.gemini.api_key');
         $this->caBundle = config('services.gemini.ca_bundle');
+        $this->primaryModel = (string) config('services.gemini.model', 'gemini-flash-latest');
+        $this->fallbackModels = $this->parseFallbackModels((string) config('services.gemini.fallback_models', ''));
     }
 
     public function generateReply(int $roomId, string $userMessage): string
@@ -62,36 +66,98 @@ class GeminiChatService
         ];
 
         try {
-            $request = Http::withQueryParameters(['key' => $this->apiKey]) /* fixed: bat verify TLS khi goi API ngoai */
-                ->timeout(15)
-                ->withOptions($this->tlsOptions());
+            foreach ($this->modelsToTry() as $model) {
+                $response = null;
 
-            $response = $request->post($this->apiUrl, $payload);
+                for ($attempt = 1; $attempt <= 2; $attempt++) {
+                    try {
+                        $request = Http::withQueryParameters(['key' => $this->apiKey]) /* fixed: bat verify TLS khi goi API ngoai */
+                            ->connectTimeout(8)
+                            ->timeout(25)
+                            ->withOptions($this->tlsOptions());
 
-            if ($response->failed()) {
-                $errorBody = $response->body();
-                Log::error('Gemini API Error Response: ' . $errorBody);
+                        $response = $request->post($this->apiUrl($model), $payload);
+                    } catch (Throwable $e) {
+                        Log::warning('Gemini chat request exception', [
+                            'model' => $model,
+                            'attempt' => $attempt,
+                            'error' => $this->redactApiKey($e->getMessage()),
+                        ]);
 
-                if (str_contains($errorBody, 'API_KEY_INVALID') || str_contains($errorBody, 'INVALID_ARGUMENT')) {
-                    Log::error('Gemini API Key appears to be invalid');
-                    return 'Xin lỗi, hệ thống AI không hoạt động. Vui lòng liên hệ nhân viên CSKH để được hỗ trợ ngay.';
+                        if ($attempt < 2) {
+                            usleep(250000 * $attempt);
+                            continue;
+                        }
+
+                        continue 2;
+                    }
+
+                    if ($response->failed()) {
+                        $errorBody = $response->body();
+                        $status = $response->status();
+                        Log::warning('Gemini chat API error response', [
+                            'model' => $model,
+                            'attempt' => $attempt,
+                            'status' => $status,
+                            'body' => $this->redactApiKey($errorBody),
+                        ]);
+
+                        if (str_contains($errorBody, 'API_KEY_INVALID') || str_contains($errorBody, 'ACCESS_TOKEN_TYPE_UNSUPPORTED')) {
+                            Log::error('Gemini API Key appears to be invalid');
+                            return 'Xin lỗi, hệ thống AI không hoạt động. Vui lòng liên hệ nhân viên CSKH để được hỗ trợ ngay.';
+                        }
+
+                        if ($attempt < 2 && ($status === 429 || $status >= 500)) {
+                            usleep(250000 * $attempt);
+                            continue;
+                        }
+
+                        continue 2;
+                    }
+
+                    $data = $response->json();
+
+                    if (!empty($data['candidates'][0]['content']['parts'][0]['text'])) {
+                        return $data['candidates'][0]['content']['parts'][0]['text'];
+                    }
+
+                    Log::warning('Unexpected Gemini chat API response structure', [
+                        'model' => $model,
+                        'response' => $data,
+                    ]);
+                    break;
                 }
-
-                return 'Xin lỗi, hiện tại hệ thống AI tạm thời gián đoạn. Vui lòng thử lại sau hoặc chờ nhân viên CSKH hỗ trợ bạn.';
             }
 
-            $data = $response->json();
-
-            if (empty($data['candidates'][0]['content']['parts'][0]['text'])) {
-                Log::error('Unexpected Gemini API response structure', ['response' => $data]);
-                return 'Xin lỗi, không nhận được phản hồi từ hệ thống AI. Vui lòng thử lại.';
-            }
-
-            return $data['candidates'][0]['content']['parts'][0]['text'];
+            return $this->localFallbackReply($userMessage);
         } catch (Throwable $e) {
             Log::error('Gemini API Exception: ' . $this->redactApiKey($e->getMessage())); /* fixed: khong ghi lo API key vao log */
-            return 'Xin lỗi, hiện tại hệ thống AI tạm thời gián đoạn. Vui lòng thử lại sau hoặc chờ nhân viên CSKH hỗ trợ bạn.';
+            return $this->localFallbackReply($userMessage);
         }
+    }
+
+    private function apiUrl(string $model): string
+    {
+        return "{$this->baseUrl}/{$model}:generateContent";
+    }
+
+    private function parseFallbackModels(string $models): array
+    {
+        return collect(explode(',', $models))
+            ->map(fn ($model) => trim($model))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function modelsToTry(): array
+    {
+        return collect(array_merge([$this->primaryModel], $this->fallbackModels))
+            ->map(fn ($model) => trim((string) $model))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function tlsOptions(): array
@@ -106,6 +172,25 @@ class GeminiChatService
     private function redactApiKey(string $message): string
     {
         return preg_replace('/([?&]key=)[^\s&)]+/i', '$1[redacted]', $message) ?? $message;
+    }
+
+    private function localFallbackReply(string $message): string
+    {
+        $normalized = mb_strtolower($message, 'UTF-8');
+
+        if (str_contains($normalized, 'đặt lịch') || str_contains($normalized, 'dat lich')) {
+            return 'Hiện tại AI đang quá tải, nhưng tôi vẫn có thể hướng dẫn nhanh: bạn vào mục Đặt lịch, chọn chuyên khoa/bác sĩ, ngày khám và khung giờ còn trống rồi bấm xác nhận.';
+        }
+
+        if (str_contains($normalized, 'hủy') || str_contains($normalized, 'huỷ') || str_contains($normalized, 'doi lich') || str_contains($normalized, 'đổi lịch')) {
+            return 'Hiện tại AI đang quá tải. Bạn có thể vào mục Lịch hẹn để hủy hoặc đổi lịch nếu lịch còn trong trạng thái cho phép thao tác.';
+        }
+
+        if (str_contains($normalized, 'bảo hiểm') || str_contains($normalized, 'bhyt')) {
+            return 'Hiện tại AI đang quá tải. Với BHYT, bạn vui lòng kiểm tra thông tin thẻ trong mục bảo hiểm hoặc liên hệ CSKH để được hỗ trợ tỷ lệ thanh toán cụ thể.';
+        }
+
+        return 'Xin lỗi, hiện tại hệ thống AI đang quá tải hoặc phản hồi chậm. Vui lòng thử lại sau ít phút hoặc chờ nhân viên CSKH hỗ trợ bạn.';
     }
 
     private function buildSystemPrompt(): string

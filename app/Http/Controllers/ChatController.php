@@ -18,6 +18,13 @@ class ChatController extends Controller
         $this->gemini = $gemini;
     }
 
+    public function index()
+    {
+        return redirect()
+            ->route('Home.trangchu')
+            ->with('info', 'Bạn có thể mở chat CSKH bằng nút chat ở góc màn hình.');
+    }
+
     /**
      * Lấy hoặc tạo phòng chat cho user đang đăng nhập
      * POST /chat/room

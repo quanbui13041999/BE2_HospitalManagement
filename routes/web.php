@@ -239,19 +239,6 @@ Route::middleware(['auth'])->prefix('treatment')->name('treatment.')->group(func
     Route::get('/report',              [TreatmentReminderController::class, 'report'])->name('report');
 });
 
-// Public routes
-Route::get('/news', [NewsController::class, 'index'])->name('news.index');
-Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
-
-
-// Admin routes
-Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
-    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
-    Route::patch('news/{id}/toggle', [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
-    Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
-
-});
-
 // ============================================================
 // ROUTE BÁC SĨ (Doctor Dashboard + Schedule Management)
 // ============================================================
@@ -457,7 +444,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     // --------------------------------------------------------
     // Bản tin bệnh viện (Admin)
     // --------------------------------------------------------
-    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
+    Route::resource('news', AdminNewsController::class)
+        ->parameters(['news' => 'id'])
+        ->except(['show']);
     Route::patch('news/{id}/toggle',     [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
     Route::post('news/{id}/send-email',  [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
 

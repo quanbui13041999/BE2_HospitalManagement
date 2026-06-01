@@ -57,15 +57,13 @@
                                     <p class="mb-2">Bác sĩ khám: <strong class="text-gray-800">{{ $appointment->schedule->doctor->full_name ?? '—' }}</strong></p>
                                     <p class="mb-2">Ca khám: <strong class="text-gray-800">{{ \Carbon\Carbon::parse($appointment->appointment_time)->format('H:i, d/m/Y') }}</strong></p>
                                     
-                                    <button type="button" class="btn btn-success w-100 rounded-3 py-2 mt-3 font-bold"
-                                            onclick="fillCheckinForm(@js([
-                                                'appointment_id' => $appointment->appointment_id,
-                                                'user_id' => $appointment->user_id,
-                                                'patient_name' => $appointment->user->full_name ?? '',
-                                                'patient_phone' => $appointment->user->phone ?? '',
-                                                'patient_email' => $appointment->user->email ?? '',
-                                                'schedule_id' => $appointment->schedule_id,
-                                            ]))"> {{-- fixed: encode du lieu vao JS an toan, tranh loi dau nhay/XSS --}}
+                                    <button type="button" class="btn btn-success w-100 rounded-3 py-2 mt-3 font-bold js-fill-checkin"
+                                            data-appointment-id="{{ $appointment->appointment_id }}"
+                                            data-user-id="{{ $appointment->user_id }}"
+                                            data-patient-name="{{ e($appointment->user->full_name ?? '') }}"
+                                            data-patient-phone="{{ e($appointment->user->phone ?? '') }}"
+                                            data-patient-email="{{ e($appointment->user->email ?? '') }}"
+                                            data-schedule-id="{{ $appointment->schedule_id }}">
                                         <i class="bi bi-check2-square me-2"></i>Sử dụng thông tin này
                                     </button>
                                 </div>
@@ -81,15 +79,13 @@
                                         <h6 class="text-xs uppercase tracking-wider text-primary font-black mt-4 mb-2">Các lịch hẹn hôm nay:</h6>
                                         <div class="list-group rounded-3 mb-3">
                                             @foreach($result['appointments'] as $app)
-                                                <button type="button" class="list-group-item list-group-item-action text-start p-3 text-sm"
-                                                        onclick="fillCheckinForm(@js([
-                                                            'appointment_id' => $app->appointment_id,
-                                                            'user_id' => $user->user_id,
-                                                            'patient_name' => $user->full_name,
-                                                            'patient_phone' => $user->phone,
-                                                            'patient_email' => $user->email,
-                                                            'schedule_id' => $app->schedule_id,
-                                                        ]))"> {{-- fixed: encode du lieu vao JS an toan --}}
+                                                <button type="button" class="list-group-item list-group-item-action text-start p-3 text-sm js-fill-checkin"
+                                                        data-appointment-id="{{ $app->appointment_id }}"
+                                                        data-user-id="{{ $user->user_id }}"
+                                                        data-patient-name="{{ e($user->full_name) }}"
+                                                        data-patient-phone="{{ e($user->phone ?? '') }}"
+                                                        data-patient-email="{{ e($user->email ?? '') }}"
+                                                        data-schedule-id="{{ $app->schedule_id }}">
                                                     <strong>Lịch #{{ $app->appointment_id }}</strong> - BS. {{ $app->schedule->doctor->full_name }}<br>
                                                     <small class="text-secondary">Ca: {{ \Carbon\Carbon::parse($app->appointment_time)->format('H:i') }}</small>
                                                 </button>
@@ -99,13 +95,11 @@
                                         <p class="text-secondary text-sm my-3 border border-dashed rounded p-3 text-center">
                                             Không có lịch hẹn đặt trước trong ngày hôm nay. Bệnh nhân sẽ được đăng ký diện <strong>Khám trực tiếp (Walk-in)</strong>.
                                         </p>
-                                        <button type="button" class="btn btn-secondary w-100 rounded-3 py-2 font-bold"
-                                                onclick="fillCheckinForm(@js([
-                                                    'user_id' => $user->user_id,
-                                                    'patient_name' => $user->full_name,
-                                                    'patient_phone' => $user->phone,
-                                                    'patient_email' => $user->email,
-                                                ]))"> {{-- fixed: encode du lieu vao JS an toan --}}
+                                        <button type="button" class="btn btn-secondary w-100 rounded-3 py-2 font-bold js-fill-checkin"
+                                                data-user-id="{{ $user->user_id }}"
+                                                data-patient-name="{{ e($user->full_name) }}"
+                                                data-patient-phone="{{ e($user->phone ?? '') }}"
+                                                data-patient-email="{{ e($user->email ?? '') }}">
                                             <i class="bi bi-box-arrow-in-right me-2"></i>Đăng ký Khám trực tiếp
                                         </button>
                                     @endif
@@ -266,5 +260,18 @@ function fillCheckinForm(data) {
     // Scroll to form smoothly
     document.getElementById('checkinForm').scrollIntoView({ behavior: 'smooth' });
 }
+
+document.querySelectorAll('.js-fill-checkin').forEach(function (button) {
+    button.addEventListener('click', function () {
+        fillCheckinForm({
+            appointment_id: this.dataset.appointmentId || '',
+            user_id: this.dataset.userId || '',
+            patient_name: this.dataset.patientName || '',
+            patient_phone: this.dataset.patientPhone || '',
+            patient_email: this.dataset.patientEmail || '',
+            schedule_id: this.dataset.scheduleId || '',
+        });
+    });
+});
 </script>
 @endsection

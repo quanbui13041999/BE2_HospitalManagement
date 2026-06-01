@@ -92,7 +92,7 @@
                                 <a href="{{ route('admin.news.edit', $item->news_id) }}" class="btn btn-sm btn-outline-secondary" title="Sửa">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form action="{{ route('admin.news.destroy', $item->news_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bài viết này?')">
+                                <form action="{{ route('admin.news.destroy', $item->news_id) }}" method="POST" class="d-inline" data-confirm="Bạn có chắc chắn muốn xóa bài viết này?">
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="version" value="{{ optional($item->updated_at)->format('Y-m-d H:i:s') }}">
