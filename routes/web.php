@@ -13,15 +13,19 @@ use App\Http\Controllers\User\PaymentController as UserPaymentController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HealthBackgroundController;
+use App\Http\Controllers\HealthTrackingController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Doctor\DoctorScheduleController;
 use App\Http\Controllers\Doctor\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\AdminNutritionController;
 use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\MedicalHistoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Doctor\DoctorAppointmentController;
+use App\Http\Controllers\PatientNutritionController;
 use App\Http\Controllers\Admin\PatientSearchController;
 use App\Http\Controllers\Admin\ActivityLogController;
 
@@ -300,8 +304,53 @@ Route::prefix('api/v1')->middleware('auth')->group(function () {
 // Medical Records and Medical History
 // ============================================================
 
-require_once __DIR__ . "/medical_records.php";
-require_once __DIR__ . "/medical_history.php";
+Route::prefix('medical-records')
+    ->middleware(['auth'])
+    ->name('medical-records.')
+    ->group(function () {
+        // CRUD cơ bản
+        Route::get('/', [MedicalRecordController::class, 'index'])->name('index');
+        Route::get('/create', [MedicalRecordController::class, 'create'])->name('create');
+        Route::post('/', [MedicalRecordController::class, 'store'])->name('store');
+        Route::get('/{id}', [MedicalRecordController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [MedicalRecordController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [MedicalRecordController::class, 'update'])->name('update');
+        Route::delete('/{id}', [MedicalRecordController::class, 'destroy'])->name('destroy');
+        Route::get('/{id}/print', [MedicalRecordController::class, 'print'])->name('print');
+
+        // File đính kèm
+        Route::post('/{id}/attachments', [MedicalRecordController::class, 'uploadAttachment'])->name('attachments.upload');
+        Route::get('/{recordId}/attachments/{attachmentId}/view', [MedicalRecordController::class, 'viewAttachment'])->name('attachments.view');
+        Route::delete('/{recordId}/attachments/{attachmentId}', [MedicalRecordController::class, 'deleteAttachment'])->name('attachments.destroy');
+
+        // Kết quả xét nghiệm (chỉ Doctor/Admin)
+        Route::put('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'updateOrderResult'])->name('orders.update-result');
+        Route::delete('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'deleteOrderResult'])->name('orders.delete-result');
+    });
+
+Route::middleware('auth')
+    ->prefix('bac-si')
+    ->name('doctor.')
+    ->group(function () {
+        Route::get('/lich-hen', [DoctorAppointmentController::class, 'index'])
+            ->name('appointments.index');
+    });
+
+// Bác sĩ xem tiền sử & tài liệu của bệnh nhân
+Route::middleware('auth')->group(function () {
+    Route::get('/health/patient/{patientId}', [HealthBackgroundController::class, 'showPatient'])
+        ->name('health.patient.show');
+
+    Route::get('/documents/patient/{patientId}', [DocumentController::class, 'indexPatient'])
+        ->name('documents.patient.index');
+});
+
+Route::prefix('medical_history')
+    ->middleware(['auth'])
+    ->name('medical_history.')
+    ->group(function () {
+        Route::get('/', [MedicalHistoryController::class, 'index'])->name('index');
+    });
 
 // ============================================================
 // ADMIN ROUTES (Yêu cầu đăng nhập + quyền is_admin)
@@ -541,7 +590,62 @@ Route::middleware(['auth', 'check_queue_role:1,2'])->prefix('queue/doctor')->nam
     Route::get('/api/{scheduleId}/snapshot',           [QueueDoctorController::class, 'apiSnapshot'])->name('api.snapshot')->whereNumber('scheduleId');
 
 });
-// che do dinh duong
-require __DIR__.'/nutrition.php';
- // nhat ky suc khoe chu dong
- require __DIR__.'/health_tracking.php';   
+// ============================================================
+// CHẾ ĐỘ DINH DƯỠNG
+// ============================================================
+
+Route::middleware(['auth', 'role:1,2'])->prefix('admin/nutrition')->name('admin.nutrition.')->group(function () {
+    // 1. Quản lý bài viết (Nutrition Articles)
+    Route::get('/', [AdminNutritionController::class, 'index'])->name('index');
+    Route::get('/create', [AdminNutritionController::class, 'create'])->name('create');
+    Route::post('/', [AdminNutritionController::class, 'store'])->name('store');
+    Route::get('/{article}/edit', [AdminNutritionController::class, 'edit'])->name('edit');
+    Route::put('/{article}', [AdminNutritionController::class, 'update'])->name('update');
+    Route::delete('/{article}', [AdminNutritionController::class, 'destroy'])->name('destroy');
+
+    // 2. Quản lý quy tắc gợi ý thực đơn (Disease Nutrition Rules)
+    Route::prefix('rules')->name('rules.')->group(function () {
+        Route::get('/', [AdminNutritionController::class, 'rulesIndex'])->name('index');
+        Route::get('/create', [AdminNutritionController::class, 'rulesCreate'])->name('create');
+        Route::post('/', [AdminNutritionController::class, 'rulesStore'])->name('store');
+        Route::get('/{rule}/edit', [AdminNutritionController::class, 'rulesEdit'])->name('edit');
+        Route::put('/{rule}', [AdminNutritionController::class, 'rulesUpdate'])->name('update');
+        Route::delete('/{rule}', [AdminNutritionController::class, 'rulesDestroy'])->name('destroy');
+    });
+
+    // 3. Quản lý danh mục thực phẩm & calo (Foods Database)
+    Route::prefix('foods')->name('foods.')->group(function () {
+        Route::get('/', [AdminNutritionController::class, 'foodsIndex'])->name('index');
+        Route::get('/create', [AdminNutritionController::class, 'foodsCreate'])->name('create');
+        Route::post('/', [AdminNutritionController::class, 'foodsStore'])->name('store');
+        Route::get('/{food}/edit', [AdminNutritionController::class, 'foodsEdit'])->name('edit');
+        Route::put('/{food}', [AdminNutritionController::class, 'foodsUpdate'])->name('update');
+        Route::delete('/{food}', [AdminNutritionController::class, 'foodsDestroy'])->name('destroy');
+    });
+});
+
+Route::middleware(['auth'])->prefix('patient/nutrition')->name('patient.nutrition.')->group(function () {
+    Route::get('/', [PatientNutritionController::class, 'index'])->name('index');
+    Route::post('/meal-log', [PatientNutritionController::class, 'storeMealLog'])->name('meal-log.store');
+    Route::delete('/meal-log/{mealLog}', [PatientNutritionController::class, 'destroyMealLog'])->name('meal-log.destroy');
+});
+
+// ============================================================
+// NHẬT KÝ SỨC KHỎE CHỦ ĐỘNG
+// ============================================================
+
+Route::middleware('auth')->group(function () {
+    Route::get('/health-tracking', [HealthTrackingController::class, 'index'])->name('health-tracking.index');
+    Route::post('/api/health-tracking/check-risk', [HealthTrackingController::class, 'checkRisk'])->name('health-tracking.check-risk');
+
+    // Chỉ patient mới được tạo/sửa/xóa
+    Route::middleware('can:create,App\Models\HealthTracking')->group(function () {
+        Route::get('/health-tracking/create', [HealthTrackingController::class, 'create'])->name('health-tracking.create');
+        Route::post('/health-tracking', [HealthTrackingController::class, 'store'])->name('health-tracking.store');
+        Route::get('/health-tracking/{healthTracking}/edit', [HealthTrackingController::class, 'edit'])->name('health-tracking.edit')->whereNumber('healthTracking');
+        Route::put('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'update'])->name('health-tracking.update')->whereNumber('healthTracking');
+        Route::delete('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'destroy'])->name('health-tracking.destroy')->whereNumber('healthTracking');
+    });
+
+    Route::get('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'show'])->name('health-tracking.show')->whereNumber('healthTracking');
+});
