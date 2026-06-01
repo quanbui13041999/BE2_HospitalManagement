@@ -26,6 +26,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Dữ liệu nhập không hợp lệ.',
+                    'data' => [
+                        'errors' => $e->errors(),
+                    ],
+                ], 422);
+            } /* fixed: input sai phai tra 422, khong bi handler chung bien thanh 500 */
+
             report($e); /* fixed: API log loi noi bo va tra JSON chung */
 
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;

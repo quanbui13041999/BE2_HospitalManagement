@@ -30,6 +30,7 @@
                         <div class="input-group">
                             <input type="text" name="keyword" class="form-control rounded-start-3" 
                                    placeholder="Mã lịch hẹn, SĐT, hoặc Email..." 
+                                   maxlength="100"
                                    value="{{ $keyword ?? '' }}" required>
                             <button class="btn btn-primary rounded-end-3 px-4 font-bold" type="submit">
                                 Tìm kiếm
@@ -57,14 +58,14 @@
                                     <p class="mb-2">Ca khám: <strong class="text-gray-800">{{ \Carbon\Carbon::parse($appointment->appointment_time)->format('H:i, d/m/Y') }}</strong></p>
                                     
                                     <button type="button" class="btn btn-success w-100 rounded-3 py-2 mt-3 font-bold"
-                                            onclick="fillCheckinForm({
-                                                appointment_id: '{{ $appointment->appointment_id }}',
-                                                user_id: '{{ $appointment->user_id }}',
-                                                patient_name: '{{ $appointment->user->full_name ?? '' }}',
-                                                patient_phone: '{{ $appointment->user->phone ?? '' }}',
-                                                patient_email: '{{ $appointment->user->email ?? '' }}',
-                                                schedule_id: '{{ $appointment->schedule_id }}'
-                                            })">
+                                            onclick="fillCheckinForm(@js([
+                                                'appointment_id' => $appointment->appointment_id,
+                                                'user_id' => $appointment->user_id,
+                                                'patient_name' => $appointment->user->full_name ?? '',
+                                                'patient_phone' => $appointment->user->phone ?? '',
+                                                'patient_email' => $appointment->user->email ?? '',
+                                                'schedule_id' => $appointment->schedule_id,
+                                            ]))"> {{-- fixed: encode du lieu vao JS an toan, tranh loi dau nhay/XSS --}}
                                         <i class="bi bi-check2-square me-2"></i>Sử dụng thông tin này
                                     </button>
                                 </div>
@@ -81,14 +82,14 @@
                                         <div class="list-group rounded-3 mb-3">
                                             @foreach($result['appointments'] as $app)
                                                 <button type="button" class="list-group-item list-group-item-action text-start p-3 text-sm"
-                                                        onclick="fillCheckinForm({
-                                                            appointment_id: '{{ $app->appointment_id }}',
-                                                            user_id: '{{ $user->user_id }}',
-                                                            patient_name: '{{ $user->full_name }}',
-                                                            patient_phone: '{{ $user->phone }}',
-                                                            patient_email: '{{ $user->email }}',
-                                                            schedule_id: '{{ $app->schedule_id }}'
-                                                        })">
+                                                        onclick="fillCheckinForm(@js([
+                                                            'appointment_id' => $app->appointment_id,
+                                                            'user_id' => $user->user_id,
+                                                            'patient_name' => $user->full_name,
+                                                            'patient_phone' => $user->phone,
+                                                            'patient_email' => $user->email,
+                                                            'schedule_id' => $app->schedule_id,
+                                                        ]))"> {{-- fixed: encode du lieu vao JS an toan --}}
                                                     <strong>Lịch #{{ $app->appointment_id }}</strong> - BS. {{ $app->schedule->doctor->full_name }}<br>
                                                     <small class="text-secondary">Ca: {{ \Carbon\Carbon::parse($app->appointment_time)->format('H:i') }}</small>
                                                 </button>
@@ -99,12 +100,12 @@
                                             Không có lịch hẹn đặt trước trong ngày hôm nay. Bệnh nhân sẽ được đăng ký diện <strong>Khám trực tiếp (Walk-in)</strong>.
                                         </p>
                                         <button type="button" class="btn btn-secondary w-100 rounded-3 py-2 font-bold"
-                                                onclick="fillCheckinForm({
-                                                    user_id: '{{ $user->user_id }}',
-                                                    patient_name: '{{ $user->full_name }}',
-                                                    patient_phone: '{{ $user->phone }}',
-                                                    patient_email: '{{ $user->email }}'
-                                                })">
+                                                onclick="fillCheckinForm(@js([
+                                                    'user_id' => $user->user_id,
+                                                    'patient_name' => $user->full_name,
+                                                    'patient_phone' => $user->phone,
+                                                    'patient_email' => $user->email,
+                                                ]))"> {{-- fixed: encode du lieu vao JS an toan --}}
                                             <i class="bi bi-box-arrow-in-right me-2"></i>Đăng ký Khám trực tiếp
                                         </button>
                                     @endif
@@ -198,6 +199,7 @@
                             <div class="col-12">
                                 <label class="form-label font-bold text-gray-700 text-sm">Họ và Tên Bệnh Nhân <span class="text-danger">*</span></label>
                                 <input type="text" name="patient_name" id="form_patient_name" class="form-control rounded-3 p-2.5" 
+                                       maxlength="100"
                                        placeholder="Nhập tên bệnh nhân hiển thị..." required>
                             </div>
 
@@ -205,6 +207,7 @@
                             <div class="col-md-6 col-12">
                                 <label class="form-label font-bold text-gray-700 text-sm">Số Điện Thoại</label>
                                 <input type="text" name="patient_phone" id="form_patient_phone" class="form-control rounded-3 p-2.5" 
+                                       maxlength="15"
                                        placeholder="Số điện thoại liên lạc...">
                             </div>
 
@@ -212,6 +215,7 @@
                             <div class="col-md-6 col-12">
                                 <label class="form-label font-bold text-gray-700 text-sm">Email</label>
                                 <input type="email" name="patient_email" id="form_patient_email" class="form-control rounded-3 p-2.5" 
+                                       maxlength="100"
                                        placeholder="Địa chỉ email...">
                             </div>
 
@@ -219,6 +223,7 @@
                             <div class="col-12">
                                 <label class="form-label font-bold text-gray-700 text-sm">Ghi Chú Triệu Chứng / Trạng Thái</label>
                                 <textarea name="notes" id="form_notes" rows="2" class="form-control rounded-3 p-2.5" 
+                                          maxlength="255"
                                           placeholder="Triệu chứng khám sơ bộ, đối tượng miễn phí, bảo hiểm thẻ..."></textarea>
                             </div>
                         </div>

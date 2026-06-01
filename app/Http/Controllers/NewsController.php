@@ -4,13 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\HospitalNews;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class NewsController extends Controller
 {
     public function index(Request $request)
     {
-        $category   = $request->query('category');
         $categories = ['Thông báo', 'Sức khỏe', 'Chương trình', 'Hướng dẫn', 'Khẩn cấp'];
+        $validated = $request->validate([
+            'category' => ['nullable', Rule::in($categories)],
+        ]); /* fixed: validate category tu query string truoc khi loc */
+
+        $category = $validated['category'] ?? null;
 
         $news = HospitalNews::published()
             ->ofCategory($category)

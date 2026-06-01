@@ -63,6 +63,13 @@ class ChatCskhSmokeTest extends TestCase
                 ->assertJson(['success' => true]);
 
             $this->actingAs($patient)
+                ->postJson(route('chat.send'), [
+                    'room_id' => $roomId,
+                    'message_text' => '',
+                ])
+                ->assertUnprocessable(); // fixed: tin nhan rong phai bi validate
+
+            $this->actingAs($patient)
                 ->getJson(route('chat.messages', $roomId))
                 ->assertOk()
                 ->assertJson(['success' => true])

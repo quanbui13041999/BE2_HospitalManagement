@@ -51,6 +51,10 @@ class QueueService
             $scheduleId = $data['schedule_id'];
             $priority   = $data['priority'] ?? 'normal';
 
+            DoctorSchedule::where('schedule_id', $scheduleId)
+                ->lockForUpdate()
+                ->firstOrFail(); /* fixed: khoa ca kham de nhieu le tan check-in cung luc khong trung so thu tu */
+
             // Lấy số thứ tự tiếp theo cho ngày + ca này
             $lastNumber = QueueTicket::where('schedule_id', $scheduleId)
                 ->whereDate('queue_date', today())
@@ -154,17 +158,28 @@ class QueueService
      */
     public function startExam(int $ticketId): QueueTicket
     {
-        $ticket = QueueTicket::with(['appointment.payment'])->findOrFail($ticketId);
+        return DB::transaction(function () use ($ticketId) {
+            $ticket = QueueTicket::with(['appointment.payment'])
+                ->where('ticket_id', $ticketId)
+                ->lockForUpdate()
+                ->firstOrFail(); /* fixed: khoa ticket khi bac si bat dau kham */
 
-        if (!$this->canStartExam($ticket)) {
-            throw ValidationException::withMessages([
-                'ticket' => 'Bệnh nhân chưa thanh toán nên vẫn ở hàng đợi. Chỉ ca cấp cứu được khám trước và thanh toán sau.',
-            ]);
-        }
+            if ($ticket->status !== 'calling') {
+                throw ValidationException::withMessages([
+                    'ticket' => 'Ticket này đã được người khác xử lý. Trang sẽ được tải lại để cập nhật hàng đợi.',
+                ]);
+            }
 
-        $ticket->update(['status' => 'in_progress', 'started_at' => now()]);
-        broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
-        return $ticket;
+            if (!$this->canStartExam($ticket)) {
+                throw ValidationException::withMessages([
+                    'ticket' => 'Bệnh nhân chưa thanh toán nên vẫn ở hàng đợi. Chỉ ca cấp cứu được khám trước và thanh toán sau.',
+                ]);
+            }
+
+            $ticket->update(['status' => 'in_progress', 'started_at' => now()]);
+            broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
+            return $ticket;
+        });
     }
 
     private function canStartExam(QueueTicket $ticket): bool
@@ -196,7 +211,16 @@ class QueueService
     public function complete(int $ticketId): QueueTicket
     {
         return DB::transaction(function () use ($ticketId) {
-            $ticket = QueueTicket::findOrFail($ticketId);
+            $ticket = QueueTicket::where('ticket_id', $ticketId)
+                ->lockForUpdate()
+                ->firstOrFail(); /* fixed: tranh 2 nguoi cung hoan thanh mot ticket */
+
+            if ($ticket->status !== 'in_progress') {
+                throw ValidationException::withMessages([
+                    'ticket' => 'Ticket này đã được người khác xử lý. Trang sẽ được tải lại để cập nhật hàng đợi.',
+                ]);
+            }
+
             $ticket->update(['status' => 'completed', 'completed_at' => now()]);
 
             // Cập nhật appointment nếu có
@@ -229,14 +253,25 @@ class QueueService
      */
     public function skip(int $ticketId, string $reason = ''): QueueTicket
     {
-        $ticket = QueueTicket::findOrFail($ticketId);
-        $ticket->update([
-            'status'       => 'skipped',
-            'completed_at' => now(),
-            'notes'        => $reason ?: $ticket->notes,
-        ]);
-        broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
-        return $ticket;
+        return DB::transaction(function () use ($ticketId, $reason) {
+            $ticket = QueueTicket::where('ticket_id', $ticketId)
+                ->lockForUpdate()
+                ->firstOrFail(); /* fixed: tranh skip ticket da duoc bac si/le tan khac xu ly */
+
+            if (!in_array($ticket->status, ['waiting', 'calling'], true)) {
+                throw ValidationException::withMessages([
+                    'ticket' => 'Ticket này đã được người khác xử lý. Trang sẽ được tải lại để cập nhật hàng đợi.',
+                ]);
+            }
+
+            $ticket->update([
+                'status'       => 'skipped',
+                'completed_at' => now(),
+                'notes'        => $reason ?: $ticket->notes,
+            ]);
+            broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
+            return $ticket;
+        });
     }
 
     /**

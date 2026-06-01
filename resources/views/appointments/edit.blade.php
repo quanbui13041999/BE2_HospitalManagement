@@ -58,6 +58,11 @@
         {{ $errors->first('msg') }}
     </div>
     @endif
+    @if(session('warning'))
+    <div class="mb-6 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-xl text-orange-700 text-sm flex items-center gap-3">
+        {{ session('warning') }}
+    </div>
+    @endif
 
     @if($availableSchedules->isEmpty())
     <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-xl text-blue-800 text-sm flex items-center gap-3">
@@ -70,6 +75,7 @@
         @csrf
         @method('PUT')
         <input type="hidden" name="new_appointment_time" id="new_appointment_time">
+        <input type="hidden" name="version" value="{{ optional($appointment->updated_at)->format('Y-m-d H:i:s') }}"> {{-- fixed: optimistic lock de phat hien form doi lich da cu --}}
 
         {{-- Thông tin người đặt lịch --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
@@ -227,6 +233,12 @@
         icon.style.display = 'none';
     });
 </script>
+@if(session('reload_page'))
+<script>
+    alert(@js(session('warning') ?? 'Lịch hẹn đã thay đổi, trang sẽ được tải lại.'));
+    window.location.replace(window.location.href);
+</script>
+@endif
 @include('components.back-to-previous')
 </body>
 </html>

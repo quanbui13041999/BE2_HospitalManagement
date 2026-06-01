@@ -716,6 +716,12 @@
         </div>
         @endif
 
+        @if(session('warning'))
+        <div class="alert-success" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412">
+            {{ session('warning') }}
+        </div>
+        @endif
+
         @php
         $total = $appointments->count();
         $pending = $appointments->where('status', 'Chờ xác nhận')->count();
@@ -860,7 +866,8 @@
                                     @if($canCancelAppointment)
                                         <button type="button" class="btn-cancel"
                                             onclick="openModal(this)"
-                                            data-action="{{ route('appointments.cancel', $item->appointment_id) }}">
+                                            data-action="{{ route('appointments.cancel', $item->appointment_id) }}"
+                                            data-version="{{ optional($item->updated_at)->format('Y-m-d H:i:s') }}">
                                             ✕ Huỷ
                                         </button>
                                     @else
@@ -1023,6 +1030,7 @@
             <p>Bạn có chắc muốn hủy lịch khám này không? Hành động này không thể hoàn tác.</p>
             <form id="cancelForm" method="POST">
                 @csrf
+                <input type="hidden" name="version" id="cancelVersion">
                 <textarea name="cancel_reason" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
                 <div class="modal-btns">
                     <button type="button" class="modal-cancel-btn" onclick="closeModal()">Không, giữ lại</button>
@@ -1038,6 +1046,7 @@
     <script>
         function openModal(button) {
             document.getElementById('cancelForm').action = button.getAttribute('data-action');
+            document.getElementById('cancelVersion').value = button.getAttribute('data-version') || '';
             document.getElementById('cancelModal').classList.add('active');
         }
 
@@ -1048,6 +1057,12 @@
             if (e.target === this) closeModal();
         });
     </script>
+    @if(session('reload_page'))
+    <script>
+        alert(@js(session('warning') ?? 'Lịch hẹn đã thay đổi, trang sẽ được tải lại.'));
+        window.location.replace(window.location.href);
+    </script>
+    @endif
 </body>
 
 </html>

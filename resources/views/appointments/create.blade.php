@@ -986,6 +986,12 @@
                     ✔️ {{ session('success') }}
                 </div>
             @endif
+            @if(session('warning'))
+                <div
+                    style="background:#fff7ed;border-left:4px solid #f97316;padding:14px 20px;border-radius:18px;margin-bottom:24px;font-size:.85rem;color:#9a3412">
+                    ⚠️ {{ session('warning') }}
+                </div>
+            @endif
             @if($errors->has('msg'))
                 <div
                     style="background:#fee9e9;border-left:4px solid #e5484d;padding:14px 20px;border-radius:18px;margin-bottom:24px;font-size:.85rem;color:#991b1b">
@@ -1808,6 +1814,12 @@
             container.style.display = isPriority ? 'block' : 'none';
         }
     </script>
+    @if(session('reload_page'))
+    <script>
+        alert(@js(session('warning') ?? 'Lịch khám đã thay đổi, trang sẽ được tải lại.'));
+        window.location.replace(window.location.href);
+    </script>
+    @endif
     @include('components.back-to-previous')
 </body>
 

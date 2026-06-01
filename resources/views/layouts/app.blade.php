@@ -20,6 +20,12 @@
     @include('components.back-to-previous')
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @if(session('reload_page'))
+    <script>
+        alert(@js(session('warning') ?? session('error') ?? 'Dữ liệu đã thay đổi, trang sẽ được tải lại.'));
+        window.location.replace(window.location.href);
+    </script>
+    @endif
     @stack('scripts')
 
     @auth

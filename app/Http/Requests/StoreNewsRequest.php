@@ -16,6 +16,7 @@ class StoreNewsRequest extends FormRequest
             'category'     => 'required|in:Thông báo,Sức khỏe,Chương trình,Hướng dẫn,Khẩn cấp',
             'thumbnail'    => 'nullable|image|mimes:jpeg,png,webp|max:2048',
             'is_published' => 'nullable|boolean',
+            'version'      => 'nullable|date',
         ];
     }
 

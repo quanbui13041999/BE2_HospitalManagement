@@ -258,6 +258,13 @@
 {{-- Bootstrap JS --}}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+@if(session('reload_page'))
+<script>
+    alert(@js(session('warning') ?? session('error') ?? 'Dữ liệu đã thay đổi, trang sẽ được tải lại.'));
+    window.location.replace(window.location.href);
+</script>
+@endif
+
 <script>
 // Script để cập nhật badge thông báo chưa đọc cho admin
 async function updateAdminUnreadCount() {

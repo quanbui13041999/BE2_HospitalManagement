@@ -74,6 +74,19 @@ class PatientSearchTest extends TestCase
                 ->assertOk()
                 ->assertJsonStructure(['success', 'html']);
 
+            $this->actingAs($admin)
+                ->getJson(route('admin.patients.search.results', [
+                    'age_from' => 80,
+                    'age_to' => 20,
+                ]))
+                ->assertUnprocessable(); // fixed: tuoi tu khong duoc lon hon tuoi den
+
+            $this->actingAs($admin)
+                ->getJson(route('admin.patients.search.results', [
+                    'appointment_status' => 'sai-trang-thai',
+                ]))
+                ->assertUnprocessable(); // fixed: chan enum trang thai lich hen khong hop le
+
         } finally {
             $patient->delete();
             $admin->delete();
@@ -138,6 +151,12 @@ class PatientSearchTest extends TestCase
                     ],
                     'explanation' => 'Đã tìm kiếm bệnh nhân nữ tên Lan trong độ tuổi 30-45 có bảo hiểm vàng bị tiểu đường'
                 ]);
+
+            $this->actingAs($admin)
+                ->postJson(route('admin.patients.ai-search'), [
+                    'query' => str_repeat('a', 501),
+                ])
+                ->assertUnprocessable(); // fixed: gioi han do dai cau hoi AI
 
         } finally {
             $admin->delete();

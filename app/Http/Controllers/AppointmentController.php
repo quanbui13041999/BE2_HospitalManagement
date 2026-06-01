@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ConcurrentModificationException;
 use App\Services\AppointmentService;
 use App\Services\Doctor\DoctorSuggestionService;
 use App\Services\Doctor\DoctorTimeslotService;
@@ -107,6 +108,11 @@ class AppointmentController extends Controller
             return redirect()->route('appointments.index')
                 ->with('success', $result['message'])
                 ->with('appointment_id', $result['appointment_id']);
+        } catch (ConcurrentModificationException $e) {
+            return back()
+                ->with('warning', $e->getMessage())
+                ->with('reload_page', true)
+                ->withInput(); /* fixed: slot vua thay doi do nguoi khac dat truoc thi bao va reload */
         } catch (\Exception $e) {
             Log::error('Create appointment failed', [
                 'user_id' => Auth::id(),
@@ -212,6 +218,7 @@ class AppointmentController extends Controller
             'new_schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
             'new_appointment_time' => 'required|string|max:10',
             'reschedule_reason' => 'nullable|string|max:255',
+            'version' => 'nullable|date',
         ], [
             'new_schedule_id.required' => 'Vui lòng chọn khung giờ mới.',
             'new_schedule_id.exists' => 'Khung giờ không hợp lệ.',
@@ -225,12 +232,17 @@ class AppointmentController extends Controller
                     'new_schedule_id' => $request->new_schedule_id,
                     'new_appointment_time' => $request->new_appointment_time,
                     'reschedule_reason' => $request->reschedule_reason,
+                    'version' => $request->version,
                     'ip_address' => $request->ip(),
                 ]
             );
 
             return redirect()->route('appointments.index')
                 ->with('success', $result['message']);
+        } catch (ConcurrentModificationException $e) {
+            return redirect()->route('appointments.index')
+                ->with('warning', $e->getMessage())
+                ->with('reload_page', true); /* fixed: bao nguoi submit sau va tai lai danh sach */
         } catch (\Exception $e) {
             Log::error('Reschedule appointment failed', [
                 'appointment_id' => $id,
@@ -255,6 +267,7 @@ class AppointmentController extends Controller
 
         $request->validate([
             'cancel_reason' => 'nullable|string|max:255',
+            'version' => 'nullable|date',
         ]);
 
         try {
@@ -263,12 +276,17 @@ class AppointmentController extends Controller
                 Auth::id(),
                 [
                     'cancel_reason' => $request->cancel_reason,
+                    'version' => $request->version,
                     'ip_address' => $request->ip(),
                 ]
             );
 
             return redirect()->route('appointments.index')
                 ->with('success', $result['message']);
+        } catch (ConcurrentModificationException $e) {
+            return redirect()->route('appointments.index')
+                ->with('warning', $e->getMessage())
+                ->with('reload_page', true); /* fixed: neu lich da bi doi/huy truoc do thi reload */
         } catch (\Exception $e) {
             Log::error('Cancel appointment failed', [
                 'appointment_id' => $id,
