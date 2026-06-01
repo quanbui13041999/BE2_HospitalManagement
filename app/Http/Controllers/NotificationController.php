@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Notification;
+use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,8 @@ class NotificationController extends Controller
         ]);
 
         $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
         $status = $request->input('status', 'all');
         $type = $request->input('type');
 
@@ -43,6 +46,8 @@ class NotificationController extends Controller
     public function show(Notification $notification)
     {
         $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
         abort_unless(
             $this->notifications->visibleQuery($user)->whereKey($notification->getKey())->exists(),
             403
@@ -56,7 +61,7 @@ class NotificationController extends Controller
         return view('notifications.show', compact('notification', 'layout'));
     }
 
-    private function layoutFor($user): string
+    private function layoutFor(User $user): string
     {
         $roleName = mb_strtolower((string) ($user->role?->role_name ?? ''), 'UTF-8');
 
@@ -70,6 +75,8 @@ class NotificationController extends Controller
     public function dropdown()
     {
         $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
         $items = $this->notifications->latestForUser($user, 8)->map(function (Notification $notification) use ($user) {
             return [
                 'id' => $notification->notification_id,
@@ -98,17 +105,22 @@ class NotificationController extends Controller
 
     public function unreadCount()
     {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
         return response()->json([
             'success' => true,
             'message' => 'OK',
-            'unread_count' => $this->notifications->unreadCount(Auth::user()),
-            'data' => ['unread_count' => $this->notifications->unreadCount(Auth::user())],
+            'unread_count' => $this->notifications->unreadCount($user),
+            'data' => ['unread_count' => $this->notifications->unreadCount($user)],
         ]);
     }
 
     public function markRead(Notification $notification)
     {
         $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
         abort_unless(
             $this->notifications->visibleQuery($user)->whereKey($notification->getKey())->exists(),
             403
@@ -119,14 +131,17 @@ class NotificationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'OK',
-            'unread_count' => $this->notifications->unreadCount(Auth::user()),
-            'data' => ['unread_count' => $this->notifications->unreadCount(Auth::user())],
+            'unread_count' => $this->notifications->unreadCount($user),
+            'data' => ['unread_count' => $this->notifications->unreadCount($user)],
         ]);
     }
 
     public function markAllRead()
     {
-        $count = $this->notifications->markAllAsRead(Auth::user());
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $count = $this->notifications->markAllAsRead($user);
 
         return response()->json([
             'success' => true,

@@ -2,8 +2,9 @@
 namespace App\Http\Controllers\Queue;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Appointment, DoctorSchedule};
+use App\Models\{Appointment, DoctorSchedule, User};
 use App\Services\QueueService;
+use Illuminate\Support\Facades\Auth;
 
 class QueueDisplayController extends Controller
 {
@@ -12,10 +13,10 @@ class QueueDisplayController extends Controller
      */
     public function index()
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $patientAppointmentsBySchedule = collect();
 
-        if ($user?->isPatient()) {
+        if ($user instanceof User && $user->isPatient()) {
             $patientAppointmentsBySchedule = Appointment::query()
                 ->where('user_id', $user->user_id)
                 ->whereDate('appointment_time', today())
