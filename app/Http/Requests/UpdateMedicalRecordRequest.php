@@ -2,23 +2,39 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
+use App\Models\Doctor;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class UpdateMedicalRecordRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return in_array((int) (Auth::user()?->role_id ?? 0), [1, 2], true);
     }
 
     public function rules(): array
     {
         return [
             // Thông tin chung - KHÔNG BẮT BUỘC KHI UPDATE (dùng sometimes)
-            'patient_id'          => 'sometimes|required|integer|exists:users,user_id',
+            'patient_id'          => [
+                'sometimes',
+                'required',
+                'integer',
+                Rule::exists('users', 'user_id')->where(fn ($query) => $query->where('role_id', 3)),
+            ],
             'patient_name'        => ['sometimes', 'required', 'string', 'max:100', 'regex:/\A[\pL\s.\'-]+\z/u'],
             'patient_code'        => ['nullable', 'string', 'max:30', 'regex:/\ABN\d{1,10}\z/u'],
-            'doctor_id'           => 'sometimes|required|integer|exists:users,user_id',
+            'doctor_id'           => [
+                'sometimes',
+                'required',
+                'integer',
+                (int) (Auth::user()?->role_id ?? 0) === 2
+                    ? Rule::in([(int) Auth::user()->user_id])
+                    : Rule::exists('users', 'user_id')->where(fn ($query) => $query->where('role_id', 2)),
+            ],
             'doctor_name'         => ['sometimes', 'required', 'string', 'max:100', 'regex:/\A[\pL\s.\'-]+\z/u'],
             'appointment_id'      => 'nullable|integer',
             'exam_date'           => 'sometimes|required|date',
@@ -126,6 +142,41 @@ class UpdateMedicalRecordRequest extends FormRequest
         ];
     }
 
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $patient = $this->filled('patient_id')
+                ? User::where('user_id', $this->integer('patient_id'))->where('role_id', 3)->first()
+                : null;
+            $doctor = $this->filled('doctor_id')
+                ? User::where('user_id', $this->integer('doctor_id'))->where('role_id', 2)->first()
+                : null;
+            $doctorName = $doctor
+                ? (Doctor::where('user_id', $doctor->user_id)->value('full_name') ?: $doctor->full_name)
+                : null;
+
+            if ($this->filled('patient_id') && ! $patient) {
+                $validator->errors()->add('patient_id', 'Benh nhan khong hop le.');
+            }
+
+            if ($this->filled('doctor_id') && ! $doctor) {
+                $validator->errors()->add('doctor_id', 'Bac si khong hop le.');
+            }
+
+            if ((int) (Auth::user()?->role_id ?? 0) === 2 && $this->filled('doctor_id') && $this->integer('doctor_id') !== (int) Auth::user()->user_id) {
+                $validator->errors()->add('doctor_id', 'Bac si khong duoc chuyen phieu kham sang bac si khac.');
+            }
+
+            if ($patient && $this->filled('patient_name') && $this->normalizeName($this->input('patient_name')) !== $this->normalizeName($patient->full_name)) {
+                $validator->errors()->add('patient_name', 'Ten benh nhan khong khop voi ma benh nhan da chon.');
+            }
+
+            if ($doctorName && $this->filled('doctor_name') && $this->normalizeName($this->input('doctor_name')) !== $this->normalizeName($doctorName)) {
+                $validator->errors()->add('doctor_name', 'Ten bac si khong khop voi ma bac si da chon.');
+            }
+        });
+    }
+
     protected function prepareForValidation(): void
     {
         $this->normalizeTextInputs();
@@ -175,6 +226,11 @@ class UpdateMedicalRecordRequest extends FormRequest
             }));
             $this->merge(['orders' => empty($filtered) ? null : $filtered]);
         }
+    }
+
+    private function normalizeName(?string $value): string
+    {
+        return mb_strtolower(preg_replace('/\s+/u', ' ', trim((string) $value)), 'UTF-8');
     }
 
     private function normalizeTextInputs(): void

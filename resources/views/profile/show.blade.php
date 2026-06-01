@@ -197,7 +197,9 @@
                  <a href="{{ route('health-tracking.index') }}" class="quick-link-item">
                     <div class="link-icon">📓</div>
                     <div>
-                        <strong>Nhật kí sức khỏe </strong>
+                        <strong>
+                            {{ auth()->user()->isPatient() ? 'Nhật kí sức khỏe' : 'Nhật kí sức khỏe bệnh nhân' }}
+                        </strong>
                         
                     </div>
                 </a>

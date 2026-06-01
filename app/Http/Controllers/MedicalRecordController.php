@@ -8,6 +8,7 @@ use App\Models\MedicalRecord;
 use App\Models\MedicalAttachment;
 use App\Models\MedicalOrder;
 use App\Models\Appointment;
+use App\Models\Doctor;
 use App\Services\MedicalRecordService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -78,7 +79,9 @@ class MedicalRecordController extends Controller
         // Thống kê (tùy chọn)
         $statistics = $this->service->getStatistics($user->user_id, $user->role_id);
 
-        return view('medical-records.index', compact('records', 'visitTypes', 'statuses', 'statistics'));
+        $currentDoctorName = $this->doctorProfileName($user);
+
+        return view('medical-records.index', compact('records', 'visitTypes', 'statuses', 'statistics', 'currentDoctorName'));
     }
 
     // ── SHOW ──────────────────────────────────────────────────────
@@ -117,7 +120,7 @@ class MedicalRecordController extends Controller
         }
 
         if ((int) $user->role_id === 2) {
-            return (int) $record->doctor_id === (int) $user->user_id;
+            return $this->canDoctorAccessRecord($user, $record);
         }
 
         if ((int) $user->role_id === 3) {
@@ -137,6 +140,11 @@ class MedicalRecordController extends Controller
                 ->with('error', 'Vui lòng đăng nhập để tạo hồ sơ!');
         }
 
+        if (! in_array((int) ($user->role_id ?? 0), [1, 2], true)) {
+            return redirect()->route('medical-records.index')
+                ->with('error', 'Ban khong co quyen tao phieu kham.');
+        }
+
         $appointmentId = $request->query('appointment_id');
         $appointment   = null;
         $record        = null;
@@ -152,6 +160,11 @@ class MedicalRecordController extends Controller
             if (!$appointment) {
                 return redirect()->route('medical-records.index')
                     ->with('error', 'Không tìm thấy lịch hẹn để tạo hồ sơ.');
+            }
+
+            if ((int) $user->role_id === 2 && (int) ($appointment->schedule?->doctor?->user_id ?? 0) !== (int) $user->user_id) {
+                return redirect()->route('medical-records.index')
+                    ->with('error', 'Ban chi duoc tao phieu kham cho lich hen cua minh.');
             }
 
             if ($appointment->status !== 'Hoàn thành') {
@@ -174,7 +187,9 @@ class MedicalRecordController extends Controller
         $patients = \App\Models\User::where('role_id', 3)->get();
 
         // Lấy danh sách bác sĩ (role_id = 2)
-        $doctors = \App\Models\User::where('role_id', 2)->get();
+        $doctors = \App\Models\User::where('role_id', 2)
+            ->when((int) $user->role_id === 2, fn ($query) => $query->where('user_id', $user->user_id))
+            ->get();
         // ==================================
 
         return view('medical-records.create', compact('appointment', 'record', 'patients', 'doctors'));
@@ -244,7 +259,7 @@ class MedicalRecordController extends Controller
             $record = $this->service->getRecordDetail($id);
 
             $isAdmin = ($user->role_id == 1 || $user->role === 'admin');
-            if ($record->doctor_id !== $user->user_id && !$isAdmin) {
+            if (!$isAdmin && ! $this->canDoctorAccessRecord($user, $record)) {
                 return redirect()->route('medical-records.index')
                     ->with('error', 'Bạn không có quyền chỉnh sửa hồ sơ này!');
             }
@@ -276,7 +291,7 @@ class MedicalRecordController extends Controller
             }
 
             $isAdmin = ($user->role_id == 1 || $user->role === 'admin');
-            if ($record->doctor_id !== $user->user_id && !$isAdmin) {
+            if (!$isAdmin && ! $this->canDoctorAccessRecord($user, $record)) {
                 return redirect()->route('medical-records.index')
                     ->with('error', 'Bạn không có quyền cập nhật hồ sơ này!');
             }
@@ -339,7 +354,7 @@ class MedicalRecordController extends Controller
             }
 
             $isAdmin = ($user->role_id == 1 || $user->role === 'admin');
-            if ($record->doctor_id !== $user->user_id && !$isAdmin) {
+            if (!$isAdmin && ! $this->canDoctorAccessRecord($user, $record)) {
                 return redirect()->route('medical-records.index')
                     ->with('error', 'Bạn không có quyền xóa hồ sơ này!');
             }
@@ -422,7 +437,7 @@ class MedicalRecordController extends Controller
             }
 
             // Kiểm tra quyền với record (bác sĩ chỉ sửa được của mình)
-            if (!$isAdmin && $record->doctor_id !== $user->user_id) {
+            if (!$isAdmin && ! $this->canDoctorAccessRecord($user, $record)) {
                 return response()->json(['error' => 'Bạn không có quyền sửa kết quả của hồ sơ này!'], 403);
             }
 
@@ -475,7 +490,7 @@ class MedicalRecordController extends Controller
                 return response()->json(['error' => 'Chỉ định đã bị người khác xóa trước đó. Vui lòng tải lại trang.'], 404);
             }
 
-            if (!$isAdmin && $record->doctor_id !== $user->user_id) {
+            if (!$isAdmin && ! $this->canDoctorAccessRecord($user, $record)) {
                 return response()->json(['error' => 'Bạn không có quyền xóa kết quả của hồ sơ này!'], 403);
             }
 
@@ -523,7 +538,7 @@ class MedicalRecordController extends Controller
             }
 
             // ✅ Bác sĩ chỉ upload cho hồ sơ của mình, admin upload tất cả
-            if (!$isAdmin && $record->doctor_id !== $user->user_id) {
+            if (!$isAdmin && ! $this->canDoctorAccessRecord($user, $record)) {
                 return response()->json(['error' => 'Bạn không có quyền upload cho hồ sơ này!'], 403);
             }
 
@@ -610,7 +625,7 @@ class MedicalRecordController extends Controller
                 return response()->json(['error' => 'Tập đính kèm đã bị người khác xóa trước đó. Vui lòng tải lại trang.'], 404);
             }
 
-            if (!$isAdmin && $record->doctor_id !== $user->user_id) {
+            if (!$isAdmin && ! $this->canDoctorAccessRecord($user, $record)) {
                 return response()->json(['error' => 'Không có quyền xóa file này!'], 403);
             }
 
@@ -660,6 +675,40 @@ class MedicalRecordController extends Controller
             ->whereTime('exam_time', '>=', $examMinute . ':00')
             ->whereTime('exam_time', '<=', $examMinute . ':59')
             ->exists();
+    }
+
+    private function canDoctorAccessRecord($user, MedicalRecord $record): bool
+    {
+        if ((int) ($user->role_id ?? 0) !== 2) {
+            return false;
+        }
+
+        if ((int) $record->doctor_id !== (int) $user->user_id) {
+            return false;
+        }
+
+        $doctorName = $this->doctorProfileName($user);
+
+        if ($doctorName === '' || trim((string) $record->doctor_name) === '') {
+            return true;
+        }
+
+        return $this->normalizeDoctorName($record->doctor_name) === $this->normalizeDoctorName($doctorName);
+    }
+
+    private function doctorProfileName($user): string
+    {
+        $doctorName = Doctor::where('user_id', $user->user_id)->value('full_name');
+
+        return trim((string) ($doctorName ?: $user->full_name));
+    }
+
+    private function normalizeDoctorName(?string $name): string
+    {
+        $normalized = preg_replace('/^\s*BS\.?\s*/iu', '', (string) $name);
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $normalized));
+
+        return mb_strtolower($normalized, 'UTF-8');
     }
 
     private function recordSnapshot(MedicalRecord $record): string
@@ -746,7 +795,17 @@ class MedicalRecordController extends Controller
         }
 
         if ($user->role_id === 2) {
+            $doctorName = $this->doctorProfileName($user);
             $query->where('doctor_id', $user->user_id);
+
+            if ($doctorName !== '') {
+                $query->where(function ($q) use ($doctorName) {
+                    $q->where('doctor_name', $doctorName)
+                        ->orWhere('doctor_name', 'BS. ' . $doctorName)
+                        ->orWhereNull('doctor_name')
+                        ->orWhere('doctor_name', '');
+                });
+            }
         } elseif ($user->role_id === 3) {
             $query->where('patient_id', $user->user_id);
         }

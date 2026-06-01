@@ -480,8 +480,8 @@
                     <table class="table health-table">
                         <thead>
                             <tr>
-                                <th>Ngày</th>
                                 @if(!auth()->user()->isPatient())<th>Bệnh nhân</th>@endif
+                                <th>Ngày</th>
                                 <th>Huyết áp</th>
                                 <th>Nhịp tim</th>
                                 <th>SpO2</th>
@@ -502,15 +502,15 @@
                                     };
                                 @endphp
                                 <tr>
+                                    @if(!auth()->user()->isPatient())
+                                        <td><span class="patient-name">{{ $t->patient->full_name ?? 'N/A' }}</span></td>
+                                    @endif
                                     <td>
                                         <span class="date-chip">
                                             <strong>{{ $t->created_at->format('d/m/Y') }}</strong>
                                             <span><i class="bi bi-clock me-1"></i>{{ $t->created_at->format('H:i') }}</span>
                                         </span>
                                     </td>
-                                    @if(!auth()->user()->isPatient())
-                                        <td><span class="patient-name">{{ $t->patient->full_name ?? 'N/A' }}</span></td>
-                                    @endif
                                     <td>
                                         <div class="metric">
                                             <strong>{{ $t->systolic }}/{{ $t->diastolic }}</strong>

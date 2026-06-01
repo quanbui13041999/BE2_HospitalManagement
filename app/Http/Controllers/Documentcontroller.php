@@ -6,8 +6,10 @@ use App\Models\MedicalDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class DocumentController extends Controller
@@ -68,7 +70,7 @@ class DocumentController extends Controller
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:20480'],
-            'category' => ['required'],
+            'category' => ['required', Rule::in(array_keys(MedicalDocument::categories()))],
         ]);
 
         $uploadedFile = $request->file('file');
@@ -77,13 +79,18 @@ class DocumentController extends Controller
         // Kết quả trả về sẽ là: "documents/tên_file_ngẫu_nhiên.extension"
         $path = $uploadedFile->store('documents', 'public');
 
-        MedicalDocument::create([
+        $document = MedicalDocument::create([
             'user_id'     => Auth::id(),
-            'record_id'   => 1, // Tạm thời để 1 theo cấu trúc DB của bạn
+            'record_id'   => null,
             'doc_type'    => $request->category,
-            'doc_name'    => $uploadedFile->getClientOriginalName(),
+            'doc_name'    => Str::limit($uploadedFile->getClientOriginalName(), 200, ''),
             'file_path'   => $path,
             'uploaded_at' => now(),
+        ]);
+
+        $document->update([
+            'record_id' => null,
+            'doc_name' => Str::limit($uploadedFile->getClientOriginalName(), 200, ''),
         ]);
 
         return redirect()->route('documents.index')->with('success', 'Tải lên thành công!');
@@ -91,9 +98,16 @@ class DocumentController extends Controller
 
     // ── SHOW ─────────────────────────────────────────────────────
 
-    public function show(MedicalDocument $document)
+    public function show(int $document)
     {
-        $this->authorizeDocument($document);
+        $document = MedicalDocument::find($document);
+
+        if (! $document) {
+            return redirect()->route('documents.index')
+                ->with('warning', 'Tai lieu da bi xoa truoc do. Vui long tai lai danh sach.');
+        }
+
+        $this->authorizeDocument($document, false);
 
         if (!Storage::disk('public')->exists($document->file_path)) {
             abort(404, 'Tệp không tồn tại.');
@@ -108,24 +122,46 @@ class DocumentController extends Controller
 
     // ── EDIT ──────────────────────────────────────────────────────
 
-    public function edit(MedicalDocument $document)
+    public function edit(int $document)
     {
+        $document = MedicalDocument::find($document);
+
+        if (! $document) {
+            return redirect()->route('documents.index')
+                ->with('warning', 'Tai lieu da bi xoa truoc do. Vui long tai lai danh sach.');
+        }
+
         $this->authorizeDocument($document);
-        return view('documents.edit', compact('document'));
+        $documentSnapshot = $this->documentSnapshot($document);
+
+        return view('documents.edit', compact('document', 'documentSnapshot'));
     }
 
     // ── UPDATE ───────────────────────────────────────────────────
 
-    public function update(Request $request, MedicalDocument $document): RedirectResponse
+    public function update(Request $request, int $document): RedirectResponse
     {
+        $document = MedicalDocument::where('doc_id', $document)->lockForUpdate()->first();
+
+        if (! $document) {
+            return redirect()->route('documents.index')
+                ->with('warning', 'Tai lieu da bi xoa truoc do. Vui long tai lai danh sach.');
+        }
+
         $this->authorizeDocument($document);
 
         $request->validate([
 
             'document_date' => ['nullable', 'date'],
-            'category'      => ['required', 'in:xet_nghiem,hinh_anh,don_thuoc,chuyen_vien,khac'],
+            'category'      => ['required', Rule::in(array_keys(MedicalDocument::categories()))],
+            'document_snapshot' => ['required', 'string', 'size:64'],
 
         ]);
+
+        if (! hash_equals($this->documentSnapshot($document), $request->input('document_snapshot'))) {
+            return redirect()->route('documents.edit', $document)
+                ->with('warning', 'Tai lieu da duoc nguoi khac cap nhat truoc do. Vui long tai lai du lieu roi sua lai.');
+        }
 
         $document->update([
 
@@ -139,9 +175,25 @@ class DocumentController extends Controller
 
     // ── DESTROY ──────────────────────────────────────────────────
 
-    public function destroy(MedicalDocument $document): RedirectResponse
+    public function destroy(Request $request, int $document): RedirectResponse
     {
+        $request->validate([
+            'document_snapshot' => ['required', 'string', 'size:64'],
+        ]);
+
+        $document = MedicalDocument::find($document);
+
+        if (! $document) {
+            return redirect()->route('documents.index')
+                ->with('warning', 'Tai lieu da duoc nguoi khac xoa truoc do. Vui long tai lai danh sach.');
+        }
+
         $this->authorizeDocument($document);
+
+        if (! hash_equals($this->documentSnapshot($document), $request->input('document_snapshot'))) {
+            return redirect()->route('documents.index')
+                ->with('warning', 'Tai lieu da duoc nguoi khac cap nhat truoc do. Vui long tai lai danh sach.');
+        }
 
         Storage::disk('public')->delete($document->file_path);
         $document->delete();
@@ -151,9 +203,16 @@ class DocumentController extends Controller
 
     // ── DOWNLOAD ─────────────────────────────────────────────────
 
-    public function download(MedicalDocument $document)
+    public function download(int $document)
     {
-        $this->authorizeDocument($document);
+        $document = MedicalDocument::find($document);
+
+        if (! $document) {
+            return redirect()->route('documents.index')
+                ->with('warning', 'Tai lieu da bi xoa truoc do. Vui long tai lai danh sach.');
+        }
+
+        $this->authorizeDocument($document, false);
 
         if (!Storage::disk('public')->exists($document->file_path)) {
             abort(404, 'Tệp không tồn tại.');
@@ -164,18 +223,31 @@ class DocumentController extends Controller
         return $disk->download($document->file_path, $document->doc_name);
     }
 
-   private function authorizeDocument(MedicalDocument $document): void
+   private function authorizeDocument(MedicalDocument $document, bool $forWrite = true): void
 {
     $user = Auth::user();
     $isDoctor = in_array($user->role_id ?? 0, [1, 2]);
 
     // Bác sĩ/Admin được xem tất cả
-    if ($isDoctor) return;
+    if ($isDoctor && ! $forWrite) return;
 
     // Bệnh nhân chỉ xem của mình
     if ($document->user_id !== $user->user_id) {
         abort(403);
     }
+}
+
+private function documentSnapshot(MedicalDocument $document): string
+{
+    return hash_hmac('sha256', implode('|', [
+        $document->doc_id,
+        $document->user_id,
+        $document->record_id,
+        $document->doc_type,
+        $document->doc_name,
+        $document->file_path,
+        optional($document->uploaded_at)->format('Y-m-d H:i:s'),
+    ]), (string) config('app.key'));
 }
     // 👉 Bác sĩ/Admin xem tài liệu của bệnh nhân cụ thể
 public function indexPatient(Request $request, int $patientId): \Illuminate\View\View

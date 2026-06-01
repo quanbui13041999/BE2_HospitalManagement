@@ -243,8 +243,20 @@
                             <i class="bi bi-eye"></i> Xem
                         </a>
                         @php
+                            $currentDoctorNameForRecord = preg_replace('/^\s*BS\.?\s*/iu', '', (string) ($currentDoctorName ?? ''));
+                            $currentDoctorNameForRecord = mb_strtolower(preg_replace('/\s+/u', ' ', trim($currentDoctorNameForRecord)), 'UTF-8');
+                            $recordDoctorNameForRecord = preg_replace('/^\s*BS\.?\s*/iu', '', (string) $record->doctor_name);
+                            $recordDoctorNameForRecord = mb_strtolower(preg_replace('/\s+/u', ' ', trim($recordDoctorNameForRecord)), 'UTF-8');
                             $canEditRecord = auth()->user()->isAdmin()
-                                || (auth()->user()->isDoctor() && (int) $record->doctor_id === (int) auth()->id());
+                                || (
+                                    auth()->user()->isDoctor()
+                                    && (int) $record->doctor_id === (int) auth()->id()
+                                    && (
+                                        $currentDoctorNameForRecord === ''
+                                        || $recordDoctorNameForRecord === ''
+                                        || $currentDoctorNameForRecord === $recordDoctorNameForRecord
+                                    )
+                                );
                         @endphp
                         @if($canEditRecord)
                             <a href="{{ route('medical-records.edit', $record->record_id) }}" class="btn btn-sm btn-outline-secondary">
