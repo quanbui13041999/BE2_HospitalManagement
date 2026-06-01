@@ -1189,7 +1189,7 @@
                                 Đăng ký đối tượng ưu tiên
                             </label>
                             
-                            <div id="priority_type_container" style="display: {{ old('is_priority') ? 'block' : 'none' }}; margin-top: 10px;">
+                            <div id="priority_type_container" class="{{ old('is_priority') ? '' : 'd-none' }}" style="margin-top: 10px;">
                                 <label class="form-label">Loại ưu tiên</label>
                                 <select name="priority_type" class="form-control">
                                     <option value="">-- Chọn đối tượng --</option>
@@ -1299,12 +1299,14 @@
         <a href="#">Hỗ trợ</a>
     </footer>
 
+    <script id="doctors-by-dept-data" type="application/json">{!! json_encode($doctorsByDept) !!}</script>
+
     <script>
         // ══════════════════════════════════════════════════════════════
         // BASE DATA — truyền từ PHP (preload 14 ngày đầu cho các route
         // bác sĩ → không cần AJAX lần đầu)
         // ══════════════════════════════════════════════════════════════
-        const doctorsByDept = @json($doctorsByDept); // fixed: encode JSON an toan cho JavaScript
+        const doctorsByDept = JSON.parse(document.getElementById('doctors-by-dept-data').textContent); // fixed: encode JSON an toan cho JavaScript
 
         // Route URLs
         const ROUTE_SUGGEST = '{{ route("appointments.suggest") }}';
@@ -1334,7 +1336,8 @@
         function onDeptChange() {
             const sel = document.getElementById('dept');
             state.deptId = sel.value;
-            state.deptName = sel.options[sel.selectedIndex]?.text || '';
+            const selectedDepartment = sel.options[sel.selectedIndex];
+            state.deptName = selectedDepartment ? selectedDepartment.text : '';
             state.doctor = null;
             clearSlotState();
 
@@ -1801,7 +1804,10 @@
         });
 
         // Service dropdown → cập nhật summary
-        document.getElementById('service_id_select')?.addEventListener('change', updateSummary);
+        const serviceIdSelect = document.getElementById('service_id_select');
+        if (serviceIdSelect) {
+            serviceIdSelect.addEventListener('change', updateSummary);
+        }
 
         // ── INIT ──
         updateSummary();
@@ -1837,11 +1843,40 @@
             var container = document.getElementById('priority_type_container');
             container.style.display = isPriority ? 'block' : 'none';
         }
+
+        window.showAppNotification = window.showAppNotification || function(message, type = 'error', options = {}) {
+            let stack = document.getElementById('app-notification-stack');
+            if (!stack) {
+                stack = document.createElement('div');
+                stack.id = 'app-notification-stack';
+                stack.style.cssText = 'position:fixed;top:18px;right:18px;z-index:20000;width:min(420px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px';
+                document.body.appendChild(stack);
+            }
+
+            const notice = document.createElement('div');
+            notice.textContent = message || 'Đã xảy ra lỗi, vui lòng thử lại sau.';
+            notice.style.cssText = 'padding:12px 14px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;box-shadow:0 16px 40px rgba(15,23,42,.16);font-size:14px;line-height:1.45';
+            if (type === 'warning') {
+                notice.style.borderColor = '#fde68a';
+                notice.style.background = '#fffbeb';
+                notice.style.color = '#92400e';
+            }
+            stack.appendChild(notice);
+            const timeout = typeof options.timeout === 'number' ? options.timeout : 5000;
+            setTimeout(() => notice.remove(), timeout);
+        };
+
+        window.alert = function(message) {
+            window.showAppNotification(message, 'error');
+        };
     </script>
     @if(session('reload_page'))
+    <div id="appointment-reload-message"
+         data-message="{{ e(session('warning') ?? 'Lịch khám đã thay đổi, trang sẽ được tải lại.') }}"
+         hidden></div>
     <script>
-        alert(@js(session('warning') ?? 'Lịch khám đã thay đổi, trang sẽ được tải lại.'));
-        window.location.replace(window.location.href);
+        window.showAppNotification(document.getElementById('appointment-reload-message').dataset.message, 'warning', { timeout: 2500 });
+        setTimeout(() => window.location.replace(window.location.href), 1800);
     </script>
     @endif
     @include('components.back-to-previous')

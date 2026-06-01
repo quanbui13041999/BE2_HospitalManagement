@@ -553,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     if (patientCodeInput && !patientCodeInput.value.trim()) {
-        const patientId = patientIdInput?.value;
+        const patientId = patientIdInput ? patientIdInput.value : '';
         const newCode = generatePatientCode(patientId);
         patientCodeInput.value = newCode;
         document.getElementById('patientCodeHint').innerHTML = 'Mã bệnh nhân tự động: <strong>' + newCode + '</strong>';
@@ -759,7 +759,9 @@ function addOrder() {
 }
 
 // ── VALIDATION TRƯỚC KHI SUBMIT ───────────────────────────────────
-document.getElementById('medicalRecordForm')?.addEventListener('submit', function(e) {
+const medicalRecordForm = document.getElementById('medicalRecordForm');
+if (medicalRecordForm) {
+medicalRecordForm.addEventListener('submit', function(e) {
     let errors = [];
     
     // Xử lý custom fields
@@ -779,7 +781,9 @@ document.getElementById('medicalRecordForm')?.addEventListener('submit', functio
                 row.appendChild(hiddenField);
                 selectEl.disabled = true;
             } else if (customInput) {
-                errors.push(`⚠️ Vui lòng nhập giá trị cho mục "${selectEl.closest('.form-section-header')?.innerText?.trim() || 'này'}"`);
+                const sectionHeader = selectEl.closest('.form-section-header');
+                const sectionLabel = sectionHeader ? sectionHeader.innerText.trim() : 'này';
+                errors.push(`⚠️ Vui lòng nhập giá trị cho mục "${sectionLabel}"`);
                 customInput.classList.add('is-invalid');
             }
         }
@@ -787,9 +791,9 @@ document.getElementById('medicalRecordForm')?.addEventListener('submit', functio
     
     // 1. Lý do khám
     const chiefComplaint = document.querySelector('[name="chief_complaint"]');
-    if (!chiefComplaint?.value.trim()) {
+    if (!chiefComplaint || !chiefComplaint.value.trim()) {
         errors.push('⚠️ Vui lòng nhập lý do đến khám / triệu chứng');
-        chiefComplaint?.classList.add('is-invalid');
+        if (chiefComplaint) chiefComplaint.classList.add('is-invalid');
     }
 
     // 2. Chỉ số sinh tồn
@@ -797,9 +801,9 @@ document.getElementById('medicalRecordForm')?.addEventListener('submit', functio
     const vitalLabels = ['huyết áp', 'nhịp tim', 'nhiệt độ', 'SpO2', 'cân nặng'];
     vitals.forEach((name, idx) => {
         const el = document.querySelector(`[name="${name}"]`);
-        if (!el?.value) {
+        if (!el || !el.value) {
             errors.push(`⚠️ Vui lòng nhập ${vitalLabels[idx]}`);
-            el?.classList.add('is-invalid');
+            if (el) el.classList.add('is-invalid');
         }
     });
 
@@ -823,12 +827,13 @@ document.getElementById('medicalRecordForm')?.addEventListener('submit', functio
 
     if (errors.length > 0) {
         e.preventDefault();
-        alert('⚠️ Vui lòng kiểm tra lại:\n\n' + errors.join('\n'));
+        window.showAppNotification('Vui lòng kiểm tra lại:\n' + errors.join('\n'), 'warning', { timeout: 7000 });
         const firstError = document.querySelector('.is-invalid');
-        firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
     }
 });
+}
 
 // Real-time validation
 document.addEventListener('input', function(e) {
@@ -891,7 +896,8 @@ document.addEventListener('input', function(e) {
     function showInlineError(el, message) {
         el.classList.remove('is-valid');
         el.classList.add('is-invalid');
-        let feedback = el.closest('.input-group')?.nextElementSibling;
+        const inputGroup = el.closest('.input-group');
+        let feedback = inputGroup ? inputGroup.nextElementSibling : null;
         if (!feedback || !feedback.classList.contains('invalid-feedback')) {
             feedback = el.nextElementSibling;
         }
@@ -911,7 +917,8 @@ document.addEventListener('input', function(e) {
             el.classList.remove('is-valid');
         }
 
-        let feedback = el.closest('.input-group')?.nextElementSibling;
+        const inputGroup = el.closest('.input-group');
+        let feedback = inputGroup ? inputGroup.nextElementSibling : null;
         if (!feedback || !feedback.classList.contains('invalid-feedback')) {
             feedback = el.nextElementSibling;
         }
@@ -1003,7 +1010,9 @@ document.addEventListener('input', function(e) {
         }
     });
 
-    document.getElementById('medicalRecordForm')?.addEventListener('submit', function (e) {
+    const numericValidationForm = document.getElementById('medicalRecordForm');
+    if (numericValidationForm) {
+    numericValidationForm.addEventListener('submit', function (e) {
         let valid = true;
         Object.keys(numericRanges).forEach(name => {
             const el = document.querySelector(`[name="${name}"]`);
@@ -1014,9 +1023,11 @@ document.addEventListener('input', function(e) {
 
         if (!valid) {
             e.preventDefault();
-            document.querySelector('.is-invalid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const invalidField = document.querySelector('.is-invalid');
+            if (invalidField) invalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     });
+    }
 })();
 </script>
 @endpush

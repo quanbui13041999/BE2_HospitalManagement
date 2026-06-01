@@ -792,8 +792,10 @@
                             @if($canEdit)
                             @if(empty($order->result_note))
                             <button type="button"
-                                onclick="showResultDropdown({{ $order->order_id }}, {{ $record->record_id }}, '')"
-                                class="btn btn-sm btn-warning">
+                                class="btn btn-sm btn-warning js-open-result-dropdown"
+                                data-order-id="{{ $order->order_id }}"
+                                data-record-id="{{ $record->record_id }}"
+                                data-note="">
                                 ⏳ Chờ kết quả — Click để chọn
                             </button>
                             @else
@@ -803,15 +805,16 @@
                                     {{ $order->result_note }}
                                 </span>
                                 <button type="button"
-                                    class="btn-edit-result btn btn-sm btn-outline-primary"
+                                    class="btn-edit-result btn btn-sm btn-outline-primary js-open-result-dropdown"
                                     data-order-id="{{ $order->order_id }}"
                                     data-record-id="{{ $record->record_id }}"
                                     data-note="{{ $order->result_note }}">
                                     ✏️ Sửa
                                 </button>
                                 <button type="button"
-                                    onclick="deleteResult({{ $order->order_id }}, {{ $record->record_id }})"
-                                    class="btn btn-sm btn-outline-danger">
+                                    class="btn btn-sm btn-outline-danger js-delete-result"
+                                    data-order-id="{{ $order->order_id }}"
+                                    data-record-id="{{ $record->record_id }}">
                                     🗑 Xóa
                                 </button>
                             </div>
@@ -865,7 +868,7 @@
                         <a href="{{ route('medical-records.attachments.view', [$record->record_id, $att->attachment_id]) }}"
                             target="_blank" class="att-btn">⬇ Xem</a>
                         <button class="att-btn danger"
-                            onclick="deleteAttachment({{ $record->record_id }}, {{ $att->attachment_id }})">
+                            data-attachment-id="{{ $att->attachment_id }}">
                             🗑
                         </button>
                     </div>
@@ -896,6 +899,15 @@
     const DELETE_BASE = "{{ url('medical-records/' . $record->record_id . '/attachments') }}";
     const CSRF = "{{ csrf_token() }}";
 
+    function escapeHtmlAttribute(value) {
+        return String(value === null || value === undefined ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     // Upload files
     async function handleFileUpload(input) {
         const files = Array.from(input.files);
@@ -910,9 +922,9 @@
                 });
                 const data = await res.json();
                 if (data.success) appendAttachment(data.attachment);
-                else alert('Lỗi: ' + (data.error || 'Không thể upload'));
+                else window.showAppNotification('Lỗi: ' + (data.error || 'Không thể upload'), 'error');
             } catch (e) {
-                alert('Lỗi khi tải lên: ' + file.name);
+                window.showAppNotification('Lỗi khi tải lên: ' + file.name, 'error');
             }
         }
         input.value = '';
@@ -931,7 +943,7 @@
             </div>
             <div class="d-flex gap-2">
                 <a href="${att.url}" target="_blank" class="att-btn">⬇ Xem</a>
-                <button class="att-btn danger" onclick="deleteAttachment(${RECORD_ID}, ${att.id})">🗑</button>
+                <button class="att-btn danger" data-attachment-id="${att.id}">🗑</button>
             </div>
         </div>`;
         document.getElementById('attachmentList').insertAdjacentHTML('beforeend', html);
@@ -947,12 +959,44 @@
             },
         });
         const data = await res.json();
-        if (data.success) document.getElementById(`att-${attId}`)?.remove();
+        if (data.success) {
+            const attachmentItem = document.getElementById(`att-${attId}`);
+            if (attachmentItem) attachmentItem.remove();
+        }
         else {
-            alert(data.error || 'Tập đính kèm đã được người khác xóa trước đó. Trang sẽ được tải lại.');
-            window.location.reload();
+            window.showAppNotification(data.error || 'Tập đính kèm đã được người khác xóa trước đó. Trang sẽ được tải lại.', 'warning');
+            setTimeout(() => window.location.reload(), 1800);
         }
     }
+
+    document.addEventListener('click', function(event) {
+        const attachmentButton = event.target.closest('[data-attachment-id]');
+        if (attachmentButton) {
+            event.preventDefault();
+            deleteAttachment(RECORD_ID, attachmentButton.getAttribute('data-attachment-id'));
+            return;
+        }
+
+        const openResultButton = event.target.closest('.js-open-result-dropdown');
+        if (openResultButton) {
+            event.preventDefault();
+            showResultDropdown(
+                openResultButton.getAttribute('data-order-id'),
+                openResultButton.getAttribute('data-record-id'),
+                openResultButton.getAttribute('data-note') || ''
+            );
+            return;
+        }
+
+        const deleteResultButton = event.target.closest('.js-delete-result');
+        if (deleteResultButton) {
+            event.preventDefault();
+            deleteResult(
+                deleteResultButton.getAttribute('data-order-id'),
+                deleteResultButton.getAttribute('data-record-id')
+            );
+        }
+    });
 
     // Drag & drop upload
     const zone = document.getElementById('uploadZone');
@@ -1051,13 +1095,16 @@
                 ${resultValue}
             </span>
             <button type="button"
-                class="btn btn-sm btn-outline-primary"
-                onclick="showResultDropdown(${orderId}, ${recordId}, '${resultValue.replace(/'/g, "\\'")}')">
+                class="btn btn-sm btn-outline-primary js-open-result-dropdown"
+                data-order-id="${orderId}"
+                data-record-id="${recordId}"
+                data-note="${escapeHtmlAttribute(resultValue)}">
                 ✏️ Sửa
             </button>
             <button type="button"
-                onclick="deleteResult(${orderId}, ${recordId})"
-                class="btn btn-sm btn-outline-danger">
+                class="btn btn-sm btn-outline-danger js-delete-result"
+                data-order-id="${orderId}"
+                data-record-id="${recordId}">
                 🗑 Xóa
             </button>
         </div>
@@ -1070,8 +1117,10 @@
         if (!area) return;
         area.innerHTML = `
         <button type="button"
-            onclick="showResultDropdown(${orderId}, ${recordId}, '')"
-            class="btn btn-sm btn-warning">
+            class="btn btn-sm btn-warning js-open-result-dropdown"
+            data-order-id="${orderId}"
+            data-record-id="${recordId}"
+            data-note="">
             ⏳ Chờ kết quả — Click để chọn
         </button>
     `;
@@ -1083,7 +1132,8 @@
         if (!area) return;
 
         const orderItem = area.closest('.order-item');
-        const orderIcon = orderItem?.querySelector('.order-icon')?.innerText || '';
+        const orderIconElement = orderItem ? orderItem.querySelector('.order-icon') : null;
+        const orderIcon = orderIconElement ? orderIconElement.innerText : '';
         let orderType = 'default';
         if (orderIcon.includes('🔬')) orderType = 'lab';
         else if (orderIcon.includes('🩻')) orderType = 'imaging';
@@ -1156,7 +1206,8 @@
         </div>
     `;
 
-        document.getElementById(`result_input_${orderId}`)?.focus();
+        const resultInput = document.getElementById(`result_input_${orderId}`);
+        if (resultInput) resultInput.focus();
     }
 
     // Lưu từ dropdown select
@@ -1290,21 +1341,5 @@
             console.error('Error:', error);
         }
     }
-
-    // Gắn sự kiện cho nút Sửa
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.btn-edit-result').forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const orderId = this.getAttribute('data-order-id');
-                const recordId = this.getAttribute('data-record-id');
-                const note = this.getAttribute('data-note') || '';
-                if (orderId && recordId) {
-                    showResultDropdown(orderId, recordId, note);
-                }
-            });
-        });
-    });
 </script>
 @endpush

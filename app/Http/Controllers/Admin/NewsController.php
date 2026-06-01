@@ -201,10 +201,10 @@ class NewsController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail(); /* fixed: tranh 2 admin toggle trang thai cung luc */
 
-                $this->assertFreshVersion($request->input('version'), $article->updated_at);
+                $this->assertFreshVersion($request->input('version'), $article?->updated_at);
 
-                $wasPublished = (bool) $article->is_published;
-                $article->is_published = !$article->is_published;
+                $wasPublished = (bool) $article?->is_published;
+                $article->is_published = !($article?->is_published ?? false);
                 if ($article->is_published && !$article->published_at) {
                     $article->published_at = now();
                 }
@@ -216,7 +216,7 @@ class NewsController extends Controller
                 ->with('reload_page', true);
         }
 
-        if (! $wasPublished && $article->is_published) {
+        if ($article && ! $wasPublished && $article->is_published) {
             $this->notifications->createForAll(
                 'Bản tin mới của bệnh viện',
                 $article->title,
