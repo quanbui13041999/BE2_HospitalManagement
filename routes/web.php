@@ -143,9 +143,8 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+
 // ============================================================
-<<<<<<< Updated upstream
-=======
 // HỆ THỐNG NHẮC NHỞ TUÂN THỦ ĐIỀU TRỊ – Patient
 // ============================================================
 
@@ -233,7 +232,6 @@ require_once __DIR__ . "/medical_records.php";
 require_once __DIR__ . "/medical_history.php";
 
 // ============================================================
->>>>>>> Stashed changes
 // ADMIN ROUTES (Yêu cầu đăng nhập + quyền is_admin)
 // ============================================================
 
