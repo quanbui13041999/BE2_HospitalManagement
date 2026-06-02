@@ -212,11 +212,12 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Loại khám <span class="text-danger">*</span></label>
+                        @php $currentVisitType = old('visit_type', $record->visit_type_label ?? $record->visit_type); @endphp
                         <select name="visit_type" class="form-select @error('visit_type') is-invalid @enderror" required>
                             <option value="">Chọn loại khám</option>
                             @foreach(['Khám mới','Tái khám','Cấp cứu'] as $type)
                             <option value="{{ $type }}"
-                                {{ old('visit_type', $record->visit_type) === $type ? 'selected' : '' }}>
+                                {{ $currentVisitType === $type ? 'selected' : '' }}>
                                 {{ $type }}
                             </option>
                             @endforeach
@@ -837,14 +838,14 @@
                 </div>
                 <div class="col-md-3">
                     <div class="editable-field" data-field="diag_type" data-index="${index}">
-                        <div class="field-value" data-placeholder="Chọn loại">Chọn loại</div>
+                        <div class="field-value" data-placeholder="Chọn loại">Chính</div>
                         <select class="field-dropdown" data-field="diag_type" data-index="${index}">
                             <option value="">-- Chọn --</option>
                             <option value="primary">Chính</option>
                             <option value="secondary">Phụ</option>
                             <option value="complication">Biến chứng</option>
                         </select>
-                        <input type="hidden" name="diagnoses[${index}][diagnosis_type]" value="">
+                        <input type="hidden" name="diagnoses[${index}][diagnosis_type]" value="primary">
                     </div>
                 </div>
                 <div class="col-md-1 text-center">

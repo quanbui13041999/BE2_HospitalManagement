@@ -87,7 +87,7 @@
                                         <label class="form-label small text-muted">Chiều cao (cm)</label>
                                         <input type="number" name="height" class="form-control @error('height') is-invalid @enderror"
                                                value="{{ old('height', $healthData->height ?? '') }}"
-                                               min="0.01" max="300" step="0.01" inputmode="decimal"
+                                               min="30" max="300" step="0.01" inputmode="decimal"
                                                placeholder="Nhập chiều cao">
                                         @error('height')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
@@ -96,7 +96,7 @@
                                         <label class="form-label small text-muted">Cân nặng (kg)</label>
                                         <input type="number" name="weight" class="form-control @error('weight') is-invalid @enderror"
                                                value="{{ old('weight', $healthData->weight ?? '') }}"
-                                               min="0.01" max="500" step="0.01" inputmode="decimal"
+                                               min="1" max="500" step="0.01" inputmode="decimal"
                                                placeholder="Nhập cân nặng">
                                         @error('weight')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>

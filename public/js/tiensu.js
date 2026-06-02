@@ -8,22 +8,83 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    function normalizePositiveNumber(input) {
-        const value = parseFloat(input.value);
+    function showNumberError(input, message) {
+        input.classList.remove('is-valid');
+        input.classList.add('is-invalid');
 
-        if (Number.isFinite(value) && value < 0) {
-            input.value = '';
+        let feedback = input.nextElementSibling;
+        if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            input.after(feedback);
+        }
+
+        feedback.textContent = message;
+    }
+
+    function clearNumberError(input) {
+        input.classList.remove('is-invalid');
+        if (input.value.trim() !== '') {
+            input.classList.add('is-valid');
+        } else {
+            input.classList.remove('is-valid');
+        }
+
+        const feedback = input.nextElementSibling;
+        if (feedback && feedback.classList.contains('invalid-feedback')) {
+            feedback.textContent = '';
         }
     }
 
+    function normalizePositiveNumber(input) {
+        const original = input.value;
+        let normalized = original.replace(',', '.').replace(/[^\d.]/g, '');
+        const firstDot = normalized.indexOf('.');
+
+        if (firstDot !== -1) {
+            normalized = normalized.slice(0, firstDot + 1) + normalized.slice(firstDot + 1).replace(/\./g, '');
+        }
+
+        if (normalized.startsWith('.')) {
+            normalized = '';
+        }
+
+        if (normalized !== '' && !/^\d+(\.\d{0,2})?$/.test(normalized)) {
+            normalized = normalized.slice(0, -1);
+        }
+
+        if (normalized !== original) {
+            input.value = normalized;
+            showNumberError(input, 'Ô này chỉ được nhập số dương, tối đa 2 chữ số thập phân.');
+            return false;
+        }
+
+        const value = parseFloat(input.value);
+        const min = Number(input.getAttribute('min') || 0);
+
+        if (Number.isFinite(value) && min && value < min) {
+            showNumberError(input, `Giá trị không được nhỏ hơn ${min}.`);
+            return false;
+        }
+
+        const max = Number(input.getAttribute('max') || 0);
+        if (max && Number.isFinite(value) && value > max) {
+            showNumberError(input, `Giá trị không được lớn hơn ${max}.`);
+            return false;
+        }
+
+        clearNumberError(input);
+        return true;
+    }
+
     function calculateBMI() {
-        normalizePositiveNumber(heightInput);
-        normalizePositiveNumber(weightInput);
+        const heightValid = normalizePositiveNumber(heightInput);
+        const weightValid = normalizePositiveNumber(weightInput);
 
         const height = parseFloat(heightInput.value) / 100;
         const weight = parseFloat(weightInput.value);
 
-        if (height > 0 && weight > 0) {
+        if (heightValid && weightValid && height >= 0.3 && weight >= 1) {
             const bmi = (weight / (height * height)).toFixed(2);
             bmiValue.innerText = bmi;
 
@@ -44,6 +105,35 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    ['keydown', 'paste'].forEach(eventName => {
+        [heightInput, weightInput].forEach(input => {
+            input.addEventListener(eventName, function (event) {
+                if (eventName === 'keydown') {
+                    const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'];
+                    if (allowedKeys.includes(event.key) || event.ctrlKey || event.metaKey) {
+                        return;
+                    }
+
+                    if ((event.key === '.' || event.key === ',') && input.value.trim() === '') {
+                        event.preventDefault();
+                        showNumberError(input, 'Phải nhập số trước dấu thập phân.');
+                        return;
+                    }
+
+                    if (!/[\d.,]/.test(event.key)) {
+                        event.preventDefault();
+                        showNumberError(input, 'Không được nhập chữ hoặc ký tự đặc biệt vào ô số.');
+                    }
+                }
+
+                if (eventName === 'paste') {
+                    setTimeout(() => calculateBMI(), 0);
+                }
+            });
+        });
+    });
+
     heightInput.addEventListener('input', calculateBMI);
     weightInput.addEventListener('input', calculateBMI);
+    calculateBMI();
 });

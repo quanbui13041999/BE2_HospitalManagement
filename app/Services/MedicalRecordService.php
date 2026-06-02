@@ -337,7 +337,7 @@ class MedicalRecordService
         
         // 2. Lọc theo loại khám
         if (!empty($filters['visit_type'])) {
-            $query->where('visit_type', $filters['visit_type']);
+            $query->whereIn('visit_type', MedicalRecord::visitTypeVariants($filters['visit_type']));
         }
         
         // 3. Lọc theo trạng thái
@@ -381,7 +381,12 @@ class MedicalRecordService
             $query->where('patient_id', $userId);
         }
         
-        return $query->pluck('visit_type')->toArray();
+        return $query->pluck('visit_type')
+            ->map(fn ($type) => MedicalRecord::canonicalVisitType($type) ?? $type)
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
     }
 
     /**
@@ -565,10 +570,14 @@ class MedicalRecordService
 
     private function scopeDoctorOwnedRecords($query, int $doctorUserId): void
     {
-        $doctorName = Doctor::where('user_id', $doctorUserId)->value('full_name')
-            ?: User::where('user_id', $doctorUserId)->value('full_name');
+        $doctorProfile = Doctor::where('user_id', $doctorUserId)->first(['doctor_id', 'full_name']);
+        $doctorName = $doctorProfile?->full_name ?: User::where('user_id', $doctorUserId)->value('full_name');
+        $doctorIds = array_values(array_unique(array_filter([
+            $doctorUserId,
+            (int) ($doctorProfile?->doctor_id ?? 0),
+        ])));
 
-        $query->where('doctor_id', $doctorUserId);
+        $query->whereIn('doctor_id', $doctorIds);
 
         if ($doctorName) {
             $query->where(function ($q) use ($doctorName) {

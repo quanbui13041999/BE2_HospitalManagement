@@ -620,7 +620,7 @@
 
                 <span class="info-label">LOẠI KHÁM</span>
                 <span class="info-val">
-                    <span class="info-val tag">{{ $record->visit_type }}</span>
+                    <span class="info-val tag">{{ $record->visit_type_label }}</span>
                 </span>
             </div>
         </div>
