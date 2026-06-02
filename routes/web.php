@@ -229,9 +229,11 @@ Route::prefix('api/v1')->middleware('auth')->group(function () {
 // ============================================================
 
 require_once __DIR__ . "/medical_records.php";
-require_once __DIR__ . "/medical_history.php";
 
-// ============================================================
+// medical_history.php is optional; guard to prevent app crash if file is missing
+if (file_exists(__DIR__ . "/medical_history.php")) {
+    require_once __DIR__ . "/medical_history.php";
+}
 // ADMIN ROUTES (Yêu cầu đăng nhập + quyền is_admin)
 // ============================================================
 
