@@ -1324,6 +1324,7 @@
 
                 <form id="doctor-form" onsubmit="submitDoctorForm(event)" novalidate>
                     <input type="hidden" id="f-id">
+                    <input type="hidden" id="f-version" value="1">
 
                     <div class="form-grid">
                         <div class="field span2">
@@ -1466,6 +1467,10 @@
                 const el = document.getElementById('account-fields');
                 if (el) el.style.display = show ? 'flex' : 'none';
             });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') refreshCurrentTab();
+            });
+            window.addEventListener('focus', refreshCurrentTab);
         });
 
         // ══════════════════════════════════════════════════════
@@ -1545,6 +1550,15 @@
             if (name === 'upcoming') loadUpcoming();
             if (name === 'reviews') loadReviews();
             if (name === 'doctors') loadDoctors();
+        }
+
+        function refreshCurrentTab() {
+            const active = document.querySelector('.tab-btn.active')?.dataset.tab;
+            if (!active) return;
+            if (active === 'today') loadToday();
+            if (active === 'upcoming') loadUpcoming();
+            if (active === 'reviews') loadReviews(reviewPage);
+            if (active === 'doctors') loadDoctors(docPage);
         }
 
         function onDoctorChange() {
@@ -1788,7 +1802,7 @@
                             <td>
                                 <div class="doc-action-cell">
                                     <button class="btn btn-ghost btn-sm btn-icon" title="Chỉnh sửa"
-                                        onclick="openDoctorModal(JSON.parse(decodeURIComponent('${json}')))">
+                                        onclick="openDoctorModal(${d.doctor_id})">
                                         <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
@@ -1806,8 +1820,21 @@
         }
 
         // ── Doctor modal open / close ──────────────────────
-        function openDoctorModal(doc = null) {
+        async function openDoctorModal(doc = null) {
             const isEdit = !!doc;
+            let doctor = null;
+            if (isEdit && typeof doc === 'number') {
+                const loading = document.getElementById('doctor-modal');
+                const data = await api('GET', `/doctors/${doc}`);
+                if (!data.success) {
+                    toast(data.message || 'Không thể tải thông tin bác sĩ.', 'error');
+                    return;
+                }
+                doctor = data.doctor;
+            } else {
+                doctor = doc;
+            }
+
             document.getElementById('doc-modal-title').textContent = isEdit ? 'Chỉnh sửa bác sĩ' : 'Thêm bác sĩ mới';
             document.getElementById('doc-submit-label').textContent = isEdit ? 'Lưu thay đổi' : 'Thêm bác sĩ';
 
@@ -1815,15 +1842,20 @@
             document.querySelectorAll('#doctor-form .field').forEach(f => f.classList.remove('has-err'));
 
             // fill form
-            document.getElementById('f-id').value = doc?.doctor_id ?? '';
-            document.getElementById('f-full-name').value = doc?.full_name ?? '';
-            document.getElementById('f-user-id').value = doc?.user_id ?? '';
-            document.getElementById('f-department-id').value = doc?.department_id ?? '';
-            document.getElementById('f-experience').value = doc?.experience ?? '';
-            document.getElementById('f-price').value = doc?.price ?? '';
-            document.getElementById('f-avatar-url').value = doc?.avatar_url ?? '';
-            document.getElementById('f-bio').value = doc?.bio ?? '';
-            document.getElementById('f-status').value = doc?.status ?? 1;
+            document.getElementById('f-id').value = doctor?.doctor_id ?? '';
+            document.getElementById('f-version').value = doctor?.version ?? 1;
+            document.getElementById('f-full-name').value = doctor?.doctor_id ? doctor?.full_name ?? '' : '';
+            document.getElementById('f-user-id').value = doctor?.user_id ?? '';
+            document.getElementById('f-department-id').value = doctor?.department_id ?? '';
+            document.getElementById('f-experience').value = doctor?.experience ?? '';
+            document.getElementById('f-price').value = doctor?.price ?? '';
+            document.getElementById('f-avatar-url').value = doctor?.avatar_url ?? '';
+            document.getElementById('f-bio').value = doctor?.bio ?? '';
+            document.getElementById('f-status').value = doctor?.status ?? 1;
+            document.getElementById('f-email').value = '';
+            document.getElementById('f-password').value = '';
+            document.getElementById('f-create-account').checked = false;
+            document.getElementById('account-fields').style.display = 'none';
 
             document.getElementById('doctor-modal').style.display = 'flex';
             setTimeout(() => document.getElementById('f-full-name').focus(), 80);
@@ -1861,6 +1893,9 @@
                 bio: document.getElementById('f-bio').value.trim() || null,
                 status: parseInt(document.getElementById('f-status').value),
             };
+            if (doctorId) {
+                payload.version = parseInt(document.getElementById('f-version').value) || 1;
+            }
 
             // optional account creation
             if (document.getElementById('f-create-account')?.checked) {

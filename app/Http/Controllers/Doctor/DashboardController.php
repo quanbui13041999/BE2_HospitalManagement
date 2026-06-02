@@ -298,24 +298,32 @@ public function doctorsList(Request $request): JsonResponse
 }
 
 /**
- * POST /doctor/dashboard/doctors
+ * GET /doctor/dashboard/doctors/{id}
  */
-public function storeDoctor(Request $request): JsonResponse
+public function getDoctor(int $id): JsonResponse
 {
     if (!Auth::user()->isAdmin()) {
         return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
     }
 
-    $validated = $request->validate([
-        'full_name'     => 'required|string|max:100',
-        'user_id'       => 'nullable|integer|exists:users,user_id',
-        'email'         => 'nullable|email|unique:users,email',
-        'password'      => 'nullable|string|min:6',
-        'department_id' => 'required|integer|exists:departments,department_id',
-        'experience'    => 'nullable|integer|min:0|max:60',
-        'price'         => 'nullable|numeric|min:0',
-        'avatar_url'    => 'nullable|string|max:255',
-        'bio'           => 'nullable|string|max:2000',
+    $doctor = \App\Models\Doctor::with('department:department_id,department_name')->find($id);
+    if (!$doctor) {
+        return response()->json(['success' => false, 'message' => 'Bác sĩ không tồn tại.'], 404);
+    }
+
+    return response()->json([
+        'success' => true,
+        'doctor' => [
+            'doctor_id'     => $doctor->doctor_id,
+            'user_id'       => $doctor->user_id,
+            'full_name'     => $doctor->full_name,
+            'department_id' => $doctor->department_id,
+            'experience'    => $doctor->experience,
+            'price'         => $doctor->price,
+            'avatar_url'    => $doctor->avatar_url,
+            'bio'           => $doctor->bio,
+            'status'        => $doctor->status,
+                'version'       => $doctor->version ?? 1,
         'status'        => 'required|in:0,1',
     ]);
 
@@ -383,35 +391,37 @@ public function updateDoctor(Request $request, int $id): JsonResponse
     $validated = $request->validate([
         'full_name'     => 'required|string|max:100',
         'user_id'       => [
-            'required','integer','exists:users,user_id',
+            'nullable','integer','exists:users,user_id',
             Rule::unique('doctors','user_id')->ignore($doctor->doctor_id, 'doctor_id'),
         ],
+        'email'         => 'nullable|email|unique:users,email,' . ($doctor->user_id ?? 'NULL') . ',user_id',
+        'password'      => 'nullable|string|min:6',
         'department_id' => 'required|integer|exists:departments,department_id',
         'experience'    => 'nullable|integer|min:0|max:60',
         'price'         => 'nullable|numeric|min:0',
         'avatar_url'    => 'nullable|string|max:255',
         'bio'           => 'nullable|string|max:2000',
         'status'        => 'required|in:0,1',
-    ]);
+            'version'       => 'required|integer|min:1',
+        ]);
 
+<<<<<<< Updated upstream
     $doctor->update($validated);
+=======
+        if (($doctor->version ?? 1) !== $validated['version']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bản ghi đã bị thay đổi bởi người khác. Vui lòng tải lại và thử lại.',
+            ], 409);
+        }
+>>>>>>> Stashed changes
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Đã cập nhật thông tin bác sĩ.',
-        'doctor'  => ['doctor_id' => $doctor->doctor_id, 'full_name' => $doctor->full_name],
-    ]);
-}
+        $validated['version'] = $doctor->version + 1;
 
-/**
- * DELETE /doctor/dashboard/doctors/{id}
- */
-public function destroyDoctor(int $id): JsonResponse
-{
-    if (!Auth::user()->isAdmin()) {
-        return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
-    }
+        DB::transaction(function () use ($doctor, $validated) {
+            $doctor->update($validated);
 
+<<<<<<< Updated upstream
     $doctor = \App\Models\Doctor::find($id);
     if (!$doctor) {
         return response()->json(['success' => false, 'message' => 'Bác sĩ không tồn tại.'], 404);
@@ -420,6 +430,30 @@ public function destroyDoctor(int $id): JsonResponse
     // Kiểm tra còn lịch hẹn active không
     $hasActive = Appointment::whereHas('schedule', fn($q) => $q->where('doctor_id', $id))
         ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám'])
+=======
+            if (!empty($validated['user_id'])) {
+                $user = \App\Models\User::find($validated['user_id']);
+                if ($user) {
+                    $user->update([
+                        'full_name'  => $validated['full_name'],
+                        'avatar_url' => $validated['avatar_url'] ?? $user->avatar_url,
+                        'status'     => $validated['status'],
+                    ] + (!empty($validated['email']) ? ['email' => $validated['email']] : [])
+                      + (!empty($validated['password']) ? ['password' => Hash::make($validated['password'])] : []));
+                }
+            } elseif (!empty($validated['email'])) {
+                $password = $validated['password'] ?? bin2hex(random_bytes(4));
+                $newUser = \App\Models\User::create([
+                    'full_name' => $validated['full_name'],
+                    'email'     => $validated['email'],
+                    'password'  => Hash::make($password),
+                    'role_id'   => 2,
+                    'status'    => $validated['status'],
+                ]);
+                $doctor->update(['user_id' => $newUser->user_id]);
+            }
+        });
+>>>>>>> Stashed changes
         ->exists();
 
     if ($hasActive) {

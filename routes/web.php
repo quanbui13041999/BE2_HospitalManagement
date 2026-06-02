@@ -144,6 +144,96 @@ Route::middleware('auth')->group(function () {
 });
 
 // ============================================================
+<<<<<<< Updated upstream
+=======
+// HỆ THỐNG NHẮC NHỞ TUÂN THỦ ĐIỀU TRỊ – Patient
+// ============================================================
+
+
+Route::middleware(['auth'])->prefix('treatment')->name('treatment.')->group(function () {
+    Route::get('/',                    [TreatmentReminderController::class, 'index'])->name('index');
+    Route::post('/confirm/{reminder}', [TreatmentReminderController::class, 'confirm'])->name('confirm');
+    Route::post('/instruction/toggle', [TreatmentReminderController::class, 'toggleInstruction'])->name('instruction.toggle');
+    Route::get('/report',              [TreatmentReminderController::class, 'report'])->name('report');
+});
+
+// Public routes
+Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
+
+
+// Admin routes
+Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
+    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
+    Route::patch('news/{id}/toggle', [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
+    Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
+
+});
+
+// ============================================================
+// ROUTE BÁC SĨ (Doctor Dashboard + Schedule Management)
+// ============================================================
+
+Route::prefix('doctor')->name('doctor.')->middleware('auth')->group(function () {
+    Route::get('/dashboard',                                [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/appointments/today',             [DashboardController::class, 'todayAppointments']);
+    Route::get('/dashboard/appointments/upcoming',          [DashboardController::class, 'upcomingAppointments']);
+    Route::get('/dashboard/stats',                          [DashboardController::class, 'stats']);
+    Route::patch('/dashboard/appointments/{id}/complete',   [DashboardController::class, 'completeAppointment']);
+    Route::patch('/dashboard/appointments/{id}/cancel',     [DashboardController::class, 'cancelAppointment']);
+    Route::get('/dashboard/reviews',                        [DashboardController::class, 'reviews']);
+    Route::post('/dashboard/reviews/{id}/reply',            [DashboardController::class, 'replyReview']);
+    Route::delete('/dashboard/reviews/{id}/reply',          [DashboardController::class, 'deleteReply']);
+    Route::get('/dashboard/doctors/list',                   [DashboardController::class, 'doctorsList']);
+    Route::get('/dashboard/doctors/{id}',                   [DashboardController::class, 'getDoctor']);
+    Route::post('/dashboard/doctors/upload-avatar',         [DashboardController::class, 'uploadAvatar']);
+    Route::post('/dashboard/doctors',                       [DashboardController::class, 'storeDoctor']);
+    Route::put('/dashboard/doctors/{id}',                   [DashboardController::class, 'updateDoctor']);
+    Route::delete('/dashboard/doctors/{id}',                [DashboardController::class, 'destroyDoctor']);
+});
+
+Route::prefix('schedules')->name('doctor.')->middleware('auth')->group(function () {
+    Route::get('/', function () {
+        return view('doctor.doctor-schedule');
+    })->name('schedule');
+});
+
+// ============================================================
+// API v1 – Doctor Schedules
+// ============================================================
+
+Route::prefix('api/v1')->middleware('auth')->group(function () {
+    Route::prefix('schedules')->group(function () {
+        // Recurring Schedule
+        Route::post('recurring/preview',          [DoctorScheduleController::class, 'recurringPreview']);
+        Route::post('recurring',                  [DoctorScheduleController::class, 'storeRecurring']);
+        Route::get('recurring/{doctorId}',        [DoctorScheduleController::class, 'indexRecurring']);
+        Route::delete('recurring/{scheduleId}',   [DoctorScheduleController::class, 'destroyRecurring']);
+
+        // Day-Off (Block + Email)
+        Route::post('day-off',                    [DoctorScheduleController::class, 'storeDayOff']);
+        Route::get('day-off/{doctorId}',          [DoctorScheduleController::class, 'indexDayOff']);
+        Route::delete('day-off/{scheduleId}',     [DoctorScheduleController::class, 'destroyDayOff']);
+
+        // Utility
+        Route::get('doctors',                     [DoctorScheduleController::class, 'listDoctors']);
+    });
+
+    // Appointments
+    Route::prefix('appointments')->group(function () {
+        Route::post('reschedule-confirm',         [AppointmentController::class, 'quickRescheduleFromDayOff']);
+    });
+});
+
+// ============================================================
+// Medical Records and Medical History
+// ============================================================
+
+require_once __DIR__ . "/medical_records.php";
+require_once __DIR__ . "/medical_history.php";
+
+// ============================================================
+>>>>>>> Stashed changes
 // ADMIN ROUTES (Yêu cầu đăng nhập + quyền is_admin)
 // ============================================================
 
