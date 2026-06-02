@@ -279,6 +279,16 @@
                   padding:1px 7px;font-size:11px;font-weight:700;display:none;margin-left:auto;">0</span>
         </a>
         @endif
+
+        <div class="nav-section">Thiết bị</div>
+        <a href="{{ route('admin.device-types.index') }}"
+           class="nav-link {{ request()->routeIs('admin.device-types.*') ? 'active' : '' }}">
+            <i class="bi bi-tags"></i> Danh mục thiết bị
+        </a>
+        <a href="{{ route('admin.devices.index') }}"
+           class="nav-link {{ request()->routeIs('admin.devices.*') ? 'active' : '' }}">
+            <i class="bi bi-pc-display-horizontal"></i> Thiết bị
+        </a>
     </nav>
 
     {{-- User info ở cuối sidebar --}}
@@ -374,12 +384,15 @@ window.alert = function (message) {
 function appInputLimitMessage(field) {
     const label = document.querySelector(`label[for="${field.id}"]`);
     const name = label ? label.textContent.trim() : (field.getAttribute('name') || 'Trường này');
-    return `${name} tối đa ${field.maxLength} ký tự. Vui lòng rút ngắn nội dung.`;
+    return `${name} tối đa ${field.getAttribute('maxlength')} ký tự. Vui lòng rút ngắn nội dung.`;
 }
 
 document.addEventListener('input', function (event) {
     const field = event.target;
-    if (!field || field.maxLength <= 0 || field.value.length < field.maxLength) return;
+    if (!field || !field.matches('input[maxlength], textarea[maxlength]')) return;
+
+    const maxLength = Number(field.getAttribute('maxlength'));
+    if (!Number.isFinite(maxLength) || maxLength <= 0 || field.value.length < maxLength) return;
     if (field.dataset.limitNotified === '1') return;
 
     field.dataset.limitNotified = '1';
@@ -389,13 +402,19 @@ document.addEventListener('input', function (event) {
 
 document.addEventListener('blur', function (event) {
     const field = event.target;
-    if (!field || field.maxLength <= 0 || field.value.length < field.maxLength) return;
+    if (!field || !field.matches('input[maxlength], textarea[maxlength]')) return;
+
+    const maxLength = Number(field.getAttribute('maxlength'));
+    if (!Number.isFinite(maxLength) || maxLength <= 0 || field.value.length < maxLength) return;
     field.dataset.limitNotified = '';
 }, true);
 
 document.addEventListener('submit', function (event) {
     const invalidField = Array.from(event.target.querySelectorAll('input[maxlength], textarea[maxlength]'))
-        .find(field => field.value.length > field.maxLength);
+        .find(field => {
+            const maxLength = Number(field.getAttribute('maxlength'));
+            return Number.isFinite(maxLength) && maxLength > 0 && field.value.length > maxLength;
+        });
 
     if (invalidField) {
         event.preventDefault();
