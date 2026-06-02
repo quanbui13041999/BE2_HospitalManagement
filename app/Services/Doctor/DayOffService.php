@@ -99,12 +99,24 @@ class DayOffService
 
                 foreach ($toBlock as $schedule) {
                     // ── Block schedule ──────────────────────────────────────
-                    $schedule->update([
-                        'status' => 'blocked',
-                        'note'   => "[{$type}] {$reason}",
-                    ]);
+                    $currentScheduleVersion = $schedule->version ?? 1;
+                    $updatedSchedules = DoctorSchedule::where('schedule_id', $schedule->schedule_id)
+                        ->where('version', $currentScheduleVersion)
+                        ->update([
+                            'status' => 'blocked',
+                            'note'   => "[{$type}] {$reason}",
+                            'version' => $currentScheduleVersion + 1
+                        ]);
+
+                    if ($updatedSchedules === 0) {
+                        Log::warning('Day-off: Schedule already modified, skipping', [
+                            'schedule_id' => $schedule->schedule_id,
+                        ]);
+                        continue;
+                    }
+
                     $blockedCount++;
-                    
+
                     Log::info('Day-off: Schedule blocked', [
                         'schedule_id' => $schedule->schedule_id,
                         'work_date' => $schedule->work_date,
@@ -112,7 +124,7 @@ class DayOffService
 
                     // ── Xử lý appointment bị ảnh hưởng ─────────────────────
                     $affected = $schedule->activeAppointments();
-                    
+
                     Log::info('Day-off: Affected appointments found', [
                         'schedule_id' => $schedule->schedule_id,
                         'affected_count' => $affected->count(),
@@ -122,13 +134,16 @@ class DayOffService
                     ]);
 
                     foreach ($affected as $appt) {
-                        // Đổi trạng thái appointment sang 'Bác sĩ nghỉ'
+                        // Đổi trạng thái appointment sang 'Bác sĩ nghỉ' (atomic update with version)
+                        $currentApptVersion = $appt->version ?? 1;
                         $updated = Appointment::where('appointment_id', $appt->appointment_id)
+                            ->where('version', $currentApptVersion)
                             ->update([
                                 'status'        => 'Bác sĩ nghỉ',
                                 'cancel_reason' => "{$type}: {$reason}",
+                                'version'       => $currentApptVersion + 1
                             ]);
-                        
+
                         if ($updated) {
                             $affectedCount++;
                             Log::info('Day-off: Appointment updated', [
@@ -136,7 +151,7 @@ class DayOffService
                                 'status' => 'Bác sĩ nghỉ',
                             ]);
                         } else {
-                            Log::warning('Day-off: Failed to update appointment', [
+                            Log::warning('Day-off: Failed to update appointment (version mismatch)', [
                                 'appointment_id' => $appt->appointment_id,
                             ]);
                         }
@@ -349,7 +364,20 @@ class DayOffService
     public function cancel(int $scheduleId): bool
     {
         $schedule = DoctorSchedule::findOrFail($scheduleId);
-        $schedule->update(['status' => 'Hoạt động', 'note' => null]);
+        $currentVersion = $schedule->version ?? 1;
+
+        // Atomic update with version check
+        $updated = DoctorSchedule::where('schedule_id', $schedule->schedule_id)
+            ->where('version', $currentVersion)
+            ->update([
+                'status' => 'Hoạt động',
+                'note' => null,
+                'version' => $currentVersion + 1
+            ]);
+
+        if ($updated === 0) {
+            throw new \RuntimeException('Schedule was modified by another process. Please try again.');
+        }
 
         // Nếu không còn ca bị block cùng ngày thì xoá bản ghi DoctorDayOff.
         $blockedExists = DoctorSchedule::where('doctor_id', $schedule->doctor_id)

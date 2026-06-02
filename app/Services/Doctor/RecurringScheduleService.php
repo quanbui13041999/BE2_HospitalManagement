@@ -65,19 +65,29 @@ class RecurringScheduleService
                         if ($existing->has($key)) {
                             $skipped++;
                         } else {
-                            $schedule = DoctorSchedule::create([
-                                'doctor_id'     => $doctorId,
-                                'room_id'       => $roomId,
-                                'work_date'     => $current->toDateString(),
-                                'start_time'    => $session['start'],
-                                'end_time'      => $session['end'],
-                                'slot_duration' => $duration,
-                                'max_slot'      => $maxSlot,
-                                'status'        => 'Hoạt động',
-                                'note'          => $session['label'], // "Sáng" | "Chiều"
-                            ]);
-                            $newSchedules->push($schedule);
-                            $created++;
+                            try {
+                                $schedule = DoctorSchedule::create([
+                                    'doctor_id'     => $doctorId,
+                                    'room_id'       => $roomId,
+                                    'work_date'     => $current->toDateString(),
+                                    'start_time'    => $session['start'],
+                                    'end_time'      => $session['end'],
+                                    'slot_duration' => $duration,
+                                    'max_slot'      => $maxSlot,
+                                    'status'        => 'Hoạt động',
+                                    'note'          => $session['label'], // "Sáng" | "Chiều"
+                                    'version'       => 1,
+                                ]);
+                                $newSchedules->push($schedule);
+                                $created++;
+                            } catch (\Exception $e) {
+                                \Log::warning('Failed to create recurring schedule', [
+                                    'doctor_id' => $doctorId,
+                                    'date' => $current->toDateString(),
+                                    'error' => $e->getMessage()
+                                ]);
+                                $skipped++;
+                            }
                         }
                     }
                 }

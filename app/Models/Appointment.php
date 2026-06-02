@@ -25,7 +25,7 @@ class Appointment extends Model
         'status', 'is_priority', 'priority_type', 'note', 'cancel_reason',
         'slot_hold_expire', 'rescheduled_from',
         'mail_reminded_1day', 'mail_reminded_1hour',
-        'created_at',
+        'created_at', 'version',
     ];
 
     protected $casts = [

@@ -110,7 +110,7 @@ class DoctorDashboardService
      */
     public function completeAppointment(int $appointmentId, int $doctorId, bool $isAdmin): array
     {
-        $appointment = Appointment::find($appointmentId);
+        $appointment = Appointment::lockForUpdate()->find($appointmentId);
 
         if (!$appointment) {
             return ['success' => false, 'message' => 'Lịch hẹn không tồn tại.'];
@@ -128,7 +128,19 @@ class DoctorDashboardService
             return ['success' => false, 'message' => "Không thể hoàn thành lịch hẹn với trạng thái: {$appointment->status}"];
         }
 
-        $appointment->update(['status' => 'Hoàn thành']);
+        try {
+            DB::transaction(function () use ($appointment) {
+                $currentVersion = $appointment->version ?? 1;
+                Appointment::where('appointment_id', $appointment->appointment_id)
+                    ->where('version', $currentVersion)
+                    ->update([
+                        'status' => 'Hoàn thành',
+                        'version' => $currentVersion + 1
+                    ]);
+            });
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Lịch hẹn đã bị thay đổi bởi người khác. Vui lòng tải lại.'];
+        }
 
         return ['success' => true, 'message' => 'Đã đánh dấu hoàn thành lịch hẹn.'];
     }
@@ -138,7 +150,7 @@ class DoctorDashboardService
      */
     public function cancelAppointment(int $appointmentId, string $reason, int $doctorId, bool $isAdmin): array
     {
-        $appointment = Appointment::find($appointmentId);
+        $appointment = Appointment::lockForUpdate()->find($appointmentId);
 
         if (!$appointment) {
             return ['success' => false, 'message' => 'Lịch hẹn không tồn tại.'];
@@ -155,13 +167,20 @@ class DoctorDashboardService
             return ['success' => false, 'message' => "Không thể hủy lịch hẹn với trạng thái: {$appointment->status}"];
         }
 
-        $appointment->update([
-            'status'        => 'Đã hủy',
-            'cancel_reason' => $reason ?: 'Bác sĩ hủy',
-        ]);
-
-        // TODO: gửi email thông báo cho bệnh nhân
-        // event(new AppointmentCancelledByDoctor($appointment));
+        try {
+            DB::transaction(function () use ($appointment, $reason) {
+                $currentVersion = $appointment->version ?? 1;
+                Appointment::where('appointment_id', $appointment->appointment_id)
+                    ->where('version', $currentVersion)
+                    ->update([
+                        'status'        => 'Đã hủy',
+                        'cancel_reason' => $reason ?: 'Bác sĩ hủy',
+                        'version'       => $currentVersion + 1
+                    ]);
+            });
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Lịch hẹn đã bị thay đổi bởi người khác. Vui lòng tải lại.'];
+        }
 
         return ['success' => true, 'message' => 'Đã hủy lịch hẹn thành công.'];
     }
@@ -186,7 +205,7 @@ class DoctorDashboardService
      */
     public function replyToReview(int $reviewId, string $reply, int $doctorId, bool $isAdmin): array
     {
-        $review = Review::find($reviewId);
+        $review = Review::lockForUpdate()->find($reviewId);
 
         if (!$review) {
             return ['success' => false, 'message' => 'Đánh giá không tồn tại.'];
@@ -201,10 +220,20 @@ class DoctorDashboardService
             return ['success' => false, 'message' => 'Nội dung trả lời không được để trống.'];
         }
 
-        $review->update([
-            'doctor_reply'            => trim($reply),
-            'doctor_reply_updated_at' => now(),
-        ]);
+        try {
+            DB::transaction(function () use ($review, $reply) {
+                $currentVersion = $review->version ?? 1;
+                Review::where('review_id', $review->review_id)
+                    ->where('version', $currentVersion)
+                    ->update([
+                        'doctor_reply'            => trim($reply),
+                        'doctor_reply_updated_at' => now(),
+                        'version'                 => $currentVersion + 1
+                    ]);
+            });
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Đánh giá đã bị thay đổi bởi người khác. Vui lòng tải lại.'];
+        }
 
         return ['success' => true, 'message' => 'Đã gửi phản hồi thành công.'];
     }
@@ -218,15 +247,25 @@ class DoctorDashboardService
             return ['success' => false, 'message' => 'Chỉ admin mới có quyền xóa phản hồi.'];
         }
 
-        $review = Review::find($reviewId);
+        $review = Review::lockForUpdate()->find($reviewId);
         if (!$review) {
             return ['success' => false, 'message' => 'Đánh giá không tồn tại.'];
         }
 
-        $review->update([
-            'doctor_reply'            => null,
-            'doctor_reply_updated_at' => null,
-        ]);
+        try {
+            DB::transaction(function () use ($review) {
+                $currentVersion = $review->version ?? 1;
+                Review::where('review_id', $review->review_id)
+                    ->where('version', $currentVersion)
+                    ->update([
+                        'doctor_reply'            => null,
+                        'doctor_reply_updated_at' => null,
+                        'version'                 => $currentVersion + 1
+                    ]);
+            });
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Đánh giá đã bị thay đổi bởi người khác. Vui lòng tải lại.'];
+        }
 
         return ['success' => true, 'message' => 'Đã xóa phản hồi.'];
     }

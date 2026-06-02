@@ -334,6 +334,69 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * POST /doctor/dashboard/doctors
+     */
+    public function storeDoctor(Request $request): JsonResponse
+    {
+        if (!Auth::user()->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
+        }
+
+        $validated = $request->validate([
+            'full_name'     => 'required|string|max:100',
+            'user_id'       => 'nullable|integer|exists:users,user_id|unique:doctors,user_id',
+            'email'         => 'nullable|email|unique:users,email',
+            'password'      => 'nullable|string|min:6',
+            'department_id' => 'required|integer|exists:departments,department_id',
+            'experience'    => 'nullable|integer|min:0|max:60',
+            'price'         => 'nullable|numeric|min:0',
+            'avatar_url'    => 'nullable|string|max:255',
+            'bio'           => 'nullable|string|max:2000',
+            'status'        => 'required|in:0,1',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, &$doctor) {
+                // Create user if email provided
+                $userId = $validated['user_id'];
+                if (!$userId && $validated['email']) {
+                    $user = \App\Models\User::create([
+                        'full_name'  => $validated['full_name'],
+                        'email'      => $validated['email'],
+                        'password'   => $validated['password'] ? Hash::make($validated['password']) : null,
+                        'avatar_url' => $validated['avatar_url'] ?? null,
+                        'status'     => $validated['status'] ?? 1,
+                        'is_admin'   => 0,
+                    ]);
+                    $userId = $user->user_id;
+                }
+
+                // Create doctor
+                $doctor = Doctor::create(array_merge($validated, [
+                    'user_id' => $userId,
+                    'version' => 1
+                ]));
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã thêm bác sĩ thành công.',
+                'doctor'  => [
+                    'doctor_id'     => $doctor->doctor_id,
+                    'full_name'     => $doctor->full_name,
+                    'department_id' => $doctor->department_id,
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            \Log::error('Error creating doctor: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi thêm bác sĩ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     // POST /doctor/dashboard/doctors (storeDoctor) might exist in your project.
     // In case it is already implemented elsewhere, leave it out here.
 

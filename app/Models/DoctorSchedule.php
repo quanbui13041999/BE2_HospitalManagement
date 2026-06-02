@@ -28,6 +28,7 @@ class DoctorSchedule extends Model
         'max_slot',
         'status',   // active | blocked | full
         'note',
+        'version',
     ];
 
     protected $casts = [
