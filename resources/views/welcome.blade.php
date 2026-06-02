@@ -576,6 +576,13 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    @if (file_exists(public_path('build/manifest.json')))
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @else
+        <script src="https://cdn.tailwindcss.com"></script>
+    @endif
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 
 <body>
@@ -677,6 +684,9 @@
                 @auth
                 <li><a href="{{ route('profile.show') }}">Hồ sơ</a></li>
                 <li><a href="{{ route('appointments.index') }}">Lịch hẹn</a></li>
+                    @if(!Auth::user()->is_admin)
+                    <li><a href="{{ route('patient.nutrition.index') }}">Dinh dưỡng</a></li>
+                    @endif
                 
                 @endauth
                 <li><a href="{{ route('news.index') }}">Bản tin</a></li>
@@ -686,10 +696,14 @@
                 @endif
                 @endauth
                 <li><a href="{{ route('user.services.index') }}">Khoa phòng</a></li>
+                @auth
+                <li><a href="{{ route('treatment.index') }}">Tuân thủ điều trị</a></li>
+                @endauth
             </ul>
 
-            <div class="nav-cta">
+            <div class="nav-cta" style="display: flex; align-items: center; gap: 16px;">
                 @auth
+                <x-notification-bell :direct="true" />
                 @if (Auth::user()->is_admin)
                 <a href="{{ route('admin.dashboard') }}" class="btn-outline">Dashboard</a>
                 @else

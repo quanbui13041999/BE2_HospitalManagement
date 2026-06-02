@@ -85,9 +85,9 @@
                                     value="{{ old('food_allergies', $healthData->food_allergies ?? '') }}" placeholder="VD: Sữa, Gluten...">
                             </div>
                         </div>
-                        <a href="{{ url('/') }}"
+                        <a href="{{ route('profile.show') }}"
                             class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-house-door-fill me-1"></i> Trang chủ
+                            <i class="bi bi-house-door-fill me-1"></i> Quay lại
                         </a>
                     </div>
                 </div>

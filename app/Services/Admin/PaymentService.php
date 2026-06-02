@@ -5,9 +5,11 @@ namespace App\Services\Admin;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Repositories\PaymentRepository;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Services\ActivityLogService;
 
 class PaymentService
 {
@@ -15,7 +17,10 @@ class PaymentService
     const PAYMENT_METHODS = ['QR', 'ATM', 'MoMo', 'ZaloPay', 'Counter'];
     const PAYMENT_STATUSES = ['Chờ xử lý', 'Thành công', 'Thất bại', 'Hoàn tiền', 'Đã thanh toán', 'Chưa thanh toán'];
 
-    public function __construct(protected PaymentRepository $repo) {}
+    public function __construct(
+        protected PaymentRepository $repo,
+        protected NotificationService $notifications
+    ) {}
 
     // ----------------------------------------------------------------
     // Data builders cho view
@@ -67,8 +72,30 @@ class PaymentService
      */
     public function initiatePayment(array $data): array
     {
+        $invoice = Invoice::findOrFail($data['invoice_id']);
+        
         $ref     = strtoupper(Str::random(12));
-        $payment = $this->repo->createPayment(array_merge($data, ['transaction_ref' => $ref]));
+        
+        // Map invoice data to what the repository/model expects
+        $paymentData = [
+            'appointment_id'  => $invoice->appointment_id,
+            'payment_method'  => $data['payment_method'],
+            'amount'          => $data['amount'],
+            'transaction_ref' => $ref,
+        ];
+
+        $payment = $this->repo->createPayment($paymentData);
+
+        if ($payment->appointment?->user_id) {
+            $this->notifications->createForUser(
+                $payment->appointment->user_id,
+                'Có hóa đơn cần thanh toán',
+                'Hóa đơn cho lịch khám #' . $payment->appointment_id . ' có số tiền ' . number_format((float) $payment->total_amount, 0, ',', '.') . 'đ.',
+                'payment_created',
+                'payment',
+                $payment->payment_id
+            );
+        }
 
         $result = ['payment' => $payment, 'ref' => $ref];
 
@@ -90,10 +117,36 @@ class PaymentService
         $updated = $this->repo->confirmPayment($paymentId, $ref);
 
         if ($updated) {
-            // Đánh dấu hóa đơn đã thanh toán
-            $payment = Payment::find($paymentId);
-            if ($payment && $payment->invoice) {
-                $payment->invoice->update(['status' => 'Đã thanh toán']);
+            // Đánh dấu hóa đơn và lịch hẹn đã thanh toán
+            $payment = Payment::with(['invoice', 'appointment'])->find($paymentId);
+            if ($payment) {
+                if ($payment->invoice) {
+                    $payment->invoice->update(['status' => 'Đã thanh toán']);
+                }
+                if ($payment->appointment) {
+                    $payment->appointment->update(['status' => 'Đã thanh toán']);
+                    $this->notifications->createForUser(
+                        $payment->appointment->user_id,
+                        'Thanh toán thành công',
+                        'Giao dịch #' . $payment->payment_id . ' đã được xác nhận thanh toán.',
+                        'payment_paid',
+                        'payment',
+                        $payment->payment_id
+                    );
+                }
+
+                ActivityLogService::log(
+                    'Thanh toán lịch khám',
+                    'Admin đã xác nhận thanh toán giao dịch #' . $payment->payment_id . ' cho lịch khám #' . $payment->appointment_id . '.',
+                    'payment',
+                    $payment->payment_id,
+                    [
+                        'appointment_id' => $payment->appointment_id,
+                        'method' => $payment->method,
+                        'amount' => $payment->total_amount,
+                        'transaction_ref' => $payment->transaction_ref,
+                    ]
+                );
             }
         }
 
@@ -124,7 +177,7 @@ class PaymentService
             'HOSPITAL|%s|%d|%s',
             $payment->transaction_ref,
             (int) ($payment->total_amount ?? 0),
-            'Thanh toan hoa don ' . ($payment->invoice_id ?? '')
+            'Thanh toan hoa don ' . ($payment->invoice?->invoice_number ?? '')
         );
     }
 }

@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Services\AppointmentService;
-use App\Services\DoctorSuggestionService;
-use App\Services\DoctorTimeslotService;
-use App\Services\AppointmentQueueService;
+use App\Services\AppointmentReminderService;
+use App\Services\Doctor\DoctorSuggestionService;
+use App\Services\Doctor\DoctorTimeslotService;
+use App\Services\Doctor\AppointmentQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,10 +19,12 @@ use Illuminate\Support\Facades\Auth;
 class AppointmentController extends Controller
 {
     protected AppointmentService $appointmentService;
+    protected AppointmentReminderService $appointmentReminderService;
 
-    public function __construct(AppointmentService $appointmentService)
+    public function __construct(AppointmentService $appointmentService, AppointmentReminderService $appointmentReminderService)
     {
         $this->appointmentService = $appointmentService;
+        $this->appointmentReminderService = $appointmentReminderService;
     }
 
     // ================================================================
@@ -67,6 +70,8 @@ class AppointmentController extends Controller
             'work_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|string|max:10',
             'note' => 'nullable|string|max:255',
+            'is_priority' => 'nullable',
+            'priority_type' => 'nullable|string|max:255',
         ], [
             'schedule_id.required' => 'Vui lòng chọn khung giờ khám.',
             'schedule_id.exists' => 'Khung giờ không hợp lệ.',
@@ -83,12 +88,15 @@ class AppointmentController extends Controller
                     'work_date' => $request->work_date,
                     'appointment_time' => $request->appointment_time,
                     'note' => $request->note,
+                    'is_priority' => $request->has('is_priority') ? true : false,
+                    'priority_type' => $request->priority_type,
                     'ip_address' => $request->ip(),
                 ]
             );
 
             return redirect()->route('appointments.index')
-                ->with('success', $result['message']);
+                ->with('success', $result['message'])
+                ->with('appointment_id', $result['appointment_id']);
         } catch (\Exception $e) {
             return back()
                 ->withErrors(['msg' => $e->getMessage()])
@@ -220,6 +228,17 @@ class AppointmentController extends Controller
         }
     }
 
+    public function sendEmailReminders()
+    {
+        $stats = $this->appointmentReminderService->sendPendingReminders();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Appointment reminder job executed.',
+            'data' => $stats,
+        ]);
+    }
+
     /**
      * Gợi ý bác sĩ tự động
      * 
@@ -297,5 +316,88 @@ class AppointmentController extends Controller
         }
 
         return response()->json($queueInfo);
+    }
+
+    // ================================================================
+    // QUICK RESCHEDULE FROM DAY-OFF
+    // ================================================================
+    /**
+     * GET /dat-lich/xac-nhan-doi-lich?old_id=X&new_schedule_id=Y&token=...
+     * 
+     * Xác nhận dời lịch từ email notification.
+     * User click nút "Xác nhận chọn lịch này" trong email → redirect tới endpoint này
+     * → endpoint xác thực token → tự động tạo appointment mới → redirect tới trang xác nhận
+     */
+    public function confirmRescheduleFromEmail(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để dời lịch');
+        }
+
+        $oldAppointmentId = $request->integer('old_id');
+        $newScheduleId = $request->integer('new_schedule_id');
+        $token = (string) $request->string('token');
+
+        // Xác thực token
+        $expectedToken = hash_hmac('sha256', $oldAppointmentId . '|' . $newScheduleId, config('app.key'));
+        if (!hash_equals($token, $expectedToken)) {
+            return redirect()->route('appointments.index')->with('error', 'Link không hợp lệ hoặc đã hết hạn');
+        }
+
+        try {
+            $result = $this->appointmentService->quickRescheduleFromDayOff(
+                $oldAppointmentId,
+                $newScheduleId,
+                $user->user_id
+            );
+
+            return redirect()->route('appointments.index')->with('success', $result['message']);
+
+        } catch (\Exception $e) {
+            return redirect()->route('appointments.index')->with('error', 'Lỗi: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * POST /api/v1/appointments/reschedule-confirm
+     * 
+     * API endpoint cho quick reschedule (backup nếu email không thể submit form).
+     * Yêu cầu authentication.
+     */
+    public function quickRescheduleFromDayOff(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lòng đăng nhập để dời lịch.',
+            ], 401);
+        }
+
+        $request->validate([
+            'old_appointment_id' => 'required|integer|exists:appointments,appointment_id',
+            'new_schedule_id'    => 'required|integer|exists:doctorschedules,schedule_id',
+        ]);
+
+        try {
+            $result = $this->appointmentService->quickRescheduleFromDayOff(
+                $request->integer('old_appointment_id'),
+                $request->integer('new_schedule_id'),
+                $user->user_id
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'],
+                'data'    => $result,
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 }

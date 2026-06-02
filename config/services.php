@@ -39,4 +39,14 @@ return [
         'api_key' => env('GEMINI_API_KEY'),
     ],
 
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+
+    'brevo' => [
+        'api_key' => env('BREVO_API_KEY'),
+        'sender_email' => env('BREVO_SENDER_EMAIL', 'no-reply@clinic.com'),
+        'sender_name' => env('BREVO_SENDER_NAME', 'Phòng Khám'),
+    ],
+
 ];

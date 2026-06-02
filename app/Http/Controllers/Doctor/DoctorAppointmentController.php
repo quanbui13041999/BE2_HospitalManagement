@@ -37,6 +37,7 @@ class DoctorAppointmentController extends Controller
         }
 
         $appointments = $query
+            ->orderBy('appointments.is_priority', 'desc')
             ->orderBy('appointments.appointment_time', 'asc')
             ->paginate(20);
 

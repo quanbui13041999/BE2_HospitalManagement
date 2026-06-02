@@ -9,21 +9,26 @@ return new class extends Migration {
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->increments('payment_id');
-            $table->unsignedInteger('invoice_id');
-            $table->string('payment_method', 50)->default('QR');
-            $table->decimal('amount', 12, 2);
+            $table->unsignedInteger('appointment_id')->unique();
+            $table->decimal('subtotal', 15, 2)->default(0);
+            $table->unsignedInteger('insurance_id')->nullable();
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->unsignedInteger('membership_id')->nullable();
+            $table->decimal('total_amount', 15, 2)->default(0);
             $table->string('status', 30)->default('Chờ xử lý');
-            $table->dateTime('paid_at')->nullable();
+            $table->string('method', 50)->nullable();
+            $table->string('payment_method', 50)->nullable();
+            $table->dateTime('payment_date')->nullable();
             $table->string('transaction_ref', 100)->nullable();
+            $table->string('notes', 255)->nullable();
+            $table->timestamps();
 
-            $table->foreign('invoice_id')
-                  ->references('invoice_id')->on('Invoices')
-                  ->onUpdate('cascade')->onDelete('cascade');
+            $table->foreign('appointment_id')->references('appointment_id')->on('appointments')->onDelete('cascade');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('Payments');
+        Schema::dropIfExists('payments');
     }
 };

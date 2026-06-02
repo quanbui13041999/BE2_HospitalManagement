@@ -86,4 +86,25 @@ class ServiceRepository
             ->limit($limit)
             ->get();
     }
+
+    public function priceHistory()
+    {
+        return DB::table('ServicePrices as sp')
+            ->join('Services as s', 's.service_id', '=', 'sp.service_id')
+            ->leftJoin('Users as u', 'u.user_id', '=', 'sp.created_by')
+            ->select([
+                'sp.created_at as changed_at',
+                's.service_name',
+                's.service_code',
+                'u.full_name as changed_by_name',
+                'sp.price_type',
+                DB::raw('NULL as old_price'),
+                'sp.price as new_price',
+                DB::raw('CONCAT("Áp dụng từ ", DATE_FORMAT(sp.effective_date, "%d/%m/%Y")) as reason'),
+            ])
+            ->orderBy('sp.created_at', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+    }
 }
+

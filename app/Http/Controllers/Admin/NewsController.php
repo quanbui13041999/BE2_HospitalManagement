@@ -7,15 +7,17 @@ use App\Http\Requests\StoreNewsRequest;
 use App\Mail\NewsPublishedMail;
 use App\Models\HospitalNews;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Exception;
 
 class NewsController extends Controller
 {
+    public function __construct(private NotificationService $notifications) {}
+
     public function index()
     {
         $news = HospitalNews::with('author')
@@ -42,10 +44,22 @@ class NewsController extends Controller
         }
 
         if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')->store('news', 'public');
+            $data['thumbnail'] = $this->storeThumbnail($request);
         }
 
         $article = HospitalNews::create($data);
+
+        if ($article->is_published) {
+            $this->notifications->createForAll(
+                'Bản tin mới của bệnh viện',
+                $article->title,
+                'hospital_news',
+                'news',
+                $article->news_id,
+                Auth::id(),
+                route('news.show', $article->news_id)
+            );
+        }
 
         return redirect()->route('admin.news.index')
             ->with('success', 'Đã tạo bài viết thành công.');
@@ -69,10 +83,8 @@ class NewsController extends Controller
         }
 
         if ($request->hasFile('thumbnail')) {
-            if ($article->thumbnail) {
-                Storage::disk('public')->delete($article->thumbnail);
-            }
-            $data['thumbnail'] = $request->file('thumbnail')->store('news', 'public');
+            $this->deleteThumbnail($article->thumbnail);
+            $data['thumbnail'] = $this->storeThumbnail($request);
         }
 
         $article->update($data);
@@ -85,7 +97,7 @@ class NewsController extends Controller
     {
         $article = HospitalNews::findOrFail($id);
         if ($article->thumbnail) {
-            Storage::disk('public')->delete($article->thumbnail);
+            $this->deleteThumbnail($article->thumbnail);
         }
         $article->delete();
 
@@ -97,11 +109,24 @@ class NewsController extends Controller
     public function togglePublish($id)
     {
         $article = HospitalNews::findOrFail($id);
+        $wasPublished = (bool) $article->is_published;
         $article->is_published = !$article->is_published;
         if ($article->is_published && !$article->published_at) {
             $article->published_at = now();
         }
         $article->save();
+
+        if (! $wasPublished && $article->is_published) {
+            $this->notifications->createForAll(
+                'Bản tin mới của bệnh viện',
+                $article->title,
+                'hospital_news',
+                'news',
+                $article->news_id,
+                Auth::id(),
+                route('news.show', $article->news_id)
+            );
+        }
 
         return back()->with('success', 'Đã thay đổi trạng thái bài viết.');
     }
@@ -168,5 +193,43 @@ class NewsController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    private function storeThumbnail(Request $request): string
+    {
+        $file = $request->file('thumbnail');
+        $directory = public_path('uploads/news');
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        $filename = uniqid('news_', true) . '.' . $file->getClientOriginalExtension();
+        $file->move($directory, $filename);
+
+        return asset('uploads/news/' . $filename);
+    }
+
+    private function deleteThumbnail(?string $thumbnail): void
+    {
+        if (! $thumbnail) {
+            return;
+        }
+
+        $relativePath = $thumbnail;
+
+        if (filter_var($thumbnail, FILTER_VALIDATE_URL)) {
+            $relativePath = ltrim(parse_url($thumbnail, PHP_URL_PATH) ?: '', '/');
+        }
+
+        if (! str_starts_with($relativePath, 'uploads/news/')) {
+            return;
+        }
+
+        $path = public_path($relativePath);
+
+        if (is_file($path)) {
+            unlink($path);
+        }
     }
 }

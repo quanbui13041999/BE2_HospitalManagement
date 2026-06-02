@@ -1,0 +1,328 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\Appointment;
+use App\Models\MedicalRecord;
+use App\Models\PatientAllergy;
+use App\Models\PatientMedicalHistory;
+use App\Models\InsuranceCard;
+use App\Models\MembershipCard;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+
+class PatientSearchController extends Controller
+{
+    /**
+     * Lấy thống kê tổng quan của bệnh viện
+     */
+    private function getStats()
+    {
+        return [
+            'total_patients' => User::where('role_id', 3)->count(),
+            'total_appointments' => Appointment::count(),
+            'appointments_today' => Appointment::whereDate('appointment_time', today())->count(),
+            'new_patients_month' => User::where('role_id', 3)
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count(),
+        ];
+    }
+
+    /**
+     * Hiển thị trang tìm kiếm bệnh nhân nâng cao
+     */
+    public function index()
+    {
+        $stats = $this->getStats();
+        return view('admin.patients.search', compact('stats'));
+    }
+
+    /**
+     * Tìm kiếm bệnh nhân nâng cao (AJAX)
+     */
+    public function search(Request $request)
+    {
+        $query = User::query()
+            ->where('role_id', 3) // Chỉ lấy bệnh nhân
+            ->with([
+                'appointments' => fn($q) => $q->latest()->limit(3)->with('schedule.doctor'),
+                'insuranceCards',
+                'membershipCard',
+                'patientAllergies',
+                'patientMedicalHistories',
+            ]);
+
+        // -- 1. Từ khóa tổng quát (tìm trong nhiều trường cùng lúc)
+        if ($keyword = $request->get('keyword')) {
+            $keyword = trim($keyword);
+            $query->where(function ($q) use ($keyword) {
+                $q->where('full_name', 'LIKE', "%{$keyword}%")
+                  ->orWhere('email', 'LIKE', "%{$keyword}%")
+                  ->orWhere('phone', 'LIKE', "%{$keyword}%")
+                  ->orWhere('address', 'LIKE', "%{$keyword}%")
+                  ->orWhere('user_id', $keyword); // tìm theo ID
+            });
+        }
+
+        // -- 2. Lọc theo giới tính
+        if ($gender = $request->get('gender')) {
+            $query->where('gender', $gender);
+        }
+
+        // -- 3. Lọc theo khoảng tuổi
+        if ($ageFrom = $request->get('age_from')) {
+            $query->whereDate('date_of_birth', '<=', now()->subYears((int)$ageFrom));
+        }
+        if ($ageTo = $request->get('age_to')) {
+            $query->whereDate('date_of_birth', '>=', now()->subYears((int)$ageTo + 1)->addDay());
+        }
+
+        // -- 4. Lọc theo ngày đăng ký (bệnh nhân mới/cũ)
+        if ($regFrom = $request->get('registered_from')) {
+            $query->whereDate('created_at', '>=', $regFrom);
+        }
+        if ($regTo = $request->get('registered_to')) {
+            $query->whereDate('created_at', '<=', $regTo);
+        }
+
+        // -- 5. Lọc theo trạng thái tài khoản
+        if ($request->filled('status')) {
+            $query->where('status', $request->get('status'));
+        }
+
+        // -- 6. Lọc theo khoa khám
+        if ($deptId = $request->get('department_id')) {
+            $query->whereHas('appointments.schedule.doctor', function ($q) use ($deptId) {
+                $q->where('department_id', $deptId);
+            });
+        }
+
+        // -- 7. Lọc theo bác sĩ đã từng khám
+        if ($doctorId = $request->get('doctor_id')) {
+            $query->whereHas('appointments.schedule', function ($q) use ($doctorId) {
+                $q->where('doctor_id', $doctorId);
+            });
+        }
+
+        // -- 8. Lọc theo trạng thái lịch hẹn
+        if ($apptStatus = $request->get('appointment_status')) {
+            $query->whereHas('appointments', function ($q) use ($apptStatus) {
+                $q->where('status', $apptStatus);
+            });
+        }
+
+        // -- 9. Lọc theo khoảng thời gian có lịch khám
+        if ($apptFrom = $request->get('appointment_from')) {
+            $query->whereHas('appointments', function ($q) use ($apptFrom) {
+                $q->whereDate('appointment_time', '>=', $apptFrom);
+            });
+        }
+        if ($apptTo = $request->get('appointment_to')) {
+            $query->whereHas('appointments', function ($q) use ($apptTo) {
+                $q->whereDate('appointment_time', '<=', $apptTo);
+            });
+        }
+
+        // -- 10. Lọc theo hạng thẻ thành viên
+        if ($tier = $request->get('membership_tier')) {
+            $query->whereHas('membershipCard', fn($q) => $q->where('tier', $tier));
+        }
+
+        // -- 11. Lọc theo bảo hiểm còn hạn
+        if ($request->get('has_insurance') === '1') {
+            $query->whereHas('insuranceCards', fn($q) => $q->where('status', 'Còn hạn'));
+        }
+
+        // -- 12. Lọc theo bệnh mãn tính (tìm trong patientmedicalhistory)
+        if ($chronic = $request->get('chronic_disease')) {
+            $query->whereHas('patientMedicalHistories', function ($q) use ($chronic) {
+                $q->where('is_chronic', 1)->where('condition', 'LIKE', "%{$chronic}%");
+            });
+        }
+
+        // -- 13. Lọc theo dị ứng
+        if ($allergy = $request->get('allergy')) {
+            $query->whereHas('patientAllergies', function ($q) use ($allergy) {
+                $q->where('allergen', 'LIKE', "%{$allergy}%");
+            });
+        }
+
+        // -- 14. Sắp xếp
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortDir = $request->get('sort_dir', 'desc');
+        $allowedSorts = ['full_name', 'created_at', 'date_of_birth', 'user_id'];
+        if (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortDir);
+        }
+
+        // -- 15. Phân trang
+        $perPage = (int)$request->get('per_page', 12);
+        $patients = $query->paginate($perPage)->withQueryString();
+
+        // Tính toán thêm thông tin cho từng bệnh nhân
+        $patients->getCollection()->transform(function ($patient) {
+            $patient->age = $patient->date_of_birth
+                ? Carbon::parse($patient->date_of_birth)->age
+                : null;
+            $patient->total_appointments = $patient->appointments->count();
+            $patient->last_appointment = $patient->appointments->first();
+            return $patient;
+        });
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.patients.partials.patient-card', compact('patients'))->render(),
+                'total' => $patients->total(),
+                'current_page' => $patients->currentPage(),
+                'last_page' => $patients->lastPage(),
+            ]);
+        }
+
+        $stats = $this->getStats();
+        return view('admin.patients.search', compact('patients', 'stats'));
+    }
+
+    /**
+     * Chi tiết hồ sơ bệnh nhân (AJAX modal)
+     */
+    public function detail(int $id)
+    {
+        $patient = User::where('role_id', 3)
+            ->with([
+                'appointments.schedule.doctor.department',
+                'insuranceCards',
+                'membershipCard',
+                'patientAllergies',
+                'patientMedicalHistories',
+                'medicalRecords.doctor',
+            ])
+            ->findOrFail($id);
+
+        $patient->age = $patient->date_of_birth
+            ? Carbon::parse($patient->date_of_birth)->age
+            : null;
+
+        // Thống kê bệnh nhân
+        $patient->stats = [
+            'total_appointments' => $patient->appointments->count(),
+            'completed' => $patient->appointments->where('status', 'Hoàn Thành')->count(),
+            'cancelled' => $patient->appointments->where('status', 'Đã hủy')->count(),
+            'upcoming' => $patient->appointments->where('status', 'Chờ xác nhận')->count(),
+        ];
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.patients.partials.patient-detail', compact('patient'))->render(),
+            ]);
+        }
+
+        return view('admin.patients.search', compact('patient'));
+    }
+
+    /**
+     * Tìm kiếm bằng AI (gọi Google Gemini API)
+     */
+    public function aiSearch(Request $request)
+    {
+        $request->validate(['query' => 'required|string|max:500']);
+
+        $userQuery = $request->get('query');
+
+        // Chuẩn bị context cho AI
+        $systemPrompt = <<<SYSTEM
+Bạn là hệ thống phân tích truy vấn tìm kiếm bệnh nhân thông minh cho phần mềm quản lý bệnh viện.
+
+Khi người dùng nhập mô tả bằng ngôn ngữ tự nhiên (tiếng Việt hoặc tiếng Anh), hãy phân tích và trích xuất các tham số tìm kiếm.
+
+Trả về ĐÚNG JSON (không có text thêm), theo cấu trúc:
+{
+  "keyword": "từ khóa tên/email/phone nếu có",
+  "gender": "Nam|Nữ|Khác hoặc null",
+  "age_from": số hoặc null,
+  "age_to": số hoặc null,
+  "appointment_status": "Hoàn Thành|Đã hủy|Chờ xác nhận|Đã Khám|Đã thanh toán hoặc null",
+  "has_insurance": "1 hoặc null",
+  "membership_tier": "Đồng|Bạc|Vàng|Kim Cương|Thường hoặc null",
+  "chronic_disease": "tên bệnh hoặc null",
+  "allergy": "tên dị ứng hoặc null",
+  "sort_by": "created_at|full_name|date_of_birth hoặc null",
+  "sort_dir": "asc|desc",
+  "explanation": "Giải thích ngắn gọn bằng tiếng Việt những gì bạn đã hiểu từ câu hỏi"
+}
+
+Ví dụ:
+- "bệnh nhân nữ trên 50 tuổi bị tiểu đường" → gender: Nữ, age_from: 50, chronic_disease: tiểu đường
+- "bệnh nhân có bảo hiểm hạng vàng chưa khám lần nào" → has_insurance: 1, membership_tier: Vàng
+- "tìm bệnh nhân tên Lan" → keyword: Lan
+SYSTEM;
+
+        try {
+            $apiKey = config('services.gemini.api_key');
+            if (empty($apiKey)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lỗi: GEMINI_API_KEY chưa được cấu hình trong file .env!',
+                ], 400);
+            }
+
+            $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+
+            $payload = [
+                'system_instruction' => [
+                    'parts' => [['text' => $systemPrompt]]
+                ],
+                'contents' => [
+                    [
+                        'role' => 'user',
+                        'parts' => [['text' => $userQuery]]
+                    ]
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.1,
+                    'maxOutputTokens' => 1000,
+                    'responseMimeType' => 'application/json'
+                ]
+            ];
+
+            $response = Http::withoutVerifying()
+                ->withQueryParameters(['key' => $apiKey])
+                ->timeout(15)
+                ->post($apiUrl, $payload);
+
+            if ($response->failed()) {
+                throw new \Exception('Gemini API request failed: ' . $response->body());
+            }
+
+            $content = $response->json('candidates.0.content.parts.0.text', '{}');
+            
+            // Làm sạch JSON (nếu có markdown code blocks)
+            $content = preg_replace('/```json|```/', '', $content);
+            $filters = json_decode(trim($content), true);
+
+            if (!$filters || !is_array($filters)) {
+                throw new \Exception('AI không thể phân tích câu hỏi hoặc cấu trúc JSON không hợp lệ');
+            }
+
+            return response()->json([
+                'success' => true,
+                'filters' => $filters,
+                'explanation' => $filters['explanation'] ?? 'Đã phân tích thành công',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('AI Patient Search Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể kết nối AI: ' . $e->getMessage() . '. Vui lòng thử tìm kiếm thường.',
+            ], 500);
+        }
+    }
+}

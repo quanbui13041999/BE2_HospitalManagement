@@ -46,7 +46,7 @@ class HealthBackgroundController extends Controller
         return 0;
     }
 
-    // 👉 Map request -> DB (rất chuẩn MVC)
+    
     private function mapData($data)
     {
         return [

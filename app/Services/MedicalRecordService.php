@@ -34,6 +34,7 @@ class MedicalRecordService
                 'exam_time'       => $data['exam_time'] ?? now()->toTimeString(),
                 'visit_type'      => $data['visit_type'] ?? 'Khám mới',
                 'chief_complaint' => $data['chief_complaint'] ?? null,
+                'status'          => MedicalRecord::STATUS_COMPLETED,
             ]);
 
             // Chỉ số sinh tồn
@@ -84,6 +85,8 @@ class MedicalRecordService
                     ->update(['status' => 'Đã Khám']);
             }
 
+            $this->logRecordCreated($record, $data);
+
             return $record->load([
                 'vitalSigns',
                 'diagnoses',
@@ -101,6 +104,8 @@ class MedicalRecordService
     public function updateRecord(MedicalRecord $record, array $data): MedicalRecord
     {
         return DB::transaction(function () use ($record, $data) {
+            $before = $record->only(['patient_name', 'doctor_name', 'exam_date', 'exam_time', 'visit_type', 'status']);
+
             $record->update($data);
 
             if (!empty($data['vitals'])) {
@@ -154,7 +159,7 @@ class MedicalRecordService
                 }
             }
 
-            return $record->fresh([
+            $fresh = $record->fresh([
                 'vitalSigns',
                 'diagnoses',
                 'prescriptions',
@@ -162,6 +167,10 @@ class MedicalRecordService
                 'attachments',
                 'allergies',
             ]);
+
+            $this->logRecordUpdated($fresh, $before, $data);
+
+            return $fresh;
         });
     }
 
@@ -355,5 +364,125 @@ class MedicalRecordService
             'latest' => (clone $query)->orderBy('exam_date', 'desc')->first(),
             'oldest' => (clone $query)->orderBy('exam_date', 'asc')->first(),
         ];
+    }
+
+    private function logRecordCreated(MedicalRecord $record, array $data): void
+    {
+        $actor = Auth::user();
+        $doctorName = $record->doctor_name ?: $actor?->full_name ?: 'Bác sĩ';
+        $patientName = $record->patient_name ?: 'bệnh nhân';
+
+        ActivityLogService::log(
+            'Tạo hồ sơ bệnh án',
+            'BS. ' . $doctorName . ' đã tạo hồ sơ bệnh án cho bệnh nhân ' . $patientName . '.',
+            'medical_record',
+            $record->record_id,
+            [
+                'record_code' => $record->record_code,
+                'patient_id' => $record->patient_id,
+                'doctor_id' => $record->doctor_id,
+                'appointment_id' => $record->appointment_id,
+                'exam_date' => optional($record->exam_date)->toDateString(),
+                'diagnosis_count' => $this->countFilled($data['diagnoses'] ?? [], 'diagnosis_name'),
+                'prescription_count' => $this->countFilled($data['prescriptions'] ?? [], 'drug_name'),
+                'order_count' => $this->countFilled($data['orders'] ?? [], 'order_name'),
+            ],
+            'success',
+            $actor
+        );
+
+        ActivityLogService::log(
+            'Bác sĩ khám bệnh',
+            'BS. ' . $doctorName . ' đã khám cho bệnh nhân ' . $patientName . '.',
+            'appointment',
+            $record->appointment_id,
+            [
+                'record_id' => $record->record_id,
+                'patient_id' => $record->patient_id,
+                'doctor_id' => $record->doctor_id,
+            ],
+            'success',
+            $actor
+        );
+
+        $this->logClinicalSubActions($record, $data, $actor);
+    }
+
+    private function logRecordUpdated(MedicalRecord $record, array $before, array $data): void
+    {
+        $actor = Auth::user();
+        $after = $record->only(['patient_name', 'doctor_name', 'exam_date', 'exam_time', 'visit_type', 'status']);
+
+        ActivityLogService::log(
+            'Cập nhật hồ sơ bệnh án',
+            ($actor?->full_name ?: 'Người dùng') . ' đã cập nhật hồ sơ bệnh án #' . $record->record_id . ' của bệnh nhân ' . ($record->patient_name ?: 'không rõ') . '.',
+            'medical_record',
+            $record->record_id,
+            [
+                'record_code' => $record->record_code,
+                'changes' => ActivityLogService::summarizeChanges($before, $after, ['patient_name', 'doctor_name', 'exam_date', 'exam_time', 'visit_type', 'status']),
+                'diagnosis_count' => $this->countFilled($data['diagnoses'] ?? [], 'diagnosis_name'),
+                'prescription_count' => $this->countFilled($data['prescriptions'] ?? [], 'drug_name'),
+                'order_count' => $this->countFilled($data['orders'] ?? [], 'order_name'),
+            ],
+            'success',
+            $actor
+        );
+
+        $this->logClinicalSubActions($record, $data, $actor);
+    }
+
+    private function logClinicalSubActions(MedicalRecord $record, array $data, $actor): void
+    {
+        $doctorName = $record->doctor_name ?: $actor?->full_name ?: 'Bác sĩ';
+        $patientName = $record->patient_name ?: 'bệnh nhân';
+
+        $diagnosisCount = $this->countFilled($data['diagnoses'] ?? [], 'diagnosis_name');
+        if ($diagnosisCount > 0) {
+            ActivityLogService::log(
+                'Tạo chẩn đoán',
+                'BS. ' . $doctorName . ' đã tạo ' . $diagnosisCount . ' chẩn đoán cho bệnh nhân ' . $patientName . '.',
+                'medical_record',
+                $record->record_id,
+                ['diagnosis_count' => $diagnosisCount],
+                'success',
+                $actor
+            );
+        }
+
+        $prescriptionCount = $this->countFilled($data['prescriptions'] ?? [], 'drug_name');
+        if ($prescriptionCount > 0) {
+            ActivityLogService::log(
+                'Kê đơn thuốc',
+                'BS. ' . $doctorName . ' đã kê ' . $prescriptionCount . ' thuốc cho bệnh nhân ' . $patientName . '.',
+                'medical_record',
+                $record->record_id,
+                ['prescription_count' => $prescriptionCount],
+                'success',
+                $actor
+            );
+        }
+
+        $orderCount = $this->countFilled($data['orders'] ?? [], 'order_name');
+        if ($orderCount > 0) {
+            ActivityLogService::log(
+                'Thêm chỉ định xét nghiệm / hình ảnh',
+                'BS. ' . $doctorName . ' đã thêm ' . $orderCount . ' chỉ định cho bệnh nhân ' . $patientName . '.',
+                'medical_record',
+                $record->record_id,
+                ['order_count' => $orderCount],
+                'success',
+                $actor
+            );
+        }
+    }
+
+    private function countFilled(mixed $items, string $field): int
+    {
+        if (!is_array($items)) {
+            return 0;
+        }
+
+        return collect($items)->filter(fn($item) => is_array($item) && !empty($item[$field]))->count();
     }
 }
