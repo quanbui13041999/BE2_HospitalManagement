@@ -19,8 +19,6 @@ class RehabExerciseRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'title' => $this->normalizeText($this->input('title')),
-            'content' => $this->normalizeText($this->input('content'), false),
             'duration_minutes' => $this->input('duration_minutes') === '' ? null : $this->input('duration_minutes'),
         ]);
     }
@@ -35,14 +33,14 @@ class RehabExerciseRequest extends FormRequest
                 'string',
                 'min:3',
                 'max:120',
-                'regex:/\A[\pL\s]+\z/u',
+                'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u',
             ],
             'content' => [
                 'required',
                 'string',
                 'min:10',
                 'max:5000',
-                'regex:/\A[\pL\s]+\z/u',
+                'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u',
             ],
             'category' => [
                 'required',
@@ -73,11 +71,11 @@ class RehabExerciseRequest extends FormRequest
             'title.required' => 'Vui lòng nhập tiêu đề bài tập.',
             'title.min' => 'Tiêu đề phải có ít nhất 3 ký tự.',
             'title.max' => 'Tiêu đề tối đa 120 ký tự.',
-            'title.regex' => 'Tiêu đề chỉ được nhập chữ cái và khoảng trắng, không nhập số hoặc ký tự đặc biệt.',
+            'title.regex' => 'Tiêu đề chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'content.required' => 'Vui lòng nhập nội dung hướng dẫn.',
             'content.min' => 'Nội dung hướng dẫn phải có ít nhất 10 ký tự.',
             'content.max' => 'Nội dung hướng dẫn tối đa 5000 ký tự.',
-            'content.regex' => 'Nội dung hướng dẫn chỉ được nhập chữ cái và khoảng trắng, không nhập số hoặc ký tự đặc biệt.',
+            'content.regex' => 'Nội dung hướng dẫn chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'category.required' => 'Vui lòng chọn nhóm bệnh lý.',
             'category.in' => 'Nhóm bệnh lý không hợp lệ.',
             'phase.required' => 'Vui lòng chọn giai đoạn điều trị.',
@@ -101,18 +99,4 @@ class RehabExerciseRequest extends FormRequest
         ];
     }
 
-    private function normalizeText(mixed $value, bool $singleLine = true): mixed
-    {
-        if (! is_string($value)) {
-            return $value;
-        }
-
-        $value = trim($value);
-
-        $normalized = $singleLine
-            ? preg_replace('/\s+/u', ' ', $value)
-            : preg_replace("/[ \t]+/u", ' ', $value);
-
-        return $normalized ?? $value;
-    }
 }

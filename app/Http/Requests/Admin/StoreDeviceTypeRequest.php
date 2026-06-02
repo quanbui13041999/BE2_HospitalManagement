@@ -7,8 +7,8 @@ use Illuminate\Validation\Rule;
 
 class StoreDeviceTypeRequest extends FormRequest
 {
-    protected const NAME_REGEX = '/^[\pL\pM .,\(\)\/+\-]+$/u';
-    protected const DESCRIPTION_REGEX = '/^[\pL\pM .,;:\(\)\/+\-\r\n]+$/u';
+    protected const NAME_REGEX = '/^[\pL\pM]+(?: [\pL\pM]+)*$/u';
+    protected const DESCRIPTION_REGEX = '/^[\pL\pM]+(?: [\pL\pM]+)*$/u';
     protected const HAS_LETTER_REGEX = '/[\pL]/u';
     protected const EDGE_SPACE_REGEX = '/^\s|\s$/u';
 
@@ -45,11 +45,11 @@ class StoreDeviceTypeRequest extends FormRequest
         return [
             'name.required' => 'Vui lòng nhập tên danh mục thiết bị.',
             'name.max' => 'Tên danh mục tối đa 120 ký tự.',
-            'name.regex' => 'Tên danh mục phải có chữ và không được chứa số hoặc ký tự lạ.',
+            'name.regex' => 'Tên danh mục chỉ được nhập chữ và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'name.not_regex' => 'Tên danh mục không được có khoảng trắng ở đầu hoặc cuối.',
             'name.unique' => 'Tên danh mục thiết bị đã tồn tại.',
             'description.max' => 'Mô tả tối đa 1000 ký tự.',
-            'description.regex' => 'Mô tả phải có chữ và không được chứa số hoặc ký tự lạ.',
+            'description.regex' => 'Mô tả chỉ được nhập chữ và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'description.not_regex' => 'Mô tả không được có khoảng trắng ở đầu hoặc cuối.',
         ];
     }
