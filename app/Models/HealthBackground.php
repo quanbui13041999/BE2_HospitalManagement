@@ -54,8 +54,8 @@ class HealthBackground extends Model
         return [
             'nhommau' => ['nullable', Rule::in(self::BLOOD_GROUPS)],
             'yeuto_rh' => ['nullable', Rule::in(self::RH_FACTORS)],
-            'height' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'gt:0', 'max:300'],
-            'weight' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'gt:0', 'max:500'],
+            'height' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'min:30', 'max:300'],
+            'weight' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'min:1', 'max:500'],
             'food_allergies' => ['nullable', 'string', 'max:100', 'regex:/^[\pL\s]+$/u'],
             'drug_allergies' => ['nullable', 'string', 'max:255', 'regex:/^[\pL\s,.\-\/()]+$/u'],
             'chronic_diseases' => ['nullable', 'array'],
@@ -70,9 +70,11 @@ class HealthBackground extends Model
     {
         return [
             'height.regex' => 'Chiều cao chỉ được nhập số dương, tối đa 2 chữ số thập phân.',
+            'height.min' => 'Chiều cao chỉ hợp lệ từ 30 đến 300 cm.',
             'height.gt' => 'Chiều cao phải lớn hơn 0.',
             'height.max' => 'Chiều cao không được lớn hơn 300 cm.',
             'weight.regex' => 'Cân nặng chỉ được nhập số dương, tối đa 2 chữ số thập phân.',
+            'weight.min' => 'Cân nặng chỉ hợp lệ từ 1 đến 500 kg.',
             'weight.gt' => 'Cân nặng phải lớn hơn 0.',
             'weight.max' => 'Cân nặng không được lớn hơn 500 kg.',
             'food_allergies.max' => 'Dị ứng thực phẩm không được vượt quá 100 ký tự.',
