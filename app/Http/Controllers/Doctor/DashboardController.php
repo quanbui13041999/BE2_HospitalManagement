@@ -403,7 +403,7 @@ class DashboardController extends Controller
     {
         $validated = $request->validated();
 
-        if (!$validated['user_id'] && !($validated['email'] ?? null)) {
+        if (!($validated['user_id'] ?? null) && !($validated['email'] ?? null)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vui lòng cung cấp User ID hoặc Email để tạo bác sĩ.',
@@ -417,7 +417,7 @@ class DashboardController extends Controller
 
         try {
             DB::transaction(function () use ($validated, &$doctor, &$createdUser, &$plainPassword) {
-                $userId = $validated['user_id'];
+                $userId = $validated['user_id'] ?? null; /* fixed: tao bac si bang email khong bat buoc co user_id */
                 $email = $validated['email'] ?? null;
 
                 if (!$userId && $email) {
