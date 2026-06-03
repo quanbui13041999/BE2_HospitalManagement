@@ -336,4 +336,71 @@ class TenFeatureHardeningTest extends TestCase
             $patient->delete();
         }
     }
+
+    public function test_timeslot_stats_are_counted_from_database_time(): void
+    {
+        $patient = User::create([
+            'full_name' => 'Patient Timeslot DB',
+            'email' => 'patient_timeslot_db_' . uniqid() . '@example.test',
+            'password' => Hash::make('secret123'),
+            'role_id' => 3,
+            'status' => 1,
+        ]);
+
+        $bookingPatient = User::create([
+            'full_name' => 'Patient Existing Booking',
+            'email' => 'patient_existing_booking_' . uniqid() . '@example.test',
+            'password' => Hash::make('secret123'),
+            'role_id' => 3,
+            'status' => 1,
+        ]);
+
+        $doctor = Doctor::firstOrFail();
+        $workDate = today()->addDays(9);
+        while (DoctorSchedule::where('doctor_id', $doctor->doctor_id)
+            ->whereDate('work_date', $workDate)
+            ->where('start_time', '06:41:00')
+            ->exists()) {
+            $workDate = $workDate->copy()->addDay();
+        }
+
+        $schedule = DoctorSchedule::create([
+            'doctor_id' => $doctor->doctor_id,
+            'room_id' => 1,
+            'work_date' => $workDate,
+            'start_time' => '06:41:00',
+            'end_time' => '06:56:00',
+            'slot_duration' => 15,
+            'max_slot' => 1,
+            'status' => 'Hoạt động',
+        ]);
+
+        $appointment = Appointment::create([
+            'user_id' => $bookingPatient->user_id,
+            'schedule_id' => $schedule->schedule_id,
+            'appointment_time' => $workDate->copy()->setTime(6, 41),
+            'queue_number' => 1,
+            'status' => 'Đã xác nhận',
+            'created_at' => now(),
+            'version' => 1,
+        ]);
+
+        try {
+            $this->actingAs($patient)
+                ->getJson(route('appointments.timeslots', [
+                    'doctor_id' => $doctor->doctor_id,
+                    'work_date' => $workDate->toDateString(),
+                ]))
+                ->assertOk()
+                ->assertJsonPath('slots.0.time', '06:41')
+                ->assertJsonPath('slots.0.booked', 1)
+                ->assertJsonPath('slots.0.remaining', 0)
+                ->assertJsonPath('slots.0.is_booked', true); // fixed: dem gio thuc tu appointments.appointment_time trong DB
+        } finally {
+            Appointment::where('appointment_id', $appointment->appointment_id)->delete();
+            DoctorSchedule::where('schedule_id', $schedule->schedule_id)->delete();
+            $bookingPatient->delete();
+            $patient->delete();
+        }
+    }
 }

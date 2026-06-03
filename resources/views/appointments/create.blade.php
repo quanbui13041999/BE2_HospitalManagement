@@ -1368,10 +1368,8 @@
             holdExpiresAt: null,
         };
 
-        // AJAX caches — tránh gọi lại khi đã có data
+        // AJAX cache — chỉ cache gợi ý bác sĩ, khung giờ luôn lấy mới từ DB
         const suggestCache = {};   // key: `deptId_date`
-        const timeslotCache = {};   // key: `doctorId_date`
-
         // ══════════════════════════════════════════════════════════════
         // 1. DEPT CHANGE
         // ══════════════════════════════════════════════════════════════
@@ -1538,16 +1536,6 @@
         function loadTimeslots() {
             if (!state.doctor || !state.date) return;
 
-            const key = `${state.doctor.doctor_id}_${state.date}`;
-            if (timeslotCache[key] !== undefined) {
-                if (timeslotCache[key] === null) {
-                    showSlotDayOff();
-                } else {
-                    renderTimeslots(timeslotCache[key]);
-                }
-                return;
-            }
-
             // Loading state
             document.getElementById('slot-wrap').innerHTML =
                 '<div style="display:flex;align-items:center;gap:10px;font-size:.82rem;color:var(--gray-400)">' +
@@ -1561,12 +1549,10 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.day_off) {
-                        timeslotCache[key] = null;
                         showSlotDayOff();
                         return;
                     }
-                    timeslotCache[key] = data.slots || [];
-                    renderTimeslots(timeslotCache[key]);
+                    renderTimeslots(data.slots || []); // fixed: luon lay slot moi tu DB, khong dung cache cu
                 })
                 .catch(() => {
                     document.getElementById('slot-wrap').innerHTML =
@@ -2031,8 +2017,6 @@
             showHoldError('Thời gian giữ khung giờ đã hết. Vui lòng chọn lại khung giờ.');
             // Reload timeslots để cập nhật trạng thái
             if (state.doctor && state.date) {
-                const key = `${state.doctor.doctor_id}_${state.date}`;
-                delete timeslotCache[key];   // Xoá cache để fetch lại
                 loadTimeslots();
             }
         }
