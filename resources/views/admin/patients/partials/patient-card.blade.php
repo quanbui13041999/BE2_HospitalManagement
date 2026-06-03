@@ -21,7 +21,9 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="position-relative">
                             @if($patient->avatar_url)
-                                <img src="{{ $patient->avatar_url }}" alt="{{ $patient->full_name }}" class="rounded-circle shadow-sm" style="width: 54px; height: 54px; object-fit: cover; border: 2px solid #e2e8f0;">
+                                <img src="{{ $patient->avatar_url }}" alt="{{ $patient->full_name }}"
+                                     class="rounded-circle shadow-sm" style="width: 54px; height: 54px; object-fit: cover; border: 2px solid #e2e8f0;"
+                                     onerror="this.onerror=null; this.src='/images/default-avatar.png';">
                             @else
                                 <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm fw-bold fs-5" style="width: 54px; height: 54px; border: 2px solid #dbeafe;">
                                     {{ substr($patient->full_name ?? 'P', 0, 1) }}

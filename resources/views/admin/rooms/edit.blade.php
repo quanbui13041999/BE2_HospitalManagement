@@ -63,6 +63,8 @@
         </div>
         <form method="POST" action="{{ route('admin.rooms.update', $room) }}" id="editRoomForm" novalidate>
             @csrf @method('PUT')
+            {{-- Optimistic lock token: timestamp của updated_at để phát hiện xung đột 2 tab --}}
+            <input type="hidden" name="_lock_version" value="{{ $room->updated_at?->timestamp }}">
             <div class="card-body row g-3">
 
                 {{-- Mã phòng – READONLY, không cho sửa --}}
@@ -201,7 +203,7 @@ function bindCharCount(inputId, counterId, max) {
 bindCharCount('room_name', 'room_name_count', 100);
 bindCharCount('notes',     'notes_count',     500);
 
-// ── Client-side validation ────────────────────────────────────
+// ── Submit protection: disable sau khi click để tránh double-submit ──
 document.getElementById('editRoomForm').addEventListener('submit', function(e) {
     let valid = true;
     const type   = document.getElementById('room_type');
@@ -216,7 +218,15 @@ document.getElementById('editRoomForm').addEventListener('submit', function(e) {
         showError(status, 'Vui lòng chọn trạng thái.'); valid = false;
     }
 
-    if (!valid) e.preventDefault();
+    if (!valid) {
+        e.preventDefault();
+        return;
+    }
+
+    // Disable nút submit sau khi form hợp lệ để tránh double-submit
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang lưu...';
 });
 
 function showError(el, msg) {
