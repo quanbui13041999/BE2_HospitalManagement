@@ -35,6 +35,62 @@ class MedicalRecord extends Model
         'exam_date' => 'date',
     ];
 
+    public const VISIT_TYPE_NEW = 'Khám mới';
+    public const VISIT_TYPE_FOLLOW_UP = 'Tái khám';
+    public const VISIT_TYPE_EMERGENCY = 'Cấp cứu';
+
+    private const VISIT_TYPE_ALIASES = [
+        'khám mới' => self::VISIT_TYPE_NEW,
+        'kham moi' => self::VISIT_TYPE_NEW,
+        'khám moi' => self::VISIT_TYPE_NEW,
+        'kham mới' => self::VISIT_TYPE_NEW,
+        'tái khám' => self::VISIT_TYPE_FOLLOW_UP,
+        'tai kham' => self::VISIT_TYPE_FOLLOW_UP,
+        'tái kham' => self::VISIT_TYPE_FOLLOW_UP,
+        'tai khám' => self::VISIT_TYPE_FOLLOW_UP,
+        'cấp cứu' => self::VISIT_TYPE_EMERGENCY,
+        'cap cuu' => self::VISIT_TYPE_EMERGENCY,
+        'cấp cuu' => self::VISIT_TYPE_EMERGENCY,
+        'cap cứu' => self::VISIT_TYPE_EMERGENCY,
+    ];
+
+    public static function canonicalVisitType(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = mb_strtolower(preg_replace('/\s+/u', ' ', trim($value)), 'UTF-8');
+
+        return self::VISIT_TYPE_ALIASES[$normalized] ?? null;
+    }
+
+    public static function visitTypeVariants(?string $value): array
+    {
+        $canonical = self::canonicalVisitType($value) ?? $value;
+
+        return array_values(array_unique(array_filter([
+            $canonical,
+            match ($canonical) {
+                self::VISIT_TYPE_NEW => 'Kham moi',
+                self::VISIT_TYPE_FOLLOW_UP => 'Tai kham',
+                self::VISIT_TYPE_EMERGENCY => 'Cap cuu',
+                default => null,
+            },
+        ])));
+    }
+
+    public function getVisitTypeLabelAttribute(): ?string
+    {
+        return self::canonicalVisitType($this->attributes['visit_type'] ?? null)
+            ?? ($this->attributes['visit_type'] ?? null);
+    }
+
+    public function setVisitTypeAttribute(?string $value): void
+    {
+        $this->attributes['visit_type'] = self::canonicalVisitType($value) ?? $value;
+    }
+
     // ── Status Constants ──────────────────────────────────────────
     const STATUS_PENDING = 'pending';
     const STATUS_EXAMINING = 'examining';

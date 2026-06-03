@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\MedicalRecord;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -70,8 +71,8 @@ class StoreMedicalRecordRequest extends FormRequest
 
             // Chẩn đoán
             'diagnoses'                         => 'required|array|min:1',
-            'diagnoses.*.diagnosis_name'        => ['required', 'string', 'max:150', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
-            'diagnoses.*.diagnosis_name_custom' => ['nullable', 'string', 'max:150', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
+            'diagnoses.*.diagnosis_name'        => ['required', 'string', 'max:150', 'regex:/\A[\pL\pN\s.,;:()\/+\-]+\z/u'],
+            'diagnoses.*.diagnosis_name_custom' => ['nullable', 'string', 'max:150', 'regex:/\A[\pL\pN\s.,;:()\/+\-]+\z/u'],
             'diagnoses.*.icd_code'              => ['nullable', 'string', 'max:20', 'regex:/\A[A-Z][0-9]{1,2}(\.[0-9A-Z]{1,2})?\z/'],
             'diagnoses.*.diagnosis_type'        => 'required|in:primary,secondary,complication',
             'diagnoses.*.note'                  => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
@@ -199,6 +200,8 @@ class StoreMedicalRecordRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->normalizeTextInputs();
+        $this->normalizeVisitType();
+        $this->normalizeDoctorId();
         $this->applyCustomRows();
 
         // Chuyển đổi patient_id và doctor_id sang integer
@@ -220,6 +223,13 @@ class StoreMedicalRecordRequest extends FormRequest
             $filtered = array_values(array_filter($this->diagnoses, function ($item) {
                 return !empty(trim($item['diagnosis_name'] ?? ''));
             }));
+            $filtered = array_map(function ($item) {
+                if (empty($item['diagnosis_type'])) {
+                    $item['diagnosis_type'] = 'primary';
+                }
+
+                return $item;
+            }, $filtered);
             $this->merge(['diagnoses' => $filtered]);
         }
         
@@ -251,6 +261,34 @@ class StoreMedicalRecordRequest extends FormRequest
     private function normalizeName(?string $value): string
     {
         return mb_strtolower(preg_replace('/\s+/u', ' ', trim((string) $value)), 'UTF-8');
+    }
+
+    private function normalizeVisitType(): void
+    {
+        if ($this->filled('visit_type')) {
+            $this->merge([
+                'visit_type' => MedicalRecord::canonicalVisitType($this->input('visit_type')) ?? $this->input('visit_type'),
+            ]);
+        }
+    }
+
+    private function normalizeDoctorId(): void
+    {
+        if (! $this->filled('doctor_id')) {
+            return;
+        }
+
+        $doctorId = (int) $this->input('doctor_id');
+
+        if (User::where('user_id', $doctorId)->where('role_id', 2)->exists()) {
+            return;
+        }
+
+        $profileUserId = Doctor::where('doctor_id', $doctorId)->value('user_id');
+
+        if ($profileUserId) {
+            $this->merge(['doctor_id' => (int) $profileUserId]);
+        }
     }
 
     private function normalizeTextInputs(): void

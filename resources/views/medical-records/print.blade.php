@@ -45,7 +45,7 @@ hr { border: 1px solid #000; margin: 10px 0; }
 <div class="info-row"><span>Bệnh nhân:</span> {{ $record->patient_name }} &nbsp;|&nbsp; <span>Mã BN:</span> {{ $record->patient_code ?? '—' }}</div>
 <div class="info-row"><span>Ngày khám:</span> {{ $record->exam_date->format('d/m/Y') }} {{ $record->exam_time ? 'lúc ' . \Carbon\Carbon::parse($record->exam_time)->format('H:i') : '' }}</div>
 <div class="info-row"><span>Bác sĩ:</span> BS. {{ $record->doctor_name }}</div>
-<div class="info-row"><span>Loại khám:</span> {{ $record->visit_type }}</div>
+<div class="info-row"><span>Loại khám:</span> {{ $record->visit_type_label }}</div>
 @if($record->chief_complaint)
 <div class="info-row"><span>Lý do khám:</span> {{ $record->chief_complaint }}</div>
 @endif

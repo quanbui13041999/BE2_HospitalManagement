@@ -54,13 +54,13 @@ class HealthBackground extends Model
         return [
             'nhommau' => ['nullable', Rule::in(self::BLOOD_GROUPS)],
             'yeuto_rh' => ['nullable', Rule::in(self::RH_FACTORS)],
-            'height' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'gt:0', 'max:300'],
-            'weight' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'gt:0', 'max:500'],
-            'food_allergies' => ['nullable', 'string', 'max:100', 'regex:/^[\pL\s]+$/u'],
-            'drug_allergies' => ['nullable', 'string', 'max:255', 'regex:/^[\pL\s,.\-\/()]+$/u'],
+            'height' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'min:30', 'max:300'],
+            'weight' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'min:1', 'max:500'],
+            'food_allergies' => ['nullable', 'string', 'max:100', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
+            'drug_allergies' => ['nullable', 'string', 'max:255', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'chronic_diseases' => ['nullable', 'array'],
             'chronic_diseases.*' => ['string', Rule::in(self::CHRONIC_DISEASES)],
-            'other_chronic_diseases' => ['nullable', 'string', 'max:500', 'regex:/^[\pL\s,.\-\/()]+$/u'],
+            'other_chronic_diseases' => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'health_background_id' => ['nullable', 'integer'],
             'health_background_updated_at' => ['nullable', 'date'],
         ];
@@ -70,15 +70,17 @@ class HealthBackground extends Model
     {
         return [
             'height.regex' => 'Chiều cao chỉ được nhập số dương, tối đa 2 chữ số thập phân.',
+            'height.min' => 'Chiều cao chỉ hợp lệ từ 30 đến 300 cm.',
             'height.gt' => 'Chiều cao phải lớn hơn 0.',
             'height.max' => 'Chiều cao không được lớn hơn 300 cm.',
             'weight.regex' => 'Cân nặng chỉ được nhập số dương, tối đa 2 chữ số thập phân.',
+            'weight.min' => 'Cân nặng chỉ hợp lệ từ 1 đến 500 kg.',
             'weight.gt' => 'Cân nặng phải lớn hơn 0.',
             'weight.max' => 'Cân nặng không được lớn hơn 500 kg.',
             'food_allergies.max' => 'Dị ứng thực phẩm không được vượt quá 100 ký tự.',
-            'food_allergies.regex' => 'Dị ứng thực phẩm chỉ được nhập chữ cái và khoảng trắng, không được nhập số hoặc ký tự đặc biệt.',
-            'drug_allergies.regex' => 'Dị ứng thuốc chỉ được nhập chữ và dấu phân tách thông dụng.',
-            'other_chronic_diseases.regex' => 'Bệnh mãn tính khác chỉ được nhập chữ và dấu phân tách thông dụng.',
+            'food_allergies.regex' => 'Dị ứng thực phẩm chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
+            'drug_allergies.regex' => 'Dị ứng thuốc chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
+            'other_chronic_diseases.regex' => 'Bệnh mãn tính khác chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'chronic_diseases.*.in' => 'Bệnh mãn tính đã chọn không hợp lệ.',
         ];
     }

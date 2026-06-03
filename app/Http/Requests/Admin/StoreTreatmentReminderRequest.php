@@ -18,7 +18,6 @@ class StoreTreatmentReminderRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'message' => is_string($this->message) ? preg_replace('/\s+/u', ' ', trim($this->message)) : $this->message,
             'record_id' => $this->record_id === '' ? null : $this->record_id,
         ]);
     }
@@ -51,7 +50,7 @@ class StoreTreatmentReminderRequest extends FormRequest
                 'string',
                 'min:5',
                 'max:255',
-                'regex:/\A[\pL\s]+\z/u',
+                'regex:/\A[\pL\pM]+(?: +[\pL\pM]+)*\z/u',
             ],
             'reminder_snapshot' => $isCreate ? ['prohibited'] : ['required', 'string', 'size:64'],
             'is_sent' => ['prohibited'],
@@ -93,7 +92,7 @@ class StoreTreatmentReminderRequest extends FormRequest
             'message.required' => 'Vui lòng nhập nội dung nhắc nhở.',
             'message.min' => 'Nội dung nhắc nhở phải có ít nhất 5 ký tự.',
             'message.max' => 'Nội dung nhắc nhở tối đa 255 ký tự.',
-            'message.regex' => 'Nội dung chỉ được dùng chữ cái và khoảng trắng, không nhập số hoặc ký tự đặc biệt.',
+            'message.regex' => 'Nội dung nhắc nhở chỉ được nhập chữ và khoảng trắng giữa các từ, không có khoảng trắng đầu hoặc cuối.',
             'reminder_snapshot.required' => 'Dữ liệu đã cũ, vui lòng tải lại trang trước khi lưu.',
             'reminder_snapshot.size' => 'Dữ liệu kiểm tra chỉnh sửa không hợp lệ, vui lòng tải lại trang.',
             'is_sent.prohibited' => 'Không được tự ý gửi trạng thái nhắc nhở.',

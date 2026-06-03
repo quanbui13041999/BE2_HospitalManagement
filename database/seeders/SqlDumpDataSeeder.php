@@ -688,6 +688,20 @@ INSERT IGNORE INTO `rooms` (`room_id`, `room_code`, `room_name`, `department_id`
 SQL,
         ],
         [
+            'table' => 'rehab_exercises',
+            'sql' => <<<'SQL'
+INSERT IGNORE INTO `rehab_exercises` (`id`, `title`, `content`, `category`, `phase`, `thumbnail`, `status`, `view_count`, `duration_minutes`, `created_by`, `created_at`, `updated_at`) VALUES
+(101, 'Co gian khop goi', 'Nguoi benh nam thoai mai tren mat phang cung Co chan nhe nha giu lung thang Thuc hien dong tac cham rai va dung lai khi thay cang vua phai Bai tap giup tang do linh hoat cua khop goi va giam cam giac cung khop sau khi nghi lau', 'co-xuong-khop', 'phuc-hoi', NULL, 'published', 18, 12, 23, '2026-06-01 08:00:00', '2026-06-01 08:00:00'),
+(102, 'Nang chan thang', 'Nguoi benh nam ngua mot chan co mot chan duoi thang Nang chan thang len cham rai giu trong thoi gian ngan roi ha xuong Tu the nay ho tro tang suc manh co dui va on dinh khop goi trong giai doan phuc hoi', 'co-xuong-khop', 'phuc-hoi', NULL, 'published', 12, 10, 23, '2026-06-01 08:05:00', '2026-06-01 08:05:00'),
+(103, 'Xoay co chan nhe', 'Nguoi benh ngoi tren ghe giu lung thang Dat got chan cham san va xoay co chan theo vong tron nho Thuc hien cham rai de giup tang tuan hoan va giam cung co sau chan thuong nhe', 'chan-thuong-the-thao', 'cap-tinh', NULL, 'published', 9, 8, 23, '2026-06-01 08:10:00', '2026-06-01 08:10:00'),
+(104, 'Tap giu thang bang', 'Nguoi benh dung gan tay vin de dam bao an toan Dung mot chan trong thoi gian ngan sau do doi ben Bai tap giup cai thien kha nang giu thang bang va phoi hop van dong sau chan thuong the thao', 'chan-thuong-the-thao', 'duy-tri', NULL, 'draft', 3, 15, 23, '2026-06-01 08:15:00', '2026-06-01 08:15:00'),
+(105, 'Tap tho bang bung', 'Nguoi benh nam hoac ngoi thoai mai Dat tay len bung Hit vao cham bang mui de bung phong len sau do tho ra cham bang mieng Bai tap ho tro kiem soat nhip tho va tang hieu qua thong khi', 'ho-hap-tim-mach', 'phuc-hoi', NULL, 'published', 20, 10, 23, '2026-06-01 08:20:00', '2026-06-01 08:20:00'),
+(106, 'Di bo cham tai cho', 'Nguoi benh dung thang nguoi gan diem tua Buoc tai cho voi nhip cham va deu Ket hop hit tho nhe nha Bai tap giup tang suc ben tim mach va duy tri kha nang van dong hang ngay', 'ho-hap-tim-mach', 'duy-tri', NULL, 'published', 15, 15, 23, '2026-06-01 08:25:00', '2026-06-01 08:25:00'),
+(107, 'Tap nam mo ban tay', 'Nguoi benh dat tay tren ban Mo cac ngon tay cham rai roi nam ban tay nhe nha Lap lai theo kha nang Bai tap ho tro phuc hoi van dong ban tay sau dot quy hoac yeu co than kinh', 'than-kinh-dot-quy', 'phuc-hoi', NULL, 'published', 11, 10, 23, '2026-06-01 08:30:00', '2026-06-01 08:30:00'),
+(108, 'Tap nang canh tay', 'Nguoi benh ngoi thang lung Nang canh tay len cham rai trong tam van dong thoai mai roi ha xuong Bai tap giup cai thien kiem soat van dong vai va tay trong qua trinh phuc hoi than kinh', 'than-kinh-dot-quy', 'phuc-hoi', NULL, 'draft', 4, 12, 23, '2026-06-01 08:35:00', '2026-06-01 08:35:00')
+SQL,
+        ],
+        [
             'table' => 'serviceprices',
             'sql' => <<<'SQL'
 INSERT IGNORE INTO `serviceprices` (`price_id`, `service_id`, `price_type`, `price`, `effective_date`, `end_date`, `created_by`, `created_at`) VALUES

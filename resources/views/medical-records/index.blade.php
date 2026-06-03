@@ -211,7 +211,7 @@
                     </td>
                     <td>
                         <span style="background:#eaf4ff;color:#1a6fb3;padding:2px 8px;border-radius:10px;font-size:12px">
-                            {{ $record->visit_type }}
+                            {{ $record->visit_type_label }}
                         </span>
                     </td>
                     <td>

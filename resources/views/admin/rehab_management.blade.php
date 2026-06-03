@@ -54,7 +54,7 @@
                         <td>{{ $exercise->view_count }}</td>
                         <td class="text-end">
                             <a href="{{ route('admin.rehab.edit', $exercise) }}" class="btn btn-sm btn-outline-primary">Sua</a>
-                            <form action="{{ route('admin.rehab.destroy', $exercise) }}" method="POST" class="d-inline" onsubmit="return confirm('Xoa bai tap nay?')">
+                            <form action="{{ route('admin.rehab.destroy', $exercise) }}" method="POST" class="d-inline" data-confirm="Bạn có chắc muốn xóa bài tập phục hồi này không?">
                                 @csrf
                                 @method('DELETE')
                                 <button class="btn btn-sm btn-outline-danger">Xoa</button>

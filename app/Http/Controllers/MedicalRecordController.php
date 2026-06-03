@@ -669,8 +669,13 @@ class MedicalRecordController extends Controller
 
     private function recordExistsInMinute(int $patientId, int $doctorId, string $examDate, string $examMinute): bool
     {
+        $doctorIds = array_values(array_unique(array_filter([
+            $doctorId,
+            (int) (Doctor::where('user_id', $doctorId)->value('doctor_id') ?? 0),
+        ])));
+
         return MedicalRecord::where('patient_id', $patientId)
-            ->where('doctor_id', $doctorId)
+            ->whereIn('doctor_id', $doctorIds)
             ->whereDate('exam_date', $examDate)
             ->whereTime('exam_time', '>=', $examMinute . ':00')
             ->whereTime('exam_time', '<=', $examMinute . ':59')
@@ -683,7 +688,11 @@ class MedicalRecordController extends Controller
             return false;
         }
 
-        if ((int) $record->doctor_id !== (int) $user->user_id) {
+        $recordDoctorId = (int) $record->doctor_id;
+        $userId = (int) $user->user_id;
+        $legacyDoctorId = (int) (Doctor::where('user_id', $userId)->value('doctor_id') ?? 0);
+
+        if ($recordDoctorId !== $userId && $recordDoctorId !== $legacyDoctorId) {
             return false;
         }
 
@@ -779,7 +788,7 @@ class MedicalRecordController extends Controller
         }
 
         if ($request->filled('visit_type')) {
-            $query->where('visit_type', $request->visit_type);
+            $query->whereIn('visit_type', MedicalRecord::visitTypeVariants($request->visit_type));
         }
 
         if ($request->filled('status')) {
@@ -796,7 +805,11 @@ class MedicalRecordController extends Controller
 
         if ($user->role_id === 2) {
             $doctorName = $this->doctorProfileName($user);
-            $query->where('doctor_id', $user->user_id);
+            $doctorIds = array_values(array_unique(array_filter([
+                (int) $user->user_id,
+                (int) (Doctor::where('user_id', $user->user_id)->value('doctor_id') ?? 0),
+            ])));
+            $query->whereIn('doctor_id', $doctorIds);
 
             if ($doctorName !== '') {
                 $query->where(function ($q) use ($doctorName) {

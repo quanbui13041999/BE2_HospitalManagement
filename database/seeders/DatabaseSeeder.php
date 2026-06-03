@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             FoodSeeder::class,
             NutritionArticleSeeder::class,
             DiseaseNutritionRuleSeeder::class,
+            DeviceSeeder::class,
         ]);
     }
 

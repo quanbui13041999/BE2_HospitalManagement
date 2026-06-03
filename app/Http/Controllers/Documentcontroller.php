@@ -47,7 +47,9 @@ class DocumentController extends Controller
             'categoryCounts'=> $categoryStats,
         ];
 
-        return view('documents.index', compact('documents', 'stats'));
+        $documentsSnapshot = $this->documentsSnapshotForUser((int) Auth::id());
+
+        return view('documents.index', compact('documents', 'stats', 'documentsSnapshot'));
     }
 
     private function formatBytes(int $bytes): string
@@ -64,36 +66,48 @@ class DocumentController extends Controller
     }
 
     // ── STORE ────────────────────────────────────────────────────
-
-
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'file' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:20480'],
             'category' => ['required', Rule::in(array_keys(MedicalDocument::categories()))],
+            'documents_snapshot' => ['required', 'string', 'size:64'],
         ]);
 
-        $uploadedFile = $request->file('file');
+        $result = DB::transaction(function () use ($request, $validated): array {
+            $userId = (int) Auth::id();
+            \App\Models\User::where('user_id', $userId)->lockForUpdate()->firstOrFail();
 
-        // Lưu vào folder 'documents' trong disk 'public'
-        // Kết quả trả về sẽ là: "documents/tên_file_ngẫu_nhiên.extension"
-        $path = $uploadedFile->store('documents', 'public');
+            if (! hash_equals($this->documentsSnapshotForUser($userId), $validated['documents_snapshot'])) {
+                return [
+                    'saved' => false,
+                    'message' => 'Danh sách tài liệu đã được cập nhật trước đó. Vui lòng tải lại trang rồi thêm lại tài liệu.',
+                ];
+            }
 
-        $document = MedicalDocument::create([
-            'user_id'     => Auth::id(),
-            'record_id'   => null,
-            'doc_type'    => $request->category,
-            'doc_name'    => Str::limit($uploadedFile->getClientOriginalName(), 200, ''),
-            'file_path'   => $path,
-            'uploaded_at' => now(),
-        ]);
+            $uploadedFile = $request->file('file');
+            $path = $uploadedFile->store('documents', 'public');
 
-        $document->update([
-            'record_id' => null,
-            'doc_name' => Str::limit($uploadedFile->getClientOriginalName(), 200, ''),
-        ]);
+            $document = MedicalDocument::create([
+                'user_id'     => $userId,
+                'record_id'   => null,
+                'doc_type'    => $validated['category'],
+                'doc_name'    => Str::limit($uploadedFile->getClientOriginalName(), 200, ''),
+                'file_path'   => $path,
+                'uploaded_at' => now(),
+            ]);
 
-        return redirect()->route('documents.index')->with('success', 'Tải lên thành công!');
+            $document->update([
+                'record_id' => null,
+                'doc_name' => Str::limit($uploadedFile->getClientOriginalName(), 200, ''),
+            ]);
+
+            return ['saved' => true, 'message' => 'Tải lên thành công!'];
+        });
+
+        return redirect()
+            ->route('documents.index')
+            ->with($result['saved'] ? 'success' : 'warning', $result['message']);
     }
 
     // ── SHOW ─────────────────────────────────────────────────────
@@ -249,6 +263,25 @@ private function documentSnapshot(MedicalDocument $document): string
         optional($document->uploaded_at)->format('Y-m-d H:i:s'),
     ]), (string) config('app.key'));
 }
+
+private function documentsSnapshotForUser(int $userId): string
+{
+    $payload = MedicalDocument::where('user_id', $userId)
+        ->orderBy('doc_id')
+        ->get(['doc_id', 'user_id', 'record_id', 'doc_type', 'doc_name', 'file_path', 'uploaded_at'])
+        ->map(fn (MedicalDocument $document) => implode('|', [
+            $document->doc_id,
+            $document->user_id,
+            $document->record_id,
+            $document->doc_type,
+            $document->doc_name,
+            $document->file_path,
+            optional($document->uploaded_at)->format('Y-m-d H:i:s'),
+        ]))
+        ->implode('||');
+
+    return hash_hmac('sha256', $payload, (string) config('app.key'));
+}
     // 👉 Bác sĩ/Admin xem tài liệu của bệnh nhân cụ thể
 public function indexPatient(Request $request, int $patientId): \Illuminate\View\View
 {
@@ -283,6 +316,8 @@ public function indexPatient(Request $request, int $patientId): \Illuminate\View
 
     $patient = \App\Models\User::findOrFail($patientId);
 
-    return view('documents.index', compact('documents', 'stats', 'patient'));
+    $documentsSnapshot = $this->documentsSnapshotForUser((int) Auth::id());
+
+    return view('documents.index', compact('documents', 'stats', 'patient', 'documentsSnapshot'));
 }
 }

@@ -212,11 +212,12 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Loại khám <span class="text-danger">*</span></label>
+                        @php $currentVisitType = old('visit_type', $record->visit_type_label ?? $record->visit_type); @endphp
                         <select name="visit_type" class="form-select @error('visit_type') is-invalid @enderror" required>
                             <option value="">Chọn loại khám</option>
                             @foreach(['Khám mới','Tái khám','Cấp cứu'] as $type)
                             <option value="{{ $type }}"
-                                {{ old('visit_type', $record->visit_type) === $type ? 'selected' : '' }}>
+                                {{ $currentVisitType === $type ? 'selected' : '' }}>
                                 {{ $type }}
                             </option>
                             @endforeach
@@ -225,7 +226,9 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Lý do đến khám / Triệu chứng <span class="text-danger">*</span></label>
-                        <textarea name="chief_complaint" class="form-control @error('chief_complaint') is-invalid @enderror" rows="2" required>{{ old('chief_complaint', $record->chief_complaint) }}</textarea>
+                        <textarea name="chief_complaint" class="form-control @error('chief_complaint') is-invalid @enderror" rows="2" required
+                            data-vietnamese-words="true"
+                            title="Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.">{{ old('chief_complaint', $record->chief_complaint) }}</textarea>
                         @error('chief_complaint') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     @if($record->appointment_id)
@@ -837,14 +840,14 @@
                 </div>
                 <div class="col-md-3">
                     <div class="editable-field" data-field="diag_type" data-index="${index}">
-                        <div class="field-value" data-placeholder="Chọn loại">Chọn loại</div>
+                        <div class="field-value" data-placeholder="Chọn loại">Chính</div>
                         <select class="field-dropdown" data-field="diag_type" data-index="${index}">
                             <option value="">-- Chọn --</option>
                             <option value="primary">Chính</option>
                             <option value="secondary">Phụ</option>
                             <option value="complication">Biến chứng</option>
                         </select>
-                        <input type="hidden" name="diagnoses[${index}][diagnosis_type]" value="">
+                        <input type="hidden" name="diagnoses[${index}][diagnosis_type]" value="primary">
                     </div>
                 </div>
                 <div class="col-md-1 text-center">
@@ -1010,9 +1013,23 @@
         orderCounter++;
     }
 
+    document.addEventListener('input', function (e) {
+        const form = e.target.closest?.('#medicalRecordForm');
+        if (!form || e.target.matches?.('input[maxlength], textarea[maxlength]')) return;
+
+        try {
+            Object.defineProperty(e.target, 'maxLength', { value: -1, configurable: true });
+        } catch (error) {
+            e.target.maxLength = -1;
+        }
+    }, true);
+
     // Chặn nhập sai định dạng ngay trên form. Server vẫn validate lại khi submit.
     (function () {
         const textOnlyPattern = /^[\p{L}\s.,;:()\/+\-%'-]*$/u;
+        const vietnameseWordsPattern = /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u;
+        const vietnameseWordsCharPattern = /^[\p{L}\p{M} ]$/u;
+        const vietnameseWordsMessage = 'Ô này chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.';
         const decimalPattern = /^\d*(\.\d{0,2})?$/;
         const bloodPressurePattern = /^\d{0,3}(\/\d{0,3})?$/;
 
@@ -1039,6 +1056,10 @@
             return (el.matches('input[type="text"], textarea') && textOnlyNames.some(token => name === token || name.includes(token)))
                 && !name.includes('[icd_code]')
                 && !name.includes('[dosage]');
+        }
+
+        function isVietnameseWordsField(el) {
+            return fieldName(el) === 'chief_complaint';
         }
 
         function isIntegerField(el) {
@@ -1112,6 +1133,13 @@
                     newValue = newValue.slice(0, -1);
                 }
                 message = 'Ô này chỉ được nhập số dương, tối đa 2 chữ số thập phân.';
+            } else if (isVietnameseWordsField(el)) {
+                newValue = Array.from(oldValue)
+                    .filter(ch => vietnameseWordsCharPattern.test(ch))
+                    .join('')
+                    .replace(/\s+/gu, ' ')
+                    .replace(/^\s+/u, '');
+                message = vietnameseWordsMessage;
             } else if (isTextOnlyField(el)) {
                 newValue = Array.from(oldValue).filter(ch => textOnlyPattern.test(ch)).join('');
                 message = 'Ô này chỉ được nhập chữ và khoảng trắng, không nhập số hoặc ký tự lạ.';
@@ -1127,6 +1155,27 @@
                 clearInlineState(el, true);
             }
 
+            return true;
+        }
+
+        function validateVietnameseWordsField(el) {
+            if (!el || !isVietnameseWordsField(el)) {
+                return true;
+            }
+
+            el.value = el.value.trim().replace(/\s+/gu, ' ');
+
+            if (el.value === '') {
+                showInlineError(el, 'Vui lòng nhập lý do đến khám / triệu chứng.');
+                return false;
+            }
+
+            if (!vietnameseWordsPattern.test(el.value)) {
+                showInlineError(el, vietnameseWordsMessage);
+                return false;
+            }
+
+            clearInlineState(el, true);
             return true;
         }
 
@@ -1171,8 +1220,19 @@
             }
         });
 
+        document.addEventListener('blur', function (e) {
+            if (e.target.matches('input, textarea')) {
+                validateVietnameseWordsField(e.target);
+            }
+        }, true);
+
         document.getElementById('medicalRecordForm')?.addEventListener('submit', function (e) {
             let valid = true;
+            const chiefComplaint = document.querySelector('[name="chief_complaint"]');
+            if (chiefComplaint && !validateVietnameseWordsField(chiefComplaint)) {
+                valid = false;
+            }
+
             Object.keys(numericRanges).forEach(name => {
                 const el = document.querySelector(`[name="${name}"]`);
                 if (el && !validateNumericRange(el)) {

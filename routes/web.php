@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Doctor\ReviewsDoctorController;
 use App\Http\Controllers\Admin\BhytController;
+use App\Http\Controllers\Admin\DeviceController;
+use App\Http\Controllers\Admin\DeviceTypeController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
@@ -471,6 +473,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::delete('/{roomId}',             [ChatRoomController::class, 'deleteRoom'])->name('delete');
         Route::delete('/messages/{messageId}', [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
     });
+
+    Route::resource('device-types', DeviceTypeController::class)
+        ->parameters(['device-types' => 'device_type'])
+        ->except(['show']);
+    Route::resource('devices', DeviceController::class)
+        ->except(['show']);
 
 }); // Close admin block
 
