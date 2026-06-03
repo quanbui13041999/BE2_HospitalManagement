@@ -1495,7 +1495,20 @@
                 const text = await res.text();
                 try {
                     const json = text ? JSON.parse(text) : {};
-                    if (!res.ok) return { success: false, status: res.status, message: json.message || (json.error || res.statusText), errors: json.errors || null };
+                    if (!res.ok) {
+                        return {
+                            success: false,
+                            status: res.status,
+                            message: json.message || (json.error || res.statusText),
+                            errors: json.errors || null,
+                        };
+                    }
+                    if (json.success === undefined) {
+                        json.success = true;
+                    }
+                    if (!json.message) {
+                        json.message = res.statusText || 'Thao tác thành công.';
+                    }
                     return json;
                 } catch (e) {
                     return { success: res.ok, status: res.status, message: text || res.statusText };
@@ -1964,10 +1977,9 @@
             }
 
             // success
-            toast(data.message, 'success');
+            toast(data.message || (isEdit ? 'Cập nhật bác sĩ thành công.' : 'Thêm bác sĩ thành công.'), 'success');
             // if server created a user, show credentials to admin
             if (data.created_user) {
-                const cu = data.created_user;
                 const info = `Tài khoản đã tạo:\nEmail: ${cu.email}\nUser ID: ${cu.user_id}${cu.plain_password ? '\nMật khẩu: ' + cu.plain_password : ''}`;
                 alert(info);
             }
@@ -2046,7 +2058,7 @@
             const data = await api('DELETE', `/doctors/${deleteTargetId}`, payload);
 
             btn.disabled = false; btn.textContent = 'Xóa vĩnh viễn';
-            toast(data.message, data.success ? 'success' : 'error');
+            toast(data.message || 'Xóa bác sĩ thành công.', data.success ? 'success' : 'error');
 
             if (data.success) {
                 closeDeleteModal();
