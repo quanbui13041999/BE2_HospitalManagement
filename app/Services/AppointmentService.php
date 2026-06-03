@@ -632,7 +632,7 @@ class AppointmentService
 
             $this->assertFreshVersion($data['version'] ?? null, $this->appointmentVersionToken($appointment)); /* fixed: neu lich da doi/trang thai da thay doi thi bao reload */
 
-            if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
+            if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận', 'Bác sĩ nghỉ'])) {
                 throw new Exception('Lịch hẹn này không thể hủy (trạng thái: ' . $appointment->status . ').');
             }
 
@@ -640,9 +640,11 @@ class AppointmentService
                 ->where('schedule_id', $appointment->schedule_id)
                 ->first();
 
-            $timeError = $this->checkCancelTimeAvailable($schedule);
-            if ($timeError) {
-                throw new Exception($timeError);
+            if ($appointment->status !== 'Bác sĩ nghỉ') {
+                $timeError = $this->checkCancelTimeAvailable($schedule);
+                if ($timeError) {
+                    throw new Exception($timeError);
+                }
             }
 
             DB::table('appointments')
