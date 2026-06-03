@@ -16,12 +16,12 @@ class HealthTrackingRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'systolic'    => ['required', 'integer', 'min:50',  'max:250'],
-            'diastolic'   => ['required', 'integer', 'min:30',  'max:150'],
-            'heart_rate'  => ['required', 'integer', 'min:30',  'max:220', 'not_in:0'],
-            'spo2'        => ['required', 'integer', 'min:50',  'max:100'],
-            'weight'      => ['required', 'numeric', 'min:1',   'max:500'],
-            'blood_sugar' => ['required', 'integer', 'min:20',  'max:1000'],
+            'systolic'    => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:50',  'max:250'],
+            'diastolic'   => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:30',  'max:150'],
+            'heart_rate'  => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:30',  'max:220', 'not_in:0'],
+            'spo2'        => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:50',  'max:100'],
+            'weight'      => ['required', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'numeric', 'min:1',   'max:500'],
+            'blood_sugar' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:20',  'max:1000'],
             'symptoms'    => ['nullable', 'string',  'max:1000', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'patient_id' => ['prohibited'],
             'risk_level' => ['prohibited'],
@@ -69,6 +69,7 @@ class HealthTrackingRequest extends FormRequest
             'blood_sugar.max'      => 'Đường huyết tối đa là :max mg/dL.',
             'symptoms.max'         => 'Triệu chứng không được vượt quá :max ký tự.',
             'symptoms.regex'       => 'Triệu chứng chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
+            'regex'                => 'Dữ liệu nhập sai định dạng; các ô số chỉ dùng số 0-9, không dùng số full-width hoặc ký tự lạ.',
             'prohibited'           => 'Không được gửi dữ liệu hệ thống từ trình duyệt.',
             'version.required'     => 'Thiếu thông tin phiên bản bản ghi.',
         ];

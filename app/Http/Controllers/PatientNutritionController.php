@@ -106,7 +106,7 @@ class PatientNutritionController extends Controller
         $validated = $request->validate([
             'food_id' => ['required', 'integer', 'min:1', Rule::exists('foods', 'food_id')->where('status', 1)],
             'meal_type' => ['required', Rule::in(['breakfast', 'lunch', 'dinner', 'snack'])],
-            'weight_gram' => ['required', 'integer', 'min:1', 'max:5000'],
+            'weight_gram' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:1', 'max:5000'],
             'total_calories_intake' => ['prohibited'],
             'logged_date' => ['prohibited'],
             'user_id' => ['prohibited'],
@@ -115,6 +115,7 @@ class PatientNutritionController extends Controller
             'food_id.exists' => 'Món ăn không hợp lệ hoặc đã bị ẩn.',
             'meal_type.required' => 'Vui lòng chọn buổi ăn.',
             'weight_gram.required' => 'Vui lòng nhập khối lượng.',
+            'weight_gram.regex' => 'Khối lượng chỉ được nhập số 0-9, không dùng số full-width hoặc ký tự lạ.',
             'weight_gram.integer' => 'Khối lượng phải là số nguyên.',
             'weight_gram.min' => 'Khối lượng tối thiểu là 1 gram.',
             'weight_gram.max' => 'Khối lượng tối đa là 5000 gram.',

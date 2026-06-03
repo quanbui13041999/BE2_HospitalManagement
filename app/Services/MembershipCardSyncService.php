@@ -10,10 +10,7 @@ class MembershipCardSyncService
 {
     public function getOrCreateForUser(int $userId): MembershipCard
     {
-        return MembershipCard::firstOrCreate(
-            ['user_id' => $userId],
-            $this->defaultCardData($userId)
-        );
+        return $this->syncForUser($userId);
     }
 
     public function syncForPayment(Payment $payment): ?MembershipCard

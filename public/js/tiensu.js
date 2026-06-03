@@ -140,6 +140,35 @@ document.addEventListener('DOMContentLoaded', function () {
     const vietnameseWordPattern = /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u;
     const vietnameseWordMessage = 'Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.';
 
+    function showVietnameseWordsError(input) {
+        input.classList.remove('is-valid');
+        input.classList.add('is-invalid');
+
+        let feedback = input.nextElementSibling;
+        if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            input.after(feedback);
+        }
+
+        feedback.textContent = vietnameseWordMessage;
+    }
+
+    function clearVietnameseWordsError(input) {
+        input.classList.remove('is-invalid');
+
+        const feedback = input.nextElementSibling;
+        if (feedback && feedback.classList.contains('invalid-feedback')) {
+            feedback.textContent = '';
+        }
+
+        if (input.value.trim() !== '') {
+            input.classList.add('is-valid');
+        } else {
+            input.classList.remove('is-valid');
+        }
+    }
+
     function normalizeVietnameseWords(input) {
         const original = input.value;
         const normalized = original
@@ -153,12 +182,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const trimmed = input.value.trimEnd();
         const isValid = trimmed === '' || vietnameseWordPattern.test(trimmed);
         input.setCustomValidity(isValid ? '' : vietnameseWordMessage);
-        input.classList.toggle('is-invalid', !isValid);
 
-        if (isValid && input.value.trim() !== '') {
-            input.classList.add('is-valid');
+        if (isValid) {
+            clearVietnameseWordsError(input);
         } else {
-            input.classList.remove('is-valid');
+            showVietnameseWordsError(input);
         }
     }
 
@@ -174,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (cursor === 0 || input.value[cursor - 1] === ' ' || input.value[cursor] === ' ') {
                     event.preventDefault();
                     input.setCustomValidity(vietnameseWordMessage);
+                    showVietnameseWordsError(input);
                 }
                 return;
             }
@@ -181,6 +210,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!/^[\p{L}\p{M}]$/u.test(event.key)) {
                 event.preventDefault();
                 input.setCustomValidity(vietnameseWordMessage);
+                showVietnameseWordsError(input);
             }
         });
 
