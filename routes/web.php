@@ -302,8 +302,8 @@ Route::prefix('medical-records')
         Route::get('/', [MedicalRecordController::class, 'index'])->name('index');
         Route::get('/create', [MedicalRecordController::class, 'create'])->name('create');
         Route::post('/', [MedicalRecordController::class, 'store'])->name('store');
-        Route::get('/{id}', [MedicalRecordController::class, 'show'])->name('show')->whereNumber('id');
-        Route::get('/{id}/edit', [MedicalRecordController::class, 'edit'])->name('edit')->whereNumber('id');
+        Route::get('/{id}', [MedicalRecordController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [MedicalRecordController::class, 'edit'])->name('edit');
         Route::put('/{id}', [MedicalRecordController::class, 'update'])->name('update')->whereNumber('id');
         Route::delete('/{id}', [MedicalRecordController::class, 'destroy'])->name('destroy')->whereNumber('id');
         Route::get('/{id}/print', [MedicalRecordController::class, 'print'])->name('print')->whereNumber('id');
@@ -462,7 +462,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     Route::resource('rehab-exercises', AdminRehabExerciseController::class)
         ->names('rehab')
         ->parameters(['rehab-exercises' => 'exercise'])
-        ->where(['exercise' => '[0-9]+'])
         ->except(['show']);
 
     // Chat Admin
@@ -479,10 +478,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 
     Route::resource('device-types', DeviceTypeController::class)
         ->parameters(['device-types' => 'device_type'])
-        ->where(['device_type' => '[0-9]+'])
         ->except(['show']);
     Route::resource('devices', DeviceController::class)
-        ->where(['device' => '[0-9]+'])
         ->except(['show']);
 
 }); // Close admin block

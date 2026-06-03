@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const field = form.querySelector('textarea[name="message"]');
         if (!field) return;
 
-        const messagePattern = /^[\p{L}\p{M}]+(?: +[\p{L}\p{M}]+)*$/u;
+        const messagePattern = /^[\p{L}\p{M}\p{N} .,:;()\/+\-%–—]+$/u;
 
         function feedbackOf() {
             const wrap = field.closest('.mb-4') || field.parentElement;

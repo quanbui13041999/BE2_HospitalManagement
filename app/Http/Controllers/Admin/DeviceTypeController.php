@@ -62,12 +62,16 @@ class DeviceTypeController extends Controller
 
     public function edit($id)
     {
+        $id = $this->validRouteId($id);
+
+        if (!$id) {
+            return $this->redirectToDeviceTypesIndexNotFound();
+        }
+
         $type = DeviceType::find($id);
 
         if (!$type) {
-            return redirect()->route('admin.device-types.index')
-                ->with('warning', 'Danh mục thiết bị vừa bị xóa. Trang sẽ được tải lại để cập nhật dữ liệu mới.')
-                ->with('reload_page', true);
+            return $this->redirectToDeviceTypesIndexNotFound();
         }
 
         return view('admin.device_types.edit', compact('type'));
@@ -75,6 +79,12 @@ class DeviceTypeController extends Controller
 
     public function update(UpdateDeviceTypeRequest $request, $id)
     {
+        $id = $this->validRouteId($id);
+
+        if (!$id) {
+            return $this->redirectToDeviceTypesIndexNotFound();
+        }
+
         $data = $request->validated();
         unset($data['lock_version']);
 
@@ -114,6 +124,12 @@ class DeviceTypeController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        $id = $this->validRouteId($id);
+
+        if (!$id) {
+            return $this->redirectToDeviceTypesIndexNotFound();
+        }
+
         $request->validate([
             'lock_version' => ['required', 'integer', 'min:1'],
         ]);
@@ -156,5 +172,20 @@ class DeviceTypeController extends Controller
     private function isUniqueConstraint(QueryException $e): bool
     {
         return (string) $e->getCode() === '23000';
+    }
+
+    private function validRouteId($id): ?int
+    {
+        $id = trim((string) $id);
+
+        return preg_match('/\A[1-9][0-9]*\z/', $id) ? (int) $id : null;
+    }
+
+    private function redirectToDeviceTypesIndexNotFound()
+    {
+        return redirect()
+            ->route('admin.device-types.index')
+            ->with('warning', 'Không tìm thấy trang danh mục thiết bị.')
+            ->with('reload_page', true);
     }
 }
