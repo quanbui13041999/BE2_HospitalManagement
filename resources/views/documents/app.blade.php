@@ -41,6 +41,13 @@
 </div>
 @endif
 
+@if(session('warning'))
+<div class="alert alert-error" id="flash-msg">
+    <span>⚠</span> {{ session('warning') }}
+    <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+</div>
+@endif
+
 <!-- ═══ CONTENT ═══ -->
 <main>
     @yield('content')

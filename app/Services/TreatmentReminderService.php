@@ -3,6 +3,8 @@ namespace App\Services;
 
 use App\Models\{TreatmentReminder, Prescription, MedicalRecord, TreatmentConfirmation, InstructionDailyCheck, Appointment, TreatmentHomeInstruction};
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class TreatmentReminderService
 {
@@ -41,39 +43,72 @@ class TreatmentReminderService
      */
     public function confirmReminder(int $reminderId, int $userId): TreatmentConfirmation
     {
-        $reminder = TreatmentReminder::where('reminder_id', $reminderId)
-            ->where('user_id', $userId)
-            ->firstOrFail();
+        return DB::transaction(function () use ($reminderId, $userId) {
+            $reminder = TreatmentReminder::where('reminder_id', $reminderId)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        return TreatmentConfirmation::firstOrCreate([
-            'reminder_id' => $reminderId,
-            'user_id'     => $userId,
-        ], [
-            'confirmed_at' => now(),
-            'confirm_type' => $reminder->reminder_type === 'medicine' ? 'medicine' : 'instruction',
-        ]);
+            if (! $reminder->remind_at || ! $reminder->remind_at->isSameDay(today())) {
+                throw new ConflictHttpException('Chỉ được xác nhận nhắc nhở trong ngày hôm nay. Vui lòng tải lại trang.');
+            }
+
+            $confirmed = TreatmentConfirmation::where('reminder_id', $reminderId)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($confirmed) {
+                throw new ConflictHttpException('Nhắc nhở này đã được xác nhận trước đó. Vui lòng tải lại trang.');
+            }
+
+            return TreatmentConfirmation::create([
+                'reminder_id'   => $reminderId,
+                'user_id'       => $userId,
+                'confirmed_at'  => now(),
+                'confirm_type'  => $reminder->reminder_type === 'medicine' ? 'medicine' : 'instruction',
+            ]);
+        });
     }
 
     /**
      * Toggle checkbox hướng dẫn điều trị.
      */
-    public function toggleInstruction(int $instructionId, int $userId): bool
+    public function toggleInstruction(int $instructionId, int $userId, bool $expectedState): bool
     {
-        TreatmentHomeInstruction::where('id', $instructionId)
-            ->where('user_id', $userId)
-            ->firstOrFail();
+        return DB::transaction(function () use ($instructionId, $userId, $expectedState) {
+            TreatmentHomeInstruction::where('id', $instructionId)
+                ->where('user_id', $userId)
+                ->where('is_active', 1)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $check = InstructionDailyCheck::firstOrNew([
-            'instruction_id' => $instructionId,
-            'user_id'        => $userId,
-            'checked_date'   => today()->toDateString(),
-        ]);
+            $check = InstructionDailyCheck::where('instruction_id', $instructionId)
+                ->where('user_id', $userId)
+                ->whereDate('checked_date', today())
+                ->lockForUpdate()
+                ->first();
 
-        $check->is_done    = !$check->is_done;
-        $check->checked_at = $check->is_done ? now() : null;
-        $check->save();
+            $currentState = (bool) ($check?->is_done ?? false);
 
-        return $check->is_done;
+            if ($currentState !== $expectedState) {
+                throw new ConflictHttpException('Hướng dẫn này đã được cập nhật trước đó. Vui lòng tải lại trang.');
+            }
+
+            $newState = ! $expectedState;
+
+            $check ??= new InstructionDailyCheck([
+                'instruction_id' => $instructionId,
+                'user_id'        => $userId,
+                'checked_date'   => today()->toDateString(),
+            ]);
+
+            $check->is_done    = $newState;
+            $check->checked_at = $newState ? now() : null;
+            $check->save();
+
+            return $check->is_done;
+        });
     }
 
     /**

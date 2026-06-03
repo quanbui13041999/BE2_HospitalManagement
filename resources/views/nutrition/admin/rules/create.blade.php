@@ -14,6 +14,10 @@
 
 <div class="card" style="max-width: 800px;">
     <div class="card-body p-4">
+        @if(session('warning'))
+            <div class="alert alert-warning">{{ session('warning') }}</div>
+        @endif
+
         <form action="{{ route('admin.nutrition.rules.store') }}" method="POST">
             @csrf
 
@@ -23,8 +27,8 @@
                     <label for="disease_name" class="form-label fw-semibold">Tên bệnh lý <span class="text-danger">*</span></label>
                     <input type="text" name="disease_name" id="disease_name" 
                            class="form-control @error('disease_name') is-invalid @enderror" 
-                           placeholder="Ví dụ: Đái tháo đường, Tăng huyết áp..." 
-                           value="{{ old('disease_name') }}" required>
+                           placeholder="Ví dụ: Đái tháo đường" 
+                           value="{{ old('disease_name') }}" required minlength="3" maxlength="120" pattern="^[A-Za-zÀ-ỹ\s]+$">
                     <small class="text-muted">Nên nhập chính xác cụm từ chẩn đoán y khoa.</small>
                     @error('disease_name')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -37,7 +41,7 @@
                     <input type="text" name="icd_code" id="icd_code" 
                            class="form-control @error('icd_code') is-invalid @enderror" 
                            placeholder="Ví dụ: E11, I10" 
-                           value="{{ old('icd_code') }}">
+                           value="{{ old('icd_code') }}" maxlength="10" pattern="^[A-Za-z][0-9]{1,2}(\\.[0-9A-Za-z]{1,2})?$">
                     @error('icd_code')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -87,7 +91,7 @@
                 <div class="col-12">
                     <label for="reason" class="form-label fw-semibold">Lý do khuyến nghị / Giải thích</label>
                     <textarea name="reason" id="reason" class="form-control @error('reason') is-invalid @enderror" 
-                              rows="3" placeholder="Giải thích lý do chuyên khoa tại sao nên ăn hoặc tránh thực phẩm này..."
+                              rows="3" maxlength="500" placeholder="Giải thích lý do chuyên khoa"
                               >{{ old('reason') }}</textarea>
                     @error('reason')
                         <div class="invalid-feedback">{{ $message }}</div>

@@ -14,6 +14,14 @@
     </a>
 </div>
 
+@if(session('success'))
+    <div class="alert alert-success">{{ session('success') }}</div>
+@endif
+
+@if(session('warning'))
+    <div class="alert alert-warning">{{ session('warning') }}</div>
+@endif
+
 <div class="card">
     <div class="card-body p-0">
         <table class="table table-hover align-middle mb-0">
@@ -52,7 +60,7 @@
                             </a>
                             <form action="{{ route('admin.nutrition.foods.destroy', $food->food_id) }}"
                                   method="POST" class="d-inline"
-                                  onsubmit="return confirm('Bạn chắc chắn muốn xóa thực phẩm này? Mọi nhật ký ăn uống và quy tắc liên quan sẽ bị ảnh hưởng!')">
+                                  onsubmit="return confirm('Bạn có chắc muốn xóa thực phẩm này không? Nhật ký ăn uống và quy tắc liên quan có thể bị ảnh hưởng.')">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-outline-danger">

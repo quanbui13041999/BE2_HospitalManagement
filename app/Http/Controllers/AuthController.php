@@ -78,8 +78,7 @@ class AuthController extends Controller
         }
 
 
-        // BUG CŨ: redirect về /login sau khi đã login → sửa về trang đặt lịch
-        return redirect()->route('appointments.create')
+        return redirect()->route('Home.trangchu')
             ->with('success', 'Đăng ký thành công! Chào mừng ' . $user->full_name);
     }
 
@@ -92,6 +91,7 @@ class AuthController extends Controller
         ]);
 
         try {
+            $this->normalizeStoredPasswordHash($request->email);
             $attempt = Auth::attempt($request->only('email', 'password'), $request->boolean('remember'));
         } catch (QueryException $e) {
             Log::error('AuthController login DB error', ['message' => $e->getMessage(), 'code' => $e->getCode(), 'email' => $request->email]);
@@ -106,7 +106,9 @@ class AuthController extends Controller
                 'user',
                 Auth::id()
             );
-            return redirect()->intended(route('appointments.index'))
+            $redirectRoute = Auth::user()->is_admin ? 'admin.dashboard' : 'Home.trangchu';
+
+            return redirect()->intended(route($redirectRoute))
                 ->with('success', 'Đăng nhập thành công!');
         }
 
@@ -123,6 +125,27 @@ class AuthController extends Controller
         ])->withInput($request->only('email'));
 
         // BUG CŨ: có 1 dòng return thứ 2 sau return back() → unreachable code, đã xóa
+    }
+
+    private function normalizeStoredPasswordHash(string $email): void
+    {
+        $user = User::where('email', $email)->first();
+
+        if (!$user || !is_string($user->password)) {
+            return;
+        }
+
+        $normalized = trim($user->password);
+
+        if ($normalized === $user->password) {
+            return;
+        }
+
+        if (password_get_info($normalized)['algoName'] !== 'bcrypt') {
+            return;
+        }
+
+        $user->forceFill(['password' => $normalized])->save();
     }
 
     // ── ĐĂNG XUẤT ──

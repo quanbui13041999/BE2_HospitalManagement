@@ -14,7 +14,8 @@ class PaymentService
 {
     public function __construct(
         protected PaymentRepository $repo,
-        protected NotificationService $notifications
+        protected NotificationService $notifications,
+        protected \App\Services\PayOsService $payOsService
     ) {}
 
     /**
@@ -34,7 +35,7 @@ class PaymentService
         $existing = Payment::where('appointment_id', $appointmentId)->first();
 
         // Tính tổng tiền: giá bác sĩ + dịch vụ (nếu có)
-        $doctorFee   = (float) ($appointment->schedule->doctor->price ?? 0);
+        $doctorFee   = (float) ($appointment->schedule?->doctor?->price ?? 0);
         $serviceFee  = 0;
 
         if ($appointment->service) {
@@ -95,7 +96,7 @@ class PaymentService
             ->firstOrFail();
 
         // Tính lại giá
-        $doctorFee  = (float) ($appointment->schedule->doctor->price ?? 0);
+        $doctorFee  = (float) ($appointment->schedule?->doctor?->price ?? 0);
         $serviceFee = 0;
         if ($appointment->service) {
             $serviceFee = (float) ($appointment->service->latestPrice->price ?? 0);
@@ -119,9 +120,10 @@ class PaymentService
 
         $ref = 'PAY-' . strtoupper(Str::random(10));
 
-        // Tạo bản ghi payment
-        $payment = Payment::create([
-            'appointment_id'  => $appointmentId,
+        // Tái sử dụng bản ghi cũ nếu đã có (tránh lỗi Unique Constraint trên appointment_id)
+        $payment = Payment::where('appointment_id', $appointmentId)->first();
+        
+        $paymentData = [
             'insurance_id'    => $insurance?->insurance_id,
             'membership_id'   => $membership?->card_id,
             'subtotal'        => $subtotal,
@@ -131,7 +133,17 @@ class PaymentService
             'status'          => 'Chờ thanh toán',
             'transaction_ref' => $ref,
             'payment_date'    => now(),
-        ]);
+        ];
+
+        if ($payment) {
+            $payment->update($paymentData);
+            // Xóa các items cũ để nạp lại mới
+            $payment->items()->delete();
+        } else {
+            $payment = Payment::create(array_merge([
+                'appointment_id' => $appointmentId,
+            ], $paymentData));
+        }
 
         $this->notifications->createForUser(
             $userId,
@@ -146,34 +158,52 @@ class PaymentService
         if ($doctorFee > 0) {
             PaymentItem::create([
                 'payment_id'  => $payment->payment_id,
-                'item_type'   => 'Khám bệnh',
-                'item_name'   => 'Phí khám - BS. ' . ($appointment->schedule->doctor->full_name ?? ''),
+                'item_name'   => 'Phí khám - BS. ' . ($appointment->schedule?->doctor?->full_name ?? ''),
                 'quantity'    => 1,
                 'unit_price'  => $doctorFee,
-                'total_price' => $doctorFee,
+                'subtotal'    => $doctorFee,
             ]);
         }
 
         if ($serviceFee > 0) {
             PaymentItem::create([
                 'payment_id'  => $payment->payment_id,
-                'item_type'   => 'Dịch vụ',
                 'item_name'   => $appointment->service->service_name ?? 'Dịch vụ',
                 'quantity'    => 1,
                 'unit_price'  => $serviceFee,
-                'total_price' => $serviceFee,
+                'subtotal'    => $serviceFee,
             ]);
         }
 
         $result = ['payment' => $payment, 'ref' => $ref];
 
         if ($method === 'QR') {
-            $result['qr_content'] = sprintf(
-                'HOSPITAL|%s|%d|Thanh toan lich kham %s',
-                $ref,
+            // Gọi API PayOS thực tế để sinh mã VietQR động
+            $payOsResult = $this->payOsService->createPaymentLink(
+                $payment->payment_id,
                 (int) $totalAmount,
-                $appointmentId
+                "Thanh toan lich kham {$appointmentId}",
+                route('user.payments.success', $payment->payment_id),
+                route('user.payments.show', $appointmentId)
             );
+
+            if ($payOsResult['success']) {
+                // Lưu payment link id từ PayOS vào trường transaction_ref để đối soát webhook
+                $payment->update([
+                    'transaction_ref' => ($payOsResult['paymentLinkId'] ?? null) ?: $ref
+                ]);
+                
+                $result['qr_content'] = $payOsResult['qrContent'];
+                $result['checkout_url'] = $payOsResult['checkoutUrl'] ?? null;
+            } else {
+                // Fallback nếu API PayOS bị gián đoạn kết nối
+                $result['qr_content'] = sprintf(
+                    'HOSPITAL|%s|%d|Thanh toan lich kham %s',
+                    $ref,
+                    (int) $totalAmount,
+                    $appointmentId
+                );
+            }
         }
 
         return $result;
@@ -188,8 +218,8 @@ class PaymentService
         $updated = $this->repo->confirmPayment($paymentId, $ref);
         
         if ($updated) {
-            // Đánh dấu lịch hẹn và hóa đơn đã thanh toán
-            $payment = Payment::with(['appointment', 'invoice'])->find($paymentId);
+            // Đánh dấu lịch hẹn đã thanh toán
+            $payment = Payment::with(['appointment'])->find($paymentId);
             if ($payment) {
                 if ($payment->appointment) {
                     $payment->appointment->update(['status' => 'Đã thanh toán']);
@@ -201,9 +231,6 @@ class PaymentService
                         'payment',
                         $payment->payment_id
                     );
-                }
-                if ($payment->invoice) {
-                    $payment->invoice->update(['status' => 'Đã thanh toán']);
                 }
 
                 ActivityLogService::log(
@@ -243,13 +270,76 @@ class PaymentService
     }
 
     /**
-     * Lịch sử thanh toán của user.
+     * Lịch sử thanh toán của user với bộ lọc nâng cao.
      */
-    public function getUserPayments(int $userId)
+    public function getUserPayments(int $userId, array $filters = [])
     {
-        return Payment::whereHas('appointment', fn($q) => $q->where('user_id', $userId))
-            ->with(['appointment.schedule.doctor'])
-            ->orderByDesc('payment_date')
-            ->paginate(10);
+        $query = Payment::whereHas('appointment', fn($q) => $q->where('user_id', $userId))
+            ->with(['appointment.schedule.doctor', 'appointment.service'])
+            ->orderByDesc('payment_date');
+
+        // Lọc theo ngày
+        if (!empty($filters['from_date'])) {
+            $query->whereDate('payment_date', '>=', $filters['from_date']);
+        }
+        if (!empty($filters['to_date'])) {
+            $query->whereDate('payment_date', '<=', $filters['to_date']);
+        }
+
+        // Lọc theo trạng thái
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'Thành công') {
+                $query->whereIn('status', ['Thành công', 'Đã thanh toán']);
+            } else {
+                $query->where('status', $filters['status']);
+            }
+        }
+
+        // Lọc theo phương thức
+        if (!empty($filters['method'])) {
+            $query->where('method', $filters['method']);
+        }
+
+        // Tìm kiếm từ khóa (Tên bác sĩ, tên dịch vụ hoặc mã GD)
+        if (!empty($filters['search'])) {
+            $search = '%' . $filters['search'] . '%';
+            $query->where(function ($q) use ($search) {
+                $q->where('transaction_ref', 'like', $search)
+                  ->orWhereHas('appointment.schedule.doctor', function ($dq) use ($search) {
+                      $dq->where('full_name', 'like', $search);
+                  })
+                  ->orWhereHas('appointment.service', function ($sq) use ($search) {
+                      $sq->where('service_name', 'like', $search);
+                  });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
+    }
+
+    /**
+     * Thống kê thanh toán của user.
+     */
+    public function getUserPaymentStats(int $userId): array
+    {
+        $allPayments = Payment::whereHas('appointment', fn($q) => $q->where('user_id', $userId))->get();
+        
+        $totalSpent = $allPayments->whereIn('status', ['Thành công', 'Đã thanh toán'])->sum('total_amount');
+        $completedCount = $allPayments->whereIn('status', ['Thành công', 'Đã thanh toán'])->count();
+        $pendingCount = $allPayments->whereIn('status', ['Chờ xử lý', 'Chờ thanh toán', 'Chưa thanh toán'])->count();
+        
+        return [
+            'total_spent' => $totalSpent,
+            'completed_count' => $completedCount,
+            'pending_count' => $pendingCount,
+        ];
+    }
+
+    /**
+     * Kiểm tra xem PayOS đã được cấu hình API thực tế chưa.
+     */
+    public function isPayOsConfigured(): bool
+    {
+        return $this->payOsService->isConfigured();
     }
 }

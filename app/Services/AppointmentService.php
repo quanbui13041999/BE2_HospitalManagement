@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\ConcurrentModificationException;
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentConfirmed;
 use App\Mail\AppointmentRescheduleMail;
@@ -30,10 +31,31 @@ class AppointmentService
     {
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // FORM DATA
-    // ─────────────────────────────────────────────────────────────
+    private function assertFreshVersion(?string $expectedVersion, string $actualVersion): void
+    {
+        if (!$expectedVersion) {
+            throw new ConcurrentModificationException('Thiếu phiên bản dữ liệu. Trang sẽ được tải lại trước khi thao tác.');
+        }
 
+        if (!hash_equals($actualVersion, $expectedVersion)) {
+            throw new ConcurrentModificationException();
+        }
+    }
+
+    private function appointmentVersionToken(object $appointment): string
+    {
+        return sha1(implode('|', [
+            (string) ($appointment->schedule_id ?? ''),
+            (string) ($appointment->appointment_time ?? ''),
+            (string) ($appointment->status ?? ''),
+            (string) ($appointment->cancel_reason ?? ''),
+            (string) ($appointment->rescheduled_from ?? ''),
+        ]));
+    }
+
+    /**
+     * Lấy dữ liệu cho form tạo lịch khám
+     */
     public function getCreateFormData(): array
     {
         $user = Auth::user();
@@ -161,32 +183,36 @@ class AppointmentService
      */
     public function createAppointment(int $userId, array $data): array
     {
-        $schedule = $this->validateSchedule($data['schedule_id'], $data['work_date']);
-        if (!$schedule) {
-            throw new Exception('Lịch khám không tồn tại hoặc ngày khám không khớp.');
-        }
-
-        $appointmentDatetime = $data['work_date'] . ' ' . $data['appointment_time'] . ':00';
-        $appointmentEndtime  = $this->calculateAppointmentEndTime(
-            $data['work_date'],
-            $data['appointment_time'],
-            $schedule->slot_duration ?? 15
-        );
-        $queueNumber = $this->calculateQueueNumber($data['schedule_id'], $data['appointment_time']);
-
         $appointmentId = null;
 
         DB::beginTransaction();
         try {
+            $schedule = DB::table('doctorschedules')
+                ->where('schedule_id', $data['schedule_id'])
+                ->where('status', 'Hoạt động')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$schedule || $schedule->work_date !== $data['work_date']) {
+                throw new Exception('Lịch khám không tồn tại hoặc ngày khám không khớp.');
+            }
+
+            $appointmentDatetime = $data['work_date'] . ' ' . $data['appointment_time'] . ':00';
+            $appointmentEndtime  = $this->calculateAppointmentEndTime(
+                $data['work_date'],
+                $data['appointment_time'],
+                $schedule->slot_duration ?? 15
+            );
+            $queueNumber = $this->calculateQueueNumber($data['schedule_id'], $data['appointment_time']);
+
             // ── Check for duplicate INSIDE transaction to prevent race condition ──
             $alreadyBooked = DB::table('appointments')
                 ->where('user_id', $userId)
                 ->where('schedule_id', $data['schedule_id'])
-                ->whereNotIn('status', ['Đã hủy', 'Dời lịch'])
                 ->lockForUpdate()
                 ->first();
 
-            if ($alreadyBooked) {
+            if ($alreadyBooked && !in_array($alreadyBooked->status, ['Đã hủy', 'Dời lịch'], true)) {
                 throw new Exception('Bạn đã đặt lịch khám cho khung giờ này rồi.');
             }
 
@@ -218,25 +244,45 @@ class AppointmentService
                                  ->where('slot_hold_expire', '>', now());
                           });
                     })
+                    ->lockForUpdate()
                     ->count();
 
                 if ($booked >= $schedule->max_slot) {
-                    throw new Exception('Khung giờ này đã hết chỗ. Vui lòng chọn giờ khác.');
+                    throw new ConcurrentModificationException('Khung giờ này vừa hết chỗ do người khác đặt trước. Trang sẽ được tải lại để cập nhật lịch trống.');
                 }
 
-                $appointmentId = DB::table('appointments')->insertGetId([
-                    'user_id'             => $userId,
-                    'schedule_id'         => $data['schedule_id'],
-                    'service_id'          => $data['service_id'] ?? null,
-                    'appointment_time'    => $appointmentDatetime,
-                    'appointment_timeEnd' => $appointmentEndtime,
-                    'queue_number'        => $queueNumber,
-                    'status'              => 'Chờ xác nhận',
-                    'is_priority'         => $data['is_priority'] ?? false,
-                    'priority_type'       => $data['priority_type'] ?? null,
-                    'note'                => $data['note'] ?? null,
-                    'created_at'          => now(),
-                ]);
+                if ($alreadyBooked) {
+                    DB::table('appointments')
+                        ->where('appointment_id', $alreadyBooked->appointment_id)
+                        ->update([
+                            'service_id' => $data['service_id'] ?? null,
+                            'appointment_time' => $appointmentDatetime,
+                            'appointment_timeEnd' => $appointmentEndtime,
+                            'queue_number' => $queueNumber,
+                            'status' => 'Chờ xác nhận',
+                            'is_priority' => $data['is_priority'] ?? false,
+                            'priority_type' => $data['priority_type'] ?? null,
+                            'note' => $data['note'] ?? null,
+                            'cancel_reason' => null,
+                            'slot_hold_expire' => null,
+                            'rescheduled_from' => null,
+                        ]);
+                    $appointmentId = $alreadyBooked->appointment_id;
+                } else {
+                    $appointmentId = DB::table('appointments')->insertGetId([
+                        'user_id'             => $userId,
+                        'schedule_id'         => $data['schedule_id'],
+                        'service_id'          => $data['service_id'] ?? null,
+                        'appointment_time'    => $appointmentDatetime,
+                        'appointment_timeEnd' => $appointmentEndtime,
+                        'queue_number'        => $queueNumber,
+                        'status'              => 'Chờ xác nhận',
+                        'is_priority'         => $data['is_priority'] ?? false,
+                        'priority_type'       => $data['priority_type'] ?? null,
+                        'note'                => $data['note'] ?? null,
+                        'created_at'          => now(),
+                    ]);
+                }
             }
 
             // ── Notification ──────────────────────────────────────
@@ -349,10 +395,9 @@ class AppointmentService
             ->format('Y-m-d H:i:s');
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // USER APPOINTMENTS (giữ nguyên từ bản gốc)
-    // ─────────────────────────────────────────────────────────────
-
+    /**
+     * Lấy thống kê lịch khám của người dùng
+     */
     public function getUserAppointmentStats(int $userId): object
     {
         return DB::table('appointments')
@@ -380,6 +425,7 @@ class AppointmentService
             ->leftJoin('reviews as r', 'appointments.appointment_id', '=', 'r.appointment_id')
             ->select(
                 'appointments.*',
+                DB::raw("SHA1(CONCAT_WS('|', appointments.schedule_id, appointments.appointment_time, appointments.status, COALESCE(appointments.cancel_reason,''), COALESCE(appointments.rescheduled_from,''))) as version_token"),
                 'p.status as payment_status',
                 'p.payment_id',
                 'ds.work_date',
@@ -401,7 +447,7 @@ class AppointmentService
 
         if ($status === 'upcoming') {
             $query->whereIn('appointments.status', ['Chờ xác nhận', 'Đã xác nhận'])
-                ->where('ds.work_date', '>=', now()->toDateString());
+                ->where('appointments.appointment_time', '>=', now()->toDateString());
         } elseif ($status === 'completed') {
             $query->where('appointments.status', 'Đã khám');
         } elseif ($status === 'cancelled') {
@@ -426,6 +472,7 @@ class AppointmentService
             ->where('appointments.user_id', $userId)
             ->select(
                 'appointments.*',
+                DB::raw("SHA1(CONCAT_WS('|', appointments.schedule_id, appointments.appointment_time, appointments.status, COALESCE(appointments.cancel_reason,''), COALESCE(appointments.rescheduled_from,''))) as version_token"),
                 'doctorschedules.work_date',
                 'doctorschedules.start_time',
                 'doctorschedules.end_time',
@@ -478,49 +525,54 @@ class AppointmentService
 
     public function rescheduleAppointment(int $appointmentId, int $userId, array $data): array
     {
-        $appointment = DB::table('appointments')
-            ->where('appointment_id', $appointmentId)
-            ->where('user_id', $userId)
-            ->first();
-
-        if (!$appointment) {
-            throw new Exception('Không tìm thấy lịch hẹn.');
-        }
-
-        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
-            throw new Exception('Lịch hẹn này không thể dời.');
-        }
-
-        if ((int) $data['new_schedule_id'] === (int) $appointment->schedule_id) {
-            throw new Exception('Vui lòng chọn lịch khác với lịch hiện tại.');
-        }
-
-        $newSchedule = DB::table('doctorschedules')
-            ->where('schedule_id', $data['new_schedule_id'])
-            ->where('status', 'Hoạt động')
-            ->first();
-
-        if (!$newSchedule) {
-            throw new Exception('Lịch khám mới không hợp lệ.');
-        }
-
-        if (Carbon::parse($newSchedule->work_date)->isPast()) {
-            throw new Exception('Ngày dời phải là ngày trong tương lai.');
-        }
-
-        $bookedInNew = DB::table('appointments')
-            ->where('schedule_id', $data['new_schedule_id'])
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS])
-            ->count();
-
-        if ($bookedInNew >= $newSchedule->max_slot) {
-            throw new Exception('Khung giờ mới đã hết chỗ. Vui lòng chọn giờ khác.');
-        }
-
-        $newDatetime = $newSchedule->work_date . ' ' . $data['new_appointment_time'] . ':00';
-
         DB::beginTransaction();
         try {
+            $appointment = DB::table('appointments')
+                ->where('appointment_id', $appointmentId)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first(); /* fixed: khoa lich hen khi doi lich de tranh 2 tab/user cung cap nhat */
+
+            if (!$appointment) {
+                throw new Exception('Không tìm thấy lịch hẹn.');
+            }
+
+            $this->assertFreshVersion($data['version'] ?? null, $this->appointmentVersionToken($appointment)); /* fixed: phat hien form cu da bi nguoi khac sua */
+
+            if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
+                throw new Exception('Lịch hẹn này không thể dời.');
+            }
+
+            if ((int)$data['new_schedule_id'] === (int)$appointment->schedule_id) {
+                throw new Exception('Vui lòng chọn lịch khác với lịch hiện tại.');
+            }
+
+            $newSchedule = DB::table('doctorschedules')
+                ->where('schedule_id', $data['new_schedule_id'])
+                ->where('status', 'Hoạt động')
+                ->lockForUpdate()
+                ->first(); /* fixed: khoa ca moi khi dem slot con trong */
+
+            if (!$newSchedule) {
+                throw new Exception('Lịch khám mới không hợp lệ.');
+            }
+
+            if (Carbon::parse($newSchedule->work_date)->isPast()) {
+                throw new Exception('Ngày dời phải là ngày trong tương lai.');
+            }
+
+            $bookedInNew = DB::table('appointments')
+                ->where('schedule_id', $data['new_schedule_id'])
+                ->whereNotIn('status', ['Đã hủy', 'Dời lịch', SlotHoldService::HOLD_STATUS])
+                ->lockForUpdate()
+                ->count();
+
+            if ($bookedInNew >= $newSchedule->max_slot) {
+                throw new ConcurrentModificationException('Khung giờ mới vừa hết chỗ do người khác đặt trước. Trang sẽ được tải lại để cập nhật lịch trống.');
+            }
+
+            $newDatetime = $newSchedule->work_date . ' ' . $data['new_appointment_time'] . ':00';
+
             DB::table('appointments')
                 ->where('appointment_id', $appointmentId)
                 ->update([
@@ -566,27 +618,33 @@ class AppointmentService
 
     public function cancelAppointment(int $appointmentId, int $userId, array $data): array
     {
-        $appointment = DB::table('appointments')
-            ->where('appointment_id', $appointmentId)
-            ->where('user_id', $userId)
-            ->first();
-
-        if (!$appointment) {
-            throw new Exception('Không tìm thấy lịch hẹn.');
-        }
-
-        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
-            throw new Exception('Lịch hẹn này không thể hủy (trạng thái: ' . $appointment->status . ').');
-        }
-
-        $schedule  = DB::table('doctorschedules')->where('schedule_id', $appointment->schedule_id)->first();
-        $timeError = $this->checkCancelTimeAvailable($schedule);
-        if ($timeError) {
-            throw new Exception($timeError);
-        }
-
         DB::beginTransaction();
         try {
+            $appointment = DB::table('appointments')
+                ->where('appointment_id', $appointmentId)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first(); /* fixed: khoa lich hen khi huy de tranh huy/doi song song */
+
+            if (!$appointment) {
+                throw new Exception('Không tìm thấy lịch hẹn.');
+            }
+
+            $this->assertFreshVersion($data['version'] ?? null, $this->appointmentVersionToken($appointment)); /* fixed: neu lich da doi/trang thai da thay doi thi bao reload */
+
+            if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
+                throw new Exception('Lịch hẹn này không thể hủy (trạng thái: ' . $appointment->status . ').');
+            }
+
+            $schedule = DB::table('doctorschedules')
+                ->where('schedule_id', $appointment->schedule_id)
+                ->first();
+
+            $timeError = $this->checkCancelTimeAvailable($schedule);
+            if ($timeError) {
+                throw new Exception($timeError);
+            }
+
             DB::table('appointments')
                 ->where('appointment_id', $appointmentId)
                 ->update([

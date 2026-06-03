@@ -23,6 +23,15 @@ class RoomController extends Controller
 
     public function index(Request $request)
     {
+        // Validate page param: phải là số nguyên dương
+        $page = $request->query('page');
+        if ($page !== null && (!ctype_digit((string) $page) || (int) $page < 1)) {
+            return redirect()->route('admin.rooms.index', array_merge(
+                $request->except('page'),
+                ['page' => 1]
+            ))->with('error', 'Tham số trang không hợp lệ, đã chuyển về trang 1.');
+        }
+
         return view('admin.rooms.index', $this->roomService->buildIndexData($request));
     }
 
@@ -59,7 +68,23 @@ class RoomController extends Controller
 
     public function update(RoomRequest $request, Room $room)
     {
-        $before = $room->only(['room_name', 'room_type', 'floor', 'capacity', 'status']);
+        // Optimistic locking: kiểm tra dữ liệu có bị thay đổi bởi tab khác không
+        $lockVersion = $request->input('_lock_version');
+        if ($lockVersion !== null && $room->updated_at !== null) {
+            $dbTimestamp = (string) $room->updated_at->timestamp;
+            if ($lockVersion !== $dbTimestamp) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Dữ liệu đã được cập nhật bởi người khác. Vui lòng tải lại trang trước khi cập nhật.',
+                    ], 409);
+                }
+                return redirect()->route('admin.rooms.edit', $room)
+                    ->with('error', 'Dữ liệu phòng khám đã được người khác cập nhật. Vui lòng tải lại trang trước khi tiếp tục chỉnh sửa.');
+            }
+        }
+
+        $before = $room->only(['room_name', 'room_type', 'status', 'notes']);
         $room->update($request->validated());
 
         ActivityLogService::log(
@@ -70,8 +95,8 @@ class RoomController extends Controller
             [
                 'changes' => ActivityLogService::summarizeChanges(
                     $before,
-                    $room->fresh()->only(['room_name', 'room_type', 'floor', 'capacity', 'status']),
-                    ['room_name', 'room_type', 'floor', 'capacity', 'status']
+                    $room->fresh()->only(['room_name', 'room_type', 'status', 'notes']),
+                    ['room_name', 'room_type', 'status', 'notes']
                 ),
             ]
         );
@@ -107,6 +132,18 @@ class RoomController extends Controller
         return back()->with('success', 'Đã cập nhật trạng thái phòng.');
     }
 
+    public function destroy(Room $room)
+    {
+        $error = $this->roomService->destroyRoom($room);
+
+        if ($error) {
+            return back()->with('error', $error);
+        }
+
+        return redirect()->route('admin.rooms.index')
+            ->with('success', 'Xoá phòng khám thành công!');
+    }
+
     // ================================================================
     //  CA TRỰC (DoctorSchedules)
     // ================================================================
@@ -138,6 +175,33 @@ class RoomController extends Controller
         return redirect()
             ->route('admin.rooms.schedule.index', ['date' => $request->work_date])
             ->with('success', 'Tạo ca làm việc thành công!');
+    }
+
+    /**
+     * Tự động phân ca trực dựa trên thiết lập.
+     */
+    public function autoAllocate(Request $request)
+    {
+        $request->validate([
+            'start_date'        => 'required|date|after_or_equal:today',
+            'end_date'          => 'required|date|after_or_equal:start_date',
+            'slot_duration'     => 'required|integer|in:10,15,20,30,45,60',
+            'max_slot'          => 'required|integer|min:1|max:100',
+            'morning_enabled'   => 'nullable|boolean',
+            'afternoon_enabled' => 'nullable|boolean',
+            'overwrite'         => 'nullable|boolean',
+            'department_id'     => 'nullable|exists:departments,department_id',
+        ]);
+
+        $res = $this->roomService->autoAllocateSchedules($request->all());
+
+        if (!$res['success']) {
+            return back()->with('error', $res['message']);
+        }
+
+        return redirect()
+            ->route('admin.rooms.schedule.index', ['date' => $request->start_date])
+            ->with('success', $res['message']);
     }
 
     public function editSchedule(DoctorSchedule $schedule)
@@ -202,5 +266,35 @@ class RoomController extends Controller
         );
 
         return response()->json(['conflict' => $conflict]);
+    }
+
+    /**
+     * JSON endpoint cho realtime polling trạng thái phòng.
+     */
+    public function roomsData(Request $request)
+    {
+        $rooms = $this->roomService->buildIndexData($request);
+        $stats = $rooms['stats'];
+        $roomList = $rooms['rooms']->map(function ($r) use ($rooms) {
+            $todayDoc = $rooms['todaySchedules']->firstWhere('room_id', $r->room_id);
+            return [
+                'room_id'     => $r->room_id,
+                'room_code'   => $r->room_code,
+                'room_name'   => $r->room_name,
+                'room_type'   => $r->room_type,
+                'status'      => $r->status,
+                'department'  => $r->department?->department_name,
+                'doctor_today'=> $todayDoc?->doctor?->full_name,
+                'edit_url'    => route('admin.rooms.edit', $r),
+                'show_url'    => route('admin.rooms.show', $r),
+                'destroy_url' => route('admin.rooms.destroy', $r),
+            ];
+        });
+
+        return response()->json([
+            'stats'       => $stats,
+            'rooms'       => $roomList,
+            'timestamp'   => now()->toIso8601String(),
+        ]);
     }
 }

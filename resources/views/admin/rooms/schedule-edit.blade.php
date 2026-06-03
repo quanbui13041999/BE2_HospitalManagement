@@ -38,8 +38,10 @@
         <div class="card-header fw-semibold">
             <i class="bi bi-pencil me-2"></i>Thông tin ca làm việc
         </div>
-        <form method="POST" action="{{ route('admin.rooms.schedule.update', $schedule) }}">
+        <form method="POST" action="{{ route('admin.rooms.schedule.update', $schedule) }}" id="scheduleEditForm">
             @csrf @method('PUT')
+            {{-- Optimistic lock token: phát hiện xung đột cập nhật 2 tab --}}
+            <input type="hidden" name="_lock_version" value="{{ $schedule->updated_at?->timestamp }}">
             <div class="card-body row g-3">
 
                 <div class="col-md-6">
@@ -149,7 +151,7 @@
                 </div>
             </div>
             <div class="card-footer d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="scheduleSubmitBtn">
                     <i class="bi bi-floppy me-1"></i>Lưu thay đổi
                 </button>
                 <a href="{{ route('admin.rooms.schedule.index', ['date' => $schedule->work_date->toDateString()]) }}"
@@ -159,3 +161,13 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.getElementById('scheduleEditForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('scheduleSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang lưu...';
+});
+</script>
+@endpush

@@ -20,6 +20,15 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function index(Request $request)
     {
+        // Validate page param: phải là số nguyên dương
+        $page = $request->query('page');
+        if ($page !== null && (!ctype_digit((string) $page) || (int) $page < 1)) {
+            return redirect()->route('admin.services.index', array_merge(
+                $request->except('page'),
+                ['page' => 1]
+            ))->with('error', 'Tham số trang không hợp lệ, đã chuyển về trang 1.');
+        }
+
         return view('admin.services.index', $this->serviceService->buildIndexData($request));
     }
 
@@ -74,9 +83,11 @@ class ServiceController extends Controller
         if (request()->ajax() || request()->wantsJson()) {
             $service->load(['department']);
             return response()->json([
-                'success' => true,
-                'service' => $service,
-                'departments' => $this->serviceService->buildEditData($service)['departments'],
+                'success'              => true,
+                'service'              => $service,
+                'departments'          => $this->serviceService->buildEditData($service)['departments'],
+                // Optimistic lock token: frontend dùng giá trị này để phát hiện xung đột
+                'updated_at_timestamp' => $service->updated_at?->timestamp,
             ]);
         }
         return view('admin.services.edit', $this->serviceService->buildEditData($service));
@@ -87,6 +98,22 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function update(ServiceUpdateRequest $request, Service $service)
     {
+        // Optimistic locking: kiểm tra xung đột cập nhật 2 tab
+        $lockVersion = $request->input('_lock_version');
+        if ($lockVersion !== null && $service->updated_at !== null) {
+            $dbTimestamp = (string) $service->updated_at->timestamp;
+            if ($lockVersion !== $dbTimestamp) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Dữ liệu dịch vụ đã được người khác cập nhật. Vui lòng tải lại trang trước khi cập nhật.',
+                    ], 409);
+                }
+                return redirect()->route('admin.services.edit', $service)
+                    ->with('error', 'Dịch vụ đã được người khác cập nhật trước đó. Vui lòng tải lại trang trước khi tiếp tục chỉnh sửa.');
+            }
+        }
+
         $this->serviceService->updateService($service, $request->validated());
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -200,5 +227,53 @@ class ServiceController extends Controller
         }
 
         return back()->with('success', 'Đã xoá mức giá.');
+    }
+
+    /**
+     * JSON endpoint cho realtime polling – admin index.
+     */
+    public function servicesData(Request $request)
+    {
+        $services = $this->serviceService->buildIndexData($request);
+        return response()->json([
+            'stats' => [
+                'total'    => $services['services']->total(),
+                'active'   => $services['services']->getCollection()->where('status', true)->count(),
+                'inactive' => $services['services']->getCollection()->where('status', false)->count(),
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * JSON endpoint công khai – cho trang /dich-vu polling realtime.
+     * Chỉ trả về dịch vụ đang hoạt động, đủ thông tin cho frontend cập nhật card.
+     */
+    public function publicServicesData(Request $request)
+    {
+        $services = $this->serviceService->buildPublicIndexData($request)['services'];
+
+        $list = $services->getCollection()->map(function ($s) {
+            $priceNormal = $s->activePrices->firstWhere('price_type', 'Thường');
+            $lowestPrice = $s->activePrices->min('price');
+            return [
+                'service_id'       => $s->service_id,
+                'service_code'     => $s->service_code,
+                'service_name'     => $s->service_name,
+                'description'      => $s->description,
+                'duration_minutes' => $s->duration_minutes,
+                'department'       => $s->department?->department_name,
+                'price_normal'     => $priceNormal?->price,
+                'lowest_price'     => $lowestPrice,
+                'show_url'         => route('user.services.show', $s->service_id),
+                'book_url'         => route('appointments.create') . '?service_id=' . $s->service_id,
+            ];
+        });
+
+        return response()->json([
+            'total'     => $services->total(),
+            'services'  => $list,
+            'timestamp' => now()->toIso8601String(),
+        ]);
     }
 }

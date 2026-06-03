@@ -68,11 +68,39 @@ class PatientSearchTest extends TestCase
 
             $this->assertTrue($response->json('total') >= 1);
 
+            $emptyFilterResponse = $this->actingAs($admin)
+                ->getJson(route('admin.patients.search.results', [
+                    'keyword' => '',
+                    'gender' => '',
+                    'status' => '',
+                    'membership_tier' => '',
+                    'has_insurance' => '',
+                    'sort_by' => 'created_at',
+                    'sort_dir' => 'desc',
+                    'per_page' => 12,
+                ]))
+                ->assertOk();
+
+            $this->assertTrue($emptyFilterResponse->json('total') >= 1); // fixed: filter rong khong duoc lam mat danh sach benh nhan
+
             // 5. Test xem chi tiết bệnh nhân qua AJAX
             $this->actingAs($admin)
                 ->getJson(route('admin.patients.detail', $patient->user_id))
                 ->assertOk()
                 ->assertJsonStructure(['success', 'html']);
+
+            $this->actingAs($admin)
+                ->getJson(route('admin.patients.search.results', [
+                    'age_from' => 80,
+                    'age_to' => 20,
+                ]))
+                ->assertUnprocessable(); // fixed: tuoi tu khong duoc lon hon tuoi den
+
+            $this->actingAs($admin)
+                ->getJson(route('admin.patients.search.results', [
+                    'appointment_status' => 'sai-trang-thai',
+                ]))
+                ->assertUnprocessable(); // fixed: chan enum trang thai lich hen khong hop le
 
         } finally {
             $patient->delete();
@@ -139,6 +167,50 @@ class PatientSearchTest extends TestCase
                     'explanation' => 'Đã tìm kiếm bệnh nhân nữ tên Lan trong độ tuổi 30-45 có bảo hiểm vàng bị tiểu đường'
                 ]);
 
+            $this->actingAs($admin)
+                ->postJson(route('admin.patients.ai-search'), [
+                    'query' => str_repeat('a', 501),
+                ])
+                ->assertUnprocessable(); // fixed: gioi han do dai cau hoi AI
+
+        } finally {
+            $admin->delete();
+        }
+    }
+
+    public function test_ai_search_falls_back_when_gemini_is_unstable(): void
+    {
+        config(['services.gemini.api_key' => 'TEST_GEMINI_API_KEY']);
+
+        $admin = User::create([
+            'full_name' => 'AI Fallback Admin',
+            'email' => 'ai_fallback_admin_' . uniqid() . '@example.test',
+            'password' => Hash::make('secret123'),
+            'role_id' => 1,
+            'status' => 1,
+        ]);
+
+        Http::fake([
+            'https://generativelanguage.googleapis.com/*' => Http::response([
+                'error' => ['code' => 503, 'message' => 'Service unavailable'],
+            ], 503),
+        ]);
+
+        try {
+            $this->actingAs($admin)
+                ->postJson(route('admin.patients.ai-search'), [
+                    'query' => 'Tìm bệnh nhân nam có bảo hiểm đã khám hoàn thành',
+                ])
+                ->assertOk()
+                ->assertJson([
+                    'success' => true,
+                    'fallback' => true,
+                    'filters' => [
+                        'gender' => 'Nam',
+                        'has_insurance' => '1',
+                        'appointment_status' => 'Hoàn thành',
+                    ],
+                ]);
         } finally {
             $admin->delete();
         }

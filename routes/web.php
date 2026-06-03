@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Doctor\ReviewsDoctorController;
 use App\Http\Controllers\Admin\BhytController;
+use App\Http\Controllers\Admin\DeviceController;
+use App\Http\Controllers\Admin\DeviceTypeController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
@@ -13,6 +15,7 @@ use App\Http\Controllers\User\PaymentController as UserPaymentController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HealthBackgroundController;
+use App\Http\Controllers\HealthTrackingController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Doctor\DoctorScheduleController;
@@ -20,9 +23,12 @@ use App\Http\Controllers\Doctor\DashboardController;
 use App\Http\Controllers\Doctor\SlotHoldController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\AdminNutritionController;
 use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\MedicalHistoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Doctor\DoctorAppointmentController;
+use App\Http\Controllers\PatientNutritionController;
 use App\Http\Controllers\Admin\PatientSearchController;
 use App\Http\Controllers\Admin\ActivityLogController;
 
@@ -49,6 +55,8 @@ use App\Http\Controllers\Admin\TreatmentReminderAdminController;
 // TRANG CHỦ & AUTH
 // ============================================================
 
+Route::pattern('id', '[0-9]+'); /* fixed: URL id=abc khong vao controller, tra 404 than thien */
+
 Route::get('/', [HomeController::class, 'welcome'])->name('home');
 
 Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
@@ -63,16 +71,17 @@ Route::post('/logout',   [AuthController::class, 'logout'])->name('logout');
 
 // Dịch vụ công khai (không cần đăng nhập)
 Route::prefix('dich-vu')->name('user.services.')->controller(UserServiceController::class)->group(function () {
+    Route::get('/data',    'publicServicesData')->name('data');   // Realtime polling
     Route::get('/',        'index')->name('index');
-    Route::get('/{id}',    'show')->name('show');
-    Route::get('/{id}/gia/{priceType}', 'getPrice')->name('get-price');
+    Route::get('/{id}',    'show')->name('show')->whereNumber('id');
+    Route::get('/{id}/gia/{priceType}', 'getPrice')->name('get-price')->whereNumber('id');
 });
 
 Route::redirect('/services', '/dich-vu', 301);
 
 // Tin tức công khai (không cần đăng nhập)
 Route::get('/news',      [NewsController::class, 'index'])->name('news.index');
-Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
+Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show')->whereNumber('id');
 
 // Trang bác sĩ
 Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
@@ -91,8 +100,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/dropdown', [NotificationController::class, 'dropdown'])->name('dropdown');
         Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('mark-all-read');
-        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
-        Route::post('/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('mark-read');
+        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show')->whereNumber('notification');
+        Route::post('/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('mark-read')->whereNumber('notification');
     });
 
     // --------------------------------------------------------
@@ -105,6 +114,9 @@ Route::middleware('auth')->group(function () {
         // Quick reschedule from day-off notification email
         Route::get('/xac-nhan-doi-lich', [AppointmentController::class, 'confirmRescheduleFromEmail'])->name('reschedule-confirm');
     });
+
+    // Đăng ký dịch vụ & Thanh toán riêng lẻ (không qua bác sĩ)
+    Route::post('/dich-vu/{id}/dat-mua', [UserServiceController::class, 'bookService'])->name('user.services.book');
 
     // API gợi ý (AJAX)
     Route::get('/api/appointments/suggest',    [AppointmentController::class, 'suggest'])->name('appointments.suggest');
@@ -141,14 +153,15 @@ Route::middleware('auth')->group(function () {
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
         Route::get('/history',                          [UserPaymentController::class, 'history'])->name('history');
-        Route::get('/appointment/{appointmentId}',      [UserPaymentController::class, 'show'])->name('show');
+        Route::get('/appointment/{appointmentId}',      [UserPaymentController::class, 'show'])->name('show')->whereNumber('appointmentId');
         Route::post('/store',                           [UserPaymentController::class, 'store'])->name('store');
-        Route::get('/{paymentId}/qr',                  [UserPaymentController::class, 'qr'])->name('qr');
-        Route::get('/{paymentId}/gateway',             [UserPaymentController::class, 'gateway'])->name('gateway');
-        Route::post('/{paymentId}/confirm',             [UserPaymentController::class, 'confirm'])->name('confirm');
-        Route::get('/{paymentId}/fail',                [UserPaymentController::class, 'fail'])->name('fail');
-        Route::post('/{paymentId}/fail',               [UserPaymentController::class, 'fail'])->name('fail.post');
-        Route::get('/{paymentId}/success',             [UserPaymentController::class, 'success'])->name('success');
+        Route::get('/{paymentId}/qr',                  [UserPaymentController::class, 'qr'])->name('qr')->whereNumber('paymentId');
+        Route::get('/{paymentId}/gateway',             [UserPaymentController::class, 'gateway'])->name('gateway')->whereNumber('paymentId');
+        Route::get('/{paymentId}/check',               [UserPaymentController::class, 'check'])->name('check')->whereNumber('paymentId');
+        Route::post('/{paymentId}/confirm',             [UserPaymentController::class, 'confirm'])->name('confirm')->whereNumber('paymentId');
+        Route::get('/{paymentId}/fail',                [UserPaymentController::class, 'fail'])->name('fail')->whereNumber('paymentId');
+        Route::post('/{paymentId}/fail',               [UserPaymentController::class, 'fail'])->name('fail.post')->whereNumber('paymentId');
+        Route::get('/{paymentId}/success',             [UserPaymentController::class, 'success'])->name('success')->whereNumber('paymentId');
     });
 
     // --------------------------------------------------------
@@ -213,9 +226,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/',                        [ChatController::class, 'index'])->name('index');
         Route::post('/room',                   [ChatController::class, 'getOrCreateRoom'])->name('room');
-        Route::get('/messages/{roomId}',       [ChatController::class, 'getMessages'])->name('messages');
+        Route::get('/messages/{roomId}',       [ChatController::class, 'getMessages'])->name('messages')->whereNumber('roomId');
         Route::post('/send',                   [ChatController::class, 'sendMessage'])->name('send');
-        Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall');
+        Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall')->whereNumber('messageId');
     });
 
     // --------------------------------------------------------
@@ -237,19 +250,6 @@ Route::middleware(['auth'])->prefix('treatment')->name('treatment.')->group(func
     Route::post('/confirm/{reminder}', [TreatmentReminderController::class, 'confirm'])->name('confirm');
     Route::post('/instruction/toggle', [TreatmentReminderController::class, 'toggleInstruction'])->name('instruction.toggle');
     Route::get('/report',              [TreatmentReminderController::class, 'report'])->name('report');
-});
-
-// Public routes
-Route::get('/news', [NewsController::class, 'index'])->name('news.index');
-Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
-
-
-// Admin routes
-Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
-    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
-    Route::patch('news/{id}/toggle', [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
-    Route::post('news/{id}/send-email', [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
-
 });
 
 // ============================================================
@@ -312,8 +312,53 @@ Route::prefix('api/v1')->middleware('auth')->group(function () {
 // Medical Records and Medical History
 // ============================================================
 
-require_once __DIR__ . "/medical_records.php";
-require_once __DIR__ . "/medical_history.php";
+Route::prefix('medical-records')
+    ->middleware(['auth'])
+    ->name('medical-records.')
+    ->group(function () {
+        // CRUD cơ bản
+        Route::get('/', [MedicalRecordController::class, 'index'])->name('index');
+        Route::get('/create', [MedicalRecordController::class, 'create'])->name('create');
+        Route::post('/', [MedicalRecordController::class, 'store'])->name('store');
+        Route::get('/{id}', [MedicalRecordController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [MedicalRecordController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [MedicalRecordController::class, 'update'])->name('update');
+        Route::delete('/{id}', [MedicalRecordController::class, 'destroy'])->name('destroy');
+        Route::get('/{id}/print', [MedicalRecordController::class, 'print'])->name('print');
+
+        // File đính kèm
+        Route::post('/{id}/attachments', [MedicalRecordController::class, 'uploadAttachment'])->name('attachments.upload');
+        Route::get('/{recordId}/attachments/{attachmentId}/view', [MedicalRecordController::class, 'viewAttachment'])->name('attachments.view');
+        Route::delete('/{recordId}/attachments/{attachmentId}', [MedicalRecordController::class, 'deleteAttachment'])->name('attachments.destroy');
+
+        // Kết quả xét nghiệm (chỉ Doctor/Admin)
+        Route::put('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'updateOrderResult'])->name('orders.update-result');
+        Route::delete('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'deleteOrderResult'])->name('orders.delete-result');
+    });
+
+Route::middleware('auth')
+    ->prefix('bac-si')
+    ->name('doctor.')
+    ->group(function () {
+        Route::get('/lich-hen', [DoctorAppointmentController::class, 'index'])
+            ->name('appointments.index');
+    });
+
+// Bác sĩ xem tiền sử & tài liệu của bệnh nhân
+Route::middleware('auth')->group(function () {
+    Route::get('/health/patient/{patientId}', [HealthBackgroundController::class, 'showPatient'])
+        ->name('health.patient.show');
+
+    Route::get('/documents/patient/{patientId}', [DocumentController::class, 'indexPatient'])
+        ->name('documents.patient.index');
+});
+
+Route::prefix('medical_history')
+    ->middleware(['auth'])
+    ->name('medical_history.')
+    ->group(function () {
+        Route::get('/', [MedicalHistoryController::class, 'index'])->name('index');
+    });
 
 // ============================================================
 // ADMIN ROUTES (Yêu cầu đăng nhập + quyền is_admin)
@@ -330,19 +375,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     // Quản lý Dịch vụ (CRUD + bảng giá)
     // --------------------------------------------------------
     Route::prefix('services')->name('services.')->group(function () {
+        Route::get('/data',           [AdminServiceController::class, 'servicesData'])->name('data');   // Realtime polling
         Route::get('/',               [AdminServiceController::class, 'index'])->name('index');
         Route::get('/create',         [AdminServiceController::class, 'create'])->name('create');
         Route::post('/',              [AdminServiceController::class, 'store'])->name('store');
-        Route::get('/{service}',      [AdminServiceController::class, 'show'])->name('show');
-        Route::get('/{service}/edit', [AdminServiceController::class, 'edit'])->name('edit');
-        Route::put('/{service}',      [AdminServiceController::class, 'update'])->name('update');
-        Route::delete('/{service}',   [AdminServiceController::class, 'destroy'])->name('destroy');
-        Route::patch('/{service}/toggle-status', [AdminServiceController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/{service}',      [AdminServiceController::class, 'show'])->name('show')->whereNumber('service');
+        Route::get('/{service}/edit', [AdminServiceController::class, 'edit'])->name('edit')->whereNumber('service');
+        Route::put('/{service}',      [AdminServiceController::class, 'update'])->name('update')->whereNumber('service');
+        Route::delete('/{service}',   [AdminServiceController::class, 'destroy'])->name('destroy')->whereNumber('service');
+        Route::patch('/{service}/toggle-status', [AdminServiceController::class, 'toggleStatus'])->name('toggle-status')->whereNumber('service');
 
         // Bảng giá (nested)
-        Route::post('/{service}/prices',           [AdminServiceController::class, 'storePrice'])->name('prices.store');
-        Route::put('/{service}/prices/{price}',    [AdminServiceController::class, 'updatePrice'])->name('prices.update');
-        Route::delete('/{service}/prices/{price}', [AdminServiceController::class, 'destroyPrice'])->name('prices.destroy');
+        Route::post('/{service}/prices',           [AdminServiceController::class, 'storePrice'])->name('prices.store')->whereNumber('service');
+        Route::put('/{service}/prices/{price}',    [AdminServiceController::class, 'updatePrice'])->name('prices.update')->whereNumber(['service', 'price']);
+        Route::delete('/{service}/prices/{price}', [AdminServiceController::class, 'destroyPrice'])->name('prices.destroy')->whereNumber(['service', 'price']);
     });
 
     // --------------------------------------------------------
@@ -352,7 +398,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 
         // Lịch tuần
         Route::get('/weekly',          [RoomController::class, 'weeklySchedule'])->name('weekly');
-        Route::get('/weekly/{roomId}', [RoomController::class, 'weeklySchedule'])->name('weekly.room');
+        Route::get('/weekly/{roomId}', [RoomController::class, 'weeklySchedule'])->name('weekly.room')->whereNumber('roomId');
         Route::get('/weekly-ajax',     [RoomController::class, 'weeklyScheduleAjax'])->name('weekly.ajax');
 
         // Quản lý ca trực
@@ -361,20 +407,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
             Route::get('/',                [RoomController::class, 'scheduleIndex'])->name('index');
             Route::get('/create',          [RoomController::class, 'createSchedule'])->name('create');
             Route::post('/',               [RoomController::class, 'storeSchedule'])->name('store');
-            Route::get('/{schedule}/edit', [RoomController::class, 'editSchedule'])->name('edit');
-            Route::put('/{schedule}',      [RoomController::class, 'updateSchedule'])->name('update');
-            Route::delete('/{schedule}',   [RoomController::class, 'destroySchedule'])->name('destroy');
+            Route::post('/auto-allocate',  [RoomController::class, 'autoAllocate'])->name('auto-allocate');
+            Route::get('/{schedule}/edit', [RoomController::class, 'editSchedule'])->name('edit')->whereNumber('schedule');
+            Route::put('/{schedule}',      [RoomController::class, 'updateSchedule'])->name('update')->whereNumber('schedule');
+            Route::delete('/{schedule}',   [RoomController::class, 'destroySchedule'])->name('destroy')->whereNumber('schedule');
             Route::get('/check-conflict',  [RoomController::class, 'checkConflict'])->name('check-conflict');
         });
 
         // CRUD phòng
+        Route::get('/data',            [RoomController::class, 'roomsData'])->name('data');   // Realtime polling
         Route::get('/',                [RoomController::class, 'index'])->name('index');
         Route::get('/create',          [RoomController::class, 'create'])->name('create');
         Route::post('/',               [RoomController::class, 'store'])->name('store');
-        Route::get('/{room}',          [RoomController::class, 'show'])->name('show');
-        Route::get('/{room}/edit',     [RoomController::class, 'edit'])->name('edit');
-        Route::put('/{room}',          [RoomController::class, 'update'])->name('update');
-        Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
+        Route::get('/{room}',          [RoomController::class, 'show'])->name('show')->whereNumber('room');
+        Route::get('/{room}/edit',     [RoomController::class, 'edit'])->name('edit')->whereNumber('room');
+        Route::put('/{room}',          [RoomController::class, 'update'])->name('update')->whereNumber('room');
+        Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status')->whereNumber('room');
+        Route::delete('/{room}',       [RoomController::class, 'destroy'])->name('destroy')->whereNumber('room');
     });
 
     // --------------------------------------------------------
@@ -382,12 +431,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     // --------------------------------------------------------
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('/',                         [PaymentController::class, 'index'])->name('index');
-        Route::get('/checkout/{invoiceId}',     [PaymentController::class, 'checkout'])->name('checkout');
-        Route::get('/{paymentId}',              [PaymentController::class, 'show'])->name('show');
+        Route::get('/checkout/{invoiceId}',     [PaymentController::class, 'checkout'])->name('checkout')->whereNumber('invoiceId');
+        Route::get('/{paymentId}',              [PaymentController::class, 'show'])->name('show')->whereNumber('paymentId');
         Route::post('/store',                   [PaymentController::class, 'store'])->name('store');
-        Route::get('/{paymentId}/qr',           [PaymentController::class, 'qr'])->name('qr');
-        Route::post('/{paymentId}/confirm',     [PaymentController::class, 'confirm'])->name('confirm');
-        Route::post('/{paymentId}/fail',        [PaymentController::class, 'fail'])->name('fail');
+        Route::get('/{paymentId}/qr',           [PaymentController::class, 'qr'])->name('qr')->whereNumber('paymentId');
+        Route::post('/{paymentId}/confirm',     [PaymentController::class, 'confirm'])->name('confirm')->whereNumber('paymentId');
+        Route::post('/{paymentId}/fail',        [PaymentController::class, 'fail'])->name('fail')->whereNumber('paymentId');
     });
 
     // --------------------------------------------------------
@@ -415,9 +464,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     // --------------------------------------------------------
     // Bản tin bệnh viện (Admin)
     // --------------------------------------------------------
-    Route::resource('news', AdminNewsController::class)->parameters(['news' => 'id']);
-    Route::patch('news/{id}/toggle',     [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
-    Route::post('news/{id}/send-email',  [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
+    Route::resource('news', AdminNewsController::class)
+        ->parameters(['news' => 'id'])
+        ->except(['show']);
+    Route::patch('news/{id}/toggle',     [AdminNewsController::class, 'togglePublish'])->name('news.toggle')->whereNumber('id');
+    Route::post('news/{id}/send-email',  [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail')->whereNumber('id');
 
     // --------------------------------------------------------
     // Chat CSKH – Admin/Staff Routes
@@ -434,12 +485,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     Route::prefix('chatroom')->name('chatroom.')->group(function () {
         Route::get('/',                        [ChatRoomController::class, 'index'])->name('index');
         Route::get('/list',                    [ChatRoomController::class, 'listJson'])->name('list');
-        Route::get('/{roomId}/messages',       [ChatRoomController::class, 'getMessages'])->name('messages');
-        Route::post('/{roomId}/send',          [ChatRoomController::class, 'sendMessage'])->name('send');
-        Route::post('/{roomId}/close',         [ChatRoomController::class, 'closeRoom'])->name('close');
-        Route::delete('/{roomId}',             [ChatRoomController::class, 'deleteRoom'])->name('delete');
-        Route::delete('/messages/{messageId}', [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
+        Route::get('/{roomId}/messages',       [ChatRoomController::class, 'getMessages'])->name('messages')->whereNumber('roomId');
+        Route::post('/{roomId}/send',          [ChatRoomController::class, 'sendMessage'])->name('send')->whereNumber('roomId');
+        Route::post('/{roomId}/close',         [ChatRoomController::class, 'closeRoom'])->name('close')->whereNumber('roomId');
+        Route::delete('/{roomId}',             [ChatRoomController::class, 'deleteRoom'])->name('delete')->whereNumber('roomId');
+        Route::delete('/messages/{messageId}', [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage')->whereNumber('messageId');
     });
+
+    Route::resource('device-types', DeviceTypeController::class)
+        ->parameters(['device-types' => 'device_type'])
+        ->except(['show']);
+    Route::resource('devices', DeviceController::class)
+        ->except(['show']);
 
 }); // Close admin block
 
@@ -521,7 +578,7 @@ Route::middleware(['auth'])->group(function () {
 Route::prefix('admin')->middleware(['auth', 'role:Admin,Lễ tân,Bác sĩ'])->group(function () {
     Route::get('/patients/search', [PatientSearchController::class, 'index'])->name('admin.patients.search');
     Route::get('/patients/search/results', [PatientSearchController::class, 'search'])->name('admin.patients.search.results');
-    Route::get('/patients/{id}/detail', [PatientSearchController::class, 'detail'])->name('admin.patients.detail');
+    Route::get('/patients/{id}/detail', [PatientSearchController::class, 'detail'])->name('admin.patients.detail')->whereNumber('id');
     Route::post('/patients/ai-search', [PatientSearchController::class, 'aiSearch'])->name('admin.patients.ai-search');
 });
 // ============================================================
@@ -552,7 +609,62 @@ Route::middleware(['auth', 'check_queue_role:1,2'])->prefix('queue/doctor')->nam
     Route::get('/api/{scheduleId}/snapshot',           [QueueDoctorController::class, 'apiSnapshot'])->name('api.snapshot')->whereNumber('scheduleId');
 
 });
-// che do dinh duong
-require __DIR__.'/nutrition.php';
- // nhat ky suc khoe chu dong
- require __DIR__.'/health_tracking.php';   
+// ============================================================
+// CHẾ ĐỘ DINH DƯỠNG
+// ============================================================
+
+Route::middleware(['auth', 'role:1,2'])->prefix('admin/nutrition')->name('admin.nutrition.')->group(function () {
+    // 1. Quản lý bài viết (Nutrition Articles)
+    Route::get('/', [AdminNutritionController::class, 'index'])->name('index');
+    Route::get('/create', [AdminNutritionController::class, 'create'])->name('create');
+    Route::post('/', [AdminNutritionController::class, 'store'])->name('store');
+    Route::get('/{article}/edit', [AdminNutritionController::class, 'edit'])->name('edit');
+    Route::put('/{article}', [AdminNutritionController::class, 'update'])->name('update');
+    Route::delete('/{article}', [AdminNutritionController::class, 'destroy'])->name('destroy');
+
+    // 2. Quản lý quy tắc gợi ý thực đơn (Disease Nutrition Rules)
+    Route::prefix('rules')->name('rules.')->group(function () {
+        Route::get('/', [AdminNutritionController::class, 'rulesIndex'])->name('index');
+        Route::get('/create', [AdminNutritionController::class, 'rulesCreate'])->name('create');
+        Route::post('/', [AdminNutritionController::class, 'rulesStore'])->name('store');
+        Route::get('/{rule}/edit', [AdminNutritionController::class, 'rulesEdit'])->name('edit');
+        Route::put('/{rule}', [AdminNutritionController::class, 'rulesUpdate'])->name('update');
+        Route::delete('/{rule}', [AdminNutritionController::class, 'rulesDestroy'])->name('destroy');
+    });
+
+    // 3. Quản lý danh mục thực phẩm & calo (Foods Database)
+    Route::prefix('foods')->name('foods.')->group(function () {
+        Route::get('/', [AdminNutritionController::class, 'foodsIndex'])->name('index');
+        Route::get('/create', [AdminNutritionController::class, 'foodsCreate'])->name('create');
+        Route::post('/', [AdminNutritionController::class, 'foodsStore'])->name('store');
+        Route::get('/{food}/edit', [AdminNutritionController::class, 'foodsEdit'])->name('edit');
+        Route::put('/{food}', [AdminNutritionController::class, 'foodsUpdate'])->name('update');
+        Route::delete('/{food}', [AdminNutritionController::class, 'foodsDestroy'])->name('destroy');
+    });
+});
+
+Route::middleware(['auth'])->prefix('patient/nutrition')->name('patient.nutrition.')->group(function () {
+    Route::get('/', [PatientNutritionController::class, 'index'])->name('index');
+    Route::post('/meal-log', [PatientNutritionController::class, 'storeMealLog'])->name('meal-log.store');
+    Route::delete('/meal-log/{mealLog}', [PatientNutritionController::class, 'destroyMealLog'])->name('meal-log.destroy');
+});
+
+// ============================================================
+// NHẬT KÝ SỨC KHỎE CHỦ ĐỘNG
+// ============================================================
+
+Route::middleware('auth')->group(function () {
+    Route::get('/health-tracking', [HealthTrackingController::class, 'index'])->name('health-tracking.index');
+    Route::post('/api/health-tracking/check-risk', [HealthTrackingController::class, 'checkRisk'])->name('health-tracking.check-risk');
+
+    // Chỉ patient mới được tạo/sửa/xóa
+    Route::middleware('can:create,App\Models\HealthTracking')->group(function () {
+        Route::get('/health-tracking/create', [HealthTrackingController::class, 'create'])->name('health-tracking.create');
+        Route::post('/health-tracking', [HealthTrackingController::class, 'store'])->name('health-tracking.store');
+        Route::get('/health-tracking/{healthTracking}/edit', [HealthTrackingController::class, 'edit'])->name('health-tracking.edit')->whereNumber('healthTracking');
+        Route::put('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'update'])->name('health-tracking.update')->whereNumber('healthTracking');
+        Route::delete('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'destroy'])->name('health-tracking.destroy')->whereNumber('healthTracking');
+    });
+
+    Route::get('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'show'])->name('health-tracking.show')->whereNumber('healthTracking');
+});

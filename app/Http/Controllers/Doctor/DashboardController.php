@@ -9,6 +9,8 @@ use App\Http\Requests\Doctor\UpdateDoctorRequest;
 use App\Http\Requests\Doctor\UploadAvatarRequest;
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\MedicalRecord;
+use App\Models\QueueTicket;
 use App\Services\Doctor\DoctorDashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -232,17 +234,48 @@ class DashboardController extends Controller
 
     private function formatAppointment($a): array
     {
+        $record = $a->medicalRecord;
+        $queueTicket = QueueTicket::where('appointment_id', $a->appointment_id)
+            ->whereDate('queue_date', today())
+            ->latest('ticket_id')
+            ->first();
+        $queueStatus = $queueTicket?->status;
+        $examStatus = match ($queueStatus) {
+            'in_progress' => 'Đang khám',
+            'completed' => 'Hoàn thành',
+            default => $a->status === 'Hoàn thành' ? 'Hoàn thành' : 'Chưa khám',
+        };
+
+        $oldRecordCount = MedicalRecord::where('patient_id', $a->user_id)
+            ->where(function ($query) use ($a) {
+                $query->whereNull('appointment_id')
+                    ->orWhere('appointment_id', '!=', $a->appointment_id);
+            })
+            ->count();
+
         return [
-            'id'               => $a->appointment_id,
-            'patient_name'     => $a->patient_name,
-            'patient_phone'    => $a->patient_phone,
-            'service_name'     => $a->service_name ?? 'Khám tổng quát',
-            'doctor_name'      => $a->doctor_name,
-            'appointment_time' => $a->appointment_time?->format('Y-m-d H:i'),
-            'queue_number'     => $a->queue_number,
-            'status'           => $a->status,
-            'note'             => $a->note,
-            'slot_duration'    => $a->slot_duration ?? 30,
+            'id'              => $a->appointment_id,
+            'patient_id'      => $a->user_id,
+            'patient_name'    => $a->patient_name,
+            'patient_phone'   => $a->patient_phone,
+            'service_name'    => $a->service_name ?? 'Khám tổng quát',
+            'doctor_name'     => $a->doctor_name,
+            'appointment_time'=> $a->appointment_time?->format('Y-m-d H:i'),
+            'queue_number'    => $a->queue_number,
+            'status'          => $a->status,
+            'exam_status'     => $examStatus,
+            'queue_status'    => $queueStatus,
+            'queue_ticket_id' => $queueTicket?->ticket_id,
+            'note'            => $a->note,
+            'slot_duration'   => $a->slot_duration ?? 30,
+            'medical_record_id' => $record?->record_id,
+            'medical_record_url' => $record ? route('medical-records.show', $record->record_id) : null,
+            'medical_record_edit_url' => $record ? route('medical-records.edit', $record->record_id) : null,
+            'medical_record_create_url' => $a->status === 'Hoàn thành'
+                ? route('medical-records.create', ['appointment_id' => $a->appointment_id])
+                : null,
+            'patient_records_url' => route('medical-records.index', ['patient_id' => $a->user_id]),
+            'old_record_count' => $oldRecordCount,
         ];
     }
 
@@ -681,4 +714,3 @@ class DashboardController extends Controller
         }
     }
 }
-

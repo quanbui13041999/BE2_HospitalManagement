@@ -60,8 +60,9 @@ class PaymentController extends Controller
         if ($request->method === 'QR') {
             return redirect()->route('user.payments.qr', $result['payment']->payment_id)
                 ->with([
-                    'qr_content'  => $result['qr_content'],
+                    'qr_content'   => $result['qr_content'],
                     'total_amount' => $result['payment']->total_amount,
+                    'checkout_url' => $result['checkout_url'] ?? null,
                 ]);
         }
 
@@ -106,10 +107,12 @@ class PaymentController extends Controller
                 ->with('error', 'Giao dịch đã hết hạn. Vui lòng tạo giao dịch mới.');
         }
         
-        $qrContent  = session('qr_content', 'HOSPITAL|' . $payment->transaction_ref . '|' . (int)$payment->total_amount . '|Thanh toan lich kham');
+        $qrContent   = session('qr_content', 'HOSPITAL|' . $payment->transaction_ref . '|' . (int)$payment->total_amount . '|Thanh toan lich kham');
         $totalAmount = session('total_amount', $payment->total_amount);
+        $checkoutUrl = session('checkout_url');
+        $isRealMode  = $this->paymentService->isPayOsConfigured();
         
-        return view('user.payments.qr', compact('payment', 'qrContent', 'totalAmount'));
+        return view('user.payments.qr', compact('payment', 'qrContent', 'totalAmount', 'checkoutUrl', 'isRealMode'));
     }
 
     /**
@@ -251,9 +254,12 @@ class PaymentController extends Controller
     /**
      * Lịch sử thanh toán của người dùng
      */
-    public function history()
+    public function history(Request $request)
     {
-        $payments = $this->paymentService->getUserPayments(Auth::id());
-        return view('user.payments.history', compact('payments'));
+        $filters = $request->only(['from_date', 'to_date', 'status', 'method', 'search']);
+        $payments = $this->paymentService->getUserPayments(Auth::id(), $filters);
+        $stats = $this->paymentService->getUserPaymentStats(Auth::id());
+        
+        return view('user.payments.history', compact('payments', 'stats'));
     }
 }

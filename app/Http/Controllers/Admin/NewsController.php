@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\ConcurrentModificationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreNewsRequest;
 use App\Mail\NewsPublishedMail;
@@ -10,16 +11,35 @@ use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 
 class NewsController extends Controller
 {
     public function __construct(private NotificationService $notifications) {}
 
-    public function index()
+    private function assertFreshVersion(mixed $expectedVersion, HospitalNews $article): void
     {
+        if (!$expectedVersion) {
+            throw new ConcurrentModificationException('Thiếu phiên bản dữ liệu. Trang sẽ được tải lại để cập nhật dữ liệu mới.');
+        }
+
+        if ((int) $expectedVersion !== (int) $article->news_version) {
+            throw new ConcurrentModificationException('Bài viết đã được người khác thay đổi. Trang sẽ được tải lại để cập nhật dữ liệu mới.');
+        }
+    }
+
+    public function index(Request $request)
+    {
+        $request->validate([
+            'page' => 'nullable|integer|min:1|max:1000',
+        ]); /* fixed: chan URL page=abc/page qua lon */
+
         $news = HospitalNews::with('author')
             ->orderByDesc('created_at')
             ->paginate(20);
@@ -35,8 +55,8 @@ class NewsController extends Controller
     public function store(StoreNewsRequest $request)
     {
         $data = $request->validated();
+        unset($data['version']);
         $data['author_id']    = Auth::id();
-        $data['created_at']   = now();
         $data['is_published'] = $request->boolean('is_published');
 
         if ($data['is_published']) {
@@ -47,7 +67,18 @@ class NewsController extends Controller
             $data['thumbnail'] = $this->storeThumbnail($request);
         }
 
-        $article = HospitalNews::create($data);
+        try {
+            $article = HospitalNews::create($data);
+        } catch (Exception $e) {
+            Log::error('Create news failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi DB noi bo, khong lo ra UI */
+
+            return back()
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
+                ->withInput();
+        }
 
         if ($article->is_published) {
             $this->notifications->createForAll(
@@ -74,49 +105,136 @@ class NewsController extends Controller
 
     public function update(StoreNewsRequest $request, $id)
     {
-        $article = HospitalNews::findOrFail($id);
-        $data    = $request->validated();
-        $data['is_published'] = $request->boolean('is_published');
+        $data = $request->validated();
+        unset($data['version']);
 
-        if ($data['is_published'] && !$article->published_at) {
-            $data['published_at'] = now();
+        $oldThumbnail = null;
+        $article = null;
+        try {
+            DB::transaction(function () use ($request, $id, &$article, &$data, &$oldThumbnail) {
+                $article = HospitalNews::where('news_id', $id)
+                    ->lockForUpdate()
+                    ->firstOrFail(); /* fixed: khoa bai viet khi cap nhat de tranh ghi de song song */
+
+                $this->assertFreshVersion($request->input('version'), $article);
+
+                $data['is_published'] = $request->boolean('is_published');
+
+                if ($data['is_published'] && !$article->published_at) {
+                    $data['published_at'] = now();
+                }
+
+                if ($request->hasFile('thumbnail')) {
+                    $oldThumbnail = $article->thumbnail;
+                    $data['thumbnail'] = $this->storeThumbnail($request);
+                }
+
+                $article->fill($data);
+                $article->news_version = ((int) $article->news_version) + 1;
+                $article->save(); /* fixed: tang version rieng de bat 2 admin sua cung luc */
+            });
+        } catch (Exception $e) {
+            if ($e instanceof ConcurrentModificationException) {
+                return redirect()->route('admin.news.index')
+                    ->with('warning', $e->getMessage())
+                    ->with('reload_page', true); /* fixed: nguoi submit sau duoc bao va reload danh sach */
+            }
+
+            Log::error('Update news failed', [
+                'news_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
+                ->withInput();
         }
 
-        if ($request->hasFile('thumbnail')) {
-            $this->deleteThumbnail($article->thumbnail);
-            $data['thumbnail'] = $this->storeThumbnail($request);
+        if ($oldThumbnail) {
+            $this->deleteThumbnail($oldThumbnail);
         }
-
-        $article->update($data);
 
         return redirect()->route('admin.news.index')
             ->with('success', 'Đã cập nhật bài viết.');
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $article = HospitalNews::findOrFail($id);
-        if ($article->thumbnail) {
-            $this->deleteThumbnail($article->thumbnail);
+        $thumbnail = null;
+        try {
+            DB::transaction(function () use ($request, $id, &$thumbnail) {
+                $article = HospitalNews::where('news_id', $id)
+                    ->lockForUpdate()
+                    ->firstOrFail(); /* fixed: khoa bai viet khi xoa */
+
+                $this->assertFreshVersion($request->input('version'), $article);
+                $thumbnail = $article->thumbnail;
+                $article->delete();
+            });
+        } catch (Exception $e) {
+            if ($e instanceof ConcurrentModificationException) {
+                return back()
+                    ->with('warning', $e->getMessage())
+                    ->with('reload_page', true);
+            }
+
+            if ($e instanceof ModelNotFoundException) {
+                return back()
+                    ->with('warning', 'Bài viết không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.')
+                    ->with('reload_page', true); /* fixed: xoa item da mat phai bao loi hop le */
+            }
+
+            Log::error('Delete news failed', [
+                'news_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
         }
-        $article->delete();
+
+        if ($thumbnail) {
+            $this->deleteThumbnail($thumbnail);
+        }
 
         return redirect()->route('admin.news.index')
             ->with('success', 'Đã xóa bài viết.');
     }
 
     // Toggle published nhanh không cần vào form
-    public function togglePublish($id)
+    public function togglePublish(Request $request, $id)
     {
-        $article = HospitalNews::findOrFail($id);
-        $wasPublished = (bool) $article->is_published;
-        $article->is_published = !$article->is_published;
-        if ($article->is_published && !$article->published_at) {
-            $article->published_at = now();
-        }
-        $article->save();
+        $article = null;
+        $wasPublished = false;
 
-        if (! $wasPublished && $article->is_published) {
+        try {
+            DB::transaction(function () use ($request, $id, &$article, &$wasPublished) {
+                $article = HospitalNews::where('news_id', $id)
+                    ->lockForUpdate()
+                    ->firstOrFail(); /* fixed: tranh 2 admin toggle trang thai cung luc */
+
+                $this->assertFreshVersion($request->input('version'), $article);
+
+                $wasPublished = (bool) $article->is_published;
+                $article->is_published = ! $article->is_published;
+                if ($article->is_published && !$article->published_at) {
+                    $article->published_at = now();
+                }
+                $article->news_version = ((int) $article->news_version) + 1;
+                $article->save();
+            });
+        } catch (ConcurrentModificationException $e) {
+            return back()
+                ->with('warning', $e->getMessage())
+                ->with('reload_page', true);
+        } catch (ModelNotFoundException $e) {
+            return back()
+                ->with('warning', 'Bài viết không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.')
+                ->with('reload_page', true);
+        }
+
+        if ($article && ! $wasPublished && $article->is_published) {
             $this->notifications->createForAll(
                 'Bản tin mới của bệnh viện',
                 $article->title,
@@ -132,18 +250,8 @@ class NewsController extends Controller
     }
 
     // Gửi email thông báo — chỉ gửi 1 lần, ghi lại email_sent = 1
-    public function sendEmail($id)
+    public function sendEmail(Request $request, $id)
     {
-        $article = HospitalNews::findOrFail($id);
-
-        if (!$article->is_published) {
-            return back()->with('warning', 'Chỉ có thể gửi email cho bài viết đã đăng.');
-        }
-
-        if ($article->email_sent) {
-            return back()->with('warning', 'Email đã được gửi trước đó, không gửi lại.');
-        }
-
         // Lấy danh sách bệnh nhân (role_id = 3 based on User.php)
         $recipients = User::where('role_id', 3)
             ->whereNotNull('email')
@@ -157,6 +265,37 @@ class NewsController extends Controller
 
         if ($recipients->isEmpty()) {
             return back()->with('warning', 'Chưa có bệnh nhân nào có email để gửi thông báo.');
+        }
+
+        try {
+            $article = DB::transaction(function () use ($request, $id) {
+                $article = HospitalNews::where('news_id', $id)
+                    ->lockForUpdate()
+                    ->firstOrFail(); /* fixed: khoa bai viet khi gui mail de tranh bam gui song song */
+
+                $this->assertFreshVersion($request->input('version'), $article);
+
+                if (!$article->is_published) {
+                    throw new ConcurrentModificationException('Bài viết vừa chuyển về nháp. Trang sẽ được tải lại để cập nhật trạng thái.');
+                }
+
+                if ($article->email_sent) {
+                    throw new ConcurrentModificationException('Email đã được người khác gửi trước đó. Trang sẽ được tải lại.');
+                }
+
+                $article->email_sent = 1;
+                $article->news_version = ((int) $article->news_version) + 1;
+                $article->save(); /* fixed: danh dau va tang version trong lock de request sau khong gui trung */
+                return $article->fresh();
+            });
+        } catch (ConcurrentModificationException $e) {
+            return back()
+                ->with('warning', $e->getMessage())
+                ->with('reload_page', true);
+        } catch (ModelNotFoundException $e) {
+            return back()
+                ->with('warning', 'Bài viết không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.')
+                ->with('reload_page', true); /* fixed: gui email sau khi bai bi xoa phai bao loi hop le */
         }
 
         $sentCount = 0;
@@ -178,13 +317,13 @@ class NewsController extends Controller
         }
 
         if ($sentCount === 0) {
+            $article->update(['email_sent' => 0]);
+
             return back()->with(
                 'warning',
                 'Không gửi được email nào. Vui lòng kiểm tra danh sách email bệnh nhân và cấu hình SMTP.'
             );
         }
-
-        $article->update(['email_sent' => 1]);
 
         $message = 'Đã gửi email thông báo thành công cho ' . $sentCount . ' bệnh nhân.';
 
@@ -198,16 +337,9 @@ class NewsController extends Controller
     private function storeThumbnail(Request $request): string
     {
         $file = $request->file('thumbnail');
-        $directory = public_path('uploads/news');
+        $filename = 'news_' . Str::random(32) . '.' . $file->extension();
 
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
-
-        $filename = uniqid('news_', true) . '.' . $file->getClientOriginalExtension();
-        $file->move($directory, $filename);
-
-        return asset('uploads/news/' . $filename);
+        return $file->storePubliclyAs('news', $filename, 'public'); /* fixed: upload qua storage/app/public, khong move truc tiep vao public/ */
     }
 
     private function deleteThumbnail(?string $thumbnail): void
@@ -216,20 +348,14 @@ class NewsController extends Controller
             return;
         }
 
-        $relativePath = $thumbnail;
+        $relativePath = filter_var($thumbnail, FILTER_VALIDATE_URL)
+            ? ltrim(parse_url($thumbnail, PHP_URL_PATH) ?: '', '/')
+            : $thumbnail;
 
-        if (filter_var($thumbnail, FILTER_VALIDATE_URL)) {
-            $relativePath = ltrim(parse_url($thumbnail, PHP_URL_PATH) ?: '', '/');
-        }
+        $relativePath = str($relativePath)->after('storage/')->toString();
 
-        if (! str_starts_with($relativePath, 'uploads/news/')) {
-            return;
-        }
-
-        $path = public_path($relativePath);
-
-        if (is_file($path)) {
-            unlink($path);
+        if (str_starts_with($relativePath, 'news/')) {
+            Storage::disk('public')->delete($relativePath); /* fixed: xoa file qua Storage de tranh path traversal */
         }
     }
 }

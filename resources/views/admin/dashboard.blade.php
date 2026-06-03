@@ -143,7 +143,9 @@
                         <div class="list-group-item border-0 px-4 py-3">
                             <div class="d-flex gap-3">
                                 @if($news->thumbnail)
-                                <img src="{{ $news->thumbnail_url }}" class="rounded shadow-sm" style="width: 60px; height: 60px; object-fit: cover;">
+                                <img src="{{ $news->thumbnail_url }}" class="rounded shadow-sm"
+                                     style="width: 60px; height: 60px; object-fit: cover;"
+                                     onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling?.style?.removeProperty('display');">
                                 @else
                                 <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
                                     <i class="bi bi-newspaper text-muted"></i>

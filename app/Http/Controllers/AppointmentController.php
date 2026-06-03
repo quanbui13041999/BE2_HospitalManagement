@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ConcurrentModificationException;
 use App\Services\AppointmentService;
 use App\Services\AppointmentReminderService;
 use App\Services\Doctor\DoctorSuggestionService;
@@ -9,6 +10,8 @@ use App\Services\Doctor\DoctorTimeslotService;
 use App\Services\Doctor\AppointmentQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 /**
  * AppointmentController
@@ -32,6 +35,10 @@ class AppointmentController extends Controller
     // ================================================================
     public function create()
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $data = $this->appointmentService->getCreateFormData();
         return view('appointments.create', $data);
     }
@@ -41,6 +48,10 @@ class AppointmentController extends Controller
     // ================================================================
     public function getSchedules(Request $request)
     {
+        if ($response = $this->jsonIfNotPatientAppointmentFlow()) {
+            return $response;
+        }
+
         $request->validate([
             'doctor_id' => 'required|integer|exists:doctors,doctor_id',
             'work_date' => 'required|date|after_or_equal:today',
@@ -64,15 +75,20 @@ class AppointmentController extends Controller
                 ->with('error', 'Vui lòng đăng nhập để đặt lịch hẹn.');
         }
 
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $request->validate([
             'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
             'service_id' => 'nullable|integer|exists:services,service_id',
             'work_date' => 'required|date|after_or_equal:today',
-            'appointment_time' => 'required|string|max:10',
-            'note' => 'nullable|string|max:255',
+            'appointment_time' => ['required', 'string', 'max:10', 'regex:/\A\d{2}:\d{2}\z/'],
+            'visit_type' => ['nullable', Rule::in(['Khám trực tiếp', 'Khám online'])],
+            'note' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
             'is_priority' => 'nullable',
-            'priority_type' => 'nullable|string|max:255',
-        ], [
+            'priority_type' => ['nullable', 'string', 'max:255', Rule::in(['Trẻ em dưới 6 tuổi', 'Người già trên 80 tuổi', 'Phụ nữ có thai', 'Người khuyết tật', 'Cấp cứu'])],
+        ], [ /* fixed: validate select visit_type, khong nhan option gia tu DevTools */
             'schedule_id.required' => 'Vui lòng chọn khung giờ khám.',
             'schedule_id.exists' => 'Khung giờ không hợp lệ.',
             'work_date.after_or_equal' => 'Ngày khám phải từ hôm nay trở đi.',
@@ -97,9 +113,19 @@ class AppointmentController extends Controller
             return redirect()->route('appointments.index')
                 ->with('success', $result['message'])
                 ->with('appointment_id', $result['appointment_id']);
-        } catch (\Exception $e) {
+        } catch (ConcurrentModificationException $e) {
             return back()
-                ->withErrors(['msg' => $e->getMessage()])
+                ->with('warning', $e->getMessage())
+                ->with('reload_page', true)
+                ->withInput(); /* fixed: slot vua thay doi do nguoi khac dat truoc thi bao va reload */
+        } catch (\Exception $e) {
+            Log::error('Create appointment failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi noi bo, khong tra stack/message that ra user */
+
+            return back()
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
                 ->withInput();
         }
     }
@@ -109,9 +135,19 @@ class AppointmentController extends Controller
     // ================================================================
     public function index(Request $request)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $userId = Auth::id();
-        $status = $request->input('status', 'all');
-        $sort = $request->input('sort', 'desc');
+        $validated = $request->validate([
+            'status' => ['nullable', Rule::in(['all', 'upcoming', 'completed', 'cancelled'])],
+            'sort' => ['nullable', Rule::in(['asc', 'desc'])],
+            'page' => 'nullable|integer|min:1|max:1000',
+        ]); /* fixed: chan URL page/status/sort bi sua thanh gia tri khong hop le */
+
+        $status = $validated['status'] ?? 'all';
+        $sort = $validated['sort'] ?? 'desc';
 
         $counts = $this->appointmentService->getUserAppointmentStats($userId);
         $appointments = $this->appointmentService->getUserAppointments($userId, $status, $sort);
@@ -122,8 +158,12 @@ class AppointmentController extends Controller
     // ================================================================
     // 3. FORM DỜI LỊCH — GET /lich-hen/{id}/doi
     // ================================================================
-    public function edit($id)
+    public function edit(int $id)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $userId = Auth::id();
         
         $appointment = $this->appointmentService->getAppointmentForEdit($id, $userId);
@@ -141,15 +181,25 @@ class AppointmentController extends Controller
         try {
             $availableSchedules = $this->appointmentService->getAvailableSchedulesForReschedule($id, $appointment->doctor_id);
         } catch (\Exception $e) {
+            Log::error('Load reschedule options failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: an loi he thong khoi response */
+
             return redirect()->route('appointments.index')
-                ->withErrors(['msg' => $e->getMessage()]);
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
         }
 
         return view('appointments.edit', compact('appointment', 'availableSchedules'));
     }
 
-    public function doctorOff($id)
+    public function doctorOff(int $id)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $userId = Auth::id();
 
         $appointment = $this->appointmentService->getAppointmentForEdit($id, $userId);
@@ -169,12 +219,17 @@ class AppointmentController extends Controller
     // ================================================================
     // 3b. XỬ LÝ DỜI LỊCH — PUT /lich-hen/{id}/doi
     // ================================================================
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $request->validate([
             'new_schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
-            'new_appointment_time' => 'required|string|max:10',
-            'reschedule_reason' => 'nullable|string|max:255',
+            'new_appointment_time' => ['required', 'string', 'max:10', 'regex:/\A\d{2}:\d{2}\z/'],
+            'reschedule_reason' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
+            'version' => 'required|string|size:40',
         ], [
             'new_schedule_id.required' => 'Vui lòng chọn khung giờ mới.',
             'new_schedule_id.exists' => 'Khung giờ không hợp lệ.',
@@ -188,15 +243,26 @@ class AppointmentController extends Controller
                     'new_schedule_id' => $request->new_schedule_id,
                     'new_appointment_time' => $request->new_appointment_time,
                     'reschedule_reason' => $request->reschedule_reason,
+                    'version' => $request->version,
                     'ip_address' => $request->ip(),
                 ]
             );
 
             return redirect()->route('appointments.index')
                 ->with('success', $result['message']);
+        } catch (ConcurrentModificationException $e) {
+            return redirect()->route('appointments.index')
+                ->with('warning', $e->getMessage())
+                ->with('reload_page', true); /* fixed: bao nguoi submit sau va tai lai danh sach */
         } catch (\Exception $e) {
+            Log::error('Reschedule appointment failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi noi bo, tra thong bao chung */
+
             return back()
-                ->withErrors(['msg' => $e->getMessage()])
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'])
                 ->withInput();
         }
     }
@@ -204,10 +270,15 @@ class AppointmentController extends Controller
     // ================================================================
     // 4. HỦY LỊCH HẸN — POST /lich-hen/{id}/huy
     // ================================================================
-    public function cancel(Request $request, $id)
+    public function cancel(Request $request, int $id)
     {
+        if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
+            return $redirect;
+        }
+
         $request->validate([
-            'cancel_reason' => 'nullable|string|max:255',
+            'cancel_reason' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
+            'version' => 'required|string|size:40',
         ]);
 
         try {
@@ -216,15 +287,26 @@ class AppointmentController extends Controller
                 Auth::id(),
                 [
                     'cancel_reason' => $request->cancel_reason,
+                    'version' => $request->version,
                     'ip_address' => $request->ip(),
                 ]
             );
 
             return redirect()->route('appointments.index')
                 ->with('success', $result['message']);
-        } catch (\Exception $e) {
+        } catch (ConcurrentModificationException $e) {
             return redirect()->route('appointments.index')
-                ->withErrors(['msg' => $e->getMessage()]);
+                ->with('warning', $e->getMessage())
+                ->with('reload_page', true); /* fixed: neu lich da bi doi/huy truoc do thi reload */
+        } catch (\Exception $e) {
+            Log::error('Cancel appointment failed', [
+                'appointment_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]); /* fixed: khong lo ly do loi noi bo qua UI */
+
+            return redirect()->route('appointments.index')
+                ->withErrors(['msg' => 'Đã xảy ra lỗi, vui lòng thử lại sau.']);
         }
     }
 
@@ -250,6 +332,10 @@ class AppointmentController extends Controller
      */
     public function suggest(Request $request, DoctorSuggestionService $suggestionService)
     {
+        if ($response = $this->jsonIfNotPatientAppointmentFlow()) {
+            return $response;
+        }
+
         $request->validate([
             'department_id' => 'required|integer|exists:departments,department_id',
             'work_date' => 'required|date|after_or_equal:today',
@@ -268,6 +354,10 @@ class AppointmentController extends Controller
      */
     public function timeslots(Request $request, DoctorTimeslotService $timeslotService)
     {
+        if ($response = $this->jsonIfNotPatientAppointmentFlow()) {
+            return $response;
+        }
+
         $request->validate([
             'doctor_id' => 'required|integer|exists:doctors,doctor_id',
             'work_date' => 'required|date|after_or_equal:today',
@@ -299,9 +389,13 @@ class AppointmentController extends Controller
      */
     public function getQueueInfo(Request $request, AppointmentQueueService $queueService)
     {
+        if ($response = $this->jsonIfNotPatientAppointmentFlow()) {
+            return $response;
+        }
+
         $request->validate([
             'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
-            'appointment_time' => 'nullable|string',
+            'appointment_time' => ['nullable', 'string', 'max:10', 'regex:/\A\d{2}:\d{2}\z/'],
             'appointment_id' => 'nullable|integer|exists:appointments,appointment_id',
         ]);
 
@@ -399,5 +493,35 @@ class AppointmentController extends Controller
                 'message' => $e->getMessage(),
             ], 422);
         }
+    }
+
+    private function redirectIfNotPatientAppointmentFlow()
+    {
+        $user = Auth::user();
+
+        if (!$user || in_array((int) $user->role_id, [1, 3], true)) {
+            return null;
+        }
+
+        if ((int) $user->role_id === 2) {
+            return redirect()->route('doctor.dashboard')
+                ->with('error', 'Tài khoản bác sĩ không dùng chức năng đặt lịch của bệnh nhân.');
+        }
+
+        abort(403);
+    }
+
+    private function jsonIfNotPatientAppointmentFlow()
+    {
+        $user = Auth::user();
+
+        if (!$user || in_array((int) $user->role_id, [1, 3], true)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Tài khoản bác sĩ không dùng chức năng đặt lịch của bệnh nhân.',
+        ], 403);
     }
 }

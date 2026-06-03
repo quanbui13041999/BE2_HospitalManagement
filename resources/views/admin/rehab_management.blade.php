@@ -17,6 +17,10 @@
     <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+@if(session('warning'))
+    <div class="alert alert-warning">{{ session('warning') }}</div>
+@endif
+
 <div class="row g-3 mb-4">
     <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Tong bai</div><h3>{{ $stats['total'] }}</h3></div></div>
     <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Cong khai</div><h3>{{ $stats['published'] }}</h3></div></div>
@@ -50,7 +54,7 @@
                         <td>{{ $exercise->view_count }}</td>
                         <td class="text-end">
                             <a href="{{ route('admin.rehab.edit', $exercise) }}" class="btn btn-sm btn-outline-primary">Sua</a>
-                            <form action="{{ route('admin.rehab.destroy', $exercise) }}" method="POST" class="d-inline" onsubmit="return confirm('Xoa bai tap nay?')">
+                            <form action="{{ route('admin.rehab.destroy', $exercise) }}" method="POST" class="d-inline" data-confirm="Bạn có chắc muốn xóa bài tập phục hồi này không?">
                                 @csrf
                                 @method('DELETE')
                                 <button class="btn btn-sm btn-outline-danger">Xoa</button>

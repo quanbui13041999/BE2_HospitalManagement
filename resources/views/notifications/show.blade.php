@@ -58,8 +58,8 @@
                 </div>
             </header>
 
-            <section class="notification-detail-message">
-                {!! nl2br(e($notification->displayMessage())) !!}
+            <section class="notification-detail-message" style="white-space: pre-line;">
+                {{ $notification->displayMessage() }} {{-- fixed: escape noi dung thong bao de ngan XSS --}}
             </section>
 
             <section class="notification-detail-meta">

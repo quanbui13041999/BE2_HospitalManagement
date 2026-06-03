@@ -261,5 +261,6 @@
     <p class="login-link">Đã có tài khoản? <a href="{{ route('login') }}">Đăng nhập</a></p>
 </div>
 
+@include('components.back-to-previous')
 </body>
 </html>

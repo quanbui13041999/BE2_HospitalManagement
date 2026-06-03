@@ -468,8 +468,8 @@
 
         <div class="news-detail-body">
             <div class="news-detail-lead-bar"></div>
-            <div class="news-detail-content">
-                {!! $article->content !!}
+            <div class="news-detail-content" style="white-space: pre-line;">
+                {{ $article->content }} {{-- fixed: escape noi dung ban tin de ngan XSS --}}
             </div>
         </div>
 

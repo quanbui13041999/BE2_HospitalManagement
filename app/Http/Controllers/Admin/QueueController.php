@@ -8,7 +8,6 @@ use App\Models\QueueTicket;
 use App\Models\Doctor;
 use App\Services\QueueService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class QueueController extends Controller
@@ -121,7 +120,16 @@ class QueueController extends Controller
      */
     public function apiSnapshot(int $scheduleId)
     {
-        return response()->json($this->queueService->getQueueSnapshot($scheduleId));
+        $snapshot = $this->queueService->getQueueSnapshot($scheduleId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'current' => $snapshot['current'],
+            'waiting' => $snapshot['waiting'],
+            'stats' => $snapshot['stats'],
+            'data' => $snapshot,
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 
     /**
@@ -138,7 +146,12 @@ class QueueController extends Controller
             $snapshots[$scheduleId] = $this->queueService->getQueueSnapshot($scheduleId);
         }
 
-        return response()->json($snapshots);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'snapshots' => $snapshots,
+            'data' => $snapshots,
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 
     /**
@@ -146,7 +159,11 @@ class QueueController extends Controller
      */
     public function report(Request $request)
     {
-        $date = $request->input('date', today());
+        $validated = $request->validate([
+            'date' => 'nullable|date',
+        ]);
+
+        $date = $validated['date'] ?? today(); /* fixed: validate filter date truoc khi query */
 
         $schedules = DoctorSchedule::with(['doctor', 'doctor.department'])
             ->whereDate('work_date', $date)

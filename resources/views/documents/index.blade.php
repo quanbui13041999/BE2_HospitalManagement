@@ -22,6 +22,12 @@
     <button class="alert-close" onclick="this.parentElement.remove()">×</button>
   </div>
   @endif
+  @if(session('warning'))
+  <div class="alert alert-error" id="flash-msg">
+    <span>⚠</span> {{ session('warning') }}
+    <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+  </div>
+  @endif
 
   <!-- HEADER -->
   <div class="header">
@@ -49,6 +55,7 @@
       <!-- UPLOAD CARD -->
       <form action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
+        <input type="hidden" name="documents_snapshot" value="{{ $documentsSnapshot }}">
         <div class="upload-card">
           <div class="upload-zone" id="dropZone"
             ondragover="event.preventDefault(); this.classList.add('drag-over')"
@@ -112,12 +119,23 @@
               <div class="btn-view-wrap" style="flex-wrap: wrap; gap: 6px;">
                 <a href="{{ route('documents.show', $document) }}" target="_blank" class="btn-view">👁 Xem</a>
                 <a href="{{ route('documents.download', $document) }}" class="btn-action" title="Tải xuống">⬇️</a>
+                @if((int) $document->user_id === (int) auth()->user()->user_id)
                 <a href="{{ route('documents.edit', $document) }}" class="btn-action edit" title="Chỉnh sửa">✏️</a>
                 <form action="{{ route('documents.destroy', $document) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xoá tài liệu này?')" style="display:inline-flex;">
                   @csrf
                   @method('DELETE')
+                  <input type="hidden" name="document_snapshot" value="{{ hash_hmac('sha256', implode('|', [
+                    $document->doc_id,
+                    $document->user_id,
+                    $document->record_id,
+                    $document->doc_type,
+                    $document->doc_name,
+                    $document->file_path,
+                    optional($document->uploaded_at)->format('Y-m-d H:i:s'),
+                  ]), (string) config('app.key')) }}">
                   <button type="submit" class="btn-action" title="Xoá">🗑</button>
                 </form>
+                @endif
               </div>
             </div>
           </div>

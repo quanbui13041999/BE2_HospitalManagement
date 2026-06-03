@@ -149,15 +149,25 @@
     <form action="{{ route('medical-records.update', $record->record_id) }}" method="POST" enctype="multipart/form-data" id="medicalRecordForm">
         @csrf
         @method('PUT')
+        <input type="hidden" name="record_snapshot" value="{{ $recordSnapshot }}">
 
         @if($errors->any())
-        <div class="alert alert-danger">
-            <strong>⚠️ Vui lòng kiểm tra lại:</strong>
-            <ul class="mb-0 mt-1">
-                @foreach($errors->all() as $error)
-                <li>{{ $error }}</li>
-                @endforeach
-            </ul>
+        <div class="alert alert-danger" role="alert">
+            <strong>Vui lòng kiểm tra lại các ô đang báo lỗi bên dưới.</strong>
+        </div>
+        @endif
+
+        @if(session('warning'))
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            {{ session('warning') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        @endif
+
+        @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         @endif
 
@@ -168,46 +178,58 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Bệnh nhân <span class="text-danger">*</span></label>
-                        <input type="text" name="patient_name" class="form-control"
+                        <input type="text" name="patient_name" class="form-control @error('patient_name') is-invalid @enderror"
                             value="{{ old('patient_name', $record->patient_name) }}" required>
+                        @error('patient_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         <input type="hidden" name="patient_id" value="{{ old('patient_id', $record->patient_id ?? 0) }}">
+                        @error('patient_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Mã bệnh nhân</label>
-                        <input type="text" name="patient_code" class="form-control"
-                            value="{{ old('patient_code', $record->patient_code) }}">
+                        <input type="text" class="form-control" readonly
+                            value="{{ $record->patient_code ?: 'BN' . str_pad((string) $record->patient_id, 6, '0', STR_PAD_LEFT) }}">
+                        <small class="text-muted">Mã bệnh nhân tự động, không cho phép sửa.</small>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Ngày khám <span class="text-danger">*</span></label>
-                        <input type="date" name="exam_date" class="form-control"
+                        <input type="date" name="exam_date" class="form-control @error('exam_date') is-invalid @enderror"
                             value="{{ old('exam_date', $record->exam_date instanceof \Carbon\Carbon ? $record->exam_date->format('Y-m-d') : date('Y-m-d', strtotime($record->exam_date))) }}" required>
+                        @error('exam_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Giờ khám</label>
-                        <input type="time" name="exam_time" class="form-control"
+                        <input type="time" name="exam_time" class="form-control @error('exam_time') is-invalid @enderror"
                             value="{{ old('exam_time', isset($record->exam_time) ? \Carbon\Carbon::parse($record->exam_time)->format('H:i') : '') }}">
+                        @error('exam_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Bác sĩ <span class="text-danger">*</span></label>
-                        <input type="text" name="doctor_name" class="form-control"
+                        <input type="text" name="doctor_name" class="form-control @error('doctor_name') is-invalid @enderror"
                             value="{{ old('doctor_name', $record->doctor_name) }}" required>
+                        @error('doctor_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         <input type="hidden" name="doctor_id" value="{{ old('doctor_id', $record->doctor_id) }}">
+                        @error('doctor_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Loại khám <span class="text-danger">*</span></label>
-                        <select name="visit_type" class="form-select" required>
+                        @php $currentVisitType = old('visit_type', $record->visit_type_label ?? $record->visit_type); @endphp
+                        <select name="visit_type" class="form-select @error('visit_type') is-invalid @enderror" required>
                             <option value="">Chọn loại khám</option>
                             @foreach(['Khám mới','Tái khám','Cấp cứu'] as $type)
                             <option value="{{ $type }}"
-                                {{ old('visit_type', $record->visit_type) === $type ? 'selected' : '' }}>
+                                {{ $currentVisitType === $type ? 'selected' : '' }}>
                                 {{ $type }}
                             </option>
                             @endforeach
                         </select>
+                        @error('visit_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Lý do đến khám / Triệu chứng <span class="text-danger">*</span></label>
-                        <textarea name="chief_complaint" class="form-control" rows="2" required>{{ old('chief_complaint', $record->chief_complaint) }}</textarea>
+                        <textarea name="chief_complaint" class="form-control @error('chief_complaint') is-invalid @enderror" rows="2" required
+                            data-vietnamese-words="true"
+                            title="Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.">{{ old('chief_complaint', $record->chief_complaint) }}</textarea>
+                        @error('chief_complaint') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     @if($record->appointment_id)
                     <input type="hidden" name="appointment_id" value="{{ $record->appointment_id }}">
@@ -225,7 +247,7 @@
                     <div class="col-md-4">
                         <label class="form-label">Huyết áp (mmHg) <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="text" name="vitals[blood_pressure]" class="form-control"
+                            <input type="text" name="vitals[blood_pressure]" class="form-control @error('vitals.blood_pressure') is-invalid @enderror"
                                 placeholder="VD: 130/80" value="{{ old('vitals.blood_pressure', $v?->blood_pressure) }}" required>
                             <select name="vitals[bp_status]" class="form-select" style="max-width:90px">
                                 <option value="normal" {{ old('vitals.bp_status', $v?->bp_status) === 'normal' ? 'selected' : '' }}>✓</option>
@@ -233,11 +255,12 @@
                                 <option value="low" {{ old('vitals.bp_status', $v?->bp_status) === 'low'    ? 'selected' : '' }}>▼ Thấp</option>
                             </select>
                         </div>
+                        @error('vitals.blood_pressure') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Nhịp tim (bpm) <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="number" name="vitals[heart_rate]" class="form-control" step="0.1"laceholder="Bình thường: 60 - 100 bpm"
+                            <input type="number" name="vitals[heart_rate]" class="form-control @error('vitals.heart_rate') is-invalid @enderror" step="1" min="1" max="300" placeholder="Bình thường: 60 - 100 bpm"
                                 value="{{ old('vitals.heart_rate', $v?->heart_rate) }}" required>
                             <select name="vitals[hr_status]" class="form-select" style="max-width:90px">
                                 <option value="normal" {{ old('vitals.hr_status', $v?->hr_status) === 'normal' ? 'selected' : '' }}>✓</option>
@@ -245,11 +268,12 @@
                                 <option value="low" {{ old('vitals.hr_status', $v?->hr_status) === 'low'  ? 'selected' : '' }}>▼</option>
                             </select>
                         </div>
+                        @error('vitals.heart_rate') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Nhiệt độ (°C) <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="number" name="vitals[temperature]" class="form-control" step="0.1"    placeholder="Bình thường: 36.5 - 37.5 °C"
+                            <input type="number" name="vitals[temperature]" class="form-control @error('vitals.temperature') is-invalid @enderror" step="0.1" min="36" max="40" placeholder="Hợp lệ: 36 - 40 °C"
                                 value="{{ old('vitals.temperature', $v?->temperature) }}" required>
                             <select name="vitals[temp_status]" class="form-select" style="max-width:90px">
                                 <option value="normal" {{ old('vitals.temp_status', $v?->temp_status) === 'normal' ? 'selected' : '' }}>✓</option>
@@ -257,21 +281,24 @@
                                 <option value="low" {{ old('vitals.temp_status', $v?->temp_status) === 'low'  ? 'selected' : '' }}>▼</option>
                             </select>
                         </div>
+                        @error('vitals.temperature') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">SpO2 (%) <span class="text-danger">*</span></label>
-                        <input type="number" name="vitals[spo2]" class="form-control" step="0.1" placeholder="Bình thường: 95 - 100 %"
+                        <input type="number" name="vitals[spo2]" class="form-control @error('vitals.spo2') is-invalid @enderror" step="1" min="50" max="100" placeholder="Bình thường: 95 - 100 %"
                             value="{{ old('vitals.spo2', $v?->spo2) }}" required>
+                        @error('vitals.spo2') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Cân nặng (kg) <span class="text-danger">*</span></label>
-                        <input type="number" name="vitals[weight]" class="form-control" step="0.1"
+                        <input type="number" name="vitals[weight]" class="form-control @error('vitals.weight') is-invalid @enderror" step="0.1" min="1" max="500"
                             value="{{ old('vitals.weight', $v?->weight) }}" required>
+                        @error('vitals.weight') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Đường huyết (mmol/L)</label>
                         <div class="input-group">
-                            <input type="number" name="vitals[blood_sugar]" class="form-control" step="0.01"   placeholder="Bình thường: 3.9 - 7.8 mmol/L"
+                            <input type="number" name="vitals[blood_sugar]" class="form-control @error('vitals.blood_sugar') is-invalid @enderror" step="0.01" min="1" max="1000" placeholder="Bình thường: 3.9 - 7.8 mmol/L"
                                 value="{{ old('vitals.blood_sugar', $v?->blood_sugar) }}">
                             <select name="vitals[sugar_status]" class="form-select" style="max-width:90px">
                                 <option value="normal" {{ old('vitals.sugar_status', $v?->sugar_status) === 'normal' ? 'selected' : '' }}>✓</option>
@@ -279,6 +306,7 @@
                                 <option value="low" {{ old('vitals.sugar_status', $v?->sugar_status) === 'low'  ? 'selected' : '' }}>▼</option>
                             </select>
                         </div>
+                        @error('vitals.blood_sugar') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div>
             </div>
@@ -422,6 +450,8 @@
                     @empty
                     @endforelse
                 </div>
+                @error('diagnoses') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                @error('diagnoses.*.diagnosis_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 <button type="button" class="add-row-btn" onclick="addDiagnosisRow()">+ Thêm chẩn đoán</button>
             </div>
         </div>
@@ -810,14 +840,14 @@
                 </div>
                 <div class="col-md-3">
                     <div class="editable-field" data-field="diag_type" data-index="${index}">
-                        <div class="field-value" data-placeholder="Chọn loại">Chọn loại</div>
+                        <div class="field-value" data-placeholder="Chọn loại">Chính</div>
                         <select class="field-dropdown" data-field="diag_type" data-index="${index}">
                             <option value="">-- Chọn --</option>
                             <option value="primary">Chính</option>
                             <option value="secondary">Phụ</option>
                             <option value="complication">Biến chứng</option>
                         </select>
-                        <input type="hidden" name="diagnoses[${index}][diagnosis_type]" value="">
+                        <input type="hidden" name="diagnoses[${index}][diagnosis_type]" value="primary">
                     </div>
                 </div>
                 <div class="col-md-1 text-center">
@@ -982,5 +1012,239 @@
         document.getElementById('orderContainer').insertAdjacentHTML('beforeend', html);
         orderCounter++;
     }
+
+    document.addEventListener('input', function (e) {
+        const form = e.target.closest?.('#medicalRecordForm');
+        if (!form || e.target.matches?.('input[maxlength], textarea[maxlength]')) return;
+
+        try {
+            Object.defineProperty(e.target, 'maxLength', { value: -1, configurable: true });
+        } catch (error) {
+            e.target.maxLength = -1;
+        }
+    }, true);
+
+    // Chặn nhập sai định dạng ngay trên form. Server vẫn validate lại khi submit.
+    (function () {
+        const textOnlyPattern = /^[\p{L}\s.,;:()\/+\-%'-]*$/u;
+        const vietnameseWordsPattern = /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u;
+        const vietnameseWordsCharPattern = /^[\p{L}\p{M} ]$/u;
+        const vietnameseWordsMessage = 'Ô này chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.';
+        const decimalPattern = /^\d*(\.\d{0,2})?$/;
+        const bloodPressurePattern = /^\d{0,3}(\/\d{0,3})?$/;
+
+        const textOnlyNames = [
+            'patient_name',
+            'doctor_name',
+            'chief_complaint',
+            '[allergen]',
+            '[reaction]',
+            '[diagnosis_name]',
+            '[note]',
+            '[drug_name]',
+            '[instructions]',
+            '[order_name]',
+            '[description]',
+        ];
+
+        function fieldName(el) {
+            return el.getAttribute('name') || '';
+        }
+
+        function isTextOnlyField(el) {
+            const name = fieldName(el);
+            return (el.matches('input[type="text"], textarea') && textOnlyNames.some(token => name === token || name.includes(token)))
+                && !name.includes('[icd_code]')
+                && !name.includes('[dosage]');
+        }
+
+        function isVietnameseWordsField(el) {
+            return fieldName(el) === 'chief_complaint';
+        }
+
+        function isIntegerField(el) {
+            const name = fieldName(el);
+            return name === 'vitals[heart_rate]'
+                || name === 'vitals[spo2]'
+                || name.includes('[quantity]')
+                || name.includes('[duration_days]');
+        }
+
+        function isDecimalField(el) {
+            const name = fieldName(el);
+            return name === 'vitals[temperature]'
+                || name === 'vitals[weight]'
+                || name === 'vitals[blood_sugar]';
+        }
+
+        function showInlineError(el, message) {
+            el.classList.remove('is-valid');
+            el.classList.add('is-invalid');
+            let feedback = el.closest('.input-group')?.nextElementSibling;
+            if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                feedback = el.nextElementSibling;
+            }
+            if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback';
+                (el.closest('.input-group') || el).after(feedback);
+            }
+            feedback.textContent = message;
+        }
+
+        function clearInlineState(el, markValid = false) {
+            el.classList.remove('is-invalid');
+            if (markValid && el.value.trim() !== '') {
+                el.classList.add('is-valid');
+            } else {
+                el.classList.remove('is-valid');
+            }
+
+            let feedback = el.closest('.input-group')?.nextElementSibling;
+            if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                feedback = el.nextElementSibling;
+            }
+            if (feedback && feedback.classList.contains('invalid-feedback')) {
+                feedback.textContent = '';
+            }
+        }
+
+        function sanitizeField(el) {
+            const oldValue = el.value;
+            let newValue = oldValue;
+            let message = '';
+
+            if (fieldName(el) === 'vitals[blood_pressure]') {
+                newValue = oldValue.replace(/[^\d/]/g, '');
+                if (!bloodPressurePattern.test(newValue)) {
+                    newValue = newValue.slice(0, -1);
+                }
+                message = 'Huyết áp chỉ nhập số và dấu /, ví dụ 120/80.';
+            } else if (isIntegerField(el)) {
+                newValue = oldValue.replace(/\D/g, '');
+                message = 'Ô này chỉ được nhập số nguyên dương.';
+            } else if (isDecimalField(el)) {
+                newValue = oldValue.replace(/[^\d.]/g, '');
+                const firstDot = newValue.indexOf('.');
+                if (firstDot !== -1) {
+                    newValue = newValue.slice(0, firstDot + 1) + newValue.slice(firstDot + 1).replace(/\./g, '');
+                }
+                if (!decimalPattern.test(newValue)) {
+                    newValue = newValue.slice(0, -1);
+                }
+                message = 'Ô này chỉ được nhập số dương, tối đa 2 chữ số thập phân.';
+            } else if (isVietnameseWordsField(el)) {
+                newValue = Array.from(oldValue)
+                    .filter(ch => vietnameseWordsCharPattern.test(ch))
+                    .join('')
+                    .replace(/\s+/gu, ' ')
+                    .replace(/^\s+/u, '');
+                message = vietnameseWordsMessage;
+            } else if (isTextOnlyField(el)) {
+                newValue = Array.from(oldValue).filter(ch => textOnlyPattern.test(ch)).join('');
+                message = 'Ô này chỉ được nhập chữ và khoảng trắng, không nhập số hoặc ký tự lạ.';
+            }
+
+            if (newValue !== oldValue) {
+                el.value = newValue;
+                showInlineError(el, message);
+                return false;
+            }
+
+            if (message && newValue !== '' && newValue === oldValue) {
+                clearInlineState(el, true);
+            }
+
+            return true;
+        }
+
+        function validateVietnameseWordsField(el) {
+            if (!el || !isVietnameseWordsField(el)) {
+                return true;
+            }
+
+            el.value = el.value.trim().replace(/\s+/gu, ' ');
+
+            if (el.value === '') {
+                showInlineError(el, 'Vui lòng nhập lý do đến khám / triệu chứng.');
+                return false;
+            }
+
+            if (!vietnameseWordsPattern.test(el.value)) {
+                showInlineError(el, vietnameseWordsMessage);
+                return false;
+            }
+
+            clearInlineState(el, true);
+            return true;
+        }
+
+        const numericRanges = {
+            'vitals[heart_rate]': { min: 1, max: 300, label: 'Nhịp tim' },
+            'vitals[temperature]': { min: 36, max: 40, label: 'Nhiệt độ' },
+            'vitals[spo2]': { min: 50, max: 100, label: 'SpO2' },
+            'vitals[weight]': { min: 1, max: 500, label: 'Cân nặng' },
+            'vitals[blood_sugar]': { min: 1, max: 1000, label: 'Đường huyết' },
+        };
+
+        function validateNumericRange(el) {
+            const range = numericRanges[fieldName(el)];
+            if (!range || el.value === '') {
+                clearInlineState(el, false);
+                return true;
+            }
+
+            const value = Number(el.value);
+            if (!Number.isFinite(value) || value < range.min || value > range.max) {
+                showInlineError(el, `${range.label} chỉ hợp lệ từ ${range.min} đến ${range.max}.`);
+                return false;
+            }
+
+            clearInlineState(el, true);
+            return true;
+        }
+
+        document.addEventListener('input', function (e) {
+            if (e.target.matches('input, textarea')) {
+                sanitizeField(e.target);
+                validateNumericRange(e.target);
+            }
+        });
+
+        document.addEventListener('paste', function (e) {
+            if (e.target.matches('input, textarea')) {
+                setTimeout(() => {
+                    sanitizeField(e.target);
+                    validateNumericRange(e.target);
+                }, 0);
+            }
+        });
+
+        document.addEventListener('blur', function (e) {
+            if (e.target.matches('input, textarea')) {
+                validateVietnameseWordsField(e.target);
+            }
+        }, true);
+
+        document.getElementById('medicalRecordForm')?.addEventListener('submit', function (e) {
+            let valid = true;
+            const chiefComplaint = document.querySelector('[name="chief_complaint"]');
+            if (chiefComplaint && !validateVietnameseWordsField(chiefComplaint)) {
+                valid = false;
+            }
+
+            Object.keys(numericRanges).forEach(name => {
+                const el = document.querySelector(`[name="${name}"]`);
+                if (el && !validateNumericRange(el)) {
+                    valid = false;
+                }
+            });
+
+            if (!valid) {
+                e.preventDefault();
+                document.querySelector('.is-invalid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    })();
 </script>
 @endpush

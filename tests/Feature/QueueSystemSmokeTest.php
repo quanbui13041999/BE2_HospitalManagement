@@ -91,6 +91,15 @@ class QueueSystemSmokeTest extends TestCase
         $response->assertStatus(200);
 
         // 6. Test Patient Check-in Store (Normal priority walk-in)
+        $this->actingAs($admin)
+            ->post(route('queue.manage.checkin.store'), [
+                'schedule_id' => $schedule->schedule_id,
+                'patient_name' => '',
+                'priority' => 'invalid',
+                'patient_email' => 'not-an-email',
+            ])
+            ->assertSessionHasErrors(['patient_name', 'priority', 'patient_email']); // fixed: input check-in sai phai bi validate
+
         $response = $this->actingAs($admin)
             ->post(route('queue.manage.checkin.store'), [
                 'schedule_id' => $schedule->schedule_id,

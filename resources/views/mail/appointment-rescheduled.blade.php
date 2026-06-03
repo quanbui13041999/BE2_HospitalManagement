@@ -79,8 +79,8 @@
     </div>
 
     <div class="footer">
-        Cảm ơn bạn đã tin tưởng <strong>HospitalBooking</strong>!<br>
-        © {{ date('Y') }} Bệnh Viện HospitalBooking
+        Cảm ơn bạn đã tin tưởng <strong>HospitalC</strong>!<br>
+        © {{ date('Y') }} Bệnh Viện HospitalC
     </div>
 
 </div>
