@@ -3,7 +3,9 @@ namespace App\Services;
 
 use App\Models\{QueueTicket, QueueCounter, DoctorSchedule, Appointment, User};
 use App\Events\{QueueUpdated, TicketCalled};
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class QueueService
 {
@@ -49,6 +51,25 @@ class QueueService
             $scheduleId = $data['schedule_id'];
             $priority   = $data['priority'] ?? 'normal';
 
+            DoctorSchedule::where('schedule_id', $scheduleId)
+                ->lockForUpdate()
+                ->firstOrFail(); /* fixed: khoa ca kham de nhieu le tan check-in cung luc khong trung so thu tu */
+
+            if (!empty($data['appointment_id']) || !empty($data['user_id'])) {
+                $duplicate = QueueTicket::where('schedule_id', $scheduleId)
+                    ->whereDate('queue_date', today())
+                    ->whereIn('status', ['waiting', 'calling', 'in_progress'])
+                    ->when(!empty($data['appointment_id']), fn ($query) => $query->where('appointment_id', $data['appointment_id']))
+                    ->when(empty($data['appointment_id']) && !empty($data['user_id']), fn ($query) => $query->where('user_id', $data['user_id']))
+                    ->exists();
+
+                if ($duplicate) {
+                    throw ValidationException::withMessages([
+                        'ticket' => 'Bệnh nhân này đã có trong hàng đợi. Trang sẽ được tải lại để cập nhật danh sách.',
+                    ]);
+                }
+            } /* fixed: chan bam luu lien tuc tao nhieu ticket trung khi co appointment/user */
+
             // Lấy số thứ tự tiếp theo cho ngày + ca này
             $lastNumber = QueueTicket::where('schedule_id', $scheduleId)
                 ->whereDate('queue_date', today())
@@ -78,7 +99,7 @@ class QueueService
                 'checkin_time'    => now(),
                 'est_wait_minutes'=> $estWait,
                 'notes'           => $data['notes'] ?? null,
-                'served_by'       => array_key_exists('served_by', $data) ? $data['served_by'] : auth()->id(),
+                'served_by'       => array_key_exists('served_by', $data) ? $data['served_by'] : Auth::id(),
             ]);
 
             // Nếu có appointment → cập nhật status
@@ -109,9 +130,20 @@ class QueueService
                 ->where('status', 'calling')
                 ->update(['status' => 'skipped', 'completed_at' => now()]);
 
-            // Lấy ticket tiếp theo theo thứ tự ưu tiên
+            // Lịch hẹn thường chỉ được gọi khi đã thanh toán; cấp cứu khám trước, thanh toán sau.
             $next = QueueTicket::forSchedule($scheduleId)
                 ->waiting()
+                ->where(function ($query) {
+                    $query->where('priority', 'emergency')
+                        ->orWhereNull('appointment_id')
+                        ->orWhereHas('appointment', function ($appointmentQuery) {
+                            $appointmentQuery
+                                ->where('status', 'Đã thanh toán')
+                                ->orWhereHas('payment', function ($paymentQuery) {
+                                    $paymentQuery->whereIn('status', ['Thành công', 'Đã thanh toán']);
+                                });
+                        });
+                })
                 ->ordered()
                 ->lockForUpdate()
                 ->first();
@@ -141,10 +173,59 @@ class QueueService
      */
     public function startExam(int $ticketId): QueueTicket
     {
-        $ticket = QueueTicket::findOrFail($ticketId);
-        $ticket->update(['status' => 'in_progress', 'started_at' => now()]);
-        broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
-        return $ticket;
+        return DB::transaction(function () use ($ticketId) {
+            /** @var QueueTicket $ticket */
+            $ticket = QueueTicket::with(['appointment.payment'])
+                ->where('ticket_id', $ticketId)
+                ->lockForUpdate()
+                ->firstOrFail(); /* fixed: khoa ticket khi bac si bat dau kham */
+
+            if ($ticket->status !== 'calling') {
+                throw ValidationException::withMessages([
+                    'ticket' => 'Ticket này đã được người khác xử lý. Trang sẽ được tải lại để cập nhật hàng đợi.',
+                ]);
+            }
+
+            if (!$this->canStartExam($ticket)) {
+                throw ValidationException::withMessages([
+                    'ticket' => 'Bệnh nhân chưa thanh toán nên vẫn ở hàng đợi. Chỉ ca cấp cứu được khám trước và thanh toán sau.',
+                ]);
+            }
+
+            $ticket->update(['status' => 'in_progress', 'started_at' => now()]);
+
+            if ($ticket->appointment_id) {
+                Appointment::where('appointment_id', $ticket->appointment_id)
+                    ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])
+                    ->update(['status' => 'Đang khám']); /* fixed: da vao phong kham thi benh nhan khong the huy lich */
+            }
+
+            broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
+            return $ticket;
+        });
+    }
+
+    private function canStartExam(QueueTicket $ticket): bool
+    {
+        if ($ticket->priority === 'emergency') {
+            return true;
+        }
+
+        if (!$ticket->appointment_id) {
+            return true;
+        }
+
+        $appointment = $ticket->appointment;
+
+        if (!$appointment) {
+            return false;
+        }
+
+        if ($appointment->status === 'Đã thanh toán') {
+            return true;
+        }
+
+        return $appointment->payment?->isPaid() ?? false;
     }
 
     /**
@@ -153,13 +234,33 @@ class QueueService
     public function complete(int $ticketId): QueueTicket
     {
         return DB::transaction(function () use ($ticketId) {
-            $ticket = QueueTicket::findOrFail($ticketId);
+            $ticket = QueueTicket::where('ticket_id', $ticketId)
+                ->lockForUpdate()
+                ->firstOrFail(); /* fixed: tranh 2 nguoi cung hoan thanh mot ticket */
+
+            if ($ticket->status !== 'in_progress') {
+                throw ValidationException::withMessages([
+                    'ticket' => 'Ticket này đã được người khác xử lý. Trang sẽ được tải lại để cập nhật hàng đợi.',
+                ]);
+            }
+
             $ticket->update(['status' => 'completed', 'completed_at' => now()]);
 
             // Cập nhật appointment nếu có
             if ($ticket->appointment_id) {
-                Appointment::where('appointment_id', $ticket->appointment_id)
-                    ->update(['status' => 'Đã Khám']);
+                $appointment = Appointment::with(['user', 'service', 'schedule.doctor', 'medicalRecord'])
+                    ->where('appointment_id', $ticket->appointment_id)
+                    ->first();
+
+                if ($appointment) {
+                    $appointment->update(['status' => 'Hoàn thành']);
+                    app(\App\Services\MedicalRecordService::class)->createBlankRecordFromAppointment($appointment->fresh([
+                        'user',
+                        'service',
+                        'schedule.doctor',
+                        'medicalRecord',
+                    ]));
+                }
             }
 
             // Recalculate est_wait cho các ticket còn lại
@@ -175,14 +276,25 @@ class QueueService
      */
     public function skip(int $ticketId, string $reason = ''): QueueTicket
     {
-        $ticket = QueueTicket::findOrFail($ticketId);
-        $ticket->update([
-            'status'       => 'skipped',
-            'completed_at' => now(),
-            'notes'        => $reason ?: $ticket->notes,
-        ]);
-        broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
-        return $ticket;
+        return DB::transaction(function () use ($ticketId, $reason) {
+            $ticket = QueueTicket::where('ticket_id', $ticketId)
+                ->lockForUpdate()
+                ->firstOrFail(); /* fixed: tranh skip ticket da duoc bac si/le tan khac xu ly */
+
+            if (!in_array($ticket->status, ['waiting', 'calling'], true)) {
+                throw ValidationException::withMessages([
+                    'ticket' => 'Ticket này đã được người khác xử lý. Trang sẽ được tải lại để cập nhật hàng đợi.',
+                ]);
+            }
+
+            $ticket->update([
+                'status'       => 'skipped',
+                'completed_at' => now(),
+                'notes'        => $reason ?: $ticket->notes,
+            ]);
+            broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
+            return $ticket;
+        });
     }
 
     /**
@@ -202,30 +314,50 @@ class QueueService
     public function getQueueSnapshot(int $scheduleId): array
     {
         $tickets = QueueTicket::forSchedule($scheduleId)
+            ->with(['appointment.payment'])
             ->whereIn('status', ['waiting', 'calling', 'in_progress'])
             ->ordered()
             ->get();
 
         $current = $tickets->whereIn('status', ['calling', 'in_progress'])->first();
+        $waiting = $tickets->where('status', 'waiting')->values();
 
         return [
-            'current'  => $current ? [
-                'ticket_id' => $current->ticket_id,
-                'queue_number' => $current->queue_number,
-                'patient_name' => $current->patient_name,
-                'patient_phone' => $current->patient_phone,
-                'status' => $current->status,
-                'priority' => $current->priority,
-                'priority_icon' => $current->priority_icon,
-                'priority_label' => $current->priority_label,
-            ] : null,
-            'waiting'  => $tickets->where('status', 'waiting')->values(),
+            'current'  => $current ? $this->ticketSnapshot($current) : null,
+            'waiting'  => $waiting->map(fn (QueueTicket $ticket) => $this->ticketSnapshot($ticket))->values(),
             'stats'    => [
-                'total_waiting'   => $tickets->where('status', 'waiting')->count(),
+                'total_waiting'   => $waiting->count(),
+                'total_callable'  => $waiting->filter(fn (QueueTicket $ticket) => $this->canStartExam($ticket))->count(),
                 'total_in_progress' => $tickets->where('status', 'in_progress')->count(),
                 'total_completed' => QueueTicket::forSchedule($scheduleId)->where('status', 'completed')->count(),
                 'total_today'     => QueueTicket::forSchedule($scheduleId)->count(),
             ],
+        ];
+    }
+
+    private function ticketSnapshot(QueueTicket $ticket): array
+    {
+        $canStartExam = $this->canStartExam($ticket);
+        $payment = $ticket->appointment?->payment;
+
+        return [
+            'ticket_id' => $ticket->ticket_id,
+            'appointment_id' => $ticket->appointment_id,
+            'queue_number' => $ticket->queue_number,
+            'patient_name' => $ticket->patient_name,
+            'patient_phone' => $ticket->patient_phone,
+            'patient_email' => $ticket->patient_email,
+            'status' => $ticket->status,
+            'priority' => $ticket->priority,
+            'priority_icon' => $ticket->priority_icon,
+            'priority_label' => $ticket->priority_label,
+            'checkin_time' => $ticket->checkin_time,
+            'est_wait_minutes' => $ticket->est_wait_minutes,
+            'notes' => $ticket->notes,
+            'payment_required' => (bool) $ticket->appointment_id && $ticket->priority !== 'emergency',
+            'payment_status' => $payment?->status,
+            'appointment_status' => $ticket->appointment?->status,
+            'can_start_exam' => $canStartExam,
         ];
     }
 }

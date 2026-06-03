@@ -11,7 +11,9 @@ return new class extends Migration {
             return;
         }
 
-        DB::statement('ALTER TABLE chatrooms MODIFY doctor_id INT UNSIGNED NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE chatrooms MODIFY doctor_id INT UNSIGNED NULL');
+        }
     }
 
     public function down(): void
@@ -20,6 +22,8 @@ return new class extends Migration {
             return;
         }
 
-        DB::statement('ALTER TABLE chatrooms MODIFY doctor_id INT UNSIGNED NOT NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE chatrooms MODIFY doctor_id INT UNSIGNED NOT NULL');
+        }
     }
 };

@@ -16,8 +16,13 @@ class DoctorStatisticService
      */
     public function getDashboardData(Request $request)
     {
-        $selectedMonthStr = $request->input('month', Carbon::now()->format('Y-m'));
-        $selectedDate = Carbon::createFromFormat('Y-m', $selectedMonthStr)->startOfMonth();
+        $selectedMonthStr = $request->input('month');
+        try {
+            $selectedDate = $selectedMonthStr ? Carbon::createFromFormat('Y-m', $selectedMonthStr)->startOfMonth() : Carbon::now()->startOfMonth();
+        } catch (\Exception $e) {
+            $selectedDate = Carbon::now()->startOfMonth();
+        }
+        $selectedMonthStr = $selectedDate->format('Y-m');
         $previousDate = $selectedDate->copy()->subMonth();
 
         $selectedDoctorId = $request->input('doctor_id', 'all');
@@ -26,34 +31,20 @@ class DoctorStatisticService
         $doctors = DB::table('doctors as d')
             ->join('users as u', 'd.user_id', '=', 'u.user_id')
             ->select('d.doctor_id', 'd.full_name')
+            ->orderBy('d.full_name')
             ->get();
 
         // 1. KPI: Total Appointments This Month
-        $currentAppointmentsQuery = DB::table('appointments as a')
-            ->join('doctorschedules as ds', 'a.schedule_id', '=', 'ds.schedule_id')
-            ->whereBetween('ds.work_date', [$selectedDate->copy()->startOfMonth()->toDateString(), $selectedDate->copy()->endOfMonth()->toDateString()]);
-
-        if ($selectedDoctorId !== 'all') {
-            $currentAppointmentsQuery->where('ds.doctor_id', $selectedDoctorId);
-        }
-        
-        $totalAppointments = $currentAppointmentsQuery->count();
+        $totalAppointments = $this->getAppointmentsBaseQuery($selectedDate, $selectedDoctorId)->count();
 
         // 1.b KPI: Previous Month Appointments
-        $previousAppointmentsQuery = DB::table('appointments as a')
-            ->join('doctorschedules as ds', 'a.schedule_id', '=', 'ds.schedule_id')
-            ->whereBetween('ds.work_date', [$previousDate->copy()->startOfMonth()->toDateString(), $previousDate->copy()->endOfMonth()->toDateString()]);
-        
-        if ($selectedDoctorId !== 'all') {
-            $previousAppointmentsQuery->where('ds.doctor_id', $selectedDoctorId);
-        }
-        $previousTotalAppointments = $previousAppointmentsQuery->count();
+        $previousTotalAppointments = $this->getAppointmentsBaseQuery($previousDate, $selectedDoctorId)->count();
 
         // 2. KPI: Revenue generated (From payments)
         $revenueQuery = DB::table('payments as p')
             ->join('appointments as a', 'p.appointment_id', '=', 'a.appointment_id')
             ->join('doctorschedules as ds', 'a.schedule_id', '=', 'ds.schedule_id')
-            ->where('p.status', 'Đã thanh toán')
+            ->whereIn('p.status', ['Thành công', 'Đã thanh toán'])
             ->whereBetween('p.payment_date', [
                 $selectedDate->copy()->startOfMonth()->toDateString() . ' 00:00:00',
                 $selectedDate->copy()->endOfMonth()->toDateString() . ' 23:59:59'
@@ -65,14 +56,21 @@ class DoctorStatisticService
         $totalRevenue = $revenueQuery->sum('p.total_amount');
 
         // 3. KPI: Cancellation Rate
-        $cancelledCount = (clone $currentAppointmentsQuery)->where('a.status', 'Đã hủy')->count();
+        $cancelledCount = $this->getAppointmentsBaseQuery($selectedDate, $selectedDoctorId)
+            ->where('a.status', 'Đã hủy')
+            ->count();
         $cancelRate = $totalAppointments > 0 ? round(($cancelledCount / $totalAppointments) * 100, 1) : 0;
 
-        // 4. Daily Appointments for Chart
-        // Group by day of month
-        $dailyAppointmentsRaw = (clone $currentAppointmentsQuery)
+        // 4. KPI: Average treatment duration
+        $avgDurationQuery = $this->getAppointmentsBaseQuery($selectedDate, $selectedDoctorId)
+            ->where('a.status', 'Hoàn thành');
+        $avgDuration = $avgDurationQuery->avg('ds.slot_duration');
+        $avgDuration = $avgDuration ? round($avgDuration) : 30; // fallback to 30 mins
+
+        // 5. Daily Appointments for Chart
+        $dailyAppointmentsRaw = $this->getAppointmentsBaseQuery($selectedDate, $selectedDoctorId)
             ->select(DB::raw('DAY(ds.work_date) as day'), DB::raw('COUNT(a.appointment_id) as count'))
-            ->groupBy('day')
+            ->groupBy(DB::raw('DAY(ds.work_date)'))
             ->get()
             ->keyBy('day');
 
@@ -84,26 +82,24 @@ class DoctorStatisticService
             $dailyData[] = isset($dailyAppointmentsRaw[$i]) ? $dailyAppointmentsRaw[$i]->count : 0;
         }
 
-        // 5. Doctor Comparison Table
-        $doctorStats = DB::table('doctors as d')
+        // 6. Doctor Comparison Table
+        $doctorStatsQuery = DB::table('doctors as d')
             ->join('users as u', 'd.user_id', '=', 'u.user_id')
             ->leftJoin('departments as dep', 'd.department_id', '=', 'dep.department_id')
-            ->select('d.doctor_id', 'd.full_name', 'dep.department_name')
-            ->get();
+            ->select('d.doctor_id', 'd.full_name', 'dep.department_name');
+
+        if ($selectedDoctorId !== 'all') {
+            $doctorStatsQuery->where('d.doctor_id', $selectedDoctorId);
+        }
+
+        $doctorStats = $doctorStatsQuery->get();
 
         foreach ($doctorStats as $doc) {
             // Appointments for this doc
-            $docTotalAppts = DB::table('appointments as a')
-                ->join('doctorschedules as ds', 'a.schedule_id', '=', 'ds.schedule_id')
-                ->where('ds.doctor_id', $doc->doctor_id)
-                ->whereBetween('ds.work_date', [$selectedDate->copy()->startOfMonth()->toDateString(), $selectedDate->copy()->endOfMonth()->toDateString()])
-                ->count();
+            $docTotalAppts = $this->getAppointmentsBaseQuery($selectedDate, $doc->doctor_id)->count();
             
-            $docCancelledAppts = DB::table('appointments as a')
-                ->join('doctorschedules as ds', 'a.schedule_id', '=', 'ds.schedule_id')
-                ->where('ds.doctor_id', $doc->doctor_id)
+            $docCancelledAppts = $this->getAppointmentsBaseQuery($selectedDate, $doc->doctor_id)
                 ->where('a.status', 'Đã hủy')
-                ->whereBetween('ds.work_date', [$selectedDate->copy()->startOfMonth()->toDateString(), $selectedDate->copy()->endOfMonth()->toDateString()])
                 ->count();
                 
             $doc->total_appointments = $docTotalAppts;
@@ -114,7 +110,7 @@ class DoctorStatisticService
                 ->join('appointments as a', 'p.appointment_id', '=', 'a.appointment_id')
                 ->join('doctorschedules as ds', 'a.schedule_id', '=', 'ds.schedule_id')
                 ->where('ds.doctor_id', $doc->doctor_id)
-                ->where('p.status', 'Đã thanh toán')
+                ->whereIn('p.status', ['Thành công', 'Đã thanh toán'])
                 ->whereBetween('p.payment_date', [
                     $selectedDate->copy()->startOfMonth()->toDateString() . ' 00:00:00',
                     $selectedDate->copy()->endOfMonth()->toDateString() . ' 23:59:59'
@@ -140,6 +136,7 @@ class DoctorStatisticService
             'totalAppointments' => $totalAppointments,
             'totalRevenue' => $totalRevenue,
             'cancelRate' => $cancelRate,
+            'avgDuration' => $avgDuration,
             'dailyLabels' => $dailyLabels,
             'dailyData' => $dailyData,
             'doctorStats' => $doctorStats,
@@ -148,5 +145,21 @@ class DoctorStatisticService
             'selectedDate' => $selectedDate,
             'previousDate' => $previousDate,
         ];
+    }
+
+    protected function getAppointmentsBaseQuery($selectedDate, $doctorId = 'all')
+    {
+        $query = DB::table('appointments as a')
+            ->join('doctorschedules as ds', 'a.schedule_id', '=', 'ds.schedule_id')
+            ->whereBetween('ds.work_date', [
+                $selectedDate->copy()->startOfMonth()->toDateString(),
+                $selectedDate->copy()->endOfMonth()->toDateString()
+            ]);
+
+        if ($doctorId !== 'all') {
+            $query->where('ds.doctor_id', $doctorId);
+        }
+
+        return $query;
     }
 }

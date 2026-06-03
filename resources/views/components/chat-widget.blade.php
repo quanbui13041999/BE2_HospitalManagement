@@ -52,9 +52,9 @@
             
             {{-- Welcome Info --}}
             <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:20px; margin-top:10px;">
-                <img src="https://ui-avatars.com/api/?name=MediCore&background=0084ff&color=fff" 
+                <img src="https://ui-avatars.com/api/?name=HospitalC&background=0084ff&color=fff" 
                      style="width:60px;height:60px;border-radius:50%;margin-bottom:10px;">
-                <div style="color:#fff; font-weight:700; font-size:17px;">MediCore Hospital</div>
+                <div style="color:#fff; font-weight:700; font-size:17px;">HospitalC</div>
                 <div style="color:#b0b3b8; font-size:13px;">Chúng tôi đã tạo cuộc trò chuyện này</div>
                 <div style="color:#b0b3b8; font-size:11px; margin-top:15px; text-align:center; padding:0 30px;">
                     🔒 Tin nhắn và cuộc gọi được bảo mật bằng tính năng mã hóa đầu cuối.
@@ -75,6 +75,7 @@
                 <div style="flex:1; background:#3a3b3c; border-radius:20px; display:flex; align-items:center; padding:6px 12px;">
                     <textarea id="chat-input" placeholder="Aa"
                         rows="1"
+                        maxlength="2000"
                         style="flex:1; border:none; background:transparent; color:#fff;
                                font-size:15px; resize:none; max-height:100px; outline:none; padding:4px 0;"
                         onkeydown="handleChatKey(event)"></textarea>
@@ -259,6 +260,12 @@ async function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim() || '👍';
     if (!chatRoomId || !text) return;
+    if (text.length > 2000) {
+        if (window.showAppNotification) {
+            window.showAppNotification('Tin nhắn tối đa 2000 ký tự. Vui lòng rút ngắn nội dung.', 'warning');
+        }
+        return;
+    }
     
     // Optimistic UI: Hiện tin nhắn ngay lập tức
     const tempMsg = {
@@ -279,7 +286,7 @@ async function sendChatMessage() {
     document.getElementById('chat-send-btn').innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i>';
 
     try {
-        await fetch('/chat/send', {
+        const res = await fetch('/chat/send', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -287,9 +294,22 @@ async function sendChatMessage() {
             },
             body: JSON.stringify({ room_id: chatRoomId, message_text: text })
         });
+        const data = await res.json();
+        if (!data.success) {
+            document.querySelectorAll('.msg-temp').forEach(el => el.remove());
+            input.value = text;
+            if (window.showAppNotification) {
+                window.showAppNotification(data.message || 'Không gửi được tin nhắn.', 'warning');
+            }
+            return;
+        }
         // Không cần gọi loadMessages ngay vì polling sẽ lo việc đồng bộ ID thực
     } catch (e) {
-        console.error("Send failed", e);
+        document.querySelectorAll('.msg-temp').forEach(el => el.remove());
+        input.value = text;
+        if (window.showAppNotification) {
+            window.showAppNotification('Không gửi được tin nhắn. Vui lòng thử lại sau.', 'error');
+        }
     }
 }
 
@@ -309,7 +329,7 @@ function handleChatKey(e) {
 }
 
 async function recallChatMessage(msgId, element) {
-    if (!confirm('Bạn muốn thu hồi tin nhắn này?')) return;
+    if (window.appConfirm && !await window.appConfirm('Bạn muốn thu hồi tin nhắn này?')) return;
     try {
         const res = await fetch(`/chat/messages/${msgId}`, {
             method: 'DELETE',
@@ -318,8 +338,14 @@ async function recallChatMessage(msgId, element) {
         const data = await res.json();
         if (data.success) {
             element.remove();
+        } else if (window.showAppNotification) {
+            window.showAppNotification(data.message || 'Không thu hồi được tin nhắn.', 'warning'); /* fixed: thu hoi lan 2 bao loi tren man hinh */
         }
-    } catch (e) {}
+    } catch (e) {
+        if (window.showAppNotification) {
+            window.showAppNotification('Không thu hồi được tin nhắn.', 'error');
+        }
+    }
 }
 
 function scrollToBottom() {

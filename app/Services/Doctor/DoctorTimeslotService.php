@@ -124,7 +124,7 @@ class DoctorTimeslotService
         $bookings = DB::table('appointments')
             ->select(
                 'schedule_id',
-                'appointment_time',
+                DB::raw("DATE_FORMAT(appointment_time, '%H:%i') as slot_time"), /* fixed: dem booking theo gio thuc luu trong DB */
                 DB::raw('COUNT(*) as booked_count')
             )
             ->whereIn('schedule_id', $scheduleIds)
@@ -137,7 +137,7 @@ class DoctorTimeslotService
                             ->where('slot_hold_expire', '>', now());
                       });
             })
-            ->groupBy('schedule_id', 'appointment_time')
+            ->groupBy('schedule_id', DB::raw("DATE_FORMAT(appointment_time, '%H:%i')"))
             ->get();
 
         // Transform to nested array
@@ -146,7 +146,7 @@ class DoctorTimeslotService
             if (!isset($bookingMap[$booking->schedule_id])) {
                 $bookingMap[$booking->schedule_id] = [];
             }
-            $bookingMap[$booking->schedule_id][$booking->appointment_time] = (int) $booking->booked_count;
+            $bookingMap[$booking->schedule_id][$booking->slot_time] = (int) $booking->booked_count;
         }
 
         return $bookingMap;
@@ -196,6 +196,7 @@ class DoctorTimeslotService
                     'is_booked' => $isBooked,
                     'max_slot' => $maxSlot,
                     'booked' => $booked,
+                    'remaining' => max(0, $maxSlot - $booked), /* fixed: tra ve so cho con lai theo DB */
                 ];
 
                 // Increment to next slot

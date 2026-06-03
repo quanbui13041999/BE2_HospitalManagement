@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\PaymentWebhookController;
 
 /**
  * API Routes
@@ -24,3 +25,6 @@ Route::get('/cron/reminders', function () {
         'stats' => $stats,
     ]);
 });
+
+// Endpoint tiếp nhận webhook ngân hàng từ PayOS
+Route::post('/payments/webhook', [PaymentWebhookController::class, 'handlePayOsWebhook']);

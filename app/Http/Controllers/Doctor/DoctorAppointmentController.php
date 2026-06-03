@@ -1,5 +1,7 @@
 <?php
+
 // app/Http/Controllers/Doctor/DoctorAppointmentController.php
+
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
@@ -17,7 +19,7 @@ class DoctorAppointmentController extends Controller
         $doctor = Doctor::where('user_id', Auth::id())->firstOrFail();
 
         $status = $request->get('status', 'all');
-        $date   = $request->get('date', today()->format('Y-m-d'));
+        $date = $request->get('date', today()->format('Y-m-d'));
 
         $query = Appointment::with([
             'user',          // bệnh nhân (User model)
@@ -26,7 +28,7 @@ class DoctorAppointmentController extends Controller
             'medicalRecord',
         ])
             ->forDoctor($doctor->doctor_id) // scope JOIN doctorschedules, doctor_id trong DoctorSchedules là doctor_id
-            ->select('appointments.*');     
+            ->select('appointments.*');
 
         if ($date) {
             $query->whereDate('appointments.appointment_time', $date);
@@ -42,14 +44,14 @@ class DoctorAppointmentController extends Controller
             ->paginate(20);
 
         // ✅ Thống kê — dùng closure để tái sử dụng base query
-        $base = fn() => Appointment::forDoctor($doctor->doctor_id)
+        $base = fn () => Appointment::forDoctor($doctor->doctor_id)
             ->select('appointments.*');
 
         $stats = [
-            'today'     => $base()->whereDate('appointments.appointment_time', today())->count(),
-            'pending'   => $base()->where('appointments.status', 'Chờ xác nhận')->count(),
+            'today' => $base()->whereDate('appointments.appointment_time', today())->count(),
+            'pending' => $base()->where('appointments.status', 'Chờ xác nhận')->count(),
             'confirmed' => $base()->where('appointments.status', 'Đã xác nhận')->count(),
-            'done'      => $base()->whereIn('appointments.status', ['Đã Khám', 'Hoàn thành'])->count(),
+            'done' => $base()->whereIn('appointments.status', ['Đã Khám', 'Hoàn thành'])->count(),
         ];
 
         return view('doctors.appointments.index', compact(

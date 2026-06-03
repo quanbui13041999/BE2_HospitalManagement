@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Dời Lịch Khám – HospitalBooking</title>
+    <title>Dời Lịch Khám – HospitalC</title>
     <!-- Tailwind CSS + Font -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <x-typography-base />
     <style>
         /* Giữ lại animation cần thiết cho spinner, không ảnh hưởng logic */
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -26,45 +27,7 @@
 </head>
 <body class="bg-gradient-to-br from-slate-50 to-blue-50/30 antialiased">
 
-{{-- Topbar hiện đại với Tailwind --}}
-<nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm px-4 md:px-8 py-3 flex items-center justify-between flex-wrap gap-3">
-    <a href="{{ route('home') }}" class="flex items-center gap-3 group">
-        <div class="w-9 h-9 bg-gradient-to-br from-blue-700 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
-            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-        </div>
-        <div>
-            <div class="font-extrabold text-gray-800 tracking-tight text-lg leading-5">HospitalBooking</div>
-            <div class="text-[11px] font-medium text-gray-400">Đặt lịch thông minh</div>
-        </div>
-    </a>
-    <div class="hidden md:flex gap-1 bg-gray-100/80 p-1 rounded-full">
-        <a href="{{ route('home') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🏠 Trang chủ</a>
-        <a href="{{ route('appointments.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📋 Lịch hẹn</a>
-        <a href="{{ route('appointments.create') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">✨ Đặt lịch mới</a>
-        <a href="{{ route('news.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📰 Bản tin</a>
-        @auth
-            @if(auth()->user()->isPatient())
-                <a href="{{ route('medical_history.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">📄 Hồ sơ bệnh án</a>
-            @elseif(auth()->user()->isDoctor())
-                <a href="{{ route('doctor.appointments.index') }}" class="px-4 py-1.5 text-sm font-semibold text-gray-600 rounded-full hover:bg-white hover:text-blue-700 transition">🩺 Danh sách khám</a>
-            @endif
-        @endauth
-    </div>
-    <div class="flex items-center gap-3">
-        @auth
-        <div class="flex items-center gap-2 bg-gray-100/90 rounded-full pr-3 pl-1 py-1">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
-            <span class="text-sm font-semibold text-gray-700 max-w-[120px] truncate">{{ auth()->user()->name ?? 'Người dùng' }}</span>
-        </div>
-        <form method="POST" action="{{ route('logout') }}" class="inline">
-            @csrf
-            <button type="submit" class="text-xs font-semibold bg-transparent border border-gray-300 rounded-full px-4 py-1.5 text-gray-600 hover:bg-gray-100 transition">Đăng xuất</button>
-        </form>
-        @endauth
-    </div>
-</nav>
+<x-site-nav />
 
 <div class="max-w-4xl mx-auto px-4 sm:px-6 py-6">
     {{-- Breadcrumb --}}
@@ -95,6 +58,11 @@
         {{ $errors->first('msg') }}
     </div>
     @endif
+    @if(session('warning'))
+    <div class="mb-6 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-xl text-orange-700 text-sm flex items-center gap-3">
+        {{ session('warning') }}
+    </div>
+    @endif
 
     @if($availableSchedules->isEmpty())
     <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-xl text-blue-800 text-sm flex items-center gap-3">
@@ -103,10 +71,11 @@
     </div>
     @endif
 
-    <form action="{{ route('appointments.update', $appointment->appointment_id) }}" method="POST" id="reschedule-form">
+    <form action="{{ route('appointments.update', $appointment->appointment_id) }}" method="POST" id="reschedule-form" data-disable-submit>
         @csrf
         @method('PUT')
         <input type="hidden" name="new_appointment_time" id="new_appointment_time">
+        <input type="hidden" name="version" value="{{ $appointment->version_token }}"> {{-- fixed: optimistic lock bang token vi bang appointments khong co updated_at --}}
 
         {{-- Thông tin người đặt lịch --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
@@ -213,7 +182,7 @@
 
                 <div class="mt-6">
                     <label class="text-[11px] font-bold uppercase tracking-wide text-gray-500 block mb-2">Lý do dời lịch <span class="normal-case font-normal">(tùy chọn)</span></label>
-                    <textarea name="reschedule_reason" id="reschedule_reason" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" placeholder="VD: bận công việc đột xuất, trùng lịch khám khác, sức khỏe chưa ổn…">{{ old('reschedule_reason') }}</textarea>
+                    <textarea name="reschedule_reason" id="reschedule_reason" maxlength="255" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" placeholder="VD: bận công việc đột xuất, trùng lịch khám khác, sức khỏe chưa ổn…">{{ old('reschedule_reason') }}</textarea>
                 </div>
 
                 <div class="flex flex-col sm:flex-row justify-between gap-4 mt-8 pt-4 border-t border-gray-100">
@@ -233,7 +202,7 @@
 </div>
 
 <footer class="text-center py-8 text-xs text-gray-400 border-t border-gray-100 mt-10 bg-white/50">
-    © {{ date('Y') }} HospitalBooking · Nền tảng đặt lịch khám hiện đại · <a href="#" class="text-blue-600 hover:underline">Chính sách bảo mật</a>
+    © {{ date('Y') }} HospitalC · Nền tảng đặt lịch khám hiện đại · <a href="#" class="text-blue-600 hover:underline">Chính sách bảo mật</a>
 </footer>
 
 <script>
@@ -256,12 +225,13 @@
 
     let isSubmitting = false;
 
-    document.getElementById('reschedule-form')?.addEventListener('submit', function(e) {
+    const rescheduleForm = document.getElementById('reschedule-form');
+    if (rescheduleForm) {
+        rescheduleForm.addEventListener('submit', function(e) {
         if (isSubmitting) {
             e.preventDefault();
             return;
         }
-
         const btn = document.getElementById('submit-btn');
         const spinner = document.getElementById('spinner');
         const icon = document.getElementById('submit-icon');
@@ -275,8 +245,78 @@
         btn.disabled = true;
         spinner.style.display = 'inline-block';
         icon.style.display = 'none';
-    });
+        });
+    }
 
+    window.showAppNotification = window.showAppNotification || function(message, type = 'error', options = {}) {
+        let stack = document.getElementById('app-notification-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'app-notification-stack';
+            stack.style.cssText = 'position:fixed;top:18px;right:18px;z-index:20000;width:min(420px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px';
+            document.body.appendChild(stack);
+        }
+
+        const notice = document.createElement('div');
+        notice.textContent = message || 'Đã xảy ra lỗi, vui lòng thử lại sau.';
+        notice.style.cssText = 'padding:12px 14px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;box-shadow:0 16px 40px rgba(15,23,42,.16);font-size:14px;line-height:1.45';
+        if (type === 'warning') {
+            notice.style.borderColor = '#fde68a';
+            notice.style.background = '#fffbeb';
+            notice.style.color = '#92400e';
+        }
+        stack.appendChild(notice);
+        const timeout = typeof options.timeout === 'number' ? options.timeout : 5000;
+        setTimeout(() => notice.remove(), timeout);
+    };
+
+    window.alert = function(message) {
+        window.showAppNotification(message, 'error');
+    };
+
+    function bindStandaloneInputLimitWarnings() {
+        document.querySelectorAll('input[maxlength], textarea[maxlength]').forEach(function(field) {
+            field.addEventListener('input', function() {
+                if (field.maxLength <= 0 || field.value.length < field.maxLength || field.dataset.limitNotified === '1') {
+                    return;
+                }
+
+                field.dataset.limitNotified = '1';
+                window.showAppNotification('Trường này tối đa ' + field.maxLength + ' ký tự. Vui lòng rút ngắn nội dung.', 'warning'); /* fixed: bao loi textbox qua dai tren man hinh */
+            });
+
+            field.addEventListener('blur', function() {
+                field.dataset.limitNotified = '';
+            });
+        });
+    }
+
+    bindStandaloneInputLimitWarnings();
+
+    document.querySelectorAll('form[data-disable-submit]').forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (form.dataset.submitLocked === '1') {
+                event.preventDefault();
+                window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+                return;
+            }
+
+            form.dataset.submitLocked = '1';
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function(button) {
+                button.disabled = true;
+            });
+        });
+    }); /* fixed: chan double submit doi lich */
 </script>
+@if(session('reload_page'))
+<div id="appointment-reload-message"
+     data-message="{{ e(session('warning') ?? 'Lịch hẹn đã thay đổi, trang sẽ được tải lại.') }}"
+     hidden></div>
+<script>
+    window.showAppNotification(document.getElementById('appointment-reload-message').dataset.message, 'warning', { timeout: 2500 });
+    setTimeout(() => window.location.replace(window.location.href), 1800);
+</script>
+@endif
+@include('components.back-to-previous')
 </body>
 </html>

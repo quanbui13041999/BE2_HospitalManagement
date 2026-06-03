@@ -6,6 +6,8 @@ use App\Models\ChatRoom;
 use App\Models\ChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ChatRoomController extends Controller
 {
@@ -20,6 +22,10 @@ class ChatRoomController extends Controller
      */
     public function index(): \Illuminate\View\View
     {
+        request()->validate([
+            'page' => 'nullable|integer|min:1|max:1000',
+        ]); /* fixed: chan URL page=abc/page qua lon */
+
         $rooms = ChatRoom::with([
                 'patient:user_id,full_name,email,avatar_url',
                 'staff:user_id,full_name',
@@ -35,8 +41,14 @@ class ChatRoomController extends Controller
      * Lấy danh sách phòng dạng JSON (dùng cho polling sidebar admin)
      * GET /admin/chatroom/list
      */
-    public function listJson(): \Illuminate\Http\JsonResponse
+    public function listJson(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
     {
+        if (!$this->expectsJsonRequest($request)) {
+            return redirect()
+                ->route('admin.chatroom.index')
+                ->with('warning', 'Đường dẫn dữ liệu chat không hợp lệ. Trang đã được tải lại.');
+        } /* fixed: khong hien JSON thô khi user go truc tiep URL API */
+
         $rooms = ChatRoom::with([
                 'patient:user_id,full_name,avatar_url',
                 'latestMessage',
@@ -58,16 +70,38 @@ class ChatRoomController extends Controller
                                         : null,
             ]);
 
-        return response()->json(['success' => true, 'rooms' => $rooms]);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'rooms' => $rooms,
+            'data' => ['rooms' => $rooms],
+        ]); /* fixed: JSON API co cau truc nhat quan va giu tuong thich key cu */
     }
 
     /**
      * Lấy tin nhắn của 1 phòng (admin xem + trả lời)
      * GET /admin/chatroom/{roomId}/messages?after_id=xxx
      */
-    public function getMessages(Request $request, int $roomId): \Illuminate\Http\JsonResponse
+    public function getMessages(Request $request, int $roomId): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
     {
-        $room = ChatRoom::findOrFail($roomId);
+        if (!$this->expectsJsonRequest($request)) {
+            return redirect()
+                ->route('admin.chatroom.index')
+                ->with('warning', 'Đường dẫn dữ liệu chat không hợp lệ. Trang đã được tải lại.');
+        } /* fixed: doi id tren URL API messages thi quay ve man chat thay vi lo JSON/404 */
+
+        $request->validate([
+            'after_id' => 'nullable|integer|min:0',
+        ]); /* fixed: validate query polling */
+
+        $room = ChatRoom::find($roomId);
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 404);
+        }
 
         $query = ChatMessage::where('room_id', $roomId)
             ->with('sender:user_id,full_name,avatar_url,role_id');
@@ -100,13 +134,23 @@ class ChatRoomController extends Controller
 
         return response()->json([
             'success'  => true,
+            'message'  => 'OK',
             'messages' => $messages,
             'room'     => [
                 'room_id'      => $room->room_id,
                 'patient_name' => $room->patient->full_name ?? 'Ẩn danh',
                 'status'       => $room->status,
                 'doctor_id'    => $room->doctor_id,
-            ]
+            ],
+            'data' => [
+                'messages' => $messages,
+                'room' => [
+                    'room_id'      => $room->room_id,
+                    'patient_name' => $room->patient->full_name ?? 'Ẩn danh',
+                    'status'       => $room->status,
+                    'doctor_id'    => $room->doctor_id,
+                ],
+            ],
         ]);
     }
 
@@ -116,25 +160,56 @@ class ChatRoomController extends Controller
      */
     public function sendMessage(Request $request, int $roomId): \Illuminate\Http\JsonResponse
     {
-        $request->validate(['message_text' => 'required|string|max:2000']);
+        $request->validate(['message_text' => ['required', 'string', 'max:2000', 'not_regex:/\A[\s\x{3000}]*\z/u']]);
 
-        $room = ChatRoom::findOrFail($roomId);
+        $room = ChatRoom::where('room_id', $roomId)
+            ->where('status', 'Mở')
+            ->first();
 
-        // Assign phòng cho staff nếu chưa có. Cột doctor_id đang lưu user_id của CSKH/admin.
-        if (!$room->doctor_id) {
-            $room->update(['doctor_id' => Auth::id()]);
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không còn mở hoặc đã bị xóa. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 409); /* fixed: gui vao phong da dong/xoa phai bao UI */
         }
 
-        $message = ChatMessage::create([
-            'room_id'      => $roomId,
-            'sender_id'    => Auth::id(),
-            'message_text' => trim($request->message_text),
-            'is_read'      => 0,
-            'sent_at'      => now(),
-            'is_ai'        => 0,
-        ]);
+        try {
+            return DB::transaction(function () use ($request, $room, $roomId) {
+                // Assign phòng cho staff nếu chưa có. Cột doctor_id đang lưu user_id của CSKH/admin.
+                if (!$room->doctor_id) {
+                    $room->update(['doctor_id' => Auth::id()]);
+                }
 
-        return response()->json(['success' => true, 'message_id' => $message->message_id]);
+                $message = ChatMessage::create([
+                    'room_id'      => $roomId,
+                    'sender_id'    => Auth::id(),
+                    'message_text' => trim($request->message_text),
+                    'is_read'      => 0,
+                    'sent_at'      => now(),
+                    'is_ai'        => 0,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'OK',
+                    'message_id' => $message->message_id,
+                    'data' => ['message_id' => $message->message_id],
+                ]); /* fixed: transaction cho assign + message */
+            });
+        } catch (\Throwable $e) {
+            Log::error('Admin chat send failed', [
+                'room_id' => $roomId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi, vui lòng thử lại sau.',
+                'data' => null,
+            ], 500);
+        }
     }
 
     /**
@@ -143,10 +218,26 @@ class ChatRoomController extends Controller
      */
     public function closeRoom(int $roomId): \Illuminate\Http\JsonResponse
     {
-        $room = ChatRoom::findOrFail($roomId);
+        $room = ChatRoom::find($roomId);
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 404);
+        }
+
+        if ($room->status !== 'Mở') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat đã được người khác đóng trước đó. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 409); /* fixed: dong phong o tab thu 2 phai bao loi */
+        }
+
         $room->update(['status' => 'Đóng', 'closed_at' => now()]);
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
     }
 
     /**
@@ -155,12 +246,27 @@ class ChatRoomController extends Controller
      */
     public function deleteRoom(int $roomId): \Illuminate\Http\JsonResponse
     {
-        $room = ChatRoom::findOrFail($roomId);
-        // Xóa tất cả tin nhắn trong phòng trước (nếu database không dùng Cascade delete)
-        ChatMessage::where('room_id', $roomId)->delete();
-        $room->delete();
+        $deleted = DB::transaction(function () use ($roomId) {
+            $room = ChatRoom::where('room_id', $roomId)->lockForUpdate()->first();
+            if (!$room) {
+                return false;
+            }
 
-        return response()->json(['success' => true]);
+            // Xóa tất cả tin nhắn trong phòng trước (nếu database không dùng Cascade delete)
+            ChatMessage::where('room_id', $roomId)->delete();
+            $room->delete();
+            return true;
+        }); /* fixed: xoa phong va tin nhan cung transaction */
+
+        if (!$deleted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 404); /* fixed: xoa lan 2 bao loi ro */
+        }
+
+        return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
     }
 
     /**
@@ -169,9 +275,22 @@ class ChatRoomController extends Controller
      */
     public function deleteMessage(int $messageId): \Illuminate\Http\JsonResponse
     {
-        $message = ChatMessage::findOrFail($messageId);
+        $message = ChatMessage::find($messageId);
+        if (!$message) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tin nhắn không tồn tại hoặc đã bị xóa. Vui lòng tải lại cuộc trò chuyện.',
+                'data' => null,
+            ], 404);
+        }
+
         $message->delete();
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
+    }
+
+    private function expectsJsonRequest(Request $request): bool
+    {
+        return $request->expectsJson() || $request->ajax();
     }
 }

@@ -61,6 +61,12 @@
     </div>
     @endif
 
+    @if(session('warning'))
+    <div class="profile-alert" role="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;">
+        <span>{{ session('warning') }}</span>
+    </div>
+    @endif
+
     {{-- Hero Section --}}
     <section class="profile-card hero-card">
         <div class="hero-left">
@@ -68,7 +74,8 @@
             <div class="avatar-shell">
                 <img src="{{ $user->avatar_url ? asset('storage/' . $user->avatar_url) : asset('images/default-avatar.png') }}"
                     alt="Ảnh đại diện của {{ $user->full_name }}"
-                    class="avatar-image">
+                    class="avatar-image"
+                    onerror="this.onerror=null; this.src='{{ asset('images/default-avatar.png') }}';">
                 <span class="status-dot {{ $user->status ? 'online' : 'offline' }}"
                     title="{{ $user->status ? 'Đang hoạt động' : 'Không hoạt động' }}"></span>
             </div>
@@ -191,7 +198,9 @@
                  <a href="{{ route('health-tracking.index') }}" class="quick-link-item">
                     <div class="link-icon">📓</div>
                     <div>
-                        <strong>Nhật kí sức khỏe </strong>
+                        <strong>
+                            {{ auth()->user()->isPatient() ? 'Nhật kí sức khỏe' : 'Nhật kí sức khỏe bệnh nhân' }}
+                        </strong>
                         
                     </div>
                 </a>

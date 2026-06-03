@@ -1,7 +1,9 @@
 <?php
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // app/Services/DayOffService.php
 // ═══════════════════════════════════════════════════════════════════════════════
+
 namespace App\Services\Doctor;
 
 use App\Mail\AppointmentRescheduleMail;
@@ -38,20 +40,20 @@ class DayOffService
     public function process(array $data): array
     {
         $doctorId = $data['doctor_id'];
-        $session  = $data['session'];     // all | morning | afternoon
-        $reason   = $data['reason'] ?? '';
-        $type     = $data['type'];
+        $session = $data['session'];     // all | morning | afternoon
+        $reason = $data['reason'] ?? '';
+        $type = $data['type'];
 
         $dates = $this->buildDateRange($data['date'], $data['end_date'] ?? null);
 
-        $blockedCount  = 0;
+        $blockedCount = 0;
         $affectedCount = 0;
-        $emailsSent    = 0;
+        $emailsSent = 0;
         $pendingEmails = [];
         $doctorNotification = null;
 
         // Bác sĩ cùng khoa để gợi ý
-        $doctor       = Doctor::with('department', 'user')->findOrFail($doctorId);
+        $doctor = Doctor::with('department', 'user')->findOrFail($doctorId);
         $alterDoctors = $doctor->sameDepDoctors();
 
         DB::transaction(function () use (
@@ -64,10 +66,10 @@ class DayOffService
                 DoctorDayOff::firstOrCreate(
                     [
                         'doctor_id' => $doctorId,
-                        'off_date'  => $date,
+                        'off_date' => $date,
                     ],
                     [
-                        'reason'     => $reason ?: $type,
+                        'reason' => $reason ?: $type,
                         'created_at' => now(),
                     ]
                 );
@@ -85,7 +87,7 @@ class DayOffService
                     'date' => $date,
                     'schedule_count' => $schedules->count(),
                     'statuses' => $schedules->pluck('status')->unique()->toArray(),
-                    'schedules_detail' => $schedules->map(fn($s) => [
+                    'schedules_detail' => $schedules->map(fn ($s) => [
                         'schedule_id' => $s->schedule_id,
                         'status' => $s->status,
                         'work_date' => $s->work_date,
@@ -104,14 +106,15 @@ class DayOffService
                         ->where('version', $currentScheduleVersion)
                         ->update([
                             'status' => 'blocked',
-                            'note'   => "[{$type}] {$reason}",
-                            'version' => $currentScheduleVersion + 1
+                            'note' => "[{$type}] {$reason}",
+                            'version' => $currentScheduleVersion + 1,
                         ]);
 
                     if ($updatedSchedules === 0) {
                         Log::warning('Day-off: Schedule already modified, skipping', [
                             'schedule_id' => $schedule->schedule_id,
                         ]);
+
                         continue;
                     }
 
@@ -139,9 +142,9 @@ class DayOffService
                         $updated = Appointment::where('appointment_id', $appt->appointment_id)
                             ->where('version', $currentApptVersion)
                             ->update([
-                                'status'        => 'Bác sĩ nghỉ',
+                                'status' => 'Bác sĩ nghỉ',
                                 'cancel_reason' => "{$type}: {$reason}",
-                                'version'       => $currentApptVersion + 1
+                                'version' => $currentApptVersion + 1,
                             ]);
 
                         if ($updated) {
@@ -164,12 +167,12 @@ class DayOffService
 
                         if ($appt->user && $appt->user->email) {
                             $pendingEmails[] = [
-                                'email'        => $appt->user->email,
-                                'patient'      => $appt->user,
-                                'appointment'  => $appt,
-                                'doctor'       => $doctor,
-                                'reason'       => $reason,
-                                'type'         => $type,
+                                'email' => $appt->user->email,
+                                'patient' => $appt->user,
+                                'appointment' => $appt,
+                                'doctor' => $doctor,
+                                'reason' => $reason,
+                                'type' => $type,
                                 'alternatives' => $alternatives,
                             ];
                         }
@@ -181,10 +184,10 @@ class DayOffService
             if ($affectedCount > 0 && $doctor->user && $doctor->user->email) {
                 $doctorNotification = [
                     'email' => $doctor->user->email,
-                    'mail'  => new DoctorDayOffNotification(
+                    'mail' => new DoctorDayOffNotification(
                         doctor: $doctor,
                         data: array_merge($data, [
-                            'blocked_schedules'    => $blockedCount,
+                            'blocked_schedules' => $blockedCount,
                             'affected_appointments' => $affectedCount,
                         ]),
                     ),
@@ -194,7 +197,7 @@ class DayOffService
 
         Log::info('Day-off: Sending patient reschedule emails', [
             'total_pending' => count($pendingEmails),
-            'emails' => collect($pendingEmails)->map(fn($item) => $item['email'])->toArray(),
+            'emails' => collect($pendingEmails)->map(fn ($item) => $item['email'])->toArray(),
         ]);
 
         foreach ($pendingEmails as $item) {
@@ -204,6 +207,7 @@ class DayOffService
                         'patient_id' => $item['patient']?->user_id,
                         'appointment_id' => $item['appointment']->appointment_id ?? null,
                     ]);
+
                     continue;
                 }
 
@@ -213,13 +217,13 @@ class DayOffService
                     'appointment_id' => $item['appointment']->appointment_id ?? null,
                 ]);
 
-                // Gửi email 
+                // Gửi email
                 Mail::to($item['email'])->send(new AppointmentRescheduleMail(
-                    patient:      $item['patient'],
-                    appointment:  $item['appointment'],
-                    doctor:       $item['doctor'],
-                    reason:       $item['reason'],
-                    type:         $item['type'],
+                    patient: $item['patient'],
+                    appointment: $item['appointment'],
+                    doctor: $item['doctor'],
+                    reason: $item['reason'],
+                    type: $item['type'],
                     alternatives: $item['alternatives'],
                 ));
                 $emailsSent++;
@@ -270,9 +274,9 @@ class DayOffService
         ]);
 
         return [
-            'blocked_schedules'     => $blockedCount,
+            'blocked_schedules' => $blockedCount,
             'affected_appointments' => $affectedCount,
-            'emails_sent'           => $emailsSent,
+            'emails_sent' => $emailsSent,
         ];
     }
 
@@ -284,10 +288,10 @@ class DayOffService
     public function estimateAffectedAppointments(array $data): int
     {
         $doctorId = $data['doctor_id'];
-        $session  = $data['session'];
-        $dates    = $this->buildDateRange($data['date'], $data['end_date'] ?? null);
+        $session = $data['session'];
+        $dates = $this->buildDateRange($data['date'], $data['end_date'] ?? null);
 
-        \Log::info("Preview Day-off: doctor={$doctorId}, session={$session}, dates=" . json_encode($dates));
+        \Log::info("Preview Day-off: doctor={$doctorId}, session={$session}, dates=".json_encode($dates));
 
         $count = 0;
         foreach ($dates as $date) {
@@ -296,7 +300,7 @@ class DayOffService
                 ->where('work_date', $date)
                 ->get();
 
-            \Log::info("  Date {$date}: found " . $schedules->count() . " active schedules");
+            \Log::info("  Date {$date}: found ".$schedules->count().' active schedules');
 
             $toBlock = $this->filterBySession($schedules, $session);
             \Log::info("    Filtered to {$toBlock->count()} schedules by session '{$session}'");
@@ -312,6 +316,7 @@ class DayOffService
         }
 
         \Log::info("Preview Result: {$count} total affected appointments");
+
         return $count;
     }
 
@@ -329,26 +334,26 @@ class DayOffService
             ->orderBy('work_date')
             ->orderBy('start_time')
             ->get()
-            ->groupBy('work_date') // gom theo ngày để hiển thị dễ hơn
-            ->map(function ($group, $date) {
+            ->groupBy(fn (DoctorSchedule $schedule) => Carbon::parse($schedule->work_date)->toDateString()) // gom theo ngày, tránh key "00:00:00"
+            ->map(function ($group, string $date) {
                 return [
-                    'date'     => $date,
+                    'date' => $date,
                     'sessions' => $group->map(function ($s) {
                         // Lấy danh sách appointment bị ảnh hưởng (bao gồm cả active và đã bị hủy do day-off)
                         $affectedAppointments = $s->dayOffAffectedAppointments()
                             ->map(fn ($appt) => [
                                 'appointment_id' => $appt->appointment_id,
-                                'patient_name'   => $appt->user?->full_name,
-                                'patient_email'  => $appt->user?->email,
+                                'patient_name' => $appt->user?->full_name,
+                                'patient_email' => $appt->user?->email,
                                 'appointment_time' => $appt->appointment_time,
                             ]);
 
                         return [
                             'schedule_id' => $s->schedule_id,
-                            'start_time'  => $s->start_time,
-                            'end_time'    => $s->end_time,
-                            'note'        => $s->note,
-                            'affected_count'       => $affectedAppointments->count(),
+                            'start_time' => $s->start_time,
+                            'end_time' => $s->end_time,
+                            'note' => $s->note,
+                            'affected_count' => $affectedAppointments->count(),
                             'affected_appointments' => $affectedAppointments,
                         ];
                     }),
@@ -372,7 +377,7 @@ class DayOffService
             ->update([
                 'status' => 'Hoạt động',
                 'note' => null,
-                'version' => $currentVersion + 1
+                'version' => $currentVersion + 1,
             ]);
 
         if ($updated === 0) {
@@ -385,7 +390,7 @@ class DayOffService
             ->where('status', 'blocked')
             ->exists();
 
-        if (!$blockedExists) {
+        if (! $blockedExists) {
             DoctorDayOff::where('doctor_id', $schedule->doctor_id)
                 ->where('off_date', $schedule->work_date)
                 ->delete();
@@ -399,18 +404,19 @@ class DayOffService
     /** Tạo mảng ngày từ start đến end (inclusive) */
     private function buildDateRange(string $start, ?string $end): array
     {
-        if (!$end || $end === $start) {
+        if (! $end || $end === $start) {
             return [$start];
         }
 
-        $dates   = [];
+        $dates = [];
         $current = Carbon::parse($start);
-        $last    = Carbon::parse($end);
+        $last = Carbon::parse($end);
 
         while ($current->lte($last)) {
             $dates[] = $current->toDateString();
             $current->addDay();
         }
+
         return $dates;
     }
 
@@ -426,9 +432,9 @@ class DayOffService
     private function filterBySession(EloquentCollection $schedules, string $session): EloquentCollection
     {
         return match ($session) {
-            'morning'   => $schedules->filter(fn ($s) => $s->start_time >= '08:00:00' && $s->start_time < '12:00:00'),
+            'morning' => $schedules->filter(fn ($s) => $s->start_time >= '08:00:00' && $s->start_time < '12:00:00'),
             'afternoon' => $schedules->filter(fn ($s) => $s->start_time >= '13:30:00'),
-            default     => $schedules, // 'all'
+            default => $schedules, // 'all'
         };
     }
 
@@ -440,7 +446,7 @@ class DayOffService
      *  { doctor, schedule, available_slots, score, score_breakdown }
      *
      * @param  Collection  $alterDoctors  Bác sĩ cùng khoa
-     * @param  \Carbon\Carbon  $originalTime  Thời điểm hẹn cũ
+     * @param  Carbon  $originalTime  Thời điểm hẹn cũ
      */
     private function findAlternativeSlots(Collection $alterDoctors, $originalTime): array
     {

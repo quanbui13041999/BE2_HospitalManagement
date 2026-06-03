@@ -27,9 +27,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class SlotHoldController extends Controller
 {
-    public function __construct(protected SlotHoldService $slotHoldService)
-    {
-    }
+    public function __construct(protected SlotHoldService $slotHoldService) {}
 
     // ────────────────────────────────────────────────────────────
     // POST /api/slot-hold
@@ -52,8 +50,8 @@ class SlotHoldController extends Controller
     {
         try {
             $result = $this->slotHoldService->holdSlot(
-                userId:          Auth::id(),
-                scheduleId:      (int) $request->validated('schedule_id'),
+                userId: Auth::id(),
+                scheduleId: (int) $request->validated('schedule_id'),
                 appointmentTime: $request->validated('appointment_time'),
             );
 
@@ -85,8 +83,8 @@ class SlotHoldController extends Controller
         ]);
 
         $released = $this->slotHoldService->releaseHold(
-            userId:        Auth::id(),
-            scheduleId:    $request->has('schedule_id') ? (int) $request->schedule_id : null,
+            userId: Auth::id(),
+            scheduleId: $request->has('schedule_id') ? (int) $request->schedule_id : null,
             appointmentId: $request->has('appointment_id') ? (int) $request->appointment_id : null,
         );
 
@@ -120,7 +118,7 @@ class SlotHoldController extends Controller
         ]);
 
         $status = $this->slotHoldService->getHoldStatus(
-            userId:     Auth::id(),
+            userId: Auth::id(),
             scheduleId: (int) $request->schedule_id,
         );
 

@@ -1030,15 +1030,20 @@ async function openEditModal(serviceId) {
     const form = document.getElementById('editServiceForm');
     form.reset();
     form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-    
+
+    // Reset submit button
+    const editSubmitBtn = form.querySelector('button[type="submit"]');
+    editSubmitBtn.disabled = false;
+    editSubmitBtn.innerHTML = '<i class="bi bi-floppy me-1"></i>Lưu thay đổi';
+
     form.action = `/admin/services/${serviceId}`;
-    
+
     try {
         const res = await fetch(`/admin/services/${serviceId}/edit`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await res.json();
-        
+
         if (data.success) {
             const svc = data.service;
             document.getElementById('edit_service_code').value = svc.service_code;
@@ -1047,7 +1052,17 @@ async function openEditModal(serviceId) {
             document.getElementById('edit_duration_minutes').value = svc.duration_minutes;
             document.getElementById('edit_description').value = svc.description || '';
             document.getElementById('edit_status').value = svc.status ? '1' : '0';
-            
+
+            // Optimistic lock: lưu timestamp updated_at vào hidden input
+            let lockInput = form.querySelector('[name="_lock_version"]');
+            if (!lockInput) {
+                lockInput = document.createElement('input');
+                lockInput.type = 'hidden';
+                lockInput.name = '_lock_version';
+                form.appendChild(lockInput);
+            }
+            lockInput.value = data.updated_at_timestamp || '';
+
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
         } else {
@@ -1066,6 +1081,30 @@ document.getElementById('editServiceForm').addEventListener('submit', async func
     submitBtn.disabled = true;
     
     form.querySelectorAll('.form-control, .form-select').forEach(el => el.classList.remove('is-invalid'));
+
+    const name = document.getElementById('edit_service_name');
+    const dur = document.getElementById('edit_duration_minutes');
+    
+    let valid = true;
+    if (!name.value.trim()) {
+        name.classList.add('is-invalid');
+        const errBlock = form.querySelector('.error-service_name');
+        if (errBlock) errBlock.textContent = 'Tên dịch vụ là bắt buộc.';
+        valid = false;
+    }
+    const durVal = parseInt(dur.value);
+    if (isNaN(durVal) || durVal < 5 || durVal > 480) {
+        dur.classList.add('is-invalid');
+        const errBlock = form.querySelector('.error-duration_minutes');
+        if (errBlock) errBlock.textContent = 'Thời gian phải từ 5 đến 480 phút.';
+        valid = false;
+    }
+    
+    if (!valid) {
+        submitBtn.disabled = false;
+        showToast('Vui lòng kiểm tra lại thông tin biểu mẫu', 'warning');
+        return;
+    }
     
     const formData = new FormData(form);
     
@@ -1080,8 +1119,14 @@ document.getElementById('editServiceForm').addEventListener('submit', async func
         });
         const data = await res.json();
         submitBtn.disabled = false;
-        
-        if (res.status === 422) {
+        submitBtn.innerHTML = '<i class="bi bi-floppy me-1"></i>Lưu thay đổi';
+
+        if (res.status === 409) {
+            // Xung đột Optimistic locking – người khác đã sửa
+            showToast(data.message || 'Dữ liệu đã được người khác cập nhật. Vui lòng tải lại.', 'warning');
+            bootstrap.Modal.getInstance(document.getElementById('editServiceModal')).hide();
+            return;
+        } else if (res.status === 422) {
             Object.keys(data.errors).forEach(key => {
                 const input = form.querySelector(`[name="${key}"]`);
                 if (input) {
@@ -1094,7 +1139,7 @@ document.getElementById('editServiceForm').addEventListener('submit', async func
         } else if (data.success) {
             showToast(data.message, 'success');
             bootstrap.Modal.getInstance(document.getElementById('editServiceModal')).hide();
-            
+
             // Reload page to reflect updates safely with pagination/filters
             setTimeout(() => window.location.reload(), 1000);
         } else {
@@ -1102,6 +1147,7 @@ document.getElementById('editServiceForm').addEventListener('submit', async func
         }
     } catch (err) {
         submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-floppy me-1"></i>Lưu thay đổi';
         showToast('Lỗi máy chủ', 'danger');
     }
 });
@@ -1229,6 +1275,38 @@ document.getElementById('addPriceForm').addEventListener('submit', async functio
     const errBlock = document.getElementById('addPriceError');
     errBlock.textContent = '';
     
+    // Clear previous validation states
+    form.querySelectorAll('.form-control, .form-select').forEach(el => el.classList.remove('is-invalid'));
+    
+    const priceValInput = form.querySelector('[name="price"]');
+    const effDateInput = form.querySelector('[name="effective_date"]');
+    const endDateInput = form.querySelector('[name="end_date"]');
+
+    const price = parseFloat(priceValInput.value);
+    const effDate = effDateInput.value;
+    const endDate = endDateInput.value;
+
+    if (isNaN(price) || price < 0) {
+        errBlock.textContent = 'Đơn giá phải là số và không được âm.';
+        priceValInput.classList.add('is-invalid');
+        showToast('Vui lòng kiểm tra lại thông tin đơn giá!', 'warning');
+        return;
+    }
+
+    if (!effDate) {
+        errBlock.textContent = 'Ngày áp dụng là bắt buộc.';
+        effDateInput.classList.add('is-invalid');
+        showToast('Vui lòng nhập ngày áp dụng!', 'warning');
+        return;
+    }
+
+    if (endDate && new Date(endDate) < new Date(effDate)) {
+        errBlock.textContent = 'Ngày kết thúc phải bằng hoặc sau ngày áp dụng.';
+        endDateInput.classList.add('is-invalid');
+        showToast('Ngày kết thúc không hợp lệ!', 'warning');
+        return;
+    }
+
     const formData = new FormData(form);
     
     try {
@@ -1252,6 +1330,7 @@ document.getElementById('addPriceForm').addEventListener('submit', async functio
             showToast(data.message, 'success');
             form.reset();
             formContainer.classList.add('d-none');
+            window.needReload = true;
             
             // Reload price table instantly inside details modal
             reloadModalPrices();
@@ -1277,12 +1356,14 @@ async function reloadModalPrices() {
 }
 
 /* ── INLINE EDIT PRICE ROW VIA AJAX (SLICK UX) ──────────────── */
+window.priceRowBackups = window.priceRowBackups || {};
+
 function editPriceInline(priceId, type, priceVal, effDate, endDate) {
     const tr = document.getElementById(`price-tr-${priceId}`);
     if (!tr) return;
     
     // Save previous html markup to cancel back
-    const previousMarkup = tr.innerHTML;
+    window.priceRowBackups[priceId] = tr.innerHTML;
     
     tr.className = "bg-warning-subtle";
     tr.innerHTML = `
@@ -1314,10 +1395,10 @@ function editPriceInline(priceId, type, priceVal, effDate, endDate) {
         </td>
         <td class="text-center">
             <div class="d-flex gap-1 justify-content-center">
-                <button type="button" class="btn btn-sm btn-success px-2 py-1" onclick="savePriceInline(${priceId}, '${previousMarkup}')" title="Lưu lại">
+                <button type="button" class="btn btn-sm btn-success px-2 py-1" onclick="savePriceInline(${priceId})" title="Lưu lại">
                     <i class="bi bi-check-lg"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-1" onclick="cancelPriceInline('${priceId}', \`${previousMarkup.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)" title="Huỷ bỏ">
+                <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-1" onclick="cancelPriceInline('${priceId}')" title="Huỷ bỏ">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -1326,14 +1407,14 @@ function editPriceInline(priceId, type, priceVal, effDate, endDate) {
     `;
 }
 
-function cancelPriceInline(priceId, previousMarkup) {
+function cancelPriceInline(priceId) {
     const tr = document.getElementById(`price-tr-${priceId}`);
     if (!tr) return;
     tr.className = "";
-    tr.innerHTML = previousMarkup;
+    tr.innerHTML = window.priceRowBackups[priceId];
 }
 
-async function savePriceInline(priceId, previousMarkup) {
+async function savePriceInline(priceId) {
     const tr = document.getElementById(`price-tr-${priceId}`);
     const inlineErr = document.getElementById(`inline-err-${priceId}`);
     inlineErr.textContent = '';
@@ -1343,6 +1424,37 @@ async function savePriceInline(priceId, previousMarkup) {
     const pEff = document.getElementById(`inline-eff-${priceId}`).value;
     const pEnd = document.getElementById(`inline-end-${priceId}`).value;
     
+    const priceValInput = document.getElementById(`inline-price-${priceId}`);
+    const effDateInput = document.getElementById(`inline-eff-${priceId}`);
+    const endDateInput = document.getElementById(`inline-end-${priceId}`);
+
+    priceValInput.classList.remove('is-invalid');
+    effDateInput.classList.remove('is-invalid');
+    if (endDateInput) endDateInput.classList.remove('is-invalid');
+
+    const price = parseFloat(pPrice);
+
+    if (isNaN(price) || price < 0) {
+        inlineErr.textContent = 'Đơn giá phải là số và không được âm.';
+        priceValInput.classList.add('is-invalid');
+        showToast('Vui lòng kiểm tra lại thông tin đơn giá!', 'warning');
+        return;
+    }
+
+    if (!pEff) {
+        inlineErr.textContent = 'Ngày áp dụng là bắt buộc.';
+        effDateInput.classList.add('is-invalid');
+        showToast('Vui lòng nhập ngày áp dụng!', 'warning');
+        return;
+    }
+
+    if (pEnd && new Date(pEnd) < new Date(pEff)) {
+        inlineErr.textContent = 'Ngày kết thúc phải bằng hoặc sau ngày áp dụng.';
+        if (endDateInput) endDateInput.classList.add('is-invalid');
+        showToast('Ngày kết thúc không hợp lệ!', 'warning');
+        return;
+    }
+
     // AJAX payload
     const payload = {
         price_type: pType,
@@ -1373,6 +1485,7 @@ async function savePriceInline(priceId, previousMarkup) {
             showToast('Lỗi trùng lặp khoảng thời gian bảng giá!', 'warning');
         } else if (data.success) {
             showToast(data.message, 'success');
+            window.needReload = true;
             reloadModalPrices();
         } else {
             inlineErr.textContent = data.message || 'Gặp lỗi khi lưu';
@@ -1399,6 +1512,7 @@ async function deletePriceAjax(priceId) {
         
         if (data.success) {
             showToast(data.message, 'success');
+            window.needReload = true;
             reloadModalPrices();
         } else {
             showToast(data.message || 'Xoá giá thất bại', 'danger');
@@ -1464,6 +1578,45 @@ document.getElementById('deleteServiceForm').addEventListener('submit', async fu
 document.addEventListener('DOMContentLoaded', function () {
     const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltipEls.forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover' }));
+
+    // Re-load page on modal close if price was added/edited/deleted
+    const viewModalEl = document.getElementById('viewServiceModal');
+    if (viewModalEl) {
+        viewModalEl.addEventListener('hidden.bs.modal', function () {
+            if (window.needReload) {
+                window.location.reload();
+            }
+        });
+    }
+
+    // ── Realtime polling: phát hiện thay đổi mỗi 20 giây ──────
+    const ADMIN_DATA_URL = '{{ route("admin.services.data") }}';
+    let lastTotal = {{ $services->total() }};
+    let realtimeEl;
+
+    realtimeEl = document.createElement('div');
+    realtimeEl.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#0D47A1;color:#fff;'
+        + 'padding:6px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .4s;z-index:9999;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);';
+    realtimeEl.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang kiểm tra cập nhật...';
+    document.body.appendChild(realtimeEl);
+
+    setInterval(() => {
+        fetch(ADMIN_DATA_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data.stats && data.stats.total !== lastTotal) {
+                    lastTotal = data.stats.total;
+                    realtimeEl.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Dữ liệu đã thay đổi – đang tải lại...';
+                    realtimeEl.style.background = '#2e7d32';
+                    realtimeEl.style.opacity = '1';
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    realtimeEl.style.opacity = '1';
+                    setTimeout(() => { realtimeEl.style.opacity = '0'; }, 1800);
+                }
+            })
+            .catch(() => {});
+    }, 20000);
 });
 </script>
 @endpush

@@ -5,10 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Đặt Lịch Khám – HospitalBooking | Trải nghiệm đặt khám hiện đại</title>
+    <title>Đặt Lịch Khám – HospitalC | Trải nghiệm đặt khám hiện đại</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
         rel="stylesheet">
+    <x-typography-base />
     <style>
         * {
             margin: 0;
@@ -54,124 +55,6 @@
         h3 {
             font-weight: 600;
             letter-spacing: -0.01em;
-        }
-
-        /* ── TOPBAR ── */
-        .topbar {
-            background: var(--white);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, .02), 0 1px 0 rgba(0, 0, 0, .03);
-            padding: 0 32px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 110;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .topbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-        }
-
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--primary), #2b6ed7);
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 6px 12px -6px rgba(15, 82, 186, .3);
-        }
-
-        .brand-text {
-            font-weight: 800;
-            font-size: 1.2rem;
-            color: var(--gray-800);
-            letter-spacing: -0.3px;
-        }
-
-        .brand-sub {
-            font-size: .7rem;
-            font-weight: 500;
-            color: var(--gray-400);
-            margin-top: 2px;
-        }
-
-        .topbar-center {
-            display: flex;
-            gap: 6px;
-            background: var(--gray-100);
-            padding: 4px;
-            border-radius: 48px;
-        }
-
-        .topbar-center a {
-            padding: 8px 20px;
-            font-size: .85rem;
-            font-weight: 600;
-            color: var(--gray-600);
-            text-decoration: none;
-            border-radius: 40px;
-            transition: all .2s;
-        }
-
-        .topbar-center a:hover,
-        .topbar-center a.active {
-            background: var(--white);
-            color: var(--primary);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .user-pill {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--gray-100);
-            padding: 5px 12px 5px 8px;
-            border-radius: 48px;
-        }
-
-        .user-avatar {
-            width: 34px;
-            height: 34px;
-            background: linear-gradient(145deg, var(--primary), #3279dc);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            color: white;
-            font-size: .85rem;
-        }
-
-        .user-name {
-            font-weight: 600;
-            font-size: .85rem;
-            color: var(--gray-800);
-        }
-
-        .btn-logout {
-            background: transparent;
-            border: 1px solid var(--gray-300);
-            border-radius: 32px;
-            padding: 7px 18px;
-            font-weight: 600;
-            font-size: .75rem;
-            color: var(--gray-600);
-            transition: all .2s;
-            cursor: pointer;
-        }
-
-        .btn-logout:hover {
-            background: var(--gray-100);
-            border-color: var(--gray-400);
-            color: var(--primary-dark);
         }
 
         /* ── BREADCRUMB ── */
@@ -1082,10 +965,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .topbar-center {
-                display: none;
-            }
-
             .suggest-grid {
                 grid-template-columns: 1fr 1fr;
             }
@@ -1105,47 +984,7 @@
 
 <body>
 
-    {{-- ── TOPBAR ── --}}
-    <nav class="topbar">
-        <a href="{{ route('home') }}" class="topbar-brand">
-            <div class="logo-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                </svg>
-            </div>
-            <div>
-                <div class="brand-text">HospitalBooking</div>
-                <div class="brand-sub">Đặt lịch thông minh</div>
-            </div>
-        </a>
-
-        <div class="topbar-center">
-            <a href="{{ route('home') }}">🏠 Trang chủ</a>
-            <a href="{{ route('appointments.index') }}">📋 Lịch hẹn</a>
-            <a href="{{ route('appointments.create') }}" class="active">✨ Đặt lịch mới</a>
-            <a href="{{ route('news.index') }}">📰 Bản tin</a>
-            @auth
-                @if(auth()->user()->isPatient())
-                    <a href="{{ route('medical_history.index') }}">📄 Hồ sơ bệnh án</a>
-                @elseif(auth()->user()->isDoctor())
-                    <a href="{{ route('doctor.appointments.index') }}">🩺 Danh sách khám</a>
-                @endif
-            @endauth
-        </div>
-
-        <div style="display:flex;align-items:center;gap:10px">
-            @auth
-                <div class="user-pill">
-                    <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
-                    <span class="user-name">{{ auth()->user()->name ?? 'Người dùng' }}</span>
-                </div>
-                <form method="POST" action="{{ route('logout') }}" style="margin:0">
-                    @csrf
-                    <button type="submit" class="btn-logout">Đăng xuất</button>
-                </form>
-            @endauth
-        </div>
-    </nav>
+    <x-site-nav />
 
     {{-- ── BREADCRUMB ── --}}
     <div style="max-width:1320px;margin:0 auto;padding:14px 28px;font-size:.75rem;color:var(--gray-400)">
@@ -1170,6 +1009,12 @@
                     ✔️ {{ session('success') }}
                 </div>
             @endif
+            @if(session('warning'))
+                <div
+                    style="background:#fff7ed;border-left:4px solid #f97316;padding:14px 20px;border-radius:18px;margin-bottom:24px;font-size:.85rem;color:#9a3412">
+                    ⚠️ {{ session('warning') }}
+                </div>
+            @endif
             @if($errors->has('msg'))
                 <div
                     style="background:#fee9e9;border-left:4px solid #e5484d;padding:14px 20px;border-radius:18px;margin-bottom:24px;font-size:.85rem;color:#991b1b">
@@ -1177,7 +1022,7 @@
                 </div>
             @endif
 
-            <form id="booking-form" action="{{ route('appointments.store') }}" method="POST">
+            <form id="booking-form" action="{{ route('appointments.store') }}" method="POST" data-disable-submit>
                 @csrf
                 <input type="hidden" name="schedule_id" id="schedule_id">
                 <input type="hidden" name="appointment_time" id="appointment_time">
@@ -1276,7 +1121,7 @@
                                 <select name="service_id" class="form-control" id="service_id_select">
                                     <option value="">-- Không chọn --</option>
                                     @foreach($services as $svc)
-                                        <option value="{{ $svc->service_id }}" {{ old('service_id') == $svc->service_id ? 'selected' : '' }}>
+                                        <option value="{{ $svc->service_id }}" data-dept="{{ $svc->department_id }}" {{ old('service_id') == $svc->service_id ? 'selected' : '' }}>
                                             {{ $svc->service_name }}
                                             @if($svc->price) – {{ number_format($svc->price, 0, ',', '.') }}₫ @endif
                                         </option>
@@ -1381,7 +1226,6 @@
                                 <input type="checkbox" name="is_priority" id="is_priority" value="1" {{ old('is_priority') ? 'checked' : '' }} onchange="togglePriorityType()">
                                 Đăng ký đối tượng ưu tiên
                             </label>
-
                             <div id="priority_type_container"
                                 style="display: {{ old('is_priority') ? 'block' : 'none' }}; margin-top: 10px;">
                                 <label class="form-label">Loại ưu tiên</label>
@@ -1400,6 +1244,7 @@
                         <div class="form-group" style="margin-top:12px">
                             <label class="form-label">Ghi Chú / Triệu Chứng</label>
                             <textarea name="note" class="form-control"
+                                maxlength="255"
                                 placeholder="VD: đau ngực, khó thở, tái khám sau điều trị...">{{ old('note') }}</textarea>
                         </div>
 
@@ -1489,17 +1334,19 @@
     </div>{{-- /page --}}
 
     <footer class="footer">
-        © {{ date('Y') }} HospitalBooking &nbsp;·&nbsp;
+        © {{ date('Y') }} HospitalC &nbsp;·&nbsp;
         <a href="#">Chính sách bảo mật</a> &nbsp;·&nbsp;
         <a href="#">Hỗ trợ</a>
     </footer>
+
+    <script id="doctors-by-dept-data" type="application/json">@json($doctorsByDept)</script>
 
     <script>
         // ══════════════════════════════════════════════════════════════
         // BASE DATA — truyền từ PHP (preload 14 ngày đầu cho các route
         // bác sĩ → không cần AJAX lần đầu)
         // ══════════════════════════════════════════════════════════════
-        const doctorsByDept = JSON.parse('{!! json_encode($doctorsByDept, JSON_UNESCAPED_SLASHES) !!}');
+        const doctorsByDept = JSON.parse(document.getElementById('doctors-by-dept-data').textContent); // fixed: encode JSON an toan cho JavaScript
 
         // Route URLs
         const ROUTE_SUGGEST = '{{ route("appointments.suggest") }}';
@@ -1521,17 +1368,16 @@
             holdExpiresAt: null,
         };
 
-        // AJAX caches — tránh gọi lại khi đã có data
+        // AJAX cache — chỉ cache gợi ý bác sĩ, khung giờ luôn lấy mới từ DB
         const suggestCache = {};   // key: `deptId_date`
-        const timeslotCache = {};   // key: `doctorId_date`
-
         // ══════════════════════════════════════════════════════════════
         // 1. DEPT CHANGE
         // ══════════════════════════════════════════════════════════════
         function onDeptChange() {
             const sel = document.getElementById('dept');
             state.deptId = sel.value;
-            state.deptName = sel.options[sel.selectedIndex]?.text || '';
+            const selectedDepartment = sel.options[sel.selectedIndex];
+            state.deptName = selectedDepartment ? selectedDepartment.text : '';
             state.doctor = null;
             clearSlotState();
 
@@ -1642,7 +1488,7 @@
                 const price = parseInt(doc.price) || 0;
                 const initials = doc.full_name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase();
                 const avatar = doc.avatar_url
-                    ? `<img src="${doc.avatar_url}" alt="${doc.full_name}">`
+                    ? `<img src="${doc.avatar_url}" alt="${doc.full_name}" onerror="this.onerror=null; this.parentNode.innerHTML='${initials}';">`
                     : initials;
                 const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
 
@@ -1690,16 +1536,6 @@
         function loadTimeslots() {
             if (!state.doctor || !state.date) return;
 
-            const key = `${state.doctor.doctor_id}_${state.date}`;
-            if (timeslotCache[key] !== undefined) {
-                if (timeslotCache[key] === null) {
-                    showSlotDayOff();
-                } else {
-                    renderTimeslots(timeslotCache[key]);
-                }
-                return;
-            }
-
             // Loading state
             document.getElementById('slot-wrap').innerHTML =
                 '<div style="display:flex;align-items:center;gap:10px;font-size:.82rem;color:var(--gray-400)">' +
@@ -1713,12 +1549,10 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.day_off) {
-                        timeslotCache[key] = null;
                         showSlotDayOff();
                         return;
                     }
-                    timeslotCache[key] = data.slots || [];
-                    renderTimeslots(timeslotCache[key]);
+                    renderTimeslots(data.slots || []); // fixed: luon lay slot moi tu DB, khong dung cache cu
                 })
                 .catch(() => {
                     document.getElementById('slot-wrap').innerHTML =
@@ -1974,7 +1808,7 @@
             const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
             const initials = doc.full_name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase();
             const avatar = doc.avatar_url
-                ? `<img src="${doc.avatar_url}" alt="${doc.full_name}">`
+                ? `<img src="${doc.avatar_url}" alt="${doc.full_name}" onerror="this.onerror=null; this.parentNode.innerHTML='${initials}';">`
                 : initials;
 
             body.innerHTML = `
@@ -2183,8 +2017,6 @@
             showHoldError('Thời gian giữ khung giờ đã hết. Vui lòng chọn lại khung giờ.');
             // Reload timeslots để cập nhật trạng thái
             if (state.doctor && state.date) {
-                const key = `${state.doctor.doctor_id}_${state.date}`;
-                delete timeslotCache[key];   // Xoá cache để fetch lại
                 loadTimeslots();
             }
         }
@@ -2271,10 +2103,37 @@
 
 
         // Service dropdown → cập nhật summary
-        document.getElementById('service_id_select')?.addEventListener('change', updateSummary);
+        const serviceIdSelect = document.getElementById('service_id_select');
+        if (serviceIdSelect) {
+            serviceIdSelect.addEventListener('change', updateSummary);
+        }
 
         // ── INIT ──
         updateSummary();
+
+        // Auto pre-select service and department from URL query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const svcParam = urlParams.get('service_id');
+        if (svcParam) {
+            const svcSelect = document.getElementById('service_id_select');
+            if (svcSelect) {
+                svcSelect.value = svcParam;
+                updateSummary();
+
+                // Get the corresponding department id
+                const selectedOpt = svcSelect.options[svcSelect.selectedIndex];
+                if (selectedOpt) {
+                    const deptId = selectedOpt.getAttribute('data-dept');
+                    if (deptId) {
+                        const deptSelect = document.getElementById('dept');
+                        if (deptSelect) {
+                            deptSelect.value = deptId;
+                            onDeptChange();
+                        }
+                    }
+                }
+            }
+        }
     </script>
 
     <script>
@@ -2283,7 +2142,120 @@
             var container = document.getElementById('priority_type_container');
             container.style.display = isPriority ? 'block' : 'none';
         }
+
+        window.showAppNotification = window.showAppNotification || function(message, type = 'error', options = {}) {
+            let stack = document.getElementById('app-notification-stack');
+            if (!stack) {
+                stack = document.createElement('div');
+                stack.id = 'app-notification-stack';
+                stack.style.cssText = 'position:fixed;top:18px;right:18px;z-index:20000;width:min(420px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px';
+                document.body.appendChild(stack);
+            }
+
+            const notice = document.createElement('div');
+            notice.textContent = message || 'Đã xảy ra lỗi, vui lòng thử lại sau.';
+            notice.style.cssText = 'padding:12px 14px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;box-shadow:0 16px 40px rgba(15,23,42,.16);font-size:14px;line-height:1.45';
+            if (type === 'warning') {
+                notice.style.borderColor = '#fde68a';
+                notice.style.background = '#fffbeb';
+                notice.style.color = '#92400e';
+            }
+            stack.appendChild(notice);
+            const timeout = typeof options.timeout === 'number' ? options.timeout : 5000;
+            setTimeout(() => notice.remove(), timeout);
+        };
+
+        window.alert = function(message) {
+            window.showAppNotification(message, 'error');
+        };
+
+        function bindStandaloneInputLimitWarnings() {
+            document.querySelectorAll('input[maxlength], textarea[maxlength]').forEach(function(field) {
+                field.addEventListener('input', function() {
+                    if (field.maxLength <= 0 || field.value.length < field.maxLength || field.dataset.limitNotified === '1') {
+                        return;
+                    }
+
+                    field.dataset.limitNotified = '1';
+                    window.showAppNotification('Trường này tối đa ' + field.maxLength + ' ký tự. Vui lòng rút ngắn nội dung.', 'warning'); /* fixed: bao loi textbox qua dai tren man hinh */
+                });
+
+                field.addEventListener('blur', function() {
+                    field.dataset.limitNotified = '';
+                });
+            });
+        }
+
+        function snapshotStandaloneSelectOptions() {
+            document.querySelectorAll('select[name]').forEach(function(select) {
+                if (select.dataset.allowedValues) return;
+
+                select.dataset.allowedValues = JSON.stringify(
+                    Array.from(select.options).map(function(option) {
+                        return option.value;
+                    })
+                );
+            });
+        }
+
+        function validateStandaloneSelectOptions() {
+            const invalidSelect = Array.from(document.querySelectorAll('select[name]')).find(function(select) {
+                let allowedValues = [];
+
+                try {
+                    allowedValues = JSON.parse(select.dataset.allowedValues || '[]');
+                } catch (e) {
+                    allowedValues = [];
+                }
+
+                return allowedValues.length > 0 && !allowedValues.includes(select.value);
+            });
+
+            if (!invalidSelect) return true;
+
+            invalidSelect.classList.add('is-invalid');
+            invalidSelect.focus();
+            window.showAppNotification('Giá trị lựa chọn không hợp lệ. Trang sẽ được tải lại.', 'warning');
+            setTimeout(function() {
+                window.location.reload();
+            }, 1600); /* fixed: select gia o dat lich thi thong bao roi reload reset DOM */
+
+            return false;
+        } /* fixed: chan select gia o man dat lich standalone */
+
+        snapshotStandaloneSelectOptions();
+        bindStandaloneInputLimitWarnings();
+
+        document.querySelectorAll('form[data-disable-submit]').forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!validateStandaloneSelectOptions()) {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (form.dataset.submitLocked === '1') {
+                    event.preventDefault();
+                    window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+                    return;
+                }
+
+                form.dataset.submitLocked = '1';
+                form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function(button) {
+                    button.disabled = true;
+                });
+            });
+        }); /* fixed: chan double submit dat lich */
     </script>
+    @if(session('reload_page'))
+    <div id="appointment-reload-message"
+         data-message="{{ e(session('warning') ?? 'Lịch khám đã thay đổi, trang sẽ được tải lại.') }}"
+         hidden></div>
+    <script>
+        window.showAppNotification(document.getElementById('appointment-reload-message').dataset.message, 'warning', { timeout: 2500 });
+        setTimeout(() => window.location.replace(window.location.href), 1800);
+    </script>
+    @endif
+    @include('components.back-to-previous')
 </body>
 
 </html>

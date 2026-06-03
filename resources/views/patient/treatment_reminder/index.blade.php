@@ -33,8 +33,13 @@
     .medicine-row.confirmed    { background:#f0fdf4; border-color:#bbf7d0; }
     .medicine-row.danger-alert { background:#fff5f5; border-color:#fca5a5; }
     .medicine-row .time-badge  { font-size:13px; font-weight:700; color:var(--primary); min-width:50px; }
+    .medicine-row .drug-info { min-width:0; max-width:100%; }
     .medicine-row .drug-info h6 { margin:0; font-size:14px; font-weight:600; }
     .medicine-row .drug-info p  { margin:0; font-size:12px; color:#6b7280; }
+    .medicine-row .drug-info h6,
+    .medicine-row .drug-info p,
+    .instruction-title,
+    .instruction-detail { overflow-wrap:anywhere; word-break:break-word; }
 
     /* ── CONFIRM BUTTON ── */
     .btn-confirm     { background:var(--success); color:#fff; border:none; border-radius:6px;
@@ -49,6 +54,7 @@
         margin-bottom:8px; }
     .instruction-card .icon-wrap { width:36px; height:36px; border-radius:50%; background:var(--gray-100);
         display:flex; align-items:center; justify-content:center; margin-right:12px; }
+    .instruction-copy { min-width:0; max-width:100%; }
 
     /* ── WEEKLY BAR CHART ── */
     .weekly-bar { display:flex; gap:6px; align-items:flex-end; height:60px; }
@@ -167,21 +173,23 @@
                     <div class="section-header">🏠 HƯỚNG DẪN ĐIỀU TRỊ TẠI NHÀ</div>
 
                     @forelse($instructions as $instruction)
+                        @php($isCheckedToday = $instruction->isCheckedToday())
                         <div class="instruction-card">
                             <div class="d-flex align-items-center">
                                 <div class="icon-wrap">
                                     <i data-feather="{{ $instruction->icon ?? 'activity' }}" style="width:16px"></i>
                                 </div>
-                                <div>
-                                    <div style="font-size:14px;font-weight:600">{{ $instruction->instruction_text }}</div>
-                                    <div style="font-size:12px;color:#6b7280">{{ $instruction->detail }}</div>
+                                <div class="instruction-copy">
+                                    <div class="instruction-title" style="font-size:14px;font-weight:600">{{ $instruction->instruction_text }}</div>
+                                    <div class="instruction-detail" style="font-size:12px;color:#6b7280">{{ $instruction->detail }}</div>
                                 </div>
                             </div>
                             <input type="checkbox"
                                    class="form-check-input instruction-check"
                                    style="width:18px;height:18px;cursor:pointer"
                                    data-id="{{ $instruction->id }}"
-                                   {{ $instruction->isCheckedToday() ? 'checked' : '' }}>
+                                   data-current-done="{{ $isCheckedToday ? '1' : '0' }}"
+                                   {{ $isCheckedToday ? 'checked' : '' }}>
                         </div>
                     @empty
                         <p class="text-muted text-center py-3">Chưa có hướng dẫn điều trị.</p>
@@ -208,49 +216,86 @@
 @push('scripts')
 <script src="https://unpkg.com/feather-icons"></script>
 <script>
-// Xác nhận đã uống thuốc
 async function confirmReminder(btn) {
     const id = btn.dataset.reminderId;
     btn.disabled = true;
     btn.textContent = 'Đang xử lý...';
+
     try {
         const res  = await fetch(`/treatment/confirm/${id}`, {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' }
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
         });
         const data = await res.json();
-        if (data.success) {
-            btn.textContent = '✓ Đã uống';
-            btn.style.background = '#d1fae5';
-            btn.style.color = 'var(--success)';
-            btn.closest('.medicine-row').classList.add('confirmed');
-            
-            // Reload page or update stats via AJAX if needed
+
+        if (!res.ok || !data.success) {
+            showTreatmentReminderError(data.message || 'Dữ liệu đã thay đổi. Vui lòng tải lại trang.', data.reload);
+            return;
         }
-    } catch(e) { 
-        btn.disabled = false; 
-        btn.textContent = 'Đánh dấu đã uống'; 
+
+        btn.textContent = '✓ Đã uống';
+        btn.style.background = '#d1fae5';
+        btn.style.color = 'var(--success)';
+        btn.closest('.medicine-row').classList.add('confirmed');
+    } catch (e) {
+        showTreatmentReminderError('Không thể xác nhận lúc này. Vui lòng thử lại.', false);
+    } finally {
+        if (!btn.closest('.medicine-row').classList.contains('confirmed')) {
+            btn.disabled = false;
+            btn.textContent = 'Đánh dấu đã uống';
+        }
     }
 }
 
-// Toggle hướng dẫn tại nhà
 document.querySelectorAll('.instruction-check').forEach(cb => {
     cb.addEventListener('change', async function() {
+        const checkbox = this;
+        const expectedState = checkbox.dataset.currentDone === '1';
+
         try {
             const res = await fetch('/treatment/instruction/toggle', {
                 method: 'POST',
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ instruction_id: this.dataset.id })
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    instruction_id: checkbox.dataset.id,
+                    expected_state: expectedState ? 1 : 0
+                })
             });
             const data = await res.json();
-            if (!data.success) this.checked = !this.checked; // rollback nếu lỗi
-        } catch(e) {
-            this.checked = !this.checked;
+
+            if (!res.ok || !data.success) {
+                checkbox.checked = expectedState;
+                showTreatmentReminderError(data.message || 'Dữ liệu đã thay đổi. Vui lòng tải lại trang.', data.reload);
+                return;
+            }
+
+            checkbox.checked = Boolean(data.is_done);
+            checkbox.dataset.currentDone = data.is_done ? '1' : '0';
+        } catch (e) {
+            checkbox.checked = expectedState;
+            showTreatmentReminderError('Không thể cập nhật hướng dẫn lúc này. Vui lòng thử lại.', false);
         }
     });
 });
 
-// Init Feather icons
+function showTreatmentReminderError(message, shouldReload) {
+    if (window.showAppNotification) {
+        window.showAppNotification(message, 'error');
+    }
+
+    if (shouldReload) {
+        setTimeout(() => window.location.reload(), 1800);
+    }
+}
+
 feather.replace();
 </script>
 @endpush

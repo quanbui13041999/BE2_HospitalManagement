@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\HealthTrackingRequest;
 use App\Models\HealthTracking;
+use App\Models\MedicalRecord;
+use App\Models\User;
 use App\Services\HealthRiskService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,8 +23,18 @@ class HealthTrackingController extends Controller
     {
         $this->authorize('viewAny', HealthTracking::class);
 
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
         $query = HealthTracking::with('patient')
-            ->when(auth()->user()->isPatient(), fn($q) => $q->where('patient_id', auth()->user()->user_id))
+            ->when($this->isPatientUser($user), fn($q) => $q->where('patient_id', $user->user_id))
+            ->when($this->isDoctorUser($user), function ($q) use ($user) {
+                $q->whereIn('patient_id', MedicalRecord::query()
+                    ->select('patient_id')
+                    ->where('doctor_id', $user->user_id)
+                    ->whereNotNull('patient_id')
+                    ->distinct());
+            })
             ->when($request->risk_level, fn($q) => $q->where('risk_level', $request->risk_level))
             ->when($request->date_from,  fn($q) => $q->whereDate('created_at', '>=', $request->date_from))
             ->when($request->date_to,    fn($q) => $q->whereDate('created_at', '<=', $request->date_to));
@@ -48,44 +61,113 @@ class HealthTrackingController extends Controller
     {
         $this->authorize('create', HealthTracking::class);
 
+        $validated = $request->validated();
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $patientId = $user->user_id;
+        $createMinute = now()->format('Y-m-d H:i');
+        $lockKey = $this->lockKey('health_tracking_create', $patientId . '|' . $createMinute);
+
+        if (! $this->acquireHealthLock($lockKey)) {
+            return back()->withInput()
+                ->with('warning', 'Đang có người lưu nhật ký trong cùng phút này. Vui lòng tải lại trang rồi kiểm tra lại danh sách.');
+        }
+
         try {
-            $risk    = $this->riskService->analyze($request->validated());
-            $tracking = HealthTracking::create($request->validated() + [
-                'patient_id'    => auth()->user()->user_id,
-                'risk_level'    => $risk['risk_level'],
-                'risk_warnings' => $risk['risk_warnings'],
-                'version'       => 1,
-            ]);
+            $tracking = DB::transaction(function () use ($validated, $patientId, $createMinute) {
+                if ($this->hasTrackingInMinute($patientId, $createMinute)) {
+                    return null;
+                }
+
+                $risk = $this->riskService->analyze($validated);
+
+                return HealthTracking::create($validated + [
+                    'patient_id'    => $patientId,
+                    'risk_level'    => $risk['risk_level'],
+                    'risk_warnings' => $risk['risk_warnings'],
+                    'version'       => 1,
+                ]);
+            });
+
+            if (! $tracking) {
+                return back()->withInput()
+                    ->with('warning', 'Bệnh nhân này đã có nhật ký sức khỏe được lưu trong cùng phút. Vui lòng tải lại danh sách.');
+            }
 
             return redirect()->route('health-tracking.show', $tracking)
                 ->with('success', 'Đã lưu nhật ký sức khỏe.')
-                ->with('risk_warnings', $risk['risk_warnings']);
+                ->with('risk_warnings', $tracking->risk_warnings ?? []);
         } catch (\Throwable $e) {
             Log::error('HealthTracking store failed', ['error' => $e->getMessage()]);
             return back()->withInput()->with('error', 'Có lỗi khi lưu dữ liệu, vui lòng thử lại.');
+        } finally {
+            $this->releaseHealthLock($lockKey);
         }
     }
 
-    public function show(HealthTracking $healthTracking)
+    public function show(string $healthTracking)
     {
+        if (! ctype_digit($healthTracking)) {
+            return $this->invalidTrackingPath();
+        }
+
+        $healthTracking = HealthTracking::find((int) $healthTracking);
+
+        if (! $healthTracking) {
+            return redirect()->route('health-tracking.index')
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn nhật ký từ danh sách.');
+        }
+
         $this->authorize('view', $healthTracking);
         return view('health-tracking.show', ['tracking' => $healthTracking]);
     }
 
-    public function edit(HealthTracking $healthTracking)
+    public function edit(string $healthTracking)
     {
+        if (! ctype_digit($healthTracking)) {
+            return $this->invalidTrackingPath();
+        }
+
+        $healthTracking = HealthTracking::find((int) $healthTracking);
+
+        if (! $healthTracking) {
+            return redirect()->route('health-tracking.index')
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn nhật ký từ danh sách.');
+        }
+
         $this->authorize('update', $healthTracking);
         return view('health-tracking.edit', ['tracking' => $healthTracking]);
     }
 
-    public function update(HealthTrackingRequest $request, HealthTracking $healthTracking)
+    public function invalidTrackingPath()
     {
-        $this->authorize('update', $healthTracking);
+        return redirect()->route('health-tracking.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn nhật ký từ danh sách.');
+    }
+
+    public function update(HealthTrackingRequest $request, int $healthTracking)
+    {
+        $existing = HealthTracking::find($healthTracking);
+
+        if (! $existing) {
+            return redirect()->route('health-tracking.index')
+                ->with('warning', 'Nhật ký sức khỏe đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+        }
+
+        $this->authorize('update', $existing);
 
         try {
             DB::beginTransaction();
 
-            $current = HealthTracking::lockForUpdate()->findOrFail($healthTracking->id);
+            $current = HealthTracking::lockForUpdate()->find($healthTracking);
+
+            if (! $current) {
+                DB::rollBack();
+
+                return redirect()->route('health-tracking.index')
+                    ->with('warning', 'Nhật ký sức khỏe đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+            }
 
             // Optimistic locking: version không khớp = người khác đã sửa trước
             if ($current->version !== (int) $request->version) {
@@ -113,17 +195,57 @@ class HealthTrackingController extends Controller
                 ->with('risk_warnings', $risk['risk_warnings']);
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('HealthTracking update failed', ['id' => $healthTracking->id, 'error' => $e->getMessage()]);
+            Log::error('HealthTracking update failed', ['id' => $healthTracking, 'error' => $e->getMessage()]);
             return back()->withInput()->with('error', 'Có lỗi khi cập nhật, vui lòng thử lại.');
         }
     }
 
-    public function destroy(HealthTracking $healthTracking)
+    public function destroy(int $healthTracking)
     {
-        $this->authorize('delete', $healthTracking);
-        $healthTracking->delete();
-        return redirect()->route('health-tracking.index')
-            ->with('success', 'Đã xóa nhật ký sức khỏe.');
+        $existing = HealthTracking::find($healthTracking);
+
+        if (! $existing) {
+            return redirect()->route('health-tracking.index')
+                ->with('warning', 'Nhật ký sức khỏe đã được người khác xóa trước đó. Vui lòng tải lại danh sách.');
+        }
+
+        $this->authorize('delete', $existing);
+
+        $lockKey = $this->lockKey('health_tracking_delete', (string) $healthTracking);
+
+        if (! $this->acquireHealthLock($lockKey)) {
+            return redirect()->route('health-tracking.index')
+                ->with('warning', 'Đang có người xóa nhật ký này. Vui lòng tải lại danh sách.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $current = HealthTracking::lockForUpdate()->find($healthTracking);
+
+            if (! $current) {
+                DB::rollBack();
+
+                return redirect()->route('health-tracking.index')
+                    ->with('warning', 'Nhật ký sức khỏe đã được người khác xóa trước đó. Vui lòng tải lại danh sách.');
+            }
+
+            $this->authorize('delete', $current);
+            $current->delete();
+
+            DB::commit();
+
+            return redirect()->route('health-tracking.index')
+                ->with('success', 'Đã xóa nhật ký sức khỏe.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('HealthTracking delete failed', ['id' => $healthTracking, 'error' => $e->getMessage()]);
+
+            return redirect()->route('health-tracking.index')
+                ->with('error', 'Có lỗi khi xóa nhật ký, vui lòng thử lại.');
+        } finally {
+            $this->releaseHealthLock($lockKey);
+        }
     }
 
     // API realtime risk check (dùng cho JS trên form)
@@ -132,5 +254,42 @@ class HealthTrackingController extends Controller
         $data     = $request->only(['systolic', 'diastolic', 'heart_rate', 'spo2', 'blood_sugar']);
         $warnings = $this->riskService->detectWarnings(array_filter($data, fn($v) => is_numeric($v)));
         return response()->json(['warnings' => $warnings]);
+    }
+
+    private function hasTrackingInMinute(int $patientId, string $minute): bool
+    {
+        $from = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $minute)->startOfMinute();
+        $to = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $minute)->endOfMinute();
+
+        return HealthTracking::where('patient_id', $patientId)
+            ->whereBetween('created_at', [$from, $to])
+            ->exists();
+    }
+
+    private function lockKey(string $prefix, string $value): string
+    {
+        return 'health:' . sha1($prefix . '|' . $value);
+    }
+
+    private function acquireHealthLock(string $lockKey): bool
+    {
+        $result = DB::selectOne('SELECT GET_LOCK(?, 10) AS acquired', [$lockKey]);
+
+        return (int) ($result->acquired ?? 0) === 1;
+    }
+
+    private function releaseHealthLock(string $lockKey): void
+    {
+        DB::selectOne('SELECT RELEASE_LOCK(?) AS released', [$lockKey]);
+    }
+
+    private function isPatientUser(?User $user): bool
+    {
+        return $user?->isPatient() ?? false;
+    }
+
+    private function isDoctorUser(?User $user): bool
+    {
+        return $user?->isDoctor() ?? false;
     }
 }

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -14,53 +15,55 @@ return new class extends Migration
         DB::connection()->getPdo()->exec('SET FOREIGN_KEY_CHECKS=0');
 
         try {
-            // 1. BẢNG medicalrecords (bảng cũ – appointment-based)
-            DB::statement("
-                INSERT IGNORE INTO `medicalrecords`
-                  (`appointment_id`, `user_id`, `doctor_id`, `diagnosis`, `prescription`, `follow_up_date`, `notes`, `created_at`)
-                VALUES
-                (29, 4, 5,
-                 'Viêm họng cấp, amidan sưng độ 1. Không có biến chứng.',
-                 'Amoxicillin 500mg x 3 viên/ngày x 7 ngày; Paracetamol 500mg khi sốt; Vitamin C 1000mg x 1 viên/ngày x 14 ngày',
-                 '2026-05-21',
-                 'Bệnh nhân cần uống nhiều nước, nghỉ ngơi, tái khám nếu sốt cao không hạ sau 48h.',
-                 '2026-05-07 15:10:00'),
+            if (Schema::hasTable('medicalrecords')) {
+                // 1. BẢNG medicalrecords (bảng cũ – appointment-based)
+                DB::statement("
+                    INSERT IGNORE INTO `medicalrecords`
+                      (`appointment_id`, `user_id`, `doctor_id`, `diagnosis`, `prescription`, `follow_up_date`, `notes`, `created_at`)
+                    VALUES
+                    (29, 4, 5,
+                     'Viêm họng cấp, amidan sưng độ 1. Không có biến chứng.',
+                     'Amoxicillin 500mg x 3 viên/ngày x 7 ngày; Paracetamol 500mg khi sốt; Vitamin C 1000mg x 1 viên/ngày x 14 ngày',
+                     '2026-05-21',
+                     'Bệnh nhân cần uống nhiều nước, nghỉ ngơi, tái khám nếu sốt cao không hạ sau 48h.',
+                     '2026-05-07 15:10:00'),
 
-                (30, 4, 7,
-                 'Viêm kết mạc dị ứng hai mắt. Thị lực bình thường.',
-                 'Cetirizine 10mg x 1 viên/ngày x 7 ngày; Nhỏ mắt Cromoglicate 2% x 3 lần/ngày x 10 ngày',
-                 '2026-05-21',
-                 'Tránh tiếp xúc với khói bụi, không dụi mắt. Đeo kính bảo hộ khi ra đường.',
-                 '2026-05-07 09:25:00'),
+                    (30, 4, 7,
+                     'Viêm kết mạc dị ứng hai mắt. Thị lực bình thường.',
+                     'Cetirizine 10mg x 1 viên/ngày x 7 ngày; Nhỏ mắt Cromoglicate 2% x 3 lần/ngày x 10 ngày',
+                     '2026-05-21',
+                     'Tránh tiếp xúc với khói bụi, không dụi mắt. Đeo kính bảo hộ khi ra đường.',
+                     '2026-05-07 09:25:00'),
 
-                (31, 21, 7,
-                 'Cận thị độ cao 4.5 diop mắt phải, 4.0 diop mắt trái. Không có tổn thương võng mạc.',
-                 'Đề xuất đo kính lại, xem xét phẫu thuật LASIK. Nhỏ mắt nhân tạo Hypromellose x 4 lần/ngày.',
-                 '2026-06-07',
-                 'Bệnh nhân được tư vấn phẫu thuật khúc xạ. Hẹn tái khám để đánh giá giác mạc.',
-                 '2026-05-07 09:30:00'),
+                    (31, 21, 7,
+                     'Cận thị độ cao 4.5 diop mắt phải, 4.0 diop mắt trái. Không có tổn thương võng mạc.',
+                     'Đề xuất đo kính lại, xem xét phẫu thuật LASIK. Nhỏ mắt nhân tạo Hypromellose x 4 lần/ngày.',
+                     '2026-06-07',
+                     'Bệnh nhân được tư vấn phẫu thuật khúc xạ. Hẹn tái khám để đánh giá giác mạc.',
+                     '2026-05-07 09:30:00'),
 
-                (32, 21, 6,
-                 'Mụn trứng cá độ 2 vùng mặt và cổ. Có sẹo thâm nhẹ.',
-                 'Clindamycin gel 1% bôi buổi tối x 30 ngày; Benzoyl peroxide 5% bôi sáng x 30 ngày; Vitamin C 1000mg x 1 viên/ngày',
-                 '2026-06-15',
-                 'Không nặn mụn, rửa mặt 2 lần/ngày, dùng kem chống nắng SPF 50+.',
-                 '2026-05-15 14:20:00'),
+                    (32, 21, 6,
+                     'Mụn trứng cá độ 2 vùng mặt và cổ. Có sẹo thâm nhẹ.',
+                     'Clindamycin gel 1% bôi buổi tối x 30 ngày; Benzoyl peroxide 5% bôi sáng x 30 ngày; Vitamin C 1000mg x 1 viên/ngày',
+                     '2026-06-15',
+                     'Không nặn mụn, rửa mặt 2 lần/ngày, dùng kem chống nắng SPF 50+.',
+                     '2026-05-15 14:20:00'),
 
-                (33, 22, 7,
-                 'Khô mắt độ nhẹ, mỏi mắt do sử dụng màn hình máy tính nhiều. Áp lực mắt bình thường 14mmHg.',
-                 'Nước mắt nhân tạo Systane Ultra x 4 lần/ngày; Omega-3 bổ sung x 2 viên/ngày x 30 ngày',
-                 '2026-06-08',
-                 'Áp dụng quy tắc 20-20-20: cứ 20 phút nhìn xa 20 giây. Giảm thời gian dùng thiết bị điện tử.',
-                 '2026-05-08 09:05:00'),
+                    (33, 22, 7,
+                     'Khô mắt độ nhẹ, mỏi mắt do sử dụng màn hình máy tính nhiều. Áp lực mắt bình thường 14mmHg.',
+                     'Nước mắt nhân tạo Systane Ultra x 4 lần/ngày; Omega-3 bổ sung x 2 viên/ngày x 30 ngày',
+                     '2026-06-08',
+                     'Áp dụng quy tắc 20-20-20: cứ 20 phút nhìn xa 20 giây. Giảm thời gian dùng thiết bị điện tử.',
+                     '2026-05-08 09:05:00'),
 
-                (35, 23, 7,
-                 'Loạn thị nhẹ mắt phải 0.75 diop. Kết mạc bình thường. Không viêm nhiễm.',
-                 'Kính điều chỉnh loạn thị, nhỏ mắt dưỡng Artelac x 3 lần/ngày x 14 ngày',
-                 '2026-07-13',
-                 'Tái khám sau 2 tháng để kiểm tra tiến triển loạn thị.',
-                 '2026-05-13 13:45:00');
-            ");
+                    (35, 23, 7,
+                     'Loạn thị nhẹ mắt phải 0.75 diop. Kết mạc bình thường. Không viêm nhiễm.',
+                     'Kính điều chỉnh loạn thị, nhỏ mắt dưỡng Artelac x 3 lần/ngày x 14 ngày',
+                     '2026-07-13',
+                     'Tái khám sau 2 tháng để kiểm tra tiến triển loạn thị.',
+                     '2026-05-13 13:45:00');
+                ");
+            }
 
             // 2. BẢNG medical_records (bảng mới – chi tiết hơn)
             DB::statement("
@@ -276,7 +279,9 @@ return new class extends Migration
             DB::statement("DELETE FROM `prescriptions` WHERE `record_id` IN (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)");
             DB::statement("DELETE FROM `vital_signs` WHERE `vital_id` IN (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)");
             DB::statement("DELETE FROM `medical_records` WHERE `record_id` IN (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)");
-            DB::statement("DELETE FROM `medicalrecords` WHERE `appointment_id` IN (29, 30, 31, 32, 33, 35)");
+            if (Schema::hasTable('medicalrecords')) {
+                DB::statement("DELETE FROM `medicalrecords` WHERE `appointment_id` IN (29, 30, 31, 32, 33, 35)");
+            }
         } finally {
             DB::connection()->getPdo()->exec('SET FOREIGN_KEY_CHECKS=1');
         }

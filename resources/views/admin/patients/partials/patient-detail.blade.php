@@ -6,7 +6,9 @@
             <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 16px; background: linear-gradient(145deg, #ffffff, #fdfdfd);">
                 <div class="d-flex align-items-center gap-4 flex-wrap flex-sm-nowrap">
                     @if($patient->avatar_url)
-                        <img src="{{ $patient->avatar_url }}" alt="{{ $patient->full_name }}" class="rounded-circle shadow-sm" style="width: 100px; height: 100px; object-fit: cover; border: 4px solid #f1f5f9;">
+                        <img src="{{ $patient->avatar_url }}" alt="{{ $patient->full_name }}"
+                             class="rounded-circle shadow-sm" style="width: 100px; height: 100px; object-fit: cover; border: 4px solid #f1f5f9;"
+                             onerror="this.onerror=null; this.src='/images/default-avatar.png';">
                     @else
                         <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm fw-bold fs-2" style="width: 100px; height: 100px; border: 4px solid #dbeafe;">
                             {{ substr($patient->full_name ?? 'P', 0, 1) }}
@@ -275,7 +277,9 @@
                                         <div>
                                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                                 <h6 class="fw-bold text-slate-800 mb-0">Hồ sơ khám bệnh <code class="small fw-bold">{{ $record->record_code }}</code></h6>
-                                                {!! $record->status_badge !!}
+                                                <span style="background:{{ $record->status_bg }}; color:{{ $record->status_color }}; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:500; display:inline-flex; align-items:center; gap:4px;">
+                                                    <span>{{ $record->status_icon }}</span> <span>{{ $record->status_label }}</span>
+                                                </span> {{-- fixed: khong render raw HTML tu accessor --}}
                                             </div>
                                             <div class="text-slate-500 mt-1 small">
                                                 <i class="bi bi-calendar2-event text-primary-subtle me-1.5"></i>Ngày khám: <strong>{{ $record->exam_date ? $record->exam_date->format('d/m/Y') : '---' }}</strong>

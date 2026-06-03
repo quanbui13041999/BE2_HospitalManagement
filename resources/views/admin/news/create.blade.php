@@ -12,14 +12,14 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
-        <form action="{{ route('admin.news.store') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('admin.news.store') }}" method="POST" enctype="multipart/form-data" data-disable-submit>
             @csrf
             
             <div class="row">
                 <div class="col-md-8">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Tiêu đề bài viết <span class="text-danger">*</span></label>
-                        <input type="text" name="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title') }}" placeholder="Nhập tiêu đề...">
+                        <input type="text" name="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title') }}" maxlength="255" placeholder="Nhập tiêu đề...">
                         @error('title')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -27,7 +27,7 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Nội dung <span class="text-danger">*</span></label>
-                        <textarea name="content" id="editor" class="form-control @error('content') is-invalid @enderror" rows="15">{{ old('content') }}</textarea>
+                        <textarea name="content" id="editor" class="form-control @error('content') is-invalid @enderror" rows="15" maxlength="10000">{{ old('content') }}</textarea> {{-- fixed: chan noi dung qua dai o giao dien --}}
                         @error('content')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -91,6 +91,22 @@
         selector: '#editor',
         plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
         toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+        setup: function (editor) {
+            editor.on('change keyup', function () {
+                var content = editor.getContent();
+                if (content.length > 10000 && window.showAppNotification) {
+                    window.showAppNotification('Nội dung bài viết tối đa 10000 ký tự. Vui lòng rút ngắn nội dung.', 'warning');
+                }
+            });
+        },
+    });
+
+    document.querySelector('form').addEventListener('submit', function (event) {
+        var editor = tinymce.get('editor');
+        if (editor && editor.getContent().length > 10000) {
+            event.preventDefault();
+            window.showAppNotification('Nội dung bài viết tối đa 10000 ký tự. Vui lòng rút ngắn nội dung.', 'warning'); /* fixed: bao loi tren man hinh thay vi gui form qua dai */
+        }
     });
 
     function previewImage(input) {

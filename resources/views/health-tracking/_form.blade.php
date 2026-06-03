@@ -61,9 +61,10 @@
         </label>
         <textarea id="symptoms" name="symptoms" rows="3" maxlength="1000"
             class="form-control @error('symptoms') is-invalid @enderror"
+            title="Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ."
             placeholder="Mô tả triệu chứng bạn đang gặp phải...">{{ $errors->any() ? old('symptoms') : ($old['symptoms'] ?? '') }}</textarea>
         <div class="d-flex justify-content-between mt-1">
-            <div class="invalid-feedback d-block">{{ $errors->first('symptoms') }}</div>
+            <div class="invalid-feedback d-block" id="symptomsError">{{ $errors->first('symptoms') }}</div>
             <small class="text-muted ms-auto"><span id="symCount">0</span>/1000</small>
         </div>
     </div>
@@ -176,10 +177,73 @@ Object.keys(RULES).forEach(name => {
     input.addEventListener('blur',  e => applyState(input, validate(name, e.target.value)));
 });
 
-// Symptoms counter
+// Symptoms guard
 const symp = document.getElementById('symptoms'), sc = document.getElementById('symCount');
-symp.addEventListener('input', () => sc.textContent = symp.value.length);
-sc.textContent = symp.value.length;
+const symptomError = document.getElementById('symptomsError');
+const symptomPattern = /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u;
+const symptomMessage = 'Triệu chứng chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.';
+
+function normalizeSymptoms(trimEnd = false) {
+    let value = symp.value
+        .replace(/\s+/gu, ' ')
+        .replace(/^\s+/u, '');
+
+    if (trimEnd) value = value.trimEnd();
+    if (value !== symp.value) symp.value = value;
+}
+
+function validateSymptoms() {
+    const value = symp.value.trim();
+    sc.textContent = symp.value.length;
+    symp.classList.remove('is-valid', 'is-invalid');
+
+    if (!value) {
+        symptomError.textContent = '';
+        return true;
+    }
+
+    if (symp.value.length > 1000) {
+        symp.classList.add('is-invalid');
+        symptomError.textContent = 'Triệu chứng không được vượt quá 1000 ký tự.';
+        return false;
+    }
+
+    if (!symptomPattern.test(value)) {
+        symp.classList.add('is-invalid');
+        symptomError.textContent = symptomMessage;
+        return false;
+    }
+
+    symp.classList.add('is-valid');
+    symptomError.textContent = '';
+    return true;
+}
+
+symp.addEventListener('keydown', e => {
+    const ok = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'];
+    if (ok.includes(e.key) || e.ctrlKey || e.metaKey) return;
+
+    if (e.key === ' ') {
+        const cursor = symp.selectionStart ?? symp.value.length;
+        if (cursor === 0 || symp.value[cursor - 1] === ' ' || symp.value[cursor] === ' ') {
+            e.preventDefault();
+            symptomError.textContent = symptomMessage;
+            symp.classList.add('is-invalid');
+        }
+        return;
+    }
+
+    if (!/^[\p{L}\p{M}]$/u.test(e.key)) {
+        e.preventDefault();
+        symptomError.textContent = symptomMessage;
+        symp.classList.add('is-invalid');
+    }
+});
+symp.addEventListener('input', () => { normalizeSymptoms(false); validateSymptoms(); });
+symp.addEventListener('blur', () => { normalizeSymptoms(true); validateSymptoms(); });
+symp.addEventListener('paste', () => setTimeout(() => { normalizeSymptoms(false); validateSymptoms(); }, 0));
+normalizeSymptoms(true);
+validateSymptoms();
 
 // Submit guard
 document.getElementById('healthForm').addEventListener('submit', function(e) {
@@ -197,6 +261,8 @@ document.getElementById('healthForm').addEventListener('submit', function(e) {
         const r = validate(name, v);
         if (r && !r.ok) { applyState(input, r); bad = true; }
     });
+    normalizeSymptoms(true);
+    if (!validateSymptoms()) bad = true;
     if (bad) {
         e.preventDefault();
         this.querySelector('.is-invalid')?.scrollIntoView({behavior:'smooth',block:'center'});

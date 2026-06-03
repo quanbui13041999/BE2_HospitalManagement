@@ -15,14 +15,24 @@
     {{-- ══ SCHEDULES GRID ════════════════════════════════════════ --}}
     <div class="row g-4">
         @forelse($schedules as $schedule)
+        @php
+            $patientAppointment = $patientAppointmentsBySchedule->get($schedule->schedule_id);
+        @endphp
         <div class="col-12 col-sm-6 col-lg-4">
             <a href="{{ route('queue.display', $schedule->schedule_id) }}" target="_blank" class="text-decoration-none">
-                <div class="card border-0 shadow-sm h-100 hover-shadow transition-all duration-300" style="cursor: pointer;">
-                    <div class="card-header bg-primary text-white border-0 py-3 px-4">
+                <div class="card {{ $patientAppointment ? 'border border-success border-2 shadow' : 'border-0 shadow-sm' }} h-100 hover-shadow transition-all duration-300" style="cursor: pointer;">
+                    <div class="card-header {{ $patientAppointment ? 'bg-success' : 'bg-primary' }} text-white border-0 py-3 px-4">
                         <h6 class="mb-1 fw-bold text-sm">
                             <i class="bi bi-stethoscope me-2"></i>BS. {{ $schedule->doctor->full_name }}
                         </h6>
-                        <small class="text-primary-light">{{ $schedule->doctor->department->department_name ?? 'Khoa Khám' }}</small>
+                        <div class="d-flex justify-content-between align-items-center gap-2">
+                            <small class="text-white-50">{{ $schedule->doctor->department->department_name ?? 'Khoa Khám' }}</small>
+                            @if($patientAppointment)
+                                <span class="badge bg-light text-success fw-bold">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Đã đặt
+                                </span>
+                            @endif
+                        </div>
                     </div>
                     <div class="card-body p-4">
                         <div class="mb-4 pb-4 border-bottom border-light">
@@ -38,9 +48,21 @@
                             </div>
                         </div>
 
+                        @if($patientAppointment)
+                            <div class="alert alert-success bg-success-subtle border-0 rounded-3 py-2 px-3 mb-3 small fw-semibold text-success-emphasis">
+                                <i class="bi bi-bookmark-check-fill me-1"></i>
+                                Bạn đã đặt lịch với bác sĩ này.
+                                <span class="d-block mt-1 text-muted fw-normal">
+                                    Giờ hẹn: {{ \Carbon\Carbon::parse($patientAppointment->appointment_time)->format('H:i') }}
+                                </span>
+                            </div>
+                        @endif
+
                         <div class="d-flex align-items-center justify-content-between">
-                            <span class="text-muted small">Nhấp để xem màn hình</span>
-                            <i class="bi bi-arrow-right-circle text-primary"></i>
+                            <span class="{{ $patientAppointment ? 'text-success fw-bold' : 'text-muted' }} small">
+                                {{ $patientAppointment ? 'Nhấp để xem hàng đợi của bạn' : 'Nhấp để xem màn hình' }}
+                            </span>
+                            <i class="bi bi-arrow-right-circle {{ $patientAppointment ? 'text-success' : 'text-primary' }}"></i>
                         </div>
                     </div>
                 </div>

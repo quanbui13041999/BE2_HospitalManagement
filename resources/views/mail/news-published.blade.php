@@ -25,8 +25,8 @@
         </center>
 
         <div class="footer">
-            <p>Cảm ơn bạn đã tin tưởng HospitalBooking.</p>
-            <p><strong>Bệnh Viện HospitalBooking</strong></p>
+            <p>Cảm ơn bạn đã tin tưởng HospitalC.</p>
+            <p><strong>Bệnh Viện HospitalC</strong></p>
         </div>
     </div>
 </body>

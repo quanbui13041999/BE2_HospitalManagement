@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BhytLookupRequest;
+use App\Models\User;
 use App\Services\Admin\BhytService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BhytController extends Controller
 {
@@ -26,7 +28,7 @@ class BhytController extends Controller
     {
         $result = $this->bhytService->lookup($request->card_number);
 
-        if (!$result) {
+        if (! $result) {
             return $request->wantsJson()
                 ? response()->json(['found' => false, 'message' => 'Không tìm thấy thẻ BHYT.'], 404)
                 : back()->withErrors(['card_number' => 'Không tìm thấy thẻ BHYT với mã này.'])->withInput();
@@ -45,7 +47,7 @@ class BhytController extends Controller
     public function apply(Request $request)
     {
         $request->validate([
-            'invoice_id'  => 'required|exists:payments,payment_id',
+            'invoice_id' => 'required|exists:payments,payment_id',
             'card_number' => 'required|string',
         ]);
 
@@ -54,7 +56,7 @@ class BhytController extends Controller
             $request->card_number
         );
 
-        if (!$result) {
+        if (! $result) {
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể áp dụng BHYT. Kiểm tra thẻ và hóa đơn.',
@@ -63,19 +65,21 @@ class BhytController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $result,
+            'data' => $result,
             'message' => $result['already_applied'] ?? false
                 ? 'BHYT đã được áp dụng trước đó.'
                 : 'Áp dụng BHYT thành công!',
         ]);
     }
+
     // ----------------------------------------------------------------
     // Trang BHYT của tôi (User view)
     // ----------------------------------------------------------------
     public function userInsurance()
     {
-        $user = \Illuminate\Support\Facades\Auth::user();
+        $user = User::findOrFail(Auth::id());
         $insurance = $user->insuranceCards()->latest()->first();
+
         return view('bhyt.user', compact('user', 'insurance'));
     }
 }

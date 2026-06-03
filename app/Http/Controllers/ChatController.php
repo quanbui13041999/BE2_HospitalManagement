@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Services\GeminiChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
 {
@@ -17,6 +19,13 @@ class ChatController extends Controller
         $this->gemini = $gemini;
     }
 
+    public function index()
+    {
+        return redirect()
+            ->route('Home.trangchu')
+            ->with('info', 'Bạn có thể mở chat CSKH bằng nút chat ở góc màn hình.');
+    }
+
     /**
      * Lấy hoặc tạo phòng chat cho user đang đăng nhập
      * POST /chat/room
@@ -25,24 +34,40 @@ class ChatController extends Controller
     {
         $userId = Auth::id();
 
-        // Tìm phòng chat đang mở của user
-        $room = ChatRoom::where('user_id', $userId)
-            ->where('status', 'Mở')
-            ->first();
+        try {
+            $room = DB::transaction(function () use ($userId) {
+                User::whereKey($userId)->lockForUpdate()->first(); /* fixed: chan 2 tab tao trung phong chat dang mo */
 
-        // Nếu chưa có thì tạo mới
-        if (!$room) {
-            $room = ChatRoom::create([
-                'user_id'    => $userId,
-                'doctor_id'  => null,
-                'status'     => 'Mở',
-                'created_at' => now(),
-            ]);
+                $room = ChatRoom::where('user_id', $userId)
+                    ->where('status', 'Mở')
+                    ->lockForUpdate()
+                    ->first();
+
+                return $room ?: ChatRoom::create([
+                    'user_id'    => $userId,
+                    'doctor_id'  => null,
+                    'status'     => 'Mở',
+                    'created_at' => now(),
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Create chat room failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]); /* fixed: log loi chat noi bo */
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi, vui lòng thử lại sau.',
+                'data' => null,
+            ], 500);
         }
 
         return response()->json([
             'success' => true,
+            'message' => 'OK',
             'room_id' => $room->room_id,
+            'data' => ['room_id' => $room->room_id],
         ]);
     }
 
@@ -52,12 +77,16 @@ class ChatController extends Controller
      */
     public function getMessages(Request $request, int $roomId): \Illuminate\Http\JsonResponse
     {
+        $request->validate([
+            'after_id' => 'nullable|integer|min:0',
+        ]); /* fixed: chan URL after_id=abc */
+
         $userId = Auth::id();
 
         // Kiểm tra quyền truy cập phòng
         $room = ChatRoom::where('room_id', $roomId)
             ->where('user_id', $userId)
-            ->firstOrFail();
+            ->firstOrFail(); /* fixed: authorization theo owner phong */
 
         $query = ChatMessage::where('room_id', $roomId)
             ->with('sender:user_id,full_name,avatar_url,role_id');
@@ -87,7 +116,12 @@ class ChatController extends Controller
             ->where('is_read', 0)
             ->update(['is_read' => 1]);
 
-        return response()->json(['success' => true, 'messages' => $messages]);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'messages' => $messages,
+            'data' => ['messages' => $messages],
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 
     /**
@@ -98,7 +132,7 @@ class ChatController extends Controller
     {
         $request->validate([
             'room_id'      => 'required|integer|exists:chatrooms,room_id',
-            'message_text' => 'required|string|max:2000',
+            'message_text' => ['required', 'string', 'max:2000', 'not_regex:/\A[\s\x{3000}]*\z/u'],
         ]);
 
         $userId = Auth::id();
@@ -145,13 +179,22 @@ class ChatController extends Controller
                     'is_ai'        => 1,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Error generating AI reply: ' . $e->getMessage());
+                Log::error('Error generating AI reply', [
+                    'room_id' => $roomId,
+                    'user_id' => $userId,
+                    'error' => $e->getMessage(),
+                ]); /* fixed: log loi AI, khong gui chi tiet ve client */
                 // Nếu AI gặp lỗi, không tạo message - chỉ log lỗi
                 // Staff sẽ thấy tin nhắn từ user và có thể trả lời
             }
         }
 
-        return response()->json(['success' => true, 'message_id' => $message->message_id]);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'message_id' => $message->message_id,
+            'data' => ['message_id' => $message->message_id],
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 
     /**
@@ -163,16 +206,36 @@ class ChatController extends Controller
         $userId = Auth::id();
         $message = ChatMessage::where('message_id', $messageId)
             ->where('sender_id', $userId) // Chỉ được thu hồi tin nhắn của chính mình
-            ->firstOrFail();
+            ->first();
+
+        if (!$message) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tin nhắn không tồn tại hoặc đã bị thu hồi. Vui lòng tải lại cuộc trò chuyện.',
+                'data' => null,
+            ], 404); /* fixed: xoa lan 2 bao loi ro thay vi im lang */
+        }
 
         // Kiểm tra xem phòng có còn đang mở không
         $room = ChatRoom::where('room_id', $message->room_id)
             ->where('user_id', $userId)
             ->where('status', 'Mở')
-            ->firstOrFail();
+            ->first();
+
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không còn mở. Vui lòng tải lại cuộc trò chuyện.',
+                'data' => null,
+            ], 409); /* fixed: thao tac tren phong da dong/xoa phai bao loi */
+        }
 
         $message->delete();
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'data' => null,
+        ]); /* fixed: JSON API co cau truc nhat quan */
     }
 }

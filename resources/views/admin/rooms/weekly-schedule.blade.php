@@ -130,13 +130,29 @@
             <h4 class="mb-1"><i class="bi bi-calendar-week me-2 text-primary"></i>Lịch phân bổ theo tuần</h4>
             <p class="text-muted small mb-0">Xem lịch làm việc của từng phòng khám theo tuần</p>
         </div>
-        <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Quay lại
-        </a>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#autoAllocateModal">
+                <i class="bi bi-magic me-1"></i>Tự động phân ca
+            </button>
+            <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Quay lại
+            </a>
+        </div>
     </div>
 
     @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-3">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-3">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     @endif
 
     {{-- Chọn phòng --}}
@@ -276,4 +292,160 @@
         </div>
     @endif
 </div>
+
+{{-- ── MODAL TỰ ĐỘNG PHÂN CA ────────────────────────────────────────── --}}
+<div class="modal fade" id="autoAllocateModal" tabindex="-1" aria-labelledby="autoAllocateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white border-0">
+                <h5 class="modal-title fw-bold" id="autoAllocateModalLabel">
+                    <i class="bi bi-magic me-2"></i>Tự động Phân bổ Ca trực
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('admin.rooms.schedule.auto-allocate') }}" method="POST" id="autoAllocateForm">
+                @csrf
+                <div class="modal-body p-4">
+                    <div id="modalAlertContainer"></div>
+                    
+                    <div class="alert alert-info py-2 px-3 small border-0 mb-3">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        Hệ thống sẽ tự động ghép các bác sĩ đang hoạt động vào các phòng khám phù hợp với chuyên khoa trong khoảng thời gian đã chọn, đảm bảo không trùng giờ làm việc của bác sĩ hoặc phòng.
+                    </div>
+
+                    <div class="row g-3">
+                        {{-- Ngày bắt đầu --}}
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Từ ngày</label>
+                            <input type="date" name="start_date" class="form-control" 
+                                   value="{{ $weekDates->first()->toDateString() }}" required>
+                        </div>
+                        {{-- Ngày kết thúc --}}
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Đến ngày</label>
+                            <input type="date" name="end_date" class="form-control" 
+                                   value="{{ $weekDates->last()->toDateString() }}" required>
+                        </div>
+
+                        {{-- Chọn khoa --}}
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Khoa áp dụng</label>
+                            <select name="department_id" class="form-select">
+                                <option value="">-- Tất cả các khoa --</option>
+                                @foreach($departments as $dept)
+                                    <option value="{{ $dept->department_id }}">{{ $dept->department_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Thời gian & Max slots --}}
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Thời lượng slot</label>
+                            <select name="slot_duration" class="form-select">
+                                <option value="15">15 phút</option>
+                                <option value="20">20 phút</option>
+                                <option value="30" selected>30 phút</option>
+                                <option value="45">45 phút</option>
+                                <option value="60">60 phút</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Số slot tối đa</label>
+                            <input type="number" name="max_slot" class="form-control" value="8" min="1" max="100" required>
+                        </div>
+
+                        {{-- Các ca trực --}}
+                        <div class="col-12 mt-2">
+                            <label class="form-label small fw-semibold d-block">Ca trực áp dụng</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="morning_enabled" value="1" id="morningCheck" checked>
+                                <label class="form-check-label" for="morningCheck">
+                                    Ca Sáng (08:00 - 12:00)
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="afternoon_enabled" value="1" id="afternoonCheck" checked>
+                                <label class="form-check-label" for="afternoonCheck">
+                                    Ca Chiều (13:30 - 17:30)
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- Ghi đè ca cũ --}}
+                        <div class="col-12 mt-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="overwrite" value="1" id="overwriteSwitch">
+                                <label class="form-check-label fw-semibold text-danger small" for="overwriteSwitch">
+                                    Xóa dọn dẹp các ca trống cũ trong khoảng ngày này trước khi phân bổ
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Huỷ bỏ</button>
+                    <button type="submit" class="btn btn-success btn-sm px-3">
+                        <i class="bi bi-play-fill"></i> Tiến hành phân ca
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('autoAllocateForm');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            const startDateInput = form.querySelector('[name="start_date"]');
+            const endDateInput = form.querySelector('[name="end_date"]');
+            const morningCheck = form.querySelector('#morningCheck');
+            const afternoonCheck = form.querySelector('#afternoonCheck');
+            const alertContainer = document.getElementById('modalAlertContainer');
+            
+            // Clear previous alerts
+            alertContainer.innerHTML = '';
+            
+            let errors = [];
+            
+            if (!startDateInput.value) {
+                errors.push("Vui lòng chọn Ngày bắt đầu.");
+            }
+            if (!endDateInput.value) {
+                errors.push("Vui lòng chọn Ngày kết thúc.");
+            }
+            
+            if (startDateInput.value && endDateInput.value) {
+                const startVal = new Date(startDateInput.value);
+                const endVal = new Date(endDateInput.value);
+                if (endVal < startVal) {
+                    errors.push("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.");
+                }
+            }
+            
+            if (!morningCheck.checked && !afternoonCheck.checked) {
+                errors.push("Vui lòng chọn ít nhất một ca trực (Sáng hoặc Chiều).");
+            }
+            
+            if (errors.length > 0) {
+                e.preventDefault();
+                
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger py-2 px-3 small border-0 mb-3 d-flex align-items-center gap-2';
+                alertDiv.innerHTML = `
+                    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                    <div>${errors.join('<br>')}</div>
+                `;
+                alertContainer.appendChild(alertDiv);
+                
+                // Scroll modal to top to view error
+                form.querySelector('.modal-body').scrollTop = 0;
+            }
+        });
+    }
+});
+</script>
+@endpush
 @endsection

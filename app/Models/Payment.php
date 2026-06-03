@@ -13,7 +13,22 @@ class Payment extends Model
     protected $primaryKey = 'payment_id';
     public $timestamps = false;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'appointment_id',
+        'insurance_id',
+        'membership_id',
+        'subtotal',
+        'discount_amount',
+        'total_amount',
+        'payment_method',
+        'method',
+        'status',
+        'payment_date',
+        'transaction_ref',
+        'notes',
+        'checkout_url',
+        'qr_content',
+    ]; /* fixed: dong mass assignment, khong dung guarded rong */
 
     protected $casts = [
         'subtotal' => 'float',

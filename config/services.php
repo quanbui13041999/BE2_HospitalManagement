@@ -37,6 +37,9 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-flash-latest'),
+        'fallback_models' => env('GEMINI_FALLBACK_MODELS', 'gemini-1.5-flash-latest'),
+        'ca_bundle' => env('GEMINI_CA_BUNDLE', storage_path('app/certs/cacert.pem')),
     ],
 
     'anthropic' => [
@@ -47,6 +50,12 @@ return [
         'api_key' => env('BREVO_API_KEY'),
         'sender_email' => env('BREVO_SENDER_EMAIL', 'no-reply@clinic.com'),
         'sender_name' => env('BREVO_SENDER_NAME', 'Phòng Khám'),
+    ],
+
+    'payos' => [
+        'client_id' => env('PAYOS_CLIENT_ID'),
+        'api_key' => env('PAYOS_API_KEY'),
+        'checksum_key' => env('PAYOS_CHECKSUM_KEY'),
     ],
 
 ];

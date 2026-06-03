@@ -9,11 +9,17 @@ class PaymentItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'paymentitems';  // ← PHẢI CÓ DÒNG NÀY
+    protected $table = 'payment_items';
     protected $primaryKey = 'item_id';
     public $timestamps = false;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'payment_id',
+        'item_name',
+        'quantity',
+        'unit_price',
+        'subtotal',
+    ]; /* fixed: dong mass assignment, khong dung guarded rong */
 
     protected $casts = [
         'quantity' => 'integer',
@@ -24,5 +30,10 @@ class PaymentItem extends Model
     public function payment()
     {
         return $this->belongsTo(Payment::class, 'payment_id', 'payment_id');
+    }
+
+    public function getTotalPriceAttribute($value)
+    {
+        return $value ?? $this->subtotal;
     }
 }

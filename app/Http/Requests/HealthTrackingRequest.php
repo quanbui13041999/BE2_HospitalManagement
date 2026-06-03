@@ -2,27 +2,38 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Models\User;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Auth;
 
 class HealthTrackingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->isPatient();
+        $userId = Auth::id();
+        $user = $userId ? User::find($userId) : null;
+
+        return $user?->isPatient() ?? false;
     }
 
     public function rules(): array
     {
         $rules = [
-            'systolic'    => ['required', 'integer', 'min:50',  'max:250'],
-            'diastolic'   => ['required', 'integer', 'min:30',  'max:150'],
-            'heart_rate'  => ['required', 'integer', 'min:30',  'max:220', 'not_in:0'],
-            'spo2'        => ['required', 'integer', 'min:50',  'max:100'],
-            'weight'      => ['required', 'numeric', 'min:1',   'max:500'],
-            'blood_sugar' => ['required', 'integer', 'min:20',  'max:1000'],
-            'symptoms'    => ['nullable', 'string',  'max:1000'],
+            'systolic' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:50',  'max:250'],
+            'diastolic' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:30',  'max:150'],
+            'heart_rate' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:30',  'max:220', 'not_in:0'],
+            'spo2' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:50',  'max:100'],
+            'weight' => ['required', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'numeric', 'min:1',   'max:500'],
+            'blood_sugar' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:20',  'max:1000'],
+            'symptoms' => ['nullable', 'string',  'max:1000', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
+            'patient_id' => ['prohibited'],
+            'risk_level' => ['prohibited'],
+            'risk_warnings' => ['prohibited'],
+            'created_at' => ['prohibited'],
+            'updated_at' => ['prohibited'],
+            'deleted_at' => ['prohibited'],
         ];
 
         // Thêm version khi update (optimistic locking)
@@ -36,40 +47,45 @@ class HealthTrackingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'systolic.required'    => 'Vui lòng nhập huyết áp tâm thu.',
-            'systolic.integer'     => 'Huyết áp tâm thu chỉ được nhập số nguyên.',
-            'systolic.min'         => 'Huyết áp tâm thu tối thiểu là :min mmHg.',
-            'systolic.max'         => 'Huyết áp tâm thu tối đa là :max mmHg.',
-            'diastolic.required'   => 'Vui lòng nhập huyết áp tâm trương.',
-            'diastolic.integer'    => 'Huyết áp tâm trương chỉ được nhập số nguyên.',
-            'diastolic.min'        => 'Huyết áp tâm trương tối thiểu là :min mmHg.',
-            'diastolic.max'        => 'Huyết áp tâm trương tối đa là :max mmHg.',
-            'heart_rate.required'  => 'Vui lòng nhập nhịp tim.',
-            'heart_rate.integer'   => 'Nhịp tim chỉ được nhập số nguyên.',
-            'heart_rate.min'       => 'Nhịp tim quá thấp (tối thiểu :min bpm).',
-            'heart_rate.max'       => 'Nhịp tim quá cao (tối đa :max bpm).',
-            'heart_rate.not_in'    => 'Nhịp tim không được bằng 0.',
-            'spo2.required'        => 'Vui lòng nhập chỉ số SpO2.',
-            'spo2.integer'         => 'SpO2 chỉ được nhập số nguyên.',
-            'spo2.min'             => 'SpO2 tối thiểu là :min%.',
-            'spo2.max'             => 'SpO2 không thể vượt quá :max%.',
-            'weight.required'      => 'Vui lòng nhập cân nặng.',
-            'weight.numeric'       => 'Cân nặng chỉ được nhập số.',
-            'weight.min'           => 'Cân nặng tối thiểu là :min kg.',
-            'weight.max'           => 'Cân nặng tối đa là :max kg.',
+            'systolic.required' => 'Vui lòng nhập huyết áp tâm thu.',
+            'systolic.integer' => 'Huyết áp tâm thu chỉ được nhập số nguyên.',
+            'systolic.min' => 'Huyết áp tâm thu tối thiểu là :min mmHg.',
+            'systolic.max' => 'Huyết áp tâm thu tối đa là :max mmHg.',
+            'diastolic.required' => 'Vui lòng nhập huyết áp tâm trương.',
+            'diastolic.integer' => 'Huyết áp tâm trương chỉ được nhập số nguyên.',
+            'diastolic.min' => 'Huyết áp tâm trương tối thiểu là :min mmHg.',
+            'diastolic.max' => 'Huyết áp tâm trương tối đa là :max mmHg.',
+            'heart_rate.required' => 'Vui lòng nhập nhịp tim.',
+            'heart_rate.integer' => 'Nhịp tim chỉ được nhập số nguyên.',
+            'heart_rate.min' => 'Nhịp tim quá thấp (tối thiểu :min bpm).',
+            'heart_rate.max' => 'Nhịp tim quá cao (tối đa :max bpm).',
+            'heart_rate.not_in' => 'Nhịp tim không được bằng 0.',
+            'spo2.required' => 'Vui lòng nhập chỉ số SpO2.',
+            'spo2.integer' => 'SpO2 chỉ được nhập số nguyên.',
+            'spo2.min' => 'SpO2 tối thiểu là :min%.',
+            'spo2.max' => 'SpO2 không thể vượt quá :max%.',
+            'weight.required' => 'Vui lòng nhập cân nặng.',
+            'weight.numeric' => 'Cân nặng chỉ được nhập số.',
+            'weight.min' => 'Cân nặng tối thiểu là :min kg.',
+            'weight.max' => 'Cân nặng tối đa là :max kg.',
             'blood_sugar.required' => 'Vui lòng nhập đường huyết.',
-            'blood_sugar.integer'  => 'Đường huyết chỉ được nhập số nguyên.',
-            'blood_sugar.min'      => 'Đường huyết tối thiểu là :min mg/dL.',
-            'blood_sugar.max'      => 'Đường huyết tối đa là :max mg/dL.',
-            'symptoms.max'         => 'Triệu chứng không được vượt quá :max ký tự.',
-            'version.required'     => 'Thiếu thông tin phiên bản bản ghi.',
+            'blood_sugar.integer' => 'Đường huyết chỉ được nhập số nguyên.',
+            'blood_sugar.min' => 'Đường huyết tối thiểu là :min mg/dL.',
+            'blood_sugar.max' => 'Đường huyết tối đa là :max mg/dL.',
+            'symptoms.max' => 'Triệu chứng không được vượt quá :max ký tự.',
+            'symptoms.regex' => 'Triệu chứng chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
+            'regex' => 'Dữ liệu nhập sai định dạng; các ô số chỉ dùng số 0-9, không dùng số full-width hoặc ký tự lạ.',
+            'prohibited' => 'Không được gửi dữ liệu hệ thống từ trình duyệt.',
+            'version.required' => 'Thiếu thông tin phiên bản bản ghi.',
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        if ($this->symptoms) {
-            $this->merge(['symptoms' => trim(strip_tags($this->symptoms))]);
+        if ($this->has('symptoms')) {
+            $symptoms = preg_replace('/\s+/u', ' ', trim(strip_tags((string) $this->symptoms)));
+
+            $this->merge(['symptoms' => $symptoms !== '' ? $symptoms : null]);
         }
     }
 
@@ -79,7 +95,7 @@ class HealthTrackingRequest extends FormRequest
             throw new HttpResponseException(response()->json([
                 'success' => false,
                 'message' => 'Dữ liệu không hợp lệ.',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422));
         }
         parent::failedValidation($validator);

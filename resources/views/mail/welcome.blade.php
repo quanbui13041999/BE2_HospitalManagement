@@ -14,13 +14,13 @@
 </head>
 <body>
 <div class="box">
-    <h1>🏥 Chào mừng đến HospitalBooking!</h1>
+    <h1>🏥 Chào mừng đến HospitalC!</h1>
     <p>Xin chào <strong>{{ $user->full_name }}</strong>,</p>
     <p>Tài khoản của bạn đã được tạo thành công. Bạn có thể đặt lịch khám bệnh ngay bây giờ.</p>
     <a href="{{ url('/dat-lich') }}" class="btn">Đặt lịch ngay</a>
     <div class="footer">
         Email: {{ $user->email }}<br>
-        Trân trọng, <strong>HospitalBooking</strong>
+        Trân trọng, <strong>HospitalC</strong>
     </div>
 </div>
 </body>

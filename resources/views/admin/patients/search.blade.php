@@ -306,7 +306,7 @@
                         <label class="clinical-label" for="keyword">Thông tin bệnh nhân</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border-color: #cbd5e1;"><i class="bi bi-search text-muted"></i></span>
-                            <input type="text" class="form-control clinical-input border-start-0 ps-0" id="keyword" name="keyword" placeholder="Nhập tên, số ĐT, email, hoặc mã ID..." style="border-radius: 0 12px 12px 0;">
+                            <input type="text" class="form-control clinical-input border-start-0 ps-0" id="keyword" name="keyword" maxlength="100" placeholder="Nhập tên, số ĐT, email, hoặc mã ID..." style="border-radius: 0 12px 12px 0;">
                         </div>
                     </div>
 
@@ -365,13 +365,13 @@
                     {{-- Chronic Disease --}}
                     <div class="col-6 col-md-4 col-lg-3">
                         <label class="clinical-label" for="chronic_disease">Bệnh mãn tính</label>
-                        <input type="text" class="form-control clinical-input" id="chronic_disease" name="chronic_disease" placeholder="Ví dụ: tiểu đường, huyết áp...">
+                        <input type="text" class="form-control clinical-input" id="chronic_disease" name="chronic_disease" maxlength="100" placeholder="Ví dụ: tiểu đường, huyết áp...">
                     </div>
 
                     {{-- Allergy --}}
                     <div class="col-6 col-md-4 col-lg-3">
                         <label class="clinical-label" for="allergy">Dị ứng lâm sàng</label>
-                        <input type="text" class="form-control clinical-input" id="allergy" name="allergy" placeholder="Ví dụ: penicillin, aspirin...">
+                        <input type="text" class="form-control clinical-input" id="allergy" name="allergy" maxlength="100" placeholder="Ví dụ: penicillin, aspirin...">
                     </div>
 
                     {{-- Reference Data dropdowns queried directly in view --}}
@@ -450,7 +450,7 @@
                 <div class="mb-4">
                     <label class="clinical-label" for="ai_query" style="font-size: 14.5px;">Mô tả yêu cầu tìm kiếm của bạn bằng ngôn ngữ tự nhiên</label>
                     <div class="position-relative">
-                        <textarea class="form-control ai-textarea w-100" id="ai_query" rows="3" placeholder="Ví dụ: Tìm cho tôi các bệnh nhân nữ trên 40 tuổi có thẻ hạng vàng, bị dị ứng penicillin và đã từng khám tại khoa Nội tổng quát..."></textarea>
+                        <textarea class="form-control ai-textarea w-100" id="ai_query" rows="3" maxlength="500" placeholder="Ví dụ: Tìm cho tôi các bệnh nhân nữ trên 40 tuổi có thẻ hạng vàng, bị dị ứng penicillin và đã từng khám tại khoa Nội tổng quát..."></textarea>
                         
                         <div class="position-absolute bottom-0 end-0 m-3 d-flex gap-2">
                             <button type="submit" id="btn-submit-ai" class="btn text-white rounded-xl px-4 py-2.5 fw-bold text-sm tracking-wide d-flex align-items-center gap-2 border-0 shadow-sm" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); transition: all 0.2s ease;">
@@ -611,6 +611,7 @@
     
     // Initial loading
     document.addEventListener('DOMContentLoaded', function() {
+        snapshotSearchSelectOptions();
         triggerSearch(1);
     });
 
@@ -704,6 +705,11 @@
      */
     function triggerSearch(page = 1) {
         const resultsContainer = document.getElementById('patients-results-container');
+
+        if (!validateSearchSelectOptions()) {
+            resultsContainer.innerHTML = buildPatientSearchErrorHtml('Dữ liệu bộ lọc không hợp lệ', 'Vui lòng chọn lại giá trị từ danh sách có sẵn.');
+            return;
+        }
         
         // Inject Shimmer Loading Skeleton
         resultsContainer.innerHTML = '';
@@ -758,10 +764,18 @@
         // Request results via AJAX
         fetch(`/admin/patients/search/results?${params.toString()}`, {
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         })
-        .then(res => res.json())
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok) {
+                const message = data.message || firstValidationMessage(data) || 'Dữ liệu bộ lọc không hợp lệ.';
+                throw new Error(message);
+            }
+            return data;
+        })
         .then(data => {
             if (data.success) {
                 // Populate results
@@ -770,18 +784,120 @@
                 
                 // Update pagination layout
                 buildPagination(data.total, data.current_page, data.last_page);
+            } else {
+                const message = data.message || firstValidationMessage(data) || 'Dữ liệu bộ lọc không hợp lệ.';
+                showPatientSearchError(message);
             }
         })
-        .catch(err => {
-            console.error('Error fetching search results:', err);
-            resultsContainer.innerHTML = `
-                <div class="col-12 py-5 text-center">
-                    <div class="text-danger mb-2"><i class="bi bi-exclamation-triangle-fill fs-2"></i></div>
-                    <h6 class="fw-bold text-slate-800">Không thể kết nối đến máy chủ</h6>
-                    <p class="text-muted text-sm mb-0">Vui lòng kiểm tra lại kết nối mạng hoặc liên hệ Quản trị viên hệ thống.</p>
-                </div>
-            `;
+        .catch(error => {
+            showPatientSearchError(error.message || 'Không thể kết nối đến máy chủ.');
         });
+    }
+
+    function snapshotSearchSelectOptions() {
+        document.querySelectorAll('#standard-search-form select, #per_page, #sort_by').forEach(function(select) {
+            if (select.dataset.allowedValues) return;
+
+            select.dataset.allowedValues = JSON.stringify(
+                Array.from(select.options).map(option => option.value)
+            );
+        });
+    }
+
+    function validateSearchSelectOptions() {
+        const selectIds = [
+            'gender',
+            'status',
+            'membership_tier',
+            'has_insurance',
+            'department_id',
+            'doctor_id',
+            'appointment_status',
+            'sort_by',
+            'per_page'
+        ];
+
+        for (const id of selectIds) {
+            const select = document.getElementById(id);
+            if (!select) continue;
+
+            let allowedValues = [];
+            try {
+                allowedValues = JSON.parse(select.dataset.allowedValues || '[]');
+            } catch (e) {
+                allowedValues = [];
+            }
+
+            if (!allowedValues.includes(select.value)) {
+                select.classList.add('is-invalid');
+                select.focus();
+                showPatientSearchError('Bộ lọc "' + getFieldLabel(select) + '" không hợp lệ. Trang sẽ được tải lại.');
+                reloadPatientSearchPage(); /* fixed: option gia trong AJAX search thi thong bao roi reload reset filter */
+                return false;
+            }
+
+            select.classList.remove('is-invalid');
+        }
+
+        const sortDirInput = document.getElementById('sort_dir');
+        if (sortDirInput && !['asc', 'desc'].includes(sortDirInput.value)) {
+            showPatientSearchError('Chiều sắp xếp không hợp lệ. Trang sẽ được tải lại.');
+            reloadPatientSearchPage(); /* fixed: hidden sort bi sua thi reload reset DOM */
+            return false;
+        }
+
+        return true;
+    } /* fixed: so voi snapshot ban dau, khong tin option vua bi chen bang DevTools */
+
+    function getFieldLabel(field) {
+        const label = document.querySelector('label[for="' + field.id + '"]');
+        return label ? label.textContent.trim() : (field.name || 'trường này');
+    }
+
+    function firstValidationMessage(data) {
+        const errors = data && data.data && data.data.errors ? data.data.errors : null;
+        if (!errors) return '';
+
+        const firstKey = Object.keys(errors)[0];
+        return firstKey && errors[firstKey] && errors[firstKey][0] ? errors[firstKey][0] : '';
+    }
+
+    function showPatientSearchError(message) {
+        const safeMessage = message || 'Dữ liệu bộ lọc không hợp lệ.';
+        const resultsContainer = document.getElementById('patients-results-container');
+        if (window.showAppNotification) {
+            window.showAppNotification(safeMessage, 'warning');
+        }
+
+        resultsContainer.innerHTML = buildPatientSearchErrorHtml('Dữ liệu bộ lọc không hợp lệ', safeMessage);
+    }
+
+    function reloadPatientSearchPage(delay = 1600) {
+        if (window.patientSearchReloadScheduled) return;
+
+        window.patientSearchReloadScheduled = true;
+        setTimeout(function() {
+            window.location.reload();
+        }, delay);
+    }
+
+    function buildPatientSearchErrorHtml(title, message) {
+        return `
+            <div class="col-12 py-5 text-center">
+                <div class="text-danger mb-2"><i class="bi bi-exclamation-triangle-fill fs-2"></i></div>
+                <h6 class="fw-bold text-slate-800">${escapeHtml(title)}</h6>
+                <p class="text-muted text-sm mb-0">${escapeHtml(message)}</p>
+            </div>
+        `;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     /**
@@ -818,7 +934,8 @@
                 
                 // Show AI Explanation Card
                 document.getElementById('ai-explanation-box').classList.remove('d-none');
-                document.getElementById('ai-explanation-text').innerHTML = `<strong>AI hiểu:</strong> ${data.explanation}`;
+                const prefix = data.fallback ? 'Phân tích dự phòng: ' : 'AI hiểu: ';
+                document.getElementById('ai-explanation-text').textContent = `${prefix}${data.explanation || data.message || ''}`; /* fixed: khong render text AI bang innerHTML de tranh XSS */
                 
                 // Build extracted parameter badges
                 const badgesContainer = document.getElementById('ai-extracted-badges');
@@ -836,11 +953,11 @@
                         if (inputEl) {
                             inputEl.value = value;
                             inputEl.classList.add('ai-badge-highlight');
-                            badgesContainer.innerHTML += `
-                                <span class="badge bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg px-2.5 py-1.5 d-flex align-items-center gap-1 text-xs">
-                                    <i class="bi bi-tag-fill"></i> ${label}: ${value}
-                                </span>
-                            `;
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg px-2.5 py-1.5 d-flex align-items-center gap-1 text-xs';
+                            badge.innerHTML = '<i class="bi bi-tag-fill"></i> ';
+                            badge.append(document.createTextNode(`${label}: ${value}`));
+                            badgesContainer.appendChild(badge); /* fixed: chen gia tri AI bang text node, khong noi HTML */
                         }
                     }
                 }
@@ -876,15 +993,15 @@
                 // Instantly execute search with populated filters
                 triggerSearch(1);
             } else {
-                // Display error message
-                alert(data.message || 'Lỗi không rõ khi xử lý bằng AI');
+                document.getElementById('ai-explanation-box').classList.remove('d-none');
+                document.getElementById('ai-explanation-text').textContent = data.message || 'Không thể phân tích yêu cầu. Vui lòng thử lại hoặc dùng tìm kiếm thường.';
             }
         })
-        .catch(err => {
+        .catch(() => {
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = originalHtml;
-            console.error('AI Search Connection Error:', err);
-            alert('Không thể kết nối dịch vụ AI. Vui lòng sử dụng tính năng "Tìm kiếm thường" hoặc thử lại sau.');
+            document.getElementById('ai-explanation-box').classList.remove('d-none');
+            document.getElementById('ai-explanation-text').textContent = 'Kết nối AI chưa ổn định. Vui lòng thử lại hoặc dùng tìm kiếm thường.';
         });
     }
 
@@ -1010,8 +1127,7 @@
                 `;
             }
         })
-        .catch(err => {
-            console.error('Error fetching clinical details:', err);
+        .catch(() => {
             modalBody.innerHTML = `
                 <div class="text-center py-5 text-danger">
                     <i class="bi bi-wifi-off fs-1 d-block mb-3"></i>

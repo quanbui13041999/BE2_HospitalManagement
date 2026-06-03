@@ -152,7 +152,7 @@
                     // Phân tầng theo chữ số đầu mã phòng
                     return intdiv((int) filter_var($r->room_code, FILTER_SANITIZE_NUMBER_INT), 100) * 100;
                 });
-                $statusMap = ['Đang sử dụng'=>'s-using','Trống'=>'s-empty','Bảo trì'=>'s-maintain','Vệ sinh'=>'s-clean'];
+                $statusMap = ['Hoạt động'=>'s-using','Trống'=>'s-empty','Bảo trì'=>'s-maintain','Vệ sinh'=>'s-clean'];
             @endphp
 
             @forelse($roomsByFloor->sortKeys() as $floor => $floorRooms)

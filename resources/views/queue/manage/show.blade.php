@@ -108,7 +108,7 @@
                             </div>
 
                             <div class="d-flex justify-content-center gap-2">
-                                <form method="POST" :action="'/queue/manage/ticket/' + current?.ticket_id + '/skip'" onsubmit="return confirm('Bạn có chắc chắn muốn bỏ qua bệnh nhân này?')">
+                                <form method="POST" :action="'/queue/manage/ticket/' + current?.ticket_id + '/skip'" data-confirm="Bạn có chắc chắn muốn bỏ qua bệnh nhân này?">
                                     @csrf
                                     <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-2 font-bold shadow-sm">
                                         <i class="bi bi-x-circle me-1"></i> Bỏ Qua Ca Này
@@ -203,9 +203,15 @@
                                 </span>
                             </div>
 
+                            <div x-show="ticket.payment_required && !ticket.can_start_exam" class="flex-shrink-0">
+                                <span class="badge bg-warning-subtle text-warning-emphasis px-3 py-2 rounded-pill font-bold text-xs uppercase tracking-wider">
+                                    Chưa thanh toán
+                                </span>
+                            </div>
+
                             {{-- Actions --}}
                             <div class="flex-shrink-0">
-                                <form method="POST" :action="'/queue/manage/ticket/' + ticket.ticket_id + '/skip'" onsubmit="return confirm('Bạn có chắc chắn muốn bỏ qua bệnh nhân này?')">
+                                <form method="POST" :action="'/queue/manage/ticket/' + ticket.ticket_id + '/skip'" data-confirm="Bạn có chắc chắn muốn bỏ qua bệnh nhân này?">
                                     @csrf
                                     <button type="submit" class="btn btn-outline-danger btn-xs rounded-pill px-3 py-1 font-semibold text-xs">
                                         Bỏ Qua
@@ -234,7 +240,7 @@ function queueManage() {
     return {
         current: null,
         waiting: [],
-        stats: { total_waiting: 0, total_completed: 0, total_today: 0 },
+        stats: { total_waiting: 0, total_callable: 0, total_completed: 0, total_today: 0 },
         scheduleId: {{ $schedule->schedule_id }},
 
         init() {
@@ -269,7 +275,8 @@ function queueManage() {
             try {
                 const res = await fetch(`/queue/manage/api/${this.scheduleId}/snapshot`);
                 if (res.ok) {
-                    const data = await res.json();
+                    const payload = await res.json();
+                    const data = payload.data || payload; // fixed: ho tro JSON wrapper {success,message,data}
                     this.current = data.current;
                     this.waiting = data.waiting.map(t => {
                         const checkin = new Date(t.checkin_time);
@@ -283,9 +290,7 @@ function queueManage() {
                     });
                     this.stats   = data.stats;
                 }
-            } catch (e) {
-                console.error("Failed to load queue updates:", e);
-            }
+            } catch (e) {}
         },
 
         getPriorityLabel(priority) {

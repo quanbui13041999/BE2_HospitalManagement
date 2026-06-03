@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Lịch Khám Của Tôi – HospitalBooking</title>
+    <title>Lịch Khám Của Tôi – HospitalC</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <x-typography-base />
     <style>
         /* (toàn bộ CSS giữ nguyên như file của bạn) */
         * {
@@ -43,128 +44,6 @@
             --radius-panel: 20px;
             --radius-btn: 40px;
             --radius-input: 16px;
-        }
-
-        .topbar {
-            background: var(--white);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 0 rgba(0, 0, 0, 0.03);
-            padding: 0 32px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 110;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .topbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-        }
-
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--primary), #2b6ed7);
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 6px 12px -6px rgba(15, 82, 186, 0.3);
-        }
-
-        .logo-icon svg {
-            width: 22px;
-            height: 22px;
-        }
-
-        .brand-text {
-            font-weight: 800;
-            font-size: 1.2rem;
-            color: var(--gray-800);
-            letter-spacing: -0.3px;
-        }
-
-        .brand-sub {
-            font-size: 0.7rem;
-            font-weight: 500;
-            color: var(--gray-400);
-            margin-top: 2px;
-        }
-
-        .topbar-center {
-            display: flex;
-            gap: 6px;
-            background: var(--gray-100);
-            padding: 4px;
-            border-radius: 48px;
-        }
-
-        .topbar-center a {
-            padding: 8px 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--gray-600);
-            text-decoration: none;
-            border-radius: 40px;
-            transition: all 0.2s;
-        }
-
-        .topbar-center a:hover,
-        .topbar-center a.active {
-            background: var(--white);
-            color: var(--primary);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .user-pill {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--gray-100);
-            padding: 5px 12px 5px 8px;
-            border-radius: 48px;
-        }
-
-        .user-avatar {
-            width: 34px;
-            height: 34px;
-            background: linear-gradient(145deg, var(--primary), #3279dc);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            color: white;
-            font-size: 0.85rem;
-        }
-
-        .user-name {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: var(--gray-800);
-        }
-
-        .btn-logout {
-            background: transparent;
-            border: 1px solid var(--gray-300);
-            border-radius: 32px;
-            padding: 7px 18px;
-            font-weight: 600;
-            font-size: 0.75rem;
-            color: var(--gray-600);
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-
-        .btn-logout:hover {
-            background: var(--gray-100);
-            border-color: var(--gray-400);
-            color: var(--primary-dark);
         }
 
         .breadcrumb-bar {
@@ -749,10 +628,6 @@
                 gap: 14px;
             }
 
-            .topbar-center {
-                display: none;
-            }
-
             .page {
                 padding: 0 16px;
             }
@@ -788,45 +663,7 @@
 
 <body>
 
-    {{-- TOPBAR --}}
-    <nav class="topbar">
-        <a href="{{ route('home') }}" class="topbar-brand">
-            <div class="logo-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                </svg>
-            </div>
-            <div>
-                <div class="brand-text">HospitalBooking</div>
-                <div class="brand-sub">Đặt lịch thông minh</div>
-            </div>
-        </a>
-        <div class="topbar-center">
-            <a href="{{ route('home') }}">🏠 Trang chủ</a>
-            <a href="{{ route('appointments.index') }}" class="active">📋 Lịch hẹn</a>
-            <a href="{{ route('appointments.create') }}">✨ Đặt lịch mới</a>
-            <a href="{{ route('news.index') }}">📰 Bản tin</a>
-            @auth
-                @if(auth()->user()->isPatient())
-                    <a href="{{ route('medical_history.index') }}">📄 Hồ sơ bệnh án</a>
-                @elseif(auth()->user()->isDoctor())
-                    <a href="{{ route('doctor.appointments.index') }}">🩺 Danh sách khám</a>
-                @endif
-            @endauth
-        </div>
-        <div class="topbar-right" style="display:flex;align-items:center;gap:10px;">
-            @auth
-            <div class="user-pill">
-                <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
-                <span class="user-name">{{ auth()->user()->name ?? 'Người dùng' }}</span>
-            </div>
-            <form method="POST" action="{{ route('logout') }}" style="margin:0">
-                @csrf
-                <button type="submit" class="btn-logout">Đăng xuất</button>
-            </form>
-            @endauth
-        </div>
-    </nav>
+    <x-site-nav />
 
     {{-- BREADCRUMB --}}
     <div class="breadcrumb-bar">
@@ -879,6 +716,12 @@
         </div>
         @endif
 
+        @if(session('warning'))
+        <div class="alert-success" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412">
+            {{ session('warning') }}
+        </div>
+        @endif
+
         @php
         $total = $appointments->count();
         $pending = $appointments->where('status', 'Chờ xác nhận')->count();
@@ -928,6 +771,7 @@
                         <tr>
                             {{-- CỘT BÁC SĨ --}}
                             <td>
+                                @if(!empty($item->doctor_name))
                                 <div class="doctor-cell">
                                     @php
                                     $words = explode(' ', trim($item->doctor_name));
@@ -941,6 +785,15 @@
                                         <div style="font-size:.7rem;color:var(--gray-400)">{{ $item->department_name }}</div>
                                     </div>
                                 </div>
+                                @else
+                                <div class="doctor-cell">
+                                    <div class="avatar" style="background: linear-gradient(145deg, #10b981, #059669);">DV</div>
+                                    <div>
+                                        <div class="doctor-name text-success">Dịch vụ độc lập</div>
+                                        <div style="font-size:.7rem;color:var(--gray-400)">Không chỉ định bác sĩ</div>
+                                    </div>
+                                </div>
+                                @endif
                             </td>
 
                             {{-- CỘT DỊCH VỤ --}}
@@ -949,7 +802,7 @@
                             {{-- CỘT NGÀY KHÁM --}}
                             <td>
                                 <div class="date-cell">
-                                    <div class="date">{{ \Carbon\Carbon::parse($item->work_date)->format('d/m/Y') }}</div>
+                                    <div class="date">{{ \Carbon\Carbon::parse($item->appointment_time)->format('d/m/Y') }}</div>
                                     <div class="time">
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="12" r="10" />
@@ -968,6 +821,8 @@
                                 'Đã xác nhận' => 'badge-confirmed',
                                 'Đã hủy' => 'badge-cancelled',
                                 'Dời lịch' => 'badge-cancelled',
+                                'Đã thanh toán' => 'badge-confirmed',
+                                'Đang khám' => 'badge-confirmed',
                                 'Đã khám' => 'badge-done',
                                 'Hoàn thành' => 'badge-done',
                                 ];
@@ -988,7 +843,15 @@
 
                             {{-- CỘT THAO TÁC --}}
                             <td>
-                                @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
+                                @php
+                                    $appointmentTime = \Carbon\Carbon::parse($item->appointment_time);
+                                    $canCancelAppointment = in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])
+                                        && now()->lt($appointmentTime)
+                                        && now()->lte($appointmentTime->copy()->subHour());
+                                    $canManageAppointment = in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán']);
+                                @endphp
+
+                                @if($canManageAppointment)
                                 {{-- Dời / Huỷ --}}
                                  <div class="actions">
                                     @if(empty($item->payment_status))
@@ -996,15 +859,25 @@
                                             💳 Thanh toán
                                         </a>
                                     @endif
-                                    <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
-                                        📅 Dời lịch
-                                    </a>
-                                    <button type="button" class="btn-cancel"
-                                        onclick="openModal(this)"
-                                        data-action="{{ route('appointments.cancel', $item->appointment_id) }}">
-                                        ✕ Huỷ
-                                    </button>
+                                    @if(in_array($item->status, ['Chờ xác nhận', 'Đã xác nhận']))
+                                        <a href="{{ route('appointments.edit', $item->appointment_id) }}" class="btn-edit">
+                                            📅 Dời lịch
+                                        </a>
+                                    @endif
+                                    @if($canCancelAppointment)
+                                        <button type="button" class="btn-cancel"
+                                            onclick="openModal(this)"
+                                            data-action="{{ route('appointments.cancel', $item->appointment_id) }}"
+                                            data-version="{{ $item->version_token ?? '' }}">
+                                            ✕ Huỷ
+                                        </button>
+                                    @else
+                                        <span class="payment-status payment-unpaid">Không thể hủy trong vòng 1 giờ trước giờ khám</span>
+                                    @endif
                                 </div>
+
+                                @elseif($item->status === 'Đang khám')
+                                    <span class="payment-status payment-unpaid">Lịch hẹn đang khám, không thể hủy.</span>
 
                                 @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
                                 @php
@@ -1013,8 +886,9 @@
                                 $reviewCreatedAt = $rawReviewDate ? \Carbon\Carbon::parse($rawReviewDate) : null;
                                 $canEdit = !empty($rawReviewDate)
                                 && $reviewCreatedAt && $reviewCreatedAt->diffInHours(now()) <= 24;
-                                    $isAdmin=auth()->user()->role === 'admin';
-                                    $isDoctor = auth()->user()->role === 'doctor';
+                                    $currentUser = Auth::user();
+                                    $isAdmin = (int) ($currentUser->role_id ?? 0) === 1;
+                                    $isDoctor = (int) ($currentUser->role_id ?? 0) === 2;
                                     @endphp
 
                                     <div class="actions" style="flex-wrap:wrap">
@@ -1080,7 +954,7 @@
                                         'replyUrl' => route('reviews.reply', $item->review_id ?? 0),
                                         'stars' => $item->review_rating ?? 0,
                                         'comment' => $item->review_comment ?? '',
-                                        'userName' => auth()->user()->full_name ?? auth()->user()->name ?? '',
+                                        'userName' => $currentUser->full_name ?? $currentUser->name ?? '',
                                         'existingReply' => $item->doctor_reply ?? '',
                                         ];
                                         @endphp
@@ -1142,7 +1016,7 @@
     </div>
 
     <footer class="footer">
-        © {{ date('Y') }} HospitalBooking · Nền tảng đặt lịch khám hiện đại ·
+        © {{ date('Y') }} HospitalC · Nền tảng đặt lịch khám hiện đại ·
         <a href="#">Chính sách bảo mật</a> &nbsp;·&nbsp; <a href="#">Hỗ trợ</a>
     </footer>
 
@@ -1158,9 +1032,10 @@
             </div>
             <h3>Xác nhận hủy lịch</h3>
             <p>Bạn có chắc muốn hủy lịch khám này không? Hành động này không thể hoàn tác.</p>
-            <form id="cancelForm" method="POST">
+            <form id="cancelForm" method="POST" data-disable-submit>
                 @csrf
-                <textarea name="cancel_reason" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
+                <input type="hidden" name="version" id="cancelVersion">
+                <textarea name="cancel_reason" maxlength="255" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
                 <div class="modal-btns">
                     <button type="button" class="modal-cancel-btn" onclick="closeModal()">Không, giữ lại</button>
                     <button type="submit" class="modal-confirm-btn">Xác nhận hủy</button>
@@ -1168,12 +1043,19 @@
             </form>
         </div>
     </div>
+    @if(session('reload_page'))
+        <div id="appointment-reload-message"
+             data-message="{{ e(session('warning') ?? 'Lịch hẹn đã thay đổi, trang sẽ được tải lại.') }}"
+             hidden></div>
+    @endif
 
     @include('appointments.reviews')
+    @include('components.back-to-previous')
 
     <script>
         function openModal(button) {
             document.getElementById('cancelForm').action = button.getAttribute('data-action');
+            document.getElementById('cancelVersion').value = button.getAttribute('data-version') || '';
             document.getElementById('cancelModal').classList.add('active');
         }
 
@@ -1183,7 +1065,74 @@
         document.getElementById('cancelModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
+
+        window.showAppNotification = window.showAppNotification || function(message, type = 'error', options = {}) {
+            const stackId = 'app-notification-stack';
+            let stack = document.getElementById(stackId);
+            if (!stack) {
+                stack = document.createElement('div');
+                stack.id = stackId;
+                stack.style.cssText = 'position:fixed;top:18px;right:18px;z-index:20000;width:min(420px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px';
+                document.body.appendChild(stack);
+            }
+
+            const notice = document.createElement('div');
+            notice.textContent = message || 'Đã xảy ra lỗi, vui lòng thử lại sau.';
+            notice.style.cssText = 'padding:12px 14px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;box-shadow:0 16px 40px rgba(15,23,42,.16);font-size:14px;line-height:1.45';
+            if (type === 'warning') {
+                notice.style.borderColor = '#fde68a';
+                notice.style.background = '#fffbeb';
+                notice.style.color = '#92400e';
+            }
+            stack.appendChild(notice);
+            const timeout = typeof options.timeout === 'number' ? options.timeout : 5000;
+            setTimeout(() => notice.remove(), timeout);
+        };
+
+        window.alert = function(message) {
+            window.showAppNotification(message, 'error');
+        };
+
+        function bindStandaloneInputLimitWarnings() {
+            document.querySelectorAll('input[maxlength], textarea[maxlength]').forEach(function(field) {
+                field.addEventListener('input', function() {
+                    if (field.maxLength <= 0 || field.value.length < field.maxLength || field.dataset.limitNotified === '1') {
+                        return;
+                    }
+
+                    field.dataset.limitNotified = '1';
+                    window.showAppNotification('Trường này tối đa ' + field.maxLength + ' ký tự. Vui lòng rút ngắn nội dung.', 'warning'); /* fixed: bao loi textbox qua dai tren man hinh */
+                });
+
+                field.addEventListener('blur', function() {
+                    field.dataset.limitNotified = '';
+                });
+            });
+        }
+
+        bindStandaloneInputLimitWarnings();
+
+        document.querySelectorAll('form[data-disable-submit]').forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.dataset.submitLocked === '1') {
+                    event.preventDefault();
+                    window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+                    return;
+                }
+
+                form.dataset.submitLocked = '1';
+                form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function(button) {
+                    button.disabled = true;
+                });
+            });
+        }); /* fixed: chan double submit huy lich */
     </script>
+    @if(session('reload_page'))
+    <script>
+        window.showAppNotification(document.getElementById('appointment-reload-message').dataset.message, 'warning', { timeout: 2500 });
+        setTimeout(() => window.location.replace(window.location.href), 1800);
+    </script>
+    @endif
 </body>
 
 </html>

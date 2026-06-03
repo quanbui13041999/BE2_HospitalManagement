@@ -8,7 +8,7 @@ class HospitalNews extends Model
 {
     protected $table = 'hospitalnews';
     protected $primaryKey = 'news_id';
-    public $timestamps = false; // chỉ có created_at thủ công
+    public $timestamps = true;
 
     protected $fillable = [
         'title', 'content', 'category', 'thumbnail',
@@ -18,6 +18,8 @@ class HospitalNews extends Model
     protected $casts = [
         'published_at' => 'datetime',
         'created_at'   => 'datetime',
+        'updated_at'   => 'datetime',
+        'news_version' => 'integer',
         'is_published' => 'boolean',
         'email_sent'   => 'boolean',
     ];
@@ -53,6 +55,10 @@ class HospitalNews extends Model
 
         if (str_starts_with($this->thumbnail, 'uploads/news/')) {
             return asset($this->thumbnail);
+        }
+
+        if (str_starts_with($this->thumbnail, 'news/')) {
+            return asset('storage/' . $this->thumbnail); /* fixed: thumbnail moi nam trong storage/app/public */
         }
 
         return asset('storage/' . $this->thumbnail);

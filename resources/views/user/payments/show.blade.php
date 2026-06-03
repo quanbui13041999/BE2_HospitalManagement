@@ -310,13 +310,23 @@
                 <div class="pay-card-title">🏥 Thông tin lịch khám</div>
 
                 <div class="appt-header">
-                    <div class="doctor-avatar">
-                        {{ strtoupper(substr($appointment->schedule->doctor->full_name ?? 'B', 0, 1)) }}
-                    </div>
-                    <div class="appt-info">
-                        <h2>BS. {{ $appointment->schedule->doctor->full_name ?? '—' }}</h2>
-                        <p>{{ $appointment->schedule->doctor->department->department_name ?? '—' }}</p>
-                    </div>
+                    @if(!empty($appointment->schedule?->doctor?->full_name))
+                        <div class="doctor-avatar">
+                            {{ strtoupper(substr($appointment->schedule->doctor->full_name, 0, 1)) }}
+                        </div>
+                        <div class="appt-info">
+                            <h2>BS. {{ $appointment->schedule->doctor->full_name }}</h2>
+                            <p>{{ $appointment->schedule->doctor->department->department_name ?? '—' }}</p>
+                        </div>
+                    @else
+                        <div class="doctor-avatar" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                            DV
+                        </div>
+                        <div class="appt-info">
+                            <h2>Dịch vụ y tế độc lập</h2>
+                            <p>Không chỉ định bác sĩ khám</p>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="appt-meta">
@@ -480,7 +490,11 @@
                 <div class="divider"></div>
 
                 <div style="font-size:.85rem;color:#475569;line-height:1.7">
-                    <div>🏥 <strong>{{ $appointment->schedule->doctor->full_name ?? '—' }}</strong></div>
+                    @if(!empty($appointment->schedule?->doctor?->full_name))
+                        <div>🏥 <strong>BS. {{ $appointment->schedule->doctor->full_name }}</strong></div>
+                    @else
+                        <div>🏥 <strong>Dịch vụ y tế độc lập</strong></div>
+                    @endif
                     <div>📅 {{ \Carbon\Carbon::parse($appointment->appointment_time)->format('d/m/Y H:i') }}</div>
                     <div>🔢 STT #{{ $appointment->queue_number }}</div>
                 </div>

@@ -33,6 +33,27 @@
                         <small>TỔNG CHI TIÊU</small>
                         <p>{{ number_format($membership->total_spent ?? 0) }} đ</p>
                     </div>
+                    <div class="membership-history-card">
+                        <div class="history-title">
+                            <i class="fas fa-coins"></i>
+                            <span>Lịch sử cộng điểm</span>
+                        </div>
+
+                        @forelse($pointHistory ?? [] as $history)
+                            <div class="point-history-item">
+                                <div>
+                                    <strong>Thanh toán lịch #{{ $history['appointment_id'] }}</strong>
+                                    <span>
+                                        {{ $history['payment_date'] ? $history['payment_date']->format('d/m/Y H:i') : 'Chưa có ngày' }}
+                                        - {{ number_format($history['amount'], 0, ',', '.') }} đ
+                                    </span>
+                                </div>
+                                <div class="point-history-value">+{{ number_format($history['points']) }} điểm</div>
+                            </div>
+                        @empty
+                            <div class="empty-history">Chưa có lịch sử cộng điểm.</div>
+                        @endforelse
+                    </div>
                 </div>
             </div>
 
@@ -75,8 +96,13 @@
 
                 </p>
 
-                <div class="extra-stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
-                    <div class="extra-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <div class="membership-summary-grid">
+                    <div class="membership-summary-card">
+                        <div class="summary-icon"><i class="fas fa-calendar-check"></i></div>
+                        <div class="summary-content">
+                            <span>Số lần khám</span>
+                            <strong>{{ number_format($visitCount ?? 0) }} lần</strong>
+                        </div>
                         <i class="fas fa-calendar-check" style="color: #4a90e2;"></i> Lần khám: <strong>{{ $extraData['visit_count'] ?? 0 }} lần</strong>
                     </div>
                     <div class="extra-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
@@ -87,6 +113,27 @@
                     </div>
                     <div class="extra-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
                         <i class="fas fa-hand-holding-usd" style="color: #2ecc71;"></i> Tiết kiệm: <strong>{{ $extraData['saved_money'] ?? '0đ' }}</strong>
+                    </div>
+                    <div class="membership-history-card">
+                        <div class="history-title">
+                            <i class="fas fa-coins"></i>
+                            <span>Lịch sử cộng điểm</span>
+                        </div>
+
+                        @forelse($pointHistory ?? [] as $history)
+                            <div class="point-history-item">
+                                <div>
+                                    <strong>Thanh toán lịch #{{ $history['appointment_id'] }}</strong>
+                                    <span>
+                                        {{ $history['payment_date'] ? $history['payment_date']->format('d/m/Y H:i') : 'Chưa có ngày' }}
+                                        - {{ number_format($history['amount'], 0, ',', '.') }} đ
+                                    </span>
+                                </div>
+                                <div class="point-history-value">+{{ number_format($history['points']) }} điểm</div>
+                            </div>
+                        @empty
+                            <div class="empty-history">Chưa có lịch sử cộng điểm.</div>
+                        @endforelse
                     </div>
                 </div>
             </div>

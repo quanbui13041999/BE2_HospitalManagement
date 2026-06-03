@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\Doctor\ReviewsDoctorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,13 +19,20 @@ class ReviewsDoctorController extends Controller
         $this->service = $service;
     }
 
+    private function currentUser(): ?User
+    {
+        $userId = Auth::id();
+
+        return $userId ? User::find($userId) : null;
+    }
+
     // ─────────────────────────────────────────────
     // Kiểm tra có thể đánh giá không
     // GET /reviews/check?appointment_id=xxx
     // ─────────────────────────────────────────────
     public function checkCanReview(Request $request): JsonResponse
     {
-        if (!$this->service->auth()) {
+        if (! $this->service->auth()) {
             return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập để tiếp tục.'], 401);
         }
 
@@ -42,7 +51,7 @@ class ReviewsDoctorController extends Controller
     // ─────────────────────────────────────────────
     public function store(Request $request): JsonResponse
     {
-        if (!$this->service->auth()) {
+        if (! $this->service->auth()) {
             return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập để tiếp tục.'], 401);
         }
 
@@ -57,7 +66,7 @@ class ReviewsDoctorController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Cảm ơn bạn đã đánh giá!',
-                'review'  => $review,
+                'review' => $review,
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -78,27 +87,27 @@ class ReviewsDoctorController extends Controller
     // ─────────────────────────────────────────────
     public function update(Request $request, int $review): JsonResponse
     {
-        if (!$this->service->auth()) {
+        if (! $this->service->auth()) {
             return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập để tiếp tục.'], 401);
         }
 
         try {
             $validated = $request->validate([
-                'rating'  => ['required', 'integer', 'between:1,5'],
+                'rating' => ['required', 'integer', 'between:1,5'],
                 'comment' => ['nullable', 'string', 'max:1000'],
             ], [
                 'rating.required' => 'Vui lòng chọn số sao.',
-                'rating.between'  => 'Đánh giá phải từ 1 đến 5 sao.',
-                'comment.max'     => 'Nhận xét tối đa 1000 ký tự.',
+                'rating.between' => 'Đánh giá phải từ 1 đến 5 sao.',
+                'comment.max' => 'Nhận xét tối đa 1000 ký tự.',
             ]);
 
-            $isAdmin = Auth::user()->isAdmin() ?? false;
+            $isAdmin = $this->currentUser()?->isAdmin() ?? false;
             $updated = $this->service->update($review, $validated, Auth::id(), $isAdmin);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Đánh giá đã được cập nhật.',
-                'review'  => $updated,
+                'review' => $updated,
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -119,12 +128,12 @@ class ReviewsDoctorController extends Controller
     // ─────────────────────────────────────────────
     public function destroy(int $review): JsonResponse
     {
-        if (!$this->service->auth()) {
+        if (! $this->service->auth()) {
             return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập để tiếp tục.'], 401);
         }
 
         try {
-            $isAdmin = Auth::user()->isAdmin() ?? false;
+            $isAdmin = $this->currentUser()?->isAdmin() ?? false;
             $this->service->delete($review, Auth::id(), $isAdmin);
 
             return response()->json([
@@ -150,7 +159,7 @@ class ReviewsDoctorController extends Controller
     // ─────────────────────────────────────────────
     public function reply(Request $request, int $review): JsonResponse
     {
-        if (!$this->service->auth()) {
+        if (! $this->service->auth()) {
             return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập để tiếp tục.'], 401);
         }
 
@@ -161,13 +170,13 @@ class ReviewsDoctorController extends Controller
                 'doctor_reply.max' => 'Phản hồi tối đa 1000 ký tự.',
             ]);
 
-            $user    = Auth::user();
-            $isAdmin = $user->isAdmin() ?? false;
+            $user = $this->currentUser();
+            $isAdmin = $user?->isAdmin() ?? false;
 
             // Nếu bác sĩ đăng nhập, truyền doctor_id của họ
             // Giả sử Doctor model có trường user_id liên kết với users
             $doctorUserId = null;
-            if ($user->doctor) {
+            if ($user?->doctor) {
                 $doctorUserId = $user->doctor->doctor_id;
             }
 
@@ -180,8 +189,8 @@ class ReviewsDoctorController extends Controller
             );
 
             return response()->json([
-                'success'      => true,
-                'message'      => $validated['doctor_reply']
+                'success' => true,
+                'message' => $validated['doctor_reply']
                     ? 'Phản hồi đã được lưu.'
                     : 'Phản hồi đã được xóa.',
                 'doctor_reply' => $updated->doctor_reply,
