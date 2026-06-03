@@ -59,7 +59,7 @@ class RoomController extends Controller
 
     public function update(RoomRequest $request, Room $room)
     {
-        $before = $room->only(['room_name', 'room_type', 'floor', 'capacity', 'status']);
+        $before = $room->only(['room_name', 'room_type', 'status', 'notes']);
         $room->update($request->validated());
 
         ActivityLogService::log(
@@ -70,8 +70,8 @@ class RoomController extends Controller
             [
                 'changes' => ActivityLogService::summarizeChanges(
                     $before,
-                    $room->fresh()->only(['room_name', 'room_type', 'floor', 'capacity', 'status']),
-                    ['room_name', 'room_type', 'floor', 'capacity', 'status']
+                    $room->fresh()->only(['room_name', 'room_type', 'status', 'notes']),
+                    ['room_name', 'room_type', 'status', 'notes']
                 ),
             ]
         );
@@ -152,6 +152,33 @@ class RoomController extends Controller
             ->with('success', 'Tạo ca làm việc thành công!');
     }
 
+    /**
+     * Tự động phân ca trực dựa trên thiết lập.
+     */
+    public function autoAllocate(Request $request)
+    {
+        $request->validate([
+            'start_date'        => 'required|date|after_or_equal:today',
+            'end_date'          => 'required|date|after_or_equal:start_date',
+            'slot_duration'     => 'required|integer|in:10,15,20,30,45,60',
+            'max_slot'          => 'required|integer|min:1|max:100',
+            'morning_enabled'   => 'nullable|boolean',
+            'afternoon_enabled' => 'nullable|boolean',
+            'overwrite'         => 'nullable|boolean',
+            'department_id'     => 'nullable|exists:departments,department_id',
+        ]);
+
+        $res = $this->roomService->autoAllocateSchedules($request->all());
+
+        if (!$res['success']) {
+            return back()->with('error', $res['message']);
+        }
+
+        return redirect()
+            ->route('admin.rooms.schedule.index', ['date' => $request->start_date])
+            ->with('success', $res['message']);
+    }
+
     public function editSchedule(DoctorSchedule $schedule)
     {
         return view('admin.rooms.schedule-edit', $this->roomService->buildScheduleEditData($schedule));
@@ -214,5 +241,35 @@ class RoomController extends Controller
         );
 
         return response()->json(['conflict' => $conflict]);
+    }
+
+    /**
+     * JSON endpoint cho realtime polling trạng thái phòng.
+     */
+    public function roomsData(Request $request)
+    {
+        $rooms = $this->roomService->buildIndexData($request);
+        $stats = $rooms['stats'];
+        $roomList = $rooms['rooms']->map(function ($r) use ($rooms) {
+            $todayDoc = $rooms['todaySchedules']->firstWhere('room_id', $r->room_id);
+            return [
+                'room_id'     => $r->room_id,
+                'room_code'   => $r->room_code,
+                'room_name'   => $r->room_name,
+                'room_type'   => $r->room_type,
+                'status'      => $r->status,
+                'department'  => $r->department?->department_name,
+                'doctor_today'=> $todayDoc?->doctor?->full_name,
+                'edit_url'    => route('admin.rooms.edit', $r),
+                'show_url'    => route('admin.rooms.show', $r),
+                'destroy_url' => route('admin.rooms.destroy', $r),
+            ];
+        });
+
+        return response()->json([
+            'stats'       => $stats,
+            'rooms'       => $roomList,
+            'timestamp'   => now()->toIso8601String(),
+        ]);
     }
 }

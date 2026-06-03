@@ -75,6 +75,7 @@
                 <div style="flex:1; background:#3a3b3c; border-radius:20px; display:flex; align-items:center; padding:6px 12px;">
                     <textarea id="chat-input" placeholder="Aa"
                         rows="1"
+                        maxlength="2000"
                         style="flex:1; border:none; background:transparent; color:#fff;
                                font-size:15px; resize:none; max-height:100px; outline:none; padding:4px 0;"
                         onkeydown="handleChatKey(event)"></textarea>
@@ -259,6 +260,12 @@ async function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim() || '👍';
     if (!chatRoomId || !text) return;
+    if (text.length > 2000) {
+        if (window.showAppNotification) {
+            window.showAppNotification('Tin nhắn tối đa 2000 ký tự. Vui lòng rút ngắn nội dung.', 'warning');
+        }
+        return;
+    }
     
     // Optimistic UI: Hiện tin nhắn ngay lập tức
     const tempMsg = {
@@ -309,7 +316,7 @@ function handleChatKey(e) {
 }
 
 async function recallChatMessage(msgId, element) {
-    if (!confirm('Bạn muốn thu hồi tin nhắn này?')) return;
+    if (window.appConfirm && !await window.appConfirm('Bạn muốn thu hồi tin nhắn này?')) return;
     try {
         const res = await fetch(`/chat/messages/${msgId}`, {
             method: 'DELETE',

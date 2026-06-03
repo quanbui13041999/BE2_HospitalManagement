@@ -3,7 +3,6 @@
 @section('title', 'Chỉnh sửa thực phẩm')
 
 @section('content')
-
 <div class="mb-4">
     <a href="{{ route('admin.nutrition.foods.index') }}" class="btn btn-sm btn-outline-secondary mb-3">
         <i class="bi bi-arrow-left me-1"></i> Quay lại danh sách
@@ -18,60 +17,73 @@
             <div class="alert alert-warning">{{ session('warning') }}</div>
         @endif
 
-        <form action="{{ route('admin.nutrition.foods.update', $food->food_id) }}" method="POST">
+        <form action="{{ route('admin.nutrition.foods.update', $food->food_id) }}" method="POST" data-food-form novalidate>
             @csrf
             @method('PUT')
             <input type="hidden" name="food_snapshot" value="{{ $foodSnapshot }}">
 
             <div class="row g-3">
-                {{-- Food Name --}}
                 <div class="col-md-8">
                     <label for="food_name" class="form-label fw-semibold">Tên thực phẩm <span class="text-danger">*</span></label>
-                    <input type="text" name="food_name" id="food_name" 
-                           class="form-control @error('food_name') is-invalid @enderror" 
-                           placeholder="Ví dụ: Bún chả" 
-                           value="{{ old('food_name', $food->food_name) }}" required minlength="2" maxlength="80" pattern="^[A-Za-zÀ-ỹ\s]+$">
-                    @error('food_name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    <input type="text"
+                           name="food_name"
+                           id="food_name"
+                           class="form-control @error('food_name') is-invalid @enderror"
+                           placeholder="Ví dụ: Bún chả"
+                           value="{{ old('food_name', $food->food_name) }}"
+                           required
+                           minlength="2"
+                           maxlength="80"
+                           pattern="^[A-Za-zÀ-ỹ]+( [A-Za-zÀ-ỹ]+)*$"
+                           data-error-required="Vui lòng nhập tên thực phẩm."
+                           data-error-pattern="Tên thực phẩm chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ."
+                           data-error-minlength="Tên thực phẩm phải có ít nhất 2 ký tự.">
+                    @error('food_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
-                {{-- Calories per 100g --}}
                 <div class="col-md-4">
                     <label for="calories_per_100g" class="form-label fw-semibold">Calo / 100g <span class="text-danger">*</span></label>
                     <div class="input-group">
-                        <input type="number" name="calories_per_100g" id="calories_per_100g" 
-                               class="form-control @error('calories_per_100g') is-invalid @enderror" 
-                               placeholder="130" min="0" max="5000" step="1" inputmode="numeric"
-                               value="{{ old('calories_per_100g', $food->calories_per_100g) }}" required>
+                        <input type="number"
+                               name="calories_per_100g"
+                               id="calories_per_100g"
+                               class="form-control @error('calories_per_100g') is-invalid @enderror"
+                               placeholder="130"
+                               min="0"
+                               max="5000"
+                               step="1"
+                               inputmode="numeric"
+                               value="{{ old('calories_per_100g', $food->calories_per_100g) }}"
+                               required
+                               data-error-required="Vui lòng nhập calo trên 100g."
+                               data-error-input="Calo chỉ được nhập số nguyên."
+                               data-error-min="Calo không được nhỏ hơn 0."
+                               data-error-max="Calo tối đa là 5000 kcal.">
                         <span class="input-group-text">kcal</span>
                     </div>
-                    @error('calories_per_100g')
-                        <div class="text-danger small mt-1">{{ $message }}</div>
-                    @enderror
+                    @error('calories_per_100g')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
 
-                {{-- Description --}}
                 <div class="col-12">
                     <label for="description" class="form-label fw-semibold">Mô tả chi tiết</label>
-                    <textarea name="description" id="description" class="form-control @error('description') is-invalid @enderror" 
-                              rows="3" maxlength="300" placeholder="Nhập mô tả về thành phần dinh dưỡng chính"
-                              >{{ old('description', $food->description) }}</textarea>
-                    @error('description')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    <textarea name="description"
+                              id="description"
+                              class="form-control @error('description') is-invalid @enderror"
+                              rows="3"
+                              maxlength="300"
+                              placeholder="Nhập mô tả về thành phần dinh dưỡng chính"
+                              data-pattern="^[A-Za-zÀ-ỹ]+( [A-Za-zÀ-ỹ]+)*$"
+                              data-error-pattern="Mô tả chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.">{{ old('description', $food->description) }}</textarea>
+                    @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
-                {{-- Status --}}
                 <div class="col-md-6">
                     <label for="status" class="form-label fw-semibold">Trạng thái hiển thị</label>
                     <select name="status" id="status" class="form-select @error('status') is-invalid @enderror" required>
                         <option value="1" {{ old('status', $food->status) == '1' ? 'selected' : '' }}>Kích hoạt (Hiển thị cho bệnh nhân)</option>
                         <option value="0" {{ old('status', $food->status) == '0' ? 'selected' : '' }}>Ẩn (Không cho phép chọn)</option>
                     </select>
-                    @error('status')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
 
@@ -84,5 +96,6 @@
         </form>
     </div>
 </div>
-
 @endsection
+
+@include('nutrition.admin.foods._form_validation')

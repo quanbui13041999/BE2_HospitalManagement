@@ -201,4 +201,52 @@ class ServiceController extends Controller
 
         return back()->with('success', 'Đã xoá mức giá.');
     }
+
+    /**
+     * JSON endpoint cho realtime polling – admin index.
+     */
+    public function servicesData(Request $request)
+    {
+        $services = $this->serviceService->buildIndexData($request);
+        return response()->json([
+            'stats' => [
+                'total'    => $services['services']->total(),
+                'active'   => $services['services']->getCollection()->where('status', true)->count(),
+                'inactive' => $services['services']->getCollection()->where('status', false)->count(),
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * JSON endpoint công khai – cho trang /dich-vu polling realtime.
+     * Chỉ trả về dịch vụ đang hoạt động, đủ thông tin cho frontend cập nhật card.
+     */
+    public function publicServicesData(Request $request)
+    {
+        $services = $this->serviceService->buildPublicIndexData($request)['services'];
+
+        $list = $services->getCollection()->map(function ($s) {
+            $priceNormal = $s->activePrices->firstWhere('price_type', 'Thường');
+            $lowestPrice = $s->activePrices->min('price');
+            return [
+                'service_id'       => $s->service_id,
+                'service_code'     => $s->service_code,
+                'service_name'     => $s->service_name,
+                'description'      => $s->description,
+                'duration_minutes' => $s->duration_minutes,
+                'department'       => $s->department?->department_name,
+                'price_normal'     => $priceNormal?->price,
+                'lowest_price'     => $lowestPrice,
+                'show_url'         => route('user.services.show', $s->service_id),
+                'book_url'         => route('appointments.create') . '?service_id=' . $s->service_id,
+            ];
+        });
+
+        return response()->json([
+            'total'     => $services->total(),
+            'services'  => $list,
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
 }

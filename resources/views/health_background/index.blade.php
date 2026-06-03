@@ -117,10 +117,10 @@
 
                                 <div class="mb-3">
                                     <label class="form-label small text-muted">THỰC PHẨM</label>
-                                    <input type="text" name="food_allergies" class="form-control @error('food_allergies') is-invalid @enderror"
+                                    <input type="text" name="food_allergies" class="form-control js-vietnamese-words @error('food_allergies') is-invalid @enderror"
                                            value="{{ old('food_allergies', $healthData->food_allergies ?? '') }}"
-                                           maxlength="100" pattern="^[A-Za-zÀ-ỹ\s]+$"
-                                           title="Chỉ nhập chữ cái và khoảng trắng, không nhập số hoặc ký tự đặc biệt."
+                                           maxlength="100" pattern="[\p{L}\p{M}]+( [\p{L}\p{M}]+)*"
+                                           title="Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ."
                                            placeholder="VD: Sữa Gluten">
                                     @error('food_allergies')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
@@ -137,9 +137,9 @@
                                 <h6 class="card-title fw-bold text-danger ps-2 mb-3">
                                     <i class="bi bi-capsule"></i> DỊ ỨNG THUỐC
                                 </h6>
-                                <input type="text" name="drug_allergies" class="form-control @error('drug_allergies') is-invalid @enderror"
+                                <input type="text" name="drug_allergies" class="form-control js-vietnamese-words @error('drug_allergies') is-invalid @enderror"
                                        value="{{ old('drug_allergies', $healthData->drug_allergies ?? '') }}"
-                                       maxlength="255" placeholder="Nhập tên thuốc">
+                                       maxlength="255" pattern="[\p{L}\p{M}]+( [\p{L}\p{M}]+)*" title="Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ." placeholder="Nhập tên thuốc">
                                 @error('drug_allergies')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
@@ -175,8 +175,8 @@
 
                                 <div class="mt-3 mb-3">
                                     <label class="form-label small text-muted">BỆNH MÃN TÍNH KHÁC</label>
-                                    <textarea name="other_chronic_diseases" class="form-control bg-light @error('other_chronic_diseases') is-invalid @enderror"
-                                              rows="3" maxlength="500">{{ old('other_chronic_diseases', $healthData->other_chronic_diseases ?? '') }}</textarea>
+                                    <textarea name="other_chronic_diseases" class="form-control bg-light js-vietnamese-words @error('other_chronic_diseases') is-invalid @enderror"
+                                              rows="3" maxlength="500" data-vietnamese-words="true" title="Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.">{{ old('other_chronic_diseases', $healthData->other_chronic_diseases ?? '') }}</textarea>
                                     @error('other_chronic_diseases')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
 

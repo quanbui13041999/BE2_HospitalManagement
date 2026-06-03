@@ -7,6 +7,7 @@ use App\Models\{DoctorSchedule, QueueTicket};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class QueueManageController extends Controller
 {
@@ -55,7 +56,11 @@ class QueueManageController extends Controller
      */
     public function searchPatient(Request $request)
     {
-        $keyword  = trim($request->input('keyword', ''));
+        $validated = $request->validate([
+            'keyword' => 'nullable|string|max:100',
+        ]); /* fixed: gioi han input tim kiem, tranh query voi chuoi qua dai/du lieu tho */
+
+        $keyword  = trim($validated['keyword'] ?? '');
         $result   = $keyword ? $this->queueService->findPatient($keyword) : ['found' => false];
         $schedules = DoctorSchedule::with('doctor')
             ->whereDate('work_date', today())
@@ -111,6 +116,10 @@ class QueueManageController extends Controller
 
         try {
             $this->queueService->skip($ticketId, $validated['reason'] ?? ''); /* fixed: validate ly do skip truoc khi luu */
+        } catch (ValidationException $e) {
+            return back()
+                ->with('warning', $e->validator->errors()->first() ?: 'Hàng đợi đã thay đổi, trang sẽ được tải lại.')
+                ->with('reload_page', true); /* fixed: thong bao nguoi thao tac sau va reload snapshot */
         } catch (\Throwable $e) {
             Log::error('Queue ticket skip failed', [
                 'ticket_id' => $ticketId,

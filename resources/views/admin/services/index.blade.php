@@ -1066,6 +1066,30 @@ document.getElementById('editServiceForm').addEventListener('submit', async func
     submitBtn.disabled = true;
     
     form.querySelectorAll('.form-control, .form-select').forEach(el => el.classList.remove('is-invalid'));
+
+    const name = document.getElementById('edit_service_name');
+    const dur = document.getElementById('edit_duration_minutes');
+    
+    let valid = true;
+    if (!name.value.trim()) {
+        name.classList.add('is-invalid');
+        const errBlock = form.querySelector('.error-service_name');
+        if (errBlock) errBlock.textContent = 'Tên dịch vụ là bắt buộc.';
+        valid = false;
+    }
+    const durVal = parseInt(dur.value);
+    if (isNaN(durVal) || durVal < 5 || durVal > 480) {
+        dur.classList.add('is-invalid');
+        const errBlock = form.querySelector('.error-duration_minutes');
+        if (errBlock) errBlock.textContent = 'Thời gian phải từ 5 đến 480 phút.';
+        valid = false;
+    }
+    
+    if (!valid) {
+        submitBtn.disabled = false;
+        showToast('Vui lòng kiểm tra lại thông tin biểu mẫu', 'warning');
+        return;
+    }
     
     const formData = new FormData(form);
     
@@ -1229,6 +1253,38 @@ document.getElementById('addPriceForm').addEventListener('submit', async functio
     const errBlock = document.getElementById('addPriceError');
     errBlock.textContent = '';
     
+    // Clear previous validation states
+    form.querySelectorAll('.form-control, .form-select').forEach(el => el.classList.remove('is-invalid'));
+    
+    const priceValInput = form.querySelector('[name="price"]');
+    const effDateInput = form.querySelector('[name="effective_date"]');
+    const endDateInput = form.querySelector('[name="end_date"]');
+
+    const price = parseFloat(priceValInput.value);
+    const effDate = effDateInput.value;
+    const endDate = endDateInput.value;
+
+    if (isNaN(price) || price < 0) {
+        errBlock.textContent = 'Đơn giá phải là số và không được âm.';
+        priceValInput.classList.add('is-invalid');
+        showToast('Vui lòng kiểm tra lại thông tin đơn giá!', 'warning');
+        return;
+    }
+
+    if (!effDate) {
+        errBlock.textContent = 'Ngày áp dụng là bắt buộc.';
+        effDateInput.classList.add('is-invalid');
+        showToast('Vui lòng nhập ngày áp dụng!', 'warning');
+        return;
+    }
+
+    if (endDate && new Date(endDate) < new Date(effDate)) {
+        errBlock.textContent = 'Ngày kết thúc phải bằng hoặc sau ngày áp dụng.';
+        endDateInput.classList.add('is-invalid');
+        showToast('Ngày kết thúc không hợp lệ!', 'warning');
+        return;
+    }
+
     const formData = new FormData(form);
     
     try {
@@ -1345,6 +1401,37 @@ async function savePriceInline(priceId) {
     const pEff = document.getElementById(`inline-eff-${priceId}`).value;
     const pEnd = document.getElementById(`inline-end-${priceId}`).value;
     
+    const priceValInput = document.getElementById(`inline-price-${priceId}`);
+    const effDateInput = document.getElementById(`inline-eff-${priceId}`);
+    const endDateInput = document.getElementById(`inline-end-${priceId}`);
+
+    priceValInput.classList.remove('is-invalid');
+    effDateInput.classList.remove('is-invalid');
+    if (endDateInput) endDateInput.classList.remove('is-invalid');
+
+    const price = parseFloat(pPrice);
+
+    if (isNaN(price) || price < 0) {
+        inlineErr.textContent = 'Đơn giá phải là số và không được âm.';
+        priceValInput.classList.add('is-invalid');
+        showToast('Vui lòng kiểm tra lại thông tin đơn giá!', 'warning');
+        return;
+    }
+
+    if (!pEff) {
+        inlineErr.textContent = 'Ngày áp dụng là bắt buộc.';
+        effDateInput.classList.add('is-invalid');
+        showToast('Vui lòng nhập ngày áp dụng!', 'warning');
+        return;
+    }
+
+    if (pEnd && new Date(pEnd) < new Date(pEff)) {
+        inlineErr.textContent = 'Ngày kết thúc phải bằng hoặc sau ngày áp dụng.';
+        if (endDateInput) endDateInput.classList.add('is-invalid');
+        showToast('Ngày kết thúc không hợp lệ!', 'warning');
+        return;
+    }
+
     // AJAX payload
     const payload = {
         price_type: pType,
@@ -1466,6 +1553,35 @@ document.getElementById('deleteServiceForm').addEventListener('submit', async fu
 document.addEventListener('DOMContentLoaded', function () {
     const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltipEls.forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover' }));
+
+    // ── Realtime polling: phát hiện thay đổi mỗi 20 giây ──────
+    const ADMIN_DATA_URL = '{{ route("admin.services.data") }}';
+    let lastTotal = {{ $services->total() }};
+    let realtimeEl;
+
+    realtimeEl = document.createElement('div');
+    realtimeEl.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#0D47A1;color:#fff;'
+        + 'padding:6px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .4s;z-index:9999;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);';
+    realtimeEl.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang kiểm tra cập nhật...';
+    document.body.appendChild(realtimeEl);
+
+    setInterval(() => {
+        fetch(ADMIN_DATA_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data.stats && data.stats.total !== lastTotal) {
+                    lastTotal = data.stats.total;
+                    realtimeEl.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Dữ liệu đã thay đổi – đang tải lại...';
+                    realtimeEl.style.background = '#2e7d32';
+                    realtimeEl.style.opacity = '1';
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    realtimeEl.style.opacity = '1';
+                    setTimeout(() => { realtimeEl.style.opacity = '0'; }, 1800);
+                }
+            })
+            .catch(() => {});
+    }, 20000);
 });
 </script>
 @endpush

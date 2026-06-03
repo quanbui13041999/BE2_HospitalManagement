@@ -41,7 +41,7 @@ class UpdateMedicalRecordRequest extends FormRequest
             'exam_date'           => 'sometimes|required|date',
             'exam_time'           => 'nullable|date_format:H:i',
             'visit_type'          => 'sometimes|required|in:Tái khám,Khám mới,Cấp cứu',
-            'chief_complaint'     => ['sometimes', 'required', 'string', 'max:1000', 'regex:/\A[\pL\s.,;:()\/+\-%]+\z/u'],
+            'chief_complaint'     => ['sometimes', 'required', 'string', 'max:1000', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'record_snapshot'     => 'required|string|size:64',
             'record_id'           => 'prohibited',
             'record_code'         => 'prohibited',
@@ -110,6 +110,7 @@ class UpdateMedicalRecordRequest extends FormRequest
             'exam_date.date'              => 'Ngày khám không hợp lệ.',
             'visit_type.required'         => 'Vui lòng chọn loại khám.',
             'chief_complaint.required'    => 'Vui lòng nhập lý do đến khám / triệu chứng.',
+            'chief_complaint.regex'       => 'Lý do đến khám / triệu chứng chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             
             'vitals.required'                     => 'Vui lòng nhập đầy đủ chỉ số sinh tồn.',
             'vitals.blood_pressure.required'      => 'Vui lòng nhập huyết áp.',

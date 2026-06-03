@@ -267,7 +267,8 @@ STYLE riêng cho review
 JAVASCRIPT
 ═══════════════════════════════════════════════════════════ --}}
 <script>
-    const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const CSRF = csrfMeta ? csrfMeta.content : '';
 
     // ─── State ─────────────────────────────────────────────────
     let _reviewState = {
@@ -440,10 +441,14 @@ JAVASCRIPT
                 showToast('🗑 ' + data.message);
                 setTimeout(() => location.reload(), 1200);
             } else {
-                alert(data.message ?? 'Có lỗi xảy ra.');
+                if (window.showAppNotification) {
+                    window.showAppNotification(data.message || 'Có lỗi xảy ra.', 'error');
+                }
             }
         } catch {
-            alert('Lỗi kết nối.');
+            if (window.showAppNotification) {
+                window.showAppNotification('Lỗi kết nối.', 'error');
+            }
         } finally {
             btn.disabled = false;
             btn.textContent = 'Xóa';

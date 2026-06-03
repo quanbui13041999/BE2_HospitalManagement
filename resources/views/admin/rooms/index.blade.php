@@ -319,7 +319,8 @@
             $roomsByFloor = $rooms->groupBy(function($r) {
             return intdiv((int) filter_var($r->room_code, FILTER_SANITIZE_NUMBER_INT), 100) * 100;
             });
-            $statusMap = ['Đang sử dụng'=>'s-using','Trống'=>'s-empty','Bảo trì'=>'s-maintain','Vệ sinh'=>'s-clean'];
+            // FIX: dùng đúng giá trị ROOM_STATUSES lưu trong DB
+            $statusMap = ['Hoạt động'=>'s-using','Trống'=>'s-empty','Bảo trì'=>'s-maintain','Vệ sinh'=>'s-clean'];
             @endphp
 
             @forelse($roomsByFloor->sortKeys() as $floor => $floorRooms)
@@ -335,7 +336,8 @@
                     $cls = $statusMap[$room->status] ?? 's-empty';
                     $todayDoc = $todaySchedules->firstWhere('room_id', $room->room_id);
                     @endphp
-                    <div class="room-card {{ $cls }}"
+                    <div class="room-card {{ $cls }} realtime-room-card"
+                        data-room-id="{{ $room->room_id }}"
                         onclick="window.location='{{ route('admin.rooms.show', $room) }}'">
                         
                         <div class="dropdown" style="position: absolute; top: 10px; right: 10px;" onclick="event.stopPropagation()">
@@ -346,10 +348,9 @@
                                 <li><a class="dropdown-item" href="{{ route('admin.rooms.edit', $room) }}"><i class="bi bi-pencil me-2 text-primary"></i>Sửa phòng</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <form method="POST" action="{{ route('admin.rooms.destroy', $room) }}" onsubmit="return confirm('Bạn có chắc chắn muốn xóa phòng này?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Xóa phòng</button>
-                                    </form>
+                                    <button type="button" class="dropdown-item text-danger"
+                                        onclick="confirmDeleteRoom('{{ $room->room_id }}','{{ addslashes($room->room_code) }}','{{ addslashes($room->room_name ?? '') }}','{{ route('admin.rooms.destroy', $room) }}')"
+                                    ><i class="bi bi-trash me-2"></i>Xóa phòng</button>
                                 </li>
                             </ul>
                         </div>
@@ -831,5 +832,99 @@
                 loadWeeklySchedule();
             }
         </script>
+
+        {{-- Modal xác nhận xóa phòng --}}
+        <div class="modal fade" id="modalDeleteRoom" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa phòng</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-1">Bạn có chắc chắn muốn xóa phòng khám này?</p>
+                        <div class="alert alert-warning py-2 mt-2">
+                            <strong id="deleteRoomCode"></strong> – <span id="deleteRoomName" class="text-muted"></span>
+                        </div>
+                        <p class="text-danger small mb-0"><i class="bi bi-info-circle me-1"></i>Hành động này không thể hoàn tác. Phòng đang có ca trực sẽ không thể xóa.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-lg me-1"></i>Hủy bỏ
+                        </button>
+                        <form id="deleteRoomForm" method="POST">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>Xóa phòng
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        // ── Xóa phòng với modal xác nhận đẹp ─────────────────────────────────
+        function confirmDeleteRoom(roomId, roomCode, roomName, actionUrl) {
+            document.getElementById('deleteRoomCode').textContent = roomCode;
+            document.getElementById('deleteRoomName').textContent = roomName || 'Không có tên';
+            document.getElementById('deleteRoomForm').action = actionUrl;
+            new bootstrap.Modal(document.getElementById('modalDeleteRoom')).show();
+        }
+
+        // ── Realtime polling: cập nhật phòng khám mỗi 30 giây ───────────────
+        const REALTIME_URL = '{{ route("admin.rooms.data") }}';
+        const STATUS_MAP   = { 'Hoạt động':'s-using','Trống':'s-empty','Bảo trì':'s-maintain','Vệ sinh':'s-clean' };
+        let realtimeIndicator;
+
+        function updateStats(stats) {
+            const vals = [stats.total, stats.in_use, stats.empty, stats.maintain + stats.clean];
+            document.querySelectorAll('.room-stat-val').forEach((el, i) => {
+                if (vals[i] !== undefined) el.textContent = vals[i];
+            });
+        }
+
+        function updateRoomCards(rooms) {
+            rooms.forEach(r => {
+                const card = document.querySelector('.realtime-room-card[data-room-id="'+r.room_id+'"]');
+                if (!card) return;
+                Object.values(STATUS_MAP).forEach(c => card.classList.remove(c));
+                card.classList.add(STATUS_MAP[r.status] || 's-empty');
+                const lbl = card.querySelector('.room-card-label');
+                if (lbl) lbl.textContent = r.status;
+                const doc = card.querySelector('.room-card-doc');
+                if (doc) {
+                    if (r.doctor_today) {
+                        doc.innerHTML = '<i class="bi bi-person-fill me-1"></i>' + r.doctor_today;
+                    } else {
+                        doc.textContent = '+ Chưa phân ca';
+                    }
+                }
+            });
+        }
+
+        function startRealtimePolling() {
+            realtimeIndicator = document.createElement('div');
+            realtimeIndicator.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#0D47A1;color:#fff;'
+                +'padding:6px 14px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .4s;z-index:9999;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.2);';
+            realtimeIndicator.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Cập nhật dữ liệu...';
+            document.body.appendChild(realtimeIndicator);
+
+            setInterval(() => {
+                fetch(REALTIME_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(r => r.json())
+                    .then(data => {
+                        updateStats(data.stats);
+                        updateRoomCards(data.rooms);
+                        realtimeIndicator.style.opacity = '1';
+                        setTimeout(() => { realtimeIndicator.style.opacity = '0'; }, 2000);
+                    })
+                    .catch(() => {});
+            }, 30000);
+        }
+
+        document.addEventListener('DOMContentLoaded', startRealtimePolling);
+        </script>
+
         @endpush
         @endsection

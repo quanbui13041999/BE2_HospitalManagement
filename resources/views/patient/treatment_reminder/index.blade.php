@@ -287,10 +287,12 @@ document.querySelectorAll('.instruction-check').forEach(cb => {
 });
 
 function showTreatmentReminderError(message, shouldReload) {
-    alert(message);
+    if (window.showAppNotification) {
+        window.showAppNotification(message, 'error');
+    }
 
     if (shouldReload) {
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 1800);
     }
 }
 

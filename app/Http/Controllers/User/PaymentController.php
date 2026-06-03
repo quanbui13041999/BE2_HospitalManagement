@@ -254,9 +254,12 @@ class PaymentController extends Controller
     /**
      * Lịch sử thanh toán của người dùng
      */
-    public function history()
+    public function history(Request $request)
     {
-        $payments = $this->paymentService->getUserPayments(Auth::id());
-        return view('user.payments.history', compact('payments'));
+        $filters = $request->only(['from_date', 'to_date', 'status', 'method', 'search']);
+        $payments = $this->paymentService->getUserPayments(Auth::id(), $filters);
+        $stats = $this->paymentService->getUserPaymentStats(Auth::id());
+        
+        return view('user.payments.history', compact('payments', 'stats'));
     }
 }

@@ -270,14 +270,69 @@ class PaymentService
     }
 
     /**
-     * Lịch sử thanh toán của user.
+     * Lịch sử thanh toán của user với bộ lọc nâng cao.
      */
-    public function getUserPayments(int $userId)
+    public function getUserPayments(int $userId, array $filters = [])
     {
-        return Payment::whereHas('appointment', fn($q) => $q->where('user_id', $userId))
-            ->with(['appointment.schedule.doctor'])
-            ->orderByDesc('payment_date')
-            ->paginate(10);
+        $query = Payment::whereHas('appointment', fn($q) => $q->where('user_id', $userId))
+            ->with(['appointment.schedule.doctor', 'appointment.service'])
+            ->orderByDesc('payment_date');
+
+        // Lọc theo ngày
+        if (!empty($filters['from_date'])) {
+            $query->whereDate('payment_date', '>=', $filters['from_date']);
+        }
+        if (!empty($filters['to_date'])) {
+            $query->whereDate('payment_date', '<=', $filters['to_date']);
+        }
+
+        // Lọc theo trạng thái
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'Thành công') {
+                $query->whereIn('status', ['Thành công', 'Đã thanh toán']);
+            } else {
+                $query->where('status', $filters['status']);
+            }
+        }
+
+        // Lọc theo phương thức
+        if (!empty($filters['method'])) {
+            $query->where('method', $filters['method']);
+        }
+
+        // Tìm kiếm từ khóa (Tên bác sĩ, tên dịch vụ hoặc mã GD)
+        if (!empty($filters['search'])) {
+            $search = '%' . $filters['search'] . '%';
+            $query->where(function ($q) use ($search) {
+                $q->where('transaction_ref', 'like', $search)
+                  ->orWhereHas('appointment.schedule.doctor', function ($dq) use ($search) {
+                      $dq->where('full_name', 'like', $search);
+                  })
+                  ->orWhereHas('appointment.service', function ($sq) use ($search) {
+                      $sq->where('service_name', 'like', $search);
+                  });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
+    }
+
+    /**
+     * Thống kê thanh toán của user.
+     */
+    public function getUserPaymentStats(int $userId): array
+    {
+        $allPayments = Payment::whereHas('appointment', fn($q) => $q->where('user_id', $userId))->get();
+        
+        $totalSpent = $allPayments->whereIn('status', ['Thành công', 'Đã thanh toán'])->sum('total_amount');
+        $completedCount = $allPayments->whereIn('status', ['Thành công', 'Đã thanh toán'])->count();
+        $pendingCount = $allPayments->whereIn('status', ['Chờ xử lý', 'Chờ thanh toán', 'Chưa thanh toán'])->count();
+        
+        return [
+            'total_spent' => $totalSpent,
+            'completed_count' => $completedCount,
+            'pending_count' => $pendingCount,
+        ];
     }
 
     /**

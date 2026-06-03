@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\ConcurrentModificationException;
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentConfirmed;
 use App\Mail\AppointmentRescheduleMail;
@@ -27,6 +28,20 @@ use Illuminate\Support\Facades\Mail;
  */
 class AppointmentService
 {
+    private function assertFreshVersion(?string $expectedVersion, mixed $actualVersion): void
+    {
+        if (!$expectedVersion || !$actualVersion) {
+            return;
+        }
+
+        $expected = Carbon::parse($expectedVersion)->format('Y-m-d H:i:s');
+        $actual = Carbon::parse($actualVersion)->format('Y-m-d H:i:s');
+
+        if ($expected !== $actual) {
+            throw new ConcurrentModificationException();
+        }
+    }
+
     /**
      * Lấy dữ liệu cho form tạo lịch khám
      */
@@ -209,43 +224,46 @@ class AppointmentService
      */
     public function createAppointment(int $userId, array $data): array
     {
-        // Validate
-        $alreadyBooked = $this->checkAppointmentAlreadyBooked($userId, $data['schedule_id']);
-        if ($alreadyBooked) {
-            throw new Exception('Bạn đã đặt lịch khám cho khung giờ này rồi.');
-        }
-
-        $schedule = $this->validateSchedule($data['schedule_id'], $data['work_date']);
-        if (!$schedule) {
-            throw new Exception('Lịch khám không tồn tại hoặc ngày khám không khớp.');
-        }
-
-        $booked = DB::table('appointments')
-            ->where('schedule_id', $data['schedule_id'])
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-            ->count();
-
-        if ($booked >= $schedule->max_slot) {
-            throw new Exception('Khung giờ này đã hết chỗ. Vui lòng chọn giờ khác.');
-        }
-
-        // Calculate queue number and times
-        $appointmentDatetime = $data['work_date'] . ' ' . $data['appointment_time'] . ':00';
-        $appointmentEndtime = $this->calculateAppointmentEndTime(
-            $data['work_date'],
-            $data['appointment_time'],
-            $schedule->slot_duration ?? 15
-        );
-        $queueNumber = $this->calculateQueueNumber($data['schedule_id'], $data['appointment_time']);
-
-        // Database transaction
         $appointmentId = null;
         DB::beginTransaction();
         try {
+            $schedule = DB::table('doctorschedules')
+                ->where('schedule_id', $data['schedule_id'])
+                ->where('status', 'Hoạt động')
+                ->lockForUpdate()
+                ->first(); /* fixed: khoa ca kham de nhieu nguoi dat cung luc khong vuot max_slot */
+
+            if (!$schedule || $schedule->work_date !== $data['work_date']) {
+                throw new Exception('Lịch khám không tồn tại hoặc ngày khám không khớp.');
+            }
+
             $existing = DB::table('appointments')
                 ->where('user_id', $userId)
                 ->where('schedule_id', $data['schedule_id'])
+                ->lockForUpdate()
                 ->first();
+
+            if ($existing && !in_array($existing->status, ['Đã hủy', 'Dời lịch'], true)) {
+                throw new Exception('Bạn đã đặt lịch khám cho khung giờ này rồi.');
+            }
+
+            $booked = DB::table('appointments')
+                ->where('schedule_id', $data['schedule_id'])
+                ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                ->lockForUpdate()
+                ->count();
+
+            if ($booked >= $schedule->max_slot) {
+                throw new ConcurrentModificationException('Khung giờ này vừa hết chỗ do người khác đặt trước. Trang sẽ được tải lại để cập nhật lịch trống.');
+            }
+
+            $appointmentDatetime = $data['work_date'] . ' ' . $data['appointment_time'] . ':00';
+            $appointmentEndtime = $this->calculateAppointmentEndTime(
+                $data['work_date'],
+                $data['appointment_time'],
+                $schedule->slot_duration ?? 15
+            );
+            $queueNumber = $this->calculateQueueNumber($data['schedule_id'], $data['appointment_time']);
 
             if ($existing) {
                 DB::table('appointments')
@@ -507,49 +525,54 @@ class AppointmentService
      */
     public function rescheduleAppointment(int $appointmentId, int $userId, array $data): array
     {
-        $appointment = DB::table('appointments')
-            ->where('appointment_id', $appointmentId)
-            ->where('user_id', $userId)
-            ->first();
-
-        if (!$appointment) {
-            throw new Exception('Không tìm thấy lịch hẹn.');
-        }
-
-        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
-            throw new Exception('Lịch hẹn này không thể dời.');
-        }
-
-        if ((int)$data['new_schedule_id'] === (int)$appointment->schedule_id) {
-            throw new Exception('Vui lòng chọn lịch khác với lịch hiện tại.');
-        }
-
-        $newSchedule = DB::table('doctorschedules')
-            ->where('schedule_id', $data['new_schedule_id'])
-            ->where('status', 'Hoạt động')
-            ->first();
-
-        if (!$newSchedule) {
-            throw new Exception('Lịch khám mới không hợp lệ.');
-        }
-
-        if (Carbon::parse($newSchedule->work_date)->isPast()) {
-            throw new Exception('Ngày dời phải là ngày trong tương lai.');
-        }
-
-        $bookedInNew = DB::table('appointments')
-            ->where('schedule_id', $data['new_schedule_id'])
-            ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
-            ->count();
-
-        if ($bookedInNew >= $newSchedule->max_slot) {
-            throw new Exception('Khung giờ mới đã hết chỗ. Vui lòng chọn giờ khác.');
-        }
-
-        $newDatetime = $newSchedule->work_date . ' ' . $data['new_appointment_time'] . ':00';
-
         DB::beginTransaction();
         try {
+            $appointment = DB::table('appointments')
+                ->where('appointment_id', $appointmentId)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first(); /* fixed: khoa lich hen khi doi lich de tranh 2 tab/user cung cap nhat */
+
+            if (!$appointment) {
+                throw new Exception('Không tìm thấy lịch hẹn.');
+            }
+
+            $this->assertFreshVersion($data['version'] ?? null, $appointment->updated_at ?? null); /* fixed: phat hien form cu da bi nguoi khac sua */
+
+            if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
+                throw new Exception('Lịch hẹn này không thể dời.');
+            }
+
+            if ((int)$data['new_schedule_id'] === (int)$appointment->schedule_id) {
+                throw new Exception('Vui lòng chọn lịch khác với lịch hiện tại.');
+            }
+
+            $newSchedule = DB::table('doctorschedules')
+                ->where('schedule_id', $data['new_schedule_id'])
+                ->where('status', 'Hoạt động')
+                ->lockForUpdate()
+                ->first(); /* fixed: khoa ca moi khi dem slot con trong */
+
+            if (!$newSchedule) {
+                throw new Exception('Lịch khám mới không hợp lệ.');
+            }
+
+            if (Carbon::parse($newSchedule->work_date)->isPast()) {
+                throw new Exception('Ngày dời phải là ngày trong tương lai.');
+            }
+
+            $bookedInNew = DB::table('appointments')
+                ->where('schedule_id', $data['new_schedule_id'])
+                ->whereNotIn('status', ['Đã hủy', 'Dời lịch', 'Giữ slot'])
+                ->lockForUpdate()
+                ->count();
+
+            if ($bookedInNew >= $newSchedule->max_slot) {
+                throw new ConcurrentModificationException('Khung giờ mới vừa hết chỗ do người khác đặt trước. Trang sẽ được tải lại để cập nhật lịch trống.');
+            }
+
+            $newDatetime = $newSchedule->work_date . ' ' . $data['new_appointment_time'] . ':00';
+
             DB::table('appointments')
                 ->where('appointment_id', $appointmentId)
                 ->update([
@@ -631,30 +654,33 @@ class AppointmentService
      */
     public function cancelAppointment(int $appointmentId, int $userId, array $data): array
     {
-        $appointment = DB::table('appointments')
-            ->where('appointment_id', $appointmentId)
-            ->where('user_id', $userId)
-            ->first();
-
-        if (!$appointment) {
-            throw new Exception('Không tìm thấy lịch hẹn.');
-        }
-
-        if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
-            throw new Exception('Lịch hẹn này không thể hủy (trạng thái: ' . $appointment->status . ').');
-        }
-
-        $schedule = DB::table('doctorschedules')
-            ->where('schedule_id', $appointment->schedule_id)
-            ->first();
-
-        $timeError = $this->checkCancelTimeAvailable($schedule);
-        if ($timeError) {
-            throw new Exception($timeError);
-        }
-
         DB::beginTransaction();
         try {
+            $appointment = DB::table('appointments')
+                ->where('appointment_id', $appointmentId)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first(); /* fixed: khoa lich hen khi huy de tranh huy/doi song song */
+
+            if (!$appointment) {
+                throw new Exception('Không tìm thấy lịch hẹn.');
+            }
+
+            $this->assertFreshVersion($data['version'] ?? null, $appointment->updated_at ?? null); /* fixed: neu lich da doi/trang thai da thay doi thi bao reload */
+
+            if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
+                throw new Exception('Lịch hẹn này không thể hủy (trạng thái: ' . $appointment->status . ').');
+            }
+
+            $schedule = DB::table('doctorschedules')
+                ->where('schedule_id', $appointment->schedule_id)
+                ->first();
+
+            $timeError = $this->checkCancelTimeAvailable($schedule);
+            if ($timeError) {
+                throw new Exception($timeError);
+            }
+
             DB::table('appointments')
                 ->where('appointment_id', $appointmentId)
                 ->update([

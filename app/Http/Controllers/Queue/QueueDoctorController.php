@@ -7,6 +7,7 @@ use App\Models\{DoctorSchedule, Doctor, QueueTicket};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class QueueDoctorController extends Controller
 {
@@ -76,6 +77,10 @@ class QueueDoctorController extends Controller
     {
         try {
             $ticket = $this->queueService->startExam($ticketId);
+        } catch (ValidationException $e) {
+            return back()
+                ->with('warning', $e->validator->errors()->first() ?: 'Hàng đợi đã thay đổi, trang sẽ được tải lại.')
+                ->with('reload_page', true); /* fixed: ticket da duoc nguoi khac xu ly thi bao va reload */
         } catch (\Throwable $e) {
             Log::error('Queue start exam failed', [
                 'ticket_id' => $ticketId,
@@ -96,6 +101,10 @@ class QueueDoctorController extends Controller
     {
         try {
             $ticket = $this->queueService->complete($ticketId);
+        } catch (ValidationException $e) {
+            return back()
+                ->with('warning', $e->validator->errors()->first() ?: 'Hàng đợi đã thay đổi, trang sẽ được tải lại.')
+                ->with('reload_page', true); /* fixed: tranh hoan thanh lai ticket da thay doi */
         } catch (\Throwable $e) {
             Log::error('Queue complete failed', [
                 'ticket_id' => $ticketId,

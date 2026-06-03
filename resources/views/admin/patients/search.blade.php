@@ -306,7 +306,7 @@
                         <label class="clinical-label" for="keyword">Thông tin bệnh nhân</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border-color: #cbd5e1;"><i class="bi bi-search text-muted"></i></span>
-                            <input type="text" class="form-control clinical-input border-start-0 ps-0" id="keyword" name="keyword" placeholder="Nhập tên, số ĐT, email, hoặc mã ID..." style="border-radius: 0 12px 12px 0;">
+                            <input type="text" class="form-control clinical-input border-start-0 ps-0" id="keyword" name="keyword" maxlength="100" placeholder="Nhập tên, số ĐT, email, hoặc mã ID..." style="border-radius: 0 12px 12px 0;">
                         </div>
                     </div>
 
@@ -365,13 +365,13 @@
                     {{-- Chronic Disease --}}
                     <div class="col-6 col-md-4 col-lg-3">
                         <label class="clinical-label" for="chronic_disease">Bệnh mãn tính</label>
-                        <input type="text" class="form-control clinical-input" id="chronic_disease" name="chronic_disease" placeholder="Ví dụ: tiểu đường, huyết áp...">
+                        <input type="text" class="form-control clinical-input" id="chronic_disease" name="chronic_disease" maxlength="100" placeholder="Ví dụ: tiểu đường, huyết áp...">
                     </div>
 
                     {{-- Allergy --}}
                     <div class="col-6 col-md-4 col-lg-3">
                         <label class="clinical-label" for="allergy">Dị ứng lâm sàng</label>
-                        <input type="text" class="form-control clinical-input" id="allergy" name="allergy" placeholder="Ví dụ: penicillin, aspirin...">
+                        <input type="text" class="form-control clinical-input" id="allergy" name="allergy" maxlength="100" placeholder="Ví dụ: penicillin, aspirin...">
                     </div>
 
                     {{-- Reference Data dropdowns queried directly in view --}}
@@ -450,7 +450,7 @@
                 <div class="mb-4">
                     <label class="clinical-label" for="ai_query" style="font-size: 14.5px;">Mô tả yêu cầu tìm kiếm của bạn bằng ngôn ngữ tự nhiên</label>
                     <div class="position-relative">
-                        <textarea class="form-control ai-textarea w-100" id="ai_query" rows="3" placeholder="Ví dụ: Tìm cho tôi các bệnh nhân nữ trên 40 tuổi có thẻ hạng vàng, bị dị ứng penicillin và đã từng khám tại khoa Nội tổng quát..."></textarea>
+                        <textarea class="form-control ai-textarea w-100" id="ai_query" rows="3" maxlength="500" placeholder="Ví dụ: Tìm cho tôi các bệnh nhân nữ trên 40 tuổi có thẻ hạng vàng, bị dị ứng penicillin và đã từng khám tại khoa Nội tổng quát..."></textarea>
                         
                         <div class="position-absolute bottom-0 end-0 m-3 d-flex gap-2">
                             <button type="submit" id="btn-submit-ai" class="btn text-white rounded-xl px-4 py-2.5 fw-bold text-sm tracking-wide d-flex align-items-center gap-2 border-0 shadow-sm" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); transition: all 0.2s ease;">
@@ -818,7 +818,8 @@
                 
                 // Show AI Explanation Card
                 document.getElementById('ai-explanation-box').classList.remove('d-none');
-                document.getElementById('ai-explanation-text').innerHTML = `<strong>AI hiểu:</strong> ${data.explanation}`;
+                const prefix = data.fallback ? 'Phân tích dự phòng: ' : 'AI hiểu: ';
+                document.getElementById('ai-explanation-text').textContent = `${prefix}${data.explanation || data.message || ''}`; /* fixed: khong render text AI bang innerHTML de tranh XSS */
                 
                 // Build extracted parameter badges
                 const badgesContainer = document.getElementById('ai-extracted-badges');
@@ -836,11 +837,11 @@
                         if (inputEl) {
                             inputEl.value = value;
                             inputEl.classList.add('ai-badge-highlight');
-                            badgesContainer.innerHTML += `
-                                <span class="badge bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg px-2.5 py-1.5 d-flex align-items-center gap-1 text-xs">
-                                    <i class="bi bi-tag-fill"></i> ${label}: ${value}
-                                </span>
-                            `;
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg px-2.5 py-1.5 d-flex align-items-center gap-1 text-xs';
+                            badge.innerHTML = '<i class="bi bi-tag-fill"></i> ';
+                            badge.append(document.createTextNode(`${label}: ${value}`));
+                            badgesContainer.appendChild(badge); /* fixed: chen gia tri AI bang text node, khong noi HTML */
                         }
                     }
                 }
@@ -876,15 +877,16 @@
                 // Instantly execute search with populated filters
                 triggerSearch(1);
             } else {
-                // Display error message
-                alert(data.message || 'Lỗi không rõ khi xử lý bằng AI');
+                document.getElementById('ai-explanation-box').classList.remove('d-none');
+                document.getElementById('ai-explanation-text').textContent = data.message || 'Không thể phân tích yêu cầu. Vui lòng thử lại hoặc dùng tìm kiếm thường.';
             }
         })
         .catch(err => {
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = originalHtml;
             console.error('AI Search Connection Error:', err);
-            alert('Không thể kết nối dịch vụ AI. Vui lòng sử dụng tính năng "Tìm kiếm thường" hoặc thử lại sau.');
+            document.getElementById('ai-explanation-box').classList.remove('d-none');
+            document.getElementById('ai-explanation-text').textContent = 'Kết nối AI chưa ổn định. Vui lòng thử lại hoặc dùng tìm kiếm thường.';
         });
     }
 

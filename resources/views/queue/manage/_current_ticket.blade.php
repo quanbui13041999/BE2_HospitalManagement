@@ -25,7 +25,7 @@
     @endif
 
     <div class="d-flex justify-content-center gap-2">
-        <form method="POST" action="{{ route('queue.manage.ticket.skip', $ticket->ticket_id) }}" onsubmit="return confirm('Bạn có chắc chắn muốn bỏ qua bệnh nhân này?')">
+        <form method="POST" action="{{ route('queue.manage.ticket.skip', $ticket->ticket_id) }}" data-confirm="Bạn có chắc chắn muốn bỏ qua bệnh nhân này?">
             @csrf
             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-2 font-bold shadow-sm">
                 <i class="bi bi-x-circle me-1"></i> Bỏ Qua Ca Này

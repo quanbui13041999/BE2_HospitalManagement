@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\HealthTrackingRequest;
 use App\Models\HealthTracking;
 use App\Models\MedicalRecord;
+use App\Models\User;
 use App\Services\HealthRiskService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -21,7 +23,8 @@ class HealthTrackingController extends Controller
     {
         $this->authorize('viewAny', HealthTracking::class);
 
-        $user = auth()->user();
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
 
         $query = HealthTracking::with('patient')
             ->when($this->isPatientUser($user), fn($q) => $q->where('patient_id', $user->user_id))
@@ -59,7 +62,10 @@ class HealthTrackingController extends Controller
         $this->authorize('create', HealthTracking::class);
 
         $validated = $request->validated();
-        $patientId = auth()->user()->user_id;
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $patientId = $user->user_id;
         $createMinute = now()->format('Y-m-d H:i');
         $lockKey = $this->lockKey('health_tracking_create', $patientId . '|' . $createMinute);
 
@@ -263,17 +269,13 @@ class HealthTrackingController extends Controller
         DB::selectOne('SELECT RELEASE_LOCK(?) AS released', [$lockKey]);
     }
 
-    private function isPatientUser($user): bool
+    private function isPatientUser(?User $user): bool
     {
-        return method_exists($user, 'isPatient')
-            ? $user->isPatient()
-            : (int) ($user->role_id ?? 0) === 3;
+        return $user?->isPatient() ?? false;
     }
 
-    private function isDoctorUser($user): bool
+    private function isDoctorUser(?User $user): bool
     {
-        return method_exists($user, 'isDoctor')
-            ? $user->isDoctor()
-            : (int) ($user->role_id ?? 0) === 2;
+        return $user?->isDoctor() ?? false;
     }
 }

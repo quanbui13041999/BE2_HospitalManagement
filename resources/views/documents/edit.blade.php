@@ -38,12 +38,6 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label class="section-label" for="hospital">Bệnh viện / Phòng khám</label>
-                    <input class="note-input" type="text" id="hospital" name="hospital"
-                           placeholder="VD: BV Nhân Dân Gia Định"
-                           value="{{ old('hospital', $document->hospital) }}">
-                </div>
-                <div class="form-group">
                     <label class="section-label" for="document_date">Ngày tài liệu</label>
                     <input class="note-input" type="date" id="document_date"
                            name="document_date"
@@ -70,10 +64,6 @@
                 <p class="field-error">{{ $message }}</p>
             @enderror
 
-            {{-- Note --}}
-            <div class="section-label">Ghi chú / Mô tả</div>
-            <textarea class="note-input" name="note" rows="3"
-                      placeholder="Ghi chú thêm về tài liệu này...">{{ old('note', $document->note) }}</textarea>
 
             {{-- Actions --}}
             <div class="edit-actions">

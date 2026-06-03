@@ -58,6 +58,11 @@
         {{ $errors->first('msg') }}
     </div>
     @endif
+    @if(session('warning'))
+    <div class="mb-6 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-xl text-orange-700 text-sm flex items-center gap-3">
+        {{ session('warning') }}
+    </div>
+    @endif
 
     @if($availableSchedules->isEmpty())
     <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-xl text-blue-800 text-sm flex items-center gap-3">
@@ -70,6 +75,7 @@
         @csrf
         @method('PUT')
         <input type="hidden" name="new_appointment_time" id="new_appointment_time">
+        <input type="hidden" name="version" value="{{ optional($appointment->updated_at)->format('Y-m-d H:i:s') }}"> {{-- fixed: optimistic lock de phat hien form doi lich da cu --}}
 
         {{-- Thông tin người đặt lịch --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
@@ -176,7 +182,7 @@
 
                 <div class="mt-6">
                     <label class="text-[11px] font-bold uppercase tracking-wide text-gray-500 block mb-2">Lý do dời lịch <span class="normal-case font-normal">(tùy chọn)</span></label>
-                    <textarea name="reschedule_reason" id="reschedule_reason" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" placeholder="VD: bận công việc đột xuất, trùng lịch khám khác, sức khỏe chưa ổn…">{{ old('reschedule_reason') }}</textarea>
+                    <textarea name="reschedule_reason" id="reschedule_reason" maxlength="255" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" placeholder="VD: bận công việc đột xuất, trùng lịch khám khác, sức khỏe chưa ổn…">{{ old('reschedule_reason') }}</textarea>
                 </div>
 
                 <div class="flex flex-col sm:flex-row justify-between gap-4 mt-8 pt-4 border-t border-gray-100">
@@ -217,7 +223,9 @@
         if (checkedRadio) onScheduleSelect(checkedRadio);
     });
 
-    document.getElementById('reschedule-form')?.addEventListener('submit', function(e) {
+    const rescheduleForm = document.getElementById('reschedule-form');
+    if (rescheduleForm) {
+        rescheduleForm.addEventListener('submit', function(e) {
         const btn = document.getElementById('submit-btn');
         const spinner = document.getElementById('spinner');
         const icon = document.getElementById('submit-icon');
@@ -225,8 +233,63 @@
         btn.disabled = true;
         spinner.style.display = 'inline-block';
         icon.style.display = 'none';
-    });
+        });
+    }
+
+    window.showAppNotification = window.showAppNotification || function(message, type = 'error', options = {}) {
+        let stack = document.getElementById('app-notification-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'app-notification-stack';
+            stack.style.cssText = 'position:fixed;top:18px;right:18px;z-index:20000;width:min(420px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px';
+            document.body.appendChild(stack);
+        }
+
+        const notice = document.createElement('div');
+        notice.textContent = message || 'Đã xảy ra lỗi, vui lòng thử lại sau.';
+        notice.style.cssText = 'padding:12px 14px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;box-shadow:0 16px 40px rgba(15,23,42,.16);font-size:14px;line-height:1.45';
+        if (type === 'warning') {
+            notice.style.borderColor = '#fde68a';
+            notice.style.background = '#fffbeb';
+            notice.style.color = '#92400e';
+        }
+        stack.appendChild(notice);
+        const timeout = typeof options.timeout === 'number' ? options.timeout : 5000;
+        setTimeout(() => notice.remove(), timeout);
+    };
+
+    window.alert = function(message) {
+        window.showAppNotification(message, 'error');
+    };
+
+    function bindStandaloneInputLimitWarnings() {
+        document.querySelectorAll('input[maxlength], textarea[maxlength]').forEach(function(field) {
+            field.addEventListener('input', function() {
+                if (field.maxLength <= 0 || field.value.length < field.maxLength || field.dataset.limitNotified === '1') {
+                    return;
+                }
+
+                field.dataset.limitNotified = '1';
+                window.showAppNotification('Trường này tối đa ' + field.maxLength + ' ký tự. Vui lòng rút ngắn nội dung.', 'warning'); /* fixed: bao loi textbox qua dai tren man hinh */
+            });
+
+            field.addEventListener('blur', function() {
+                field.dataset.limitNotified = '';
+            });
+        });
+    }
+
+    bindStandaloneInputLimitWarnings();
 </script>
+@if(session('reload_page'))
+<div id="appointment-reload-message"
+     data-message="{{ e(session('warning') ?? 'Lịch hẹn đã thay đổi, trang sẽ được tải lại.') }}"
+     hidden></div>
+<script>
+    window.showAppNotification(document.getElementById('appointment-reload-message').dataset.message, 'warning', { timeout: 2500 });
+    setTimeout(() => window.location.replace(window.location.href), 1800);
+</script>
+@endif
 @include('components.back-to-previous')
 </body>
 </html>

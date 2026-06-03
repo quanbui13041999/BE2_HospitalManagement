@@ -8,7 +8,7 @@ class HospitalNews extends Model
 {
     protected $table = 'hospitalnews';
     protected $primaryKey = 'news_id';
-    public $timestamps = false; // chỉ có created_at thủ công
+    public $timestamps = true;
 
     protected $fillable = [
         'title', 'content', 'category', 'thumbnail',
@@ -18,6 +18,8 @@ class HospitalNews extends Model
     protected $casts = [
         'published_at' => 'datetime',
         'created_at'   => 'datetime',
+        'updated_at'   => 'datetime',
+        'news_version' => 'integer',
         'is_published' => 'boolean',
         'email_sent'   => 'boolean',
     ];

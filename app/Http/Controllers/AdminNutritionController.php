@@ -408,13 +408,17 @@ class AdminNutritionController extends Controller
 
     private function validateArticle(Request $request, bool $isUpdate = false): array
     {
-        $this->mergeClean($request, ['title', 'content', 'target_disease']);
+        if ($request->has('content')) {
+            $request->merge([
+                'content' => html_entity_decode(strip_tags((string) $request->input('content')), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            ]);
+        }
 
         return $request->validate([
             'doctor_id' => ['nullable', 'integer', 'min:1', Rule::exists('doctors', 'doctor_id')->where('status', 1)],
-            'title' => ['required', 'string', 'min:3', 'max:150', 'regex:/\A[\pL\s]+\z/u'],
-            'content' => ['required', 'string', 'min:10', 'max:5000', 'regex:/\A[\pL\s]+\z/u'],
-            'target_disease' => ['nullable', 'string', 'max:120', 'regex:/\A[\pL\s]+\z/u'],
+            'title' => ['required', 'string', 'min:3', 'max:150', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
+            'content' => ['required', 'string', 'min:10', 'max:5000', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
+            'target_disease' => ['nullable', 'string', 'max:120', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'status' => ['required', Rule::in(['0', '1', 0, 1])],
             'article_snapshot' => $isUpdate ? ['required', 'string', 'size:64'] : ['prohibited'],
             'article_id' => ['prohibited'],
@@ -444,12 +448,10 @@ class AdminNutritionController extends Controller
 
     private function validateFood(Request $request, bool $isUpdate = false): array
     {
-        $this->mergeClean($request, ['food_name', 'description']);
-
         return $request->validate([
-            'food_name' => ['required', 'string', 'min:2', 'max:80', 'regex:/\A[\pL\s]+\z/u'],
+            'food_name' => ['required', 'string', 'min:2', 'max:80', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'calories_per_100g' => ['required', 'integer', 'min:0', 'max:5000'],
-            'description' => ['nullable', 'string', 'max:300', 'regex:/\A[\pL\s]+\z/u'],
+            'description' => ['nullable', 'string', 'max:300', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'status' => ['required', Rule::in(['0', '1', 0, 1])],
             'food_snapshot' => $isUpdate ? ['required', 'string', 'size:64'] : ['prohibited'],
             'food_id' => ['prohibited'],
@@ -483,14 +485,14 @@ class AdminNutritionController extends Controller
             'exists' => 'Dữ liệu được chọn không tồn tại.',
             'prohibited' => 'Không được gửi dữ liệu này từ trình duyệt.',
             'regex' => 'Dữ liệu nhập sai định dạng.',
-            'title.regex' => 'Tiêu đề chỉ được nhập chữ và khoảng trắng, không nhập số hoặc ký tự đặc biệt.',
-            'content.regex' => 'Nội dung chỉ được nhập chữ và khoảng trắng, không nhập số hoặc ký tự đặc biệt.',
-            'target_disease.regex' => 'Tên bệnh chỉ được nhập chữ và khoảng trắng.',
+            'title.regex' => 'Tiêu đề chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
+            'content.regex' => 'Nội dung chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
+            'target_disease.regex' => 'Tên bệnh chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'disease_name.regex' => 'Tên bệnh lý chỉ được nhập chữ và khoảng trắng.',
             'icd_code.regex' => 'Mã ICD không đúng định dạng, ví dụ E11 hoặc I10.',
             'reason.regex' => 'Lý do chỉ được nhập chữ và khoảng trắng.',
-            'food_name.regex' => 'Tên thực phẩm chỉ được nhập chữ và khoảng trắng.',
-            'description.regex' => 'Mô tả chỉ được nhập chữ và khoảng trắng.',
+            'food_name.regex' => 'Tên thực phẩm chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
+            'description.regex' => 'Mô tả chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'article_snapshot.required' => 'Dữ liệu đã cũ, vui lòng tải lại trang trước khi lưu.',
             'rule_snapshot.required' => 'Dữ liệu đã cũ, vui lòng tải lại trang trước khi lưu.',
             'food_snapshot.required' => 'Dữ liệu đã cũ, vui lòng tải lại trang trước khi lưu.',

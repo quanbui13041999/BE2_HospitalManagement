@@ -112,9 +112,7 @@
                             <tbody>
                                 @forelse($payments ?? [] as $payment)
                                 <tr>
-                                    <!-- SỬA: Bỏ dấu >> hoặc » thừa -->
                                     <td><strong>{{ $payment->payment_id }}</strong></td>
-
 
                                     <!-- Loại giao dịch -->
                                     <td>
@@ -235,10 +233,9 @@
                                     </td>
                                     
                                     <td>
-                                        <a href="{{ route('admin.payments.show', $payment->payment_id) }}" 
-                                           class="btn btn-sm btn-info" title="Xem chi tiết">
+                                        <button class="btn btn-sm btn-info" title="Xem chi tiết" onclick="showPaymentDetails({{ $payment->payment_id }})">
                                             <i class="bi bi-eye"></i> Xem
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                                 @empty
@@ -265,4 +262,263 @@
         </div>
     </div>
 </div>
+
+<!-- BEAUTIFUL TRANSACTION DETAILS MODAL -->
+<div class="modal fade" id="paymentDetailsModal" tabindex="-1" aria-labelledby="paymentDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white border-0 px-4 py-3 position-relative">
+                <h5 class="modal-title fw-bold" id="paymentDetailsModalLabel">
+                    <i class="bi bi-receipt me-2"></i> Chi Tiết Giao Dịch
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body p-4" style="background-color: #f8fafc;">
+                <!-- Loading State spinner -->
+                <div id="modalLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                    <p class="text-muted mt-2 small">Đang nạp thông tin giao dịch...</p>
+                </div>
+                
+                <!-- Core Content -->
+                <div id="modalContent" class="d-none">
+                    
+                    <!-- Billing Details Block -->
+                    <div class="bg-white rounded-3 p-3 mb-3 border">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Mã hóa đơn:</span>
+                            <strong class="text-dark" id="detailPaymentId"></strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Mã tham chiếu:</span>
+                            <code class="text-dark" id="detailTransactionRef"></code>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Thời gian:</span>
+                            <span class="text-dark small" id="detailDate"></span>
+                        </div>
+                    </div>
+
+                    <!-- Customer / Appointment details -->
+                    <div class="bg-white rounded-3 p-3 mb-3 border">
+                        <h6 class="fw-bold text-dark mb-3" style="font-size: 14px;">Thông tin khách hàng & Dịch vụ</h6>
+                        
+                        <div class="mb-2">
+                            <span class="text-muted small d-block">Bệnh nhân:</span>
+                            <strong class="text-dark" id="detailPatientName"></strong>
+                        </div>
+
+                        <div class="mb-2">
+                            <span class="text-muted small d-block">Lịch hẹn / Hạng mục:</span>
+                            <span class="text-dark fw-bold" id="detailAppointmentType"></span>
+                        </div>
+
+                        <div id="detailDoctorSection" class="mb-0">
+                            <span class="text-muted small d-block">Thực hiện bởi:</span>
+                            <span class="text-dark fw-bold text-primary" id="detailDoctorOrService"></span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Financial Breakdown -->
+                    <div class="bg-white rounded-3 p-3 mb-3 border">
+                        <h6 class="fw-bold text-dark mb-3" style="font-size: 14px;">Chi tiết hóa đơn tài chính</h6>
+                        
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Đơn giá gốc:</span>
+                            <span class="text-dark" id="detailSubtotal"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2 text-danger">
+                            <span class="small">Bảo hiểm BHYT & Thẻ thành viên:</span>
+                            <span id="detailDiscount"></span>
+                        </div>
+
+                        <hr class="my-2" style="border-top: 1px dashed #e2e8f0;">
+
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold text-dark">Thực thu:</span>
+                            <strong class="text-primary fs-5" id="detailTotalAmount"></strong>
+                        </div>
+                    </div>
+
+                    <!-- Status block badge -->
+                    <div class="d-flex justify-content-between align-items-center bg-white rounded-3 p-3 border">
+                        <div>
+                            <span class="text-muted small d-block">Phương thức thanh toán:</span>
+                            <span class="badge bg-light text-dark border mt-1 px-3 py-1.5" id="detailMethod"></span>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-muted small d-block">Trạng thái hiện tại:</span>
+                            <span class="badge rounded-pill fw-bold mt-1 px-3 py-1.5" id="detailStatus"></span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Modal Footer Action buttons -->
+            <div class="modal-footer border-0 px-4 py-3 bg-light justify-content-between">
+                <button type="button" class="btn btn-outline-secondary fw-bold px-4" data-bs-dismiss="modal">Đóng</button>
+                <div id="modalActions" class="d-flex gap-2">
+                    <!-- Quick action buttons populate dynamically here based on status -->
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<script>
+let detailModal = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    detailModal = new bootstrap.Modal(document.getElementById('paymentDetailsModal'));
+});
+
+function showPaymentDetails(paymentId) {
+    // Open the modal and display loader
+    detailModal.show();
+    document.getElementById('modalLoading').classList.remove('d-none');
+    document.getElementById('modalContent').classList.add('d-none');
+    document.getElementById('modalActions').innerHTML = '';
+
+    // Fetch details via dynamic AJAX endpoint
+    fetch(`/admin/payments/${paymentId}`, {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(res => {
+        if(res.success && res.payment) {
+            const p = res.payment;
+            
+            // Map values to modal elements
+            document.getElementById('detailPaymentId').innerText = `#${p.payment_id}`;
+            document.getElementById('detailTransactionRef').innerText = p.transaction_ref || '---';
+            
+            const dateObj = new Date(p.payment_date);
+            const dateString = isNaN(dateObj) ? 'Chưa thanh toán' : dateObj.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + dateObj.toLocaleDateString('vi-VN');
+            document.getElementById('detailDate').innerText = dateString;
+            
+            document.getElementById('detailPatientName').innerText = p.appointment?.user?.full_name || 'Không rõ bệnh nhân';
+            
+            // Build type description
+            let appType = 'Hóa đơn vãng lai';
+            if(p.appointment?.service) {
+                appType = 'Đăng ký dịch vụ y tế độc lập';
+                document.getElementById('detailDoctorOrService').innerText = p.appointment.service.service_name;
+            } else if(p.appointment_id) {
+                appType = 'Đặt lịch hẹn lâm sàng';
+                document.getElementById('detailDoctorOrService').innerText = p.appointment?.schedule?.doctor?.full_name ? 'Bác sĩ: ' + p.appointment.schedule.doctor.full_name : 'Bác sĩ trực';
+            }
+            document.getElementById('detailAppointmentType').innerText = appType;
+            
+            // Format currency
+            const fmt = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+            document.getElementById('detailSubtotal').innerText = fmt(p.subtotal || 0);
+            document.getElementById('detailDiscount').innerText = `- ${fmt(p.discount_amount || 0)}`;
+            document.getElementById('detailTotalAmount').innerText = fmt(p.total_amount || 0);
+            
+            document.getElementById('detailMethod').innerText = p.method || 'N/A';
+            
+            // Setup status styles
+            const statusBadge = document.getElementById('detailStatus');
+            statusBadge.innerText = p.status;
+            statusBadge.className = 'badge rounded-pill fw-bold px-3 py-1.5';
+            
+            if(p.status === 'Thành công' || p.status === 'Đã thanh toán') {
+                statusBadge.classList.add('bg-success-subtle', 'text-success', 'border', 'border-success-subtle');
+            } else if(p.status === 'Thất bại') {
+                statusBadge.classList.add('bg-danger-subtle', 'text-danger', 'border', 'border-danger-subtle');
+            } else {
+                statusBadge.classList.add('bg-warning-subtle', 'text-warning', 'border', 'border-warning-subtle');
+            }
+
+            // Quick actions block for pending payments
+            const actionContainer = document.getElementById('modalActions');
+            if(p.status !== 'Thành công' && p.status !== 'Đã thanh toán' && p.status !== 'Thất bại') {
+                actionContainer.innerHTML = `
+                    <button class="btn btn-danger fw-bold px-4" onclick="failPaymentAction(${p.payment_id})">
+                        <i class="bi bi-x-circle me-1"></i> Thất bại
+                    </button>
+                    <button class="btn btn-success fw-bold px-4" onclick="confirmPaymentAction(${p.payment_id}, '${p.transaction_ref || ''}')">
+                        <i class="bi bi-check-circle me-1"></i> Xác nhận thu tiền
+                    </button>
+                `;
+            }
+
+            // Hide loader and show content
+            document.getElementById('modalLoading').classList.add('d-none');
+            document.getElementById('modalContent').classList.remove('d-none');
+        } else {
+            alert('Lỗi tải dữ liệu giao dịch.');
+            detailModal.hide();
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Có lỗi xảy ra khi nạp thông tin.');
+        detailModal.hide();
+    });
+}
+
+function confirmPaymentAction(paymentId, ref) {
+    if(confirm('Xác nhận bệnh nhân đã thanh toán thành công hóa đơn này?')) {
+        const formData = new FormData();
+        formData.append('ref', ref);
+        formData.append('_token', '{{ csrf_token() }}');
+
+        fetch(`/admin/payments/${paymentId}/confirm`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(res => {
+            if(res.success) {
+                alert('Xác nhận thanh toán thành công!');
+                location.reload();
+            } else {
+                alert('Có lỗi xảy ra: ' + res.message);
+            }
+        });
+    }
+}
+
+function failPaymentAction(paymentId) {
+    if(confirm('Bạn có chắc chắn muốn đánh dấu giao dịch này là THẤT BẠI?')) {
+        const formData = new FormData();
+        formData.append('_token', '{{ csrf_token() }}');
+
+        fetch(`/admin/payments/${paymentId}/fail`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(res => {
+            if(res.success) {
+                alert('Giao dịch đã được cập nhật là Thất bại.');
+                location.reload();
+            } else {
+                alert('Có lỗi xảy ra.');
+            }
+        });
+    }
+}
+</script>
 @endsection

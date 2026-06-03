@@ -212,6 +212,7 @@
 
                 @if($isPatient || $isAdmin)
                     <a href="{{ route('appointments.create') }}" class="hc-site-nav__link {{ request()->routeIs('appointments.create') ? 'is-active' : '' }}">✨ Đặt lịch mới</a>
+                       <a href="{{ route('appointments.index') }}" class="hc-site-nav__link {{ request()->routeIs('appointments.index') || request()->routeIs('appointments.edit') ? 'is-active' : '' }}">📋 Lịch hẹn</a>
                 @endif
             @endauth
 

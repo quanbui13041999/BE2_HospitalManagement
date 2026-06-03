@@ -22,7 +22,7 @@
                         <div class="alert alert-warning">{{ session('warning') }}</div>
                     @endif
 
-                    <form action="{{ route('admin.treatment.store') }}" method="POST">
+                    <form action="{{ route('admin.treatment.store') }}" method="POST" data-treatment-reminder-form novalidate>
                         @csrf
 
                         <div class="mb-4">
@@ -68,8 +68,20 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label fw-bold">Nội dung nhắc nhở</label>
-                            <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="3" required minlength="5" maxlength="255" pattern="^[A-Za-zÀ-ỹ\s]+$" placeholder="Ví dụ: Uống thuốc sau khi ăn sáng">{{ old('message') }}</textarea>
+                            <label for="message" class="form-label fw-bold">Nội dung nhắc nhở</label>
+                            <textarea name="message"
+                                      id="message"
+                                      class="form-control @error('message') is-invalid @enderror"
+                                      rows="3"
+                                      required
+                                      minlength="5"
+                                      maxlength="255"
+                                      data-no-edge-space="1"
+                                      data-error-required="Vui lòng nhập nội dung nhắc nhở."
+                                      data-error-pattern="Nội dung nhắc nhở chỉ được nhập chữ và khoảng trắng giữa các từ."
+                                      data-error-edge-space="Nội dung nhắc nhở không được có khoảng trắng ở đầu hoặc cuối."
+                                      data-error-minlength="Nội dung nhắc nhở phải có ít nhất 5 ký tự."
+                                      placeholder="Ví dụ: Uống thuốc sau khi ăn sáng">{{ old('message') }}</textarea>
                             <div class="form-text">Gợi ý: Thêm cụm từ "NGUY HIỂM" để làm nổi bật cảnh báo.</div>
                             @error('message') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
@@ -85,3 +97,5 @@
     </div>
 </div>
 @endsection
+
+@include('admin.treatment_reminder._message_validation')
