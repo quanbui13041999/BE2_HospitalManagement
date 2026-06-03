@@ -809,7 +809,7 @@
             pointer-events: none;
         }
 
-        .toast {
+        .toast-item {
             min-width: 260px;
             max-width: 360px;
             padding: 14px 18px;
@@ -824,11 +824,11 @@
             pointer-events: auto;
         }
 
-        .toast.success {
+        .toast-item.success {
             border-left-color: var(--c-green);
         }
 
-        .toast.error {
+        .toast-item.error {
             border-left-color: var(--c-red);
         }
 
@@ -1534,10 +1534,25 @@
         function escHtml(s = '') { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
         function toast(msg, type = 'success') {
+            const message = msg || (type === 'success' ? 'Thao tác thành công.' : 'Đã có lỗi xảy ra.');
             const el = document.createElement('div');
-            el.className = `toast ${type}`;
-            el.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span class="toast-msg">${escHtml(msg)}</span>`;
-            document.getElementById('toast-container').appendChild(el);
+            el.className = `toast-item ${type}`;
+            el.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span class="toast-msg">${escHtml(message)}</span>`;
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.position = 'fixed';
+                container.style.top = '24px';
+                container.style.right = '24px';
+                container.style.zIndex = '9999';
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '10px';
+                container.style.pointerEvents = 'none';
+                document.body.appendChild(container);
+            }
+            container.appendChild(el);
             setTimeout(() => el.remove(), 3500);
         }
 
