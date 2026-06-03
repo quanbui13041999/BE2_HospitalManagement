@@ -41,8 +41,14 @@ class ChatRoomController extends Controller
      * Lấy danh sách phòng dạng JSON (dùng cho polling sidebar admin)
      * GET /admin/chatroom/list
      */
-    public function listJson(): \Illuminate\Http\JsonResponse
+    public function listJson(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
     {
+        if (!$this->expectsJsonRequest($request)) {
+            return redirect()
+                ->route('admin.chatroom.index')
+                ->with('warning', 'Đường dẫn dữ liệu chat không hợp lệ. Trang đã được tải lại.');
+        } /* fixed: khong hien JSON thô khi user go truc tiep URL API */
+
         $rooms = ChatRoom::with([
                 'patient:user_id,full_name,avatar_url',
                 'latestMessage',
@@ -76,8 +82,14 @@ class ChatRoomController extends Controller
      * Lấy tin nhắn của 1 phòng (admin xem + trả lời)
      * GET /admin/chatroom/{roomId}/messages?after_id=xxx
      */
-    public function getMessages(Request $request, int $roomId): \Illuminate\Http\JsonResponse
+    public function getMessages(Request $request, int $roomId): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
     {
+        if (!$this->expectsJsonRequest($request)) {
+            return redirect()
+                ->route('admin.chatroom.index')
+                ->with('warning', 'Đường dẫn dữ liệu chat không hợp lệ. Trang đã được tải lại.');
+        } /* fixed: doi id tren URL API messages thi quay ve man chat thay vi lo JSON/404 */
+
         $request->validate([
             'after_id' => 'nullable|integer|min:0',
         ]); /* fixed: validate query polling */
@@ -275,5 +287,10 @@ class ChatRoomController extends Controller
         $message->delete();
 
         return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
+    }
+
+    private function expectsJsonRequest(Request $request): bool
+    {
+        return $request->expectsJson() || $request->ajax();
     }
 }

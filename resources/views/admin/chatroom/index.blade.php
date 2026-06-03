@@ -109,7 +109,12 @@ let allRooms = [];
 // Tải danh sách phòng
 async function loadRooms() {
     try {
-        const res = await fetch('/admin/chatroom/list');
+        const res = await fetch('/admin/chatroom/list', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
         const data = await res.json();
         if (data.success) {
             allRooms = data.rooms;
@@ -180,7 +185,12 @@ async function loadAdminMessages(incremental = false) {
     if (!currentRoomId) return;
     const url = `/admin/chatroom/${currentRoomId}/messages` + (incremental ? `?after_id=${adminLastMsgId}` : '');
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
         const data = await res.json();
         if (data.success) {
             if (!incremental) {

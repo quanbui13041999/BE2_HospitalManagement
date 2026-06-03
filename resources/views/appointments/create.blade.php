@@ -1887,10 +1887,53 @@
             });
         }
 
+        function snapshotStandaloneSelectOptions() {
+            document.querySelectorAll('select[name]').forEach(function(select) {
+                if (select.dataset.allowedValues) return;
+
+                select.dataset.allowedValues = JSON.stringify(
+                    Array.from(select.options).map(function(option) {
+                        return option.value;
+                    })
+                );
+            });
+        }
+
+        function validateStandaloneSelectOptions() {
+            const invalidSelect = Array.from(document.querySelectorAll('select[name]')).find(function(select) {
+                let allowedValues = [];
+
+                try {
+                    allowedValues = JSON.parse(select.dataset.allowedValues || '[]');
+                } catch (e) {
+                    allowedValues = [];
+                }
+
+                return allowedValues.length > 0 && !allowedValues.includes(select.value);
+            });
+
+            if (!invalidSelect) return true;
+
+            invalidSelect.classList.add('is-invalid');
+            invalidSelect.focus();
+            window.showAppNotification('Giá trị lựa chọn không hợp lệ. Trang sẽ được tải lại.', 'warning');
+            setTimeout(function() {
+                window.location.reload();
+            }, 1600); /* fixed: select gia o dat lich thi thong bao roi reload reset DOM */
+
+            return false;
+        } /* fixed: chan select gia o man dat lich standalone */
+
+        snapshotStandaloneSelectOptions();
         bindStandaloneInputLimitWarnings();
 
         document.querySelectorAll('form[data-disable-submit]').forEach(function(form) {
             form.addEventListener('submit', function(event) {
+                if (!validateStandaloneSelectOptions()) {
+                    event.preventDefault();
+                    return;
+                }
+
                 if (form.dataset.submitLocked === '1') {
                     event.preventDefault();
                     window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');

@@ -77,7 +77,14 @@ class QueueManageController extends Controller
     public function checkin(Request $request)
     {
         $validated = $request->validate([
-            'schedule_id'  => 'required|integer|exists:doctorschedules,schedule_id',
+            'schedule_id'  => [
+                'required',
+                'integer',
+                Rule::exists('doctorschedules', 'schedule_id')->where(function ($query) {
+                    $query->whereDate('work_date', today())
+                        ->where('status', 'Hoạt động');
+                }),
+            ],
             'patient_name' => ['required', 'string', 'max:100', 'not_regex:/\A[\s\x{3000}]*\z/u'],
             'priority'     => ['required', Rule::in(['normal', 'elderly', 'disabled', 'emergency'])],
             'patient_phone'=> ['nullable', 'string', 'max:15', 'regex:/\A[0-9+\-\s]{8,15}\z/'],
@@ -85,7 +92,7 @@ class QueueManageController extends Controller
             'notes'        => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
             'appointment_id' => 'nullable|integer|exists:appointments,appointment_id',
             'user_id'      => 'nullable|integer|exists:users,user_id',
-        ]);
+        ]); /* fixed: schedule_id phai la ca dang hoat dong hom nay, khong chi exists */
 
         try {
             $ticket = $this->queueService->checkin($validated); /* fixed: chi truyen input da validate, tranh mass assignment/input poisoning */

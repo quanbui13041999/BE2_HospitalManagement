@@ -28,22 +28,26 @@ use Illuminate\Support\Facades\Mail;
  */
 class AppointmentService
 {
-    private function assertFreshVersion(?string $expectedVersion, mixed $actualVersion): void
+    private function assertFreshVersion(?string $expectedVersion, string $actualVersion): void
     {
         if (!$expectedVersion) {
             throw new ConcurrentModificationException('Thiếu phiên bản dữ liệu. Trang sẽ được tải lại trước khi thao tác.');
         }
 
-        if (!$actualVersion) {
-            return;
-        }
-
-        $expected = Carbon::parse($expectedVersion)->format('Y-m-d H:i:s');
-        $actual = Carbon::parse($actualVersion)->format('Y-m-d H:i:s');
-
-        if ($expected !== $actual) {
+        if (!hash_equals($actualVersion, $expectedVersion)) {
             throw new ConcurrentModificationException();
         }
+    }
+
+    private function appointmentVersionToken(object $appointment): string
+    {
+        return sha1(implode('|', [
+            (string) ($appointment->schedule_id ?? ''),
+            (string) ($appointment->appointment_time ?? ''),
+            (string) ($appointment->status ?? ''),
+            (string) ($appointment->cancel_reason ?? ''),
+            (string) ($appointment->rescheduled_from ?? ''),
+        ]));
     }
 
     /**
@@ -403,6 +407,7 @@ class AppointmentService
         ->leftJoin('reviews as r', 'appointments.appointment_id', '=', 'r.appointment_id')
         ->select(
             'appointments.*',
+            DB::raw("SHA1(CONCAT_WS('|', appointments.schedule_id, appointments.appointment_time, appointments.status, COALESCE(appointments.cancel_reason,''), COALESCE(appointments.rescheduled_from,''))) as version_token"),
             'p.status as payment_status',
             'p.payment_id',
             'ds.work_date',
@@ -448,6 +453,7 @@ class AppointmentService
             ->where('appointments.user_id', $userId)
             ->select(
                 'appointments.*',
+                DB::raw("SHA1(CONCAT_WS('|', appointments.schedule_id, appointments.appointment_time, appointments.status, COALESCE(appointments.cancel_reason,''), COALESCE(appointments.rescheduled_from,''))) as version_token"),
                 'doctorschedules.work_date',
                 'doctorschedules.start_time',
                 'doctorschedules.end_time',
@@ -541,7 +547,7 @@ class AppointmentService
                 throw new Exception('Không tìm thấy lịch hẹn.');
             }
 
-            $this->assertFreshVersion($data['version'] ?? null, $appointment->updated_at ?? null); /* fixed: phat hien form cu da bi nguoi khac sua */
+            $this->assertFreshVersion($data['version'] ?? null, $this->appointmentVersionToken($appointment)); /* fixed: phat hien form cu da bi nguoi khac sua */
 
             if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
                 throw new Exception('Lịch hẹn này không thể dời.');
@@ -670,7 +676,7 @@ class AppointmentService
                 throw new Exception('Không tìm thấy lịch hẹn.');
             }
 
-            $this->assertFreshVersion($data['version'] ?? null, $appointment->updated_at ?? null); /* fixed: neu lich da doi/trang thai da thay doi thi bao reload */
+            $this->assertFreshVersion($data['version'] ?? null, $this->appointmentVersionToken($appointment)); /* fixed: neu lich da doi/trang thai da thay doi thi bao reload */
 
             if (!in_array($appointment->status, ['Chờ xác nhận', 'Đã xác nhận'])) {
                 throw new Exception('Lịch hẹn này không thể hủy (trạng thái: ' . $appointment->status . ').');

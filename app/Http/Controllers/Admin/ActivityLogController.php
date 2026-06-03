@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ActivityLogController extends Controller
 {
@@ -157,13 +158,33 @@ class ActivityLogController extends Controller
         $action = (string) $request->query('action', '');
         $subjectType = (string) $request->query('subject_type', '');
         $status = (string) $request->query('status', '');
+        $roleOptions = $this->roleOptions();
+        $subjectOptions = $this->subjectOptions();
+
+        $invalidSelects = [];
+        if ($roleName !== '' && !array_key_exists($roleName, $roleOptions)) {
+            $invalidSelects['role_name'] = 'Vai trò không hợp lệ. Vui lòng chọn lại từ danh sách.';
+        }
+        if ($action !== '' && !array_key_exists($action, self::ACTION_OPTIONS)) {
+            $invalidSelects['action'] = 'Hành động không hợp lệ. Vui lòng chọn lại từ danh sách.';
+        }
+        if ($subjectType !== '' && !array_key_exists($subjectType, $subjectOptions)) {
+            $invalidSelects['subject_type'] = 'Đối tượng không hợp lệ. Vui lòng chọn lại từ danh sách.';
+        }
+        if ($status !== '' && !array_key_exists($status, self::STATUS_OPTIONS)) {
+            $invalidSelects['status'] = 'Trạng thái không hợp lệ. Vui lòng chọn lại từ danh sách.';
+        }
+
+        if ($invalidSelects) {
+            throw ValidationException::withMessages($invalidSelects);
+        } /* fixed: khong am tham bo qua select gia chen bang DevTools */
 
         return [
             'search' => trim((string) $request->query('search', '')),
-            'role_name' => array_key_exists($roleName, $this->roleOptions()) ? $roleName : '',
-            'action' => array_key_exists($action, self::ACTION_OPTIONS) ? $action : '',
-            'subject_type' => array_key_exists($subjectType, $this->subjectOptions()) ? $subjectType : '',
-            'status' => array_key_exists($status, self::STATUS_OPTIONS) ? $status : '',
+            'role_name' => $roleName,
+            'action' => $action,
+            'subject_type' => $subjectType,
+            'status' => $status,
             'date_from' => $this->validDate($request->query('date_from')),
             'date_to' => $this->validDate($request->query('date_to')),
         ];

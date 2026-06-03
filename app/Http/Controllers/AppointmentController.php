@@ -81,10 +81,11 @@ class AppointmentController extends Controller
             'service_id' => 'nullable|integer|exists:services,service_id',
             'work_date' => 'required|date|after_or_equal:today',
             'appointment_time' => ['required', 'string', 'max:10', 'regex:/\A\d{2}:\d{2}\z/'],
+            'visit_type' => ['nullable', Rule::in(['Khám trực tiếp', 'Khám online'])],
             'note' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
             'is_priority' => 'nullable',
             'priority_type' => ['nullable', 'string', 'max:255', Rule::in(['Trẻ em dưới 6 tuổi', 'Người già trên 80 tuổi', 'Phụ nữ có thai', 'Người khuyết tật', 'Cấp cứu'])],
-        ], [
+        ], [ /* fixed: validate select visit_type, khong nhan option gia tu DevTools */
             'schedule_id.required' => 'Vui lòng chọn khung giờ khám.',
             'schedule_id.exists' => 'Khung giờ không hợp lệ.',
             'work_date.after_or_equal' => 'Ngày khám phải từ hôm nay trở đi.',
@@ -225,7 +226,7 @@ class AppointmentController extends Controller
             'new_schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
             'new_appointment_time' => ['required', 'string', 'max:10', 'regex:/\A\d{2}:\d{2}\z/'],
             'reschedule_reason' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
-            'version' => 'nullable|date',
+            'version' => 'required|string|size:40',
         ], [
             'new_schedule_id.required' => 'Vui lòng chọn khung giờ mới.',
             'new_schedule_id.exists' => 'Khung giờ không hợp lệ.',
@@ -274,7 +275,7 @@ class AppointmentController extends Controller
 
         $request->validate([
             'cancel_reason' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
-            'version' => 'nullable|date',
+            'version' => 'required|string|size:40',
         ]);
 
         try {

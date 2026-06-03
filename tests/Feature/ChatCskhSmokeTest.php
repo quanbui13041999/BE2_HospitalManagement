@@ -81,6 +81,11 @@ class ChatCskhSmokeTest extends TestCase
                 ->assertJson(['success' => true]);
 
             $this->actingAs($admin)
+                ->get(route('admin.chatroom.list'))
+                ->assertRedirect(route('admin.chatroom.index'))
+                ->assertSessionHas('warning'); // fixed: go truc tiep URL API list thi khong hien JSON tho
+
+            $this->actingAs($admin)
                 ->postJson(route('admin.chatroom.send', $roomId), [
                     'message_text' => 'CSKH đã nhận được tin nhắn',
                 ])
@@ -92,6 +97,11 @@ class ChatCskhSmokeTest extends TestCase
                 ->assertOk()
                 ->assertJson(['success' => true])
                 ->assertJsonCount(3, 'messages');
+
+            $this->actingAs($admin)
+                ->get(route('admin.chatroom.messages', $roomId))
+                ->assertRedirect(route('admin.chatroom.index'))
+                ->assertSessionHas('warning'); // fixed: doi id URL API messages thi quay ve man chat
 
             $this->actingAs($admin)
                 ->postJson(route('admin.chatroom.close', $roomId))

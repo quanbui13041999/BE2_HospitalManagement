@@ -486,7 +486,12 @@
 
                 async function loadNotifications() {
                     try {
-                        const response = await fetch(dropdownUrl, { headers: { 'Accept': 'application/json' } });
+                        const response = await fetch(dropdownUrl, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
                         if (response.ok) render(await response.json());
                     } catch (error) {}
                 }
@@ -497,6 +502,7 @@
                             method: 'POST',
                             headers: {
                                 'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
                                 'X-CSRF-TOKEN': csrf
                             }
                         });

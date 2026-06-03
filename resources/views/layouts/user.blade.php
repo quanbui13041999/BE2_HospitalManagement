@@ -46,6 +46,8 @@
 </head>
 
 <body>
+    <div id="app-notification-stack" style="position:fixed;top:18px;right:18px;z-index:20000;width:min(420px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px"></div>
+
     @unless(request()->routeIs('news.*'))
         <x-site-nav />
     @endunless
@@ -84,6 +86,106 @@
 
     {{-- Scripts --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        window.showAppNotification = window.showAppNotification || function (message, type = 'error', options = {}) {
+            const stack = document.getElementById('app-notification-stack');
+            if (!stack) return;
+
+            const notice = document.createElement('div');
+            notice.textContent = message || 'Đã xảy ra lỗi, vui lòng thử lại sau.';
+            notice.setAttribute('role', type === 'error' ? 'alert' : 'status');
+            notice.style.cssText = 'padding:12px 14px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;box-shadow:0 16px 40px rgba(15,23,42,.16);font-size:14px;line-height:1.45';
+            if (type === 'warning') {
+                notice.style.borderColor = '#fde68a';
+                notice.style.background = '#fffbeb';
+                notice.style.color = '#92400e';
+            }
+
+            stack.appendChild(notice);
+            setTimeout(() => notice.remove(), typeof options.timeout === 'number' ? options.timeout : 5000);
+        };
+
+        function appSnapshotSelectOptions(root = document) {
+            root.querySelectorAll('select[name]').forEach(function (select) {
+                if (select.dataset.allowedValues) return;
+
+                select.dataset.allowedValues = JSON.stringify(
+                    Array.from(select.options).map(option => option.value)
+                );
+            });
+        }
+
+        function appSelectLabel(select) {
+            const label = select.id ? document.querySelector(`label[for="${select.id}"]`) : null;
+            return label ? label.textContent.trim() : (select.getAttribute('name') || 'Trường chọn');
+        }
+
+        function appReloadCurrentPage(delay = 1600) {
+            if (window.appReloadScheduled) return;
+
+            window.appReloadScheduled = true;
+            setTimeout(function () {
+                window.location.reload();
+            }, delay);
+        }
+
+        function appReloadCleanUrl(delay = 1800) {
+            if (window.appReloadScheduled) return;
+
+            window.appReloadScheduled = true;
+            setTimeout(function () {
+                window.location.replace(window.location.pathname);
+            }, delay);
+        }
+
+        function appValidateSelectOptions(root = document) {
+            const invalidSelect = Array.from(root.querySelectorAll('select[name]')).find(function (select) {
+                let allowedValues = [];
+
+                try {
+                    allowedValues = JSON.parse(select.dataset.allowedValues || '[]');
+                } catch (e) {
+                    allowedValues = [];
+                }
+
+                return allowedValues.length > 0 && !allowedValues.includes(select.value);
+            });
+
+            if (!invalidSelect) return true;
+
+            invalidSelect.classList.add('is-invalid');
+            invalidSelect.focus();
+            window.showAppNotification(
+                appSelectLabel(invalidSelect) + ' không hợp lệ. Trang sẽ được tải lại.',
+                'warning'
+            );
+            appReloadCurrentPage(); /* fixed: select bi chen bang DevTools thi thong bao roi reload de reset DOM */
+
+            return false;
+        }
+
+        window.appSnapshotSelectOptions = appSnapshotSelectOptions;
+        window.appValidateSelectOptions = appValidateSelectOptions;
+        appSnapshotSelectOptions(); /* fixed: chot option hop le ban dau, chan option gia chen bang DevTools */
+
+        document.addEventListener('submit', function (event) {
+            if (!appValidateSelectOptions(event.target)) {
+                event.preventDefault();
+            }
+        });
+    </script>
+    @if($errors->any())
+        <script data-reload-clean-url="{{ request()->isMethod('get') && request()->getQueryString() ? '1' : '0' }}">
+            const currentErrorNotificationScript = document.currentScript;
+            document.addEventListener('DOMContentLoaded', function () {
+                window.showAppNotification("{{ e($errors->first()) }}", 'warning');
+                const shouldReloadCleanUrl = currentErrorNotificationScript?.dataset.reloadCleanUrl === '1';
+                if (shouldReloadCleanUrl) {
+                    appReloadCleanUrl(); /* fixed: URL/filter GET sai thi thong bao roi tai lai trang sach query */
+                }
+            });
+        </script>
+    @endif
     @stack('scripts')
 
     @auth

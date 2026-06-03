@@ -129,6 +129,59 @@ class TenFeatureHardeningTest extends TestCase
             ->assertSessionHasErrors(['patient_name', 'patient_phone']); // fixed: khoang trang/full-width number bi validate
     }
 
+    public function test_ten_feature_select_values_from_devtools_are_rejected(): void
+    {
+        $admin = User::where('role_id', 1)->firstOrFail();
+        $doctor = Doctor::firstOrFail();
+        $workDate = today()->addDays(45);
+        $startTime = '06:17:00';
+        $endTime = '06:47:00';
+
+        while (DoctorSchedule::where('doctor_id', $doctor->doctor_id)
+            ->whereDate('work_date', $workDate)
+            ->where('start_time', $startTime)
+            ->exists()) {
+            $workDate = $workDate->copy()->addDay();
+        }
+
+        $inactiveSchedule = DoctorSchedule::create([
+            'doctor_id' => $doctor->doctor_id,
+            'room_id' => 1,
+            'work_date' => $workDate,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+            'slot_duration' => 15,
+            'max_slot' => 20,
+            'status' => 'Ngưng hoạt động',
+        ]);
+
+        try {
+            $this->actingAs($admin)
+                ->get(route('admin.activity-logs.index', ['action' => '999999999999']))
+                ->assertSessionHasErrors(['action']); // fixed: select action gia tren nhat ky hoat dong bi bao loi
+
+            $this->actingAs($admin)
+                ->get(route('notifications.index', ['type' => '999999999999']))
+                ->assertSessionHasErrors(['type']); // fixed: select type gia tren thong bao bi bao loi
+
+            $this->actingAs($admin)
+                ->get(route('notifications.dropdown'))
+                ->assertRedirect(route('notifications.index'))
+                ->assertSessionHas('warning'); // fixed: go truc tiep URL API dropdown thi khong hien JSON tho
+
+            $this->actingAs($admin)
+                ->post(route('queue.manage.checkin.store'), [
+                    'schedule_id' => $inactiveSchedule->schedule_id,
+                    'patient_name' => 'Queue Select Patient',
+                    'priority' => 'normal',
+                    'patient_phone' => '0900000000',
+                ])
+                ->assertSessionHasErrors(['schedule_id']); // fixed: ca kham gia/khong hoat dong khong duoc check-in
+        } finally {
+            DoctorSchedule::where('schedule_id', $inactiveSchedule->schedule_id)->delete();
+        }
+    }
+
     public function test_patient_cannot_cancel_appointment_after_exam_has_started(): void
     {
         $patient = User::create([
@@ -167,6 +220,13 @@ class TenFeatureHardeningTest extends TestCase
             'status' => 'Đã xác nhận',
             'created_at' => now(),
         ]);
+        $staleVersion = sha1(implode('|', [
+            (string) $appointment->schedule_id,
+            (string) $appointment->appointment_time,
+            (string) $appointment->status,
+            (string) ($appointment->cancel_reason ?? ''),
+            (string) ($appointment->rescheduled_from ?? ''),
+        ]));
 
         $ticket = QueueTicket::create([
             'appointment_id' => $appointment->appointment_id,
@@ -190,10 +250,11 @@ class TenFeatureHardeningTest extends TestCase
 
             $this->actingAs($patient)
                 ->post(route('appointments.cancel', $appointment->appointment_id), [
-                    'version' => now()->format('Y-m-d H:i:s'),
+                    'version' => $staleVersion,
                     'cancel_reason' => 'Muốn hủy khi đang khám',
                 ])
-                ->assertSessionHasErrors(['msg']);
+                ->assertSessionHas('warning')
+                ->assertSessionHas('reload_page');
         } finally {
             QueueTicket::where('ticket_id', $ticket->ticket_id)->delete();
             Appointment::where('appointment_id', $appointment->appointment_id)->delete();
@@ -202,6 +263,77 @@ class TenFeatureHardeningTest extends TestCase
             if ($createdSchedule) {
                 DoctorSchedule::where('schedule_id', $schedule->schedule_id)->delete();
             }
+        }
+    }
+
+    public function test_patient_can_open_reschedule_form_without_server_error(): void
+    {
+        $patient = User::create([
+            'full_name' => 'Patient Reschedule Form',
+            'email' => 'patient_reschedule_form_' . uniqid() . '@example.test',
+            'password' => Hash::make('secret123'),
+            'role_id' => 3,
+            'status' => 1,
+        ]);
+
+        $doctor = Doctor::firstOrFail();
+        $workDate = today()->addDays(2);
+        while (DoctorSchedule::where('doctor_id', $doctor->doctor_id)
+            ->whereDate('work_date', $workDate)
+            ->where('start_time', '07:13:00')
+            ->exists()) {
+            $workDate = $workDate->copy()->addDay();
+        }
+
+        $currentSchedule = DoctorSchedule::create([
+            'doctor_id' => $doctor->doctor_id,
+            'room_id' => 1,
+            'work_date' => $workDate,
+            'start_time' => '07:13:00',
+            'end_time' => '07:43:00',
+            'slot_duration' => 15,
+            'max_slot' => 20,
+            'status' => 'Hoạt động',
+        ]);
+
+        $targetWorkDate = $workDate->copy()->addDay();
+        while (DoctorSchedule::where('doctor_id', $doctor->doctor_id)
+            ->whereDate('work_date', $targetWorkDate)
+            ->where('start_time', '07:13:00')
+            ->exists()) {
+            $targetWorkDate = $targetWorkDate->copy()->addDay();
+        }
+
+        $targetSchedule = DoctorSchedule::create([
+            'doctor_id' => $doctor->doctor_id,
+            'room_id' => 1,
+            'work_date' => $targetWorkDate,
+            'start_time' => '07:13:00',
+            'end_time' => '07:43:00',
+            'slot_duration' => 15,
+            'max_slot' => 20,
+            'status' => 'Hoạt động',
+        ]);
+
+        $appointment = Appointment::create([
+            'user_id' => $patient->user_id,
+            'schedule_id' => $currentSchedule->schedule_id,
+            'appointment_time' => $workDate->copy()->setTime(7, 13),
+            'queue_number' => 1,
+            'status' => 'Đã xác nhận',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        try {
+            $this->actingAs($patient)
+                ->get(route('appointments.edit', $appointment->appointment_id))
+                ->assertOk()
+                ->assertSee('reschedule-form'); // fixed: form doi lich phai load duoc va co version updated_at
+        } finally {
+            Appointment::where('appointment_id', $appointment->appointment_id)->delete();
+            DoctorSchedule::whereIn('schedule_id', [$currentSchedule->schedule_id, $targetSchedule->schedule_id])->delete();
+            $patient->delete();
         }
     }
 }

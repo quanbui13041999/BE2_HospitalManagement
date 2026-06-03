@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 – Không tìm thấy trang | Bệnh viện</title>
+    <title>Đường dẫn không hợp lệ | Bệnh viện</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
@@ -83,18 +83,17 @@
     </style>
 </head>
 <body>
+    <div id="app-notification-stack" style="position:fixed;top:18px;right:18px;z-index:20000;width:min(420px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px"></div>
     <div class="error-card">
         <div class="error-icon-wrap">
             <i class="bi bi-search" style="font-size: 40px; color: #0D47A1;"></i>
         </div>
-        <div class="error-code">404</div>
-        <div class="error-title">Không tìm thấy trang</div>
+        <div class="error-title">Đường dẫn hoặc dữ liệu không hợp lệ</div>
         <div class="error-desc">
-            Trang hoặc mục dữ liệu bạn tìm kiếm không tồn tại, đã bị xóa,
-            hoặc ID trong URL không hợp lệ.<br>
-            Vui lòng kiểm tra lại đường dẫn hoặc quay về trang trước.
+            Hệ thống sẽ tự quay lại trang trước sau giây lát.
+            Nếu trang trước cũng không hợp lệ, bạn sẽ được đưa về trang chủ.
         </div>
-        <a href="{{ url()->previous() !== url()->current() ? url()->previous() : url('/') }}" class="btn-back">
+        <a href="{{ url('/') }}" class="btn-back">
             <i class="bi bi-arrow-left me-1"></i>Quay lại trang trước
         </a>
         @auth
@@ -113,5 +112,16 @@
             </a>
         @endauth
     </div>
+    <script>
+        const targetUrl = @json(url('/'));
+        const notice = document.createElement('div');
+        notice.textContent = 'Đường dẫn không hợp lệ. Trang sẽ được tải lại.';
+        notice.setAttribute('role', 'alert');
+        notice.style.cssText = 'padding:12px 14px;border-radius:10px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;box-shadow:0 16px 40px rgba(15,23,42,.16);font-size:14px;line-height:1.45';
+        document.getElementById('app-notification-stack')?.appendChild(notice);
+        setTimeout(function () {
+            window.location.replace(targetUrl);
+        }, 1800); /* fixed: khong dung o man 404, thong bao roi quay ve trang an toan */
+    </script>
 </body>
 </html>

@@ -611,6 +611,7 @@
     
     // Initial loading
     document.addEventListener('DOMContentLoaded', function() {
+        snapshotSearchSelectOptions();
         triggerSearch(1);
     });
 
@@ -704,6 +705,11 @@
      */
     function triggerSearch(page = 1) {
         const resultsContainer = document.getElementById('patients-results-container');
+
+        if (!validateSearchSelectOptions()) {
+            resultsContainer.innerHTML = buildPatientSearchErrorHtml('Dữ liệu bộ lọc không hợp lệ', 'Vui lòng chọn lại giá trị từ danh sách có sẵn.');
+            return;
+        }
         
         // Inject Shimmer Loading Skeleton
         resultsContainer.innerHTML = '';
@@ -758,10 +764,18 @@
         // Request results via AJAX
         fetch(`/admin/patients/search/results?${params.toString()}`, {
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         })
-        .then(res => res.json())
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok) {
+                const message = data.message || firstValidationMessage(data) || 'Dữ liệu bộ lọc không hợp lệ.';
+                throw new Error(message);
+            }
+            return data;
+        })
         .then(data => {
             if (data.success) {
                 // Populate results
@@ -770,17 +784,120 @@
                 
                 // Update pagination layout
                 buildPagination(data.total, data.current_page, data.last_page);
+            } else {
+                const message = data.message || firstValidationMessage(data) || 'Dữ liệu bộ lọc không hợp lệ.';
+                showPatientSearchError(message);
             }
         })
-        .catch(() => {
-            resultsContainer.innerHTML = `
-                <div class="col-12 py-5 text-center">
-                    <div class="text-danger mb-2"><i class="bi bi-exclamation-triangle-fill fs-2"></i></div>
-                    <h6 class="fw-bold text-slate-800">Không thể kết nối đến máy chủ</h6>
-                    <p class="text-muted text-sm mb-0">Vui lòng kiểm tra lại kết nối mạng hoặc liên hệ Quản trị viên hệ thống.</p>
-                </div>
-            `;
+        .catch(error => {
+            showPatientSearchError(error.message || 'Không thể kết nối đến máy chủ.');
         });
+    }
+
+    function snapshotSearchSelectOptions() {
+        document.querySelectorAll('#standard-search-form select, #per_page, #sort_by').forEach(function(select) {
+            if (select.dataset.allowedValues) return;
+
+            select.dataset.allowedValues = JSON.stringify(
+                Array.from(select.options).map(option => option.value)
+            );
+        });
+    }
+
+    function validateSearchSelectOptions() {
+        const selectIds = [
+            'gender',
+            'status',
+            'membership_tier',
+            'has_insurance',
+            'department_id',
+            'doctor_id',
+            'appointment_status',
+            'sort_by',
+            'per_page'
+        ];
+
+        for (const id of selectIds) {
+            const select = document.getElementById(id);
+            if (!select) continue;
+
+            let allowedValues = [];
+            try {
+                allowedValues = JSON.parse(select.dataset.allowedValues || '[]');
+            } catch (e) {
+                allowedValues = [];
+            }
+
+            if (!allowedValues.includes(select.value)) {
+                select.classList.add('is-invalid');
+                select.focus();
+                showPatientSearchError('Bộ lọc "' + getFieldLabel(select) + '" không hợp lệ. Trang sẽ được tải lại.');
+                reloadPatientSearchPage(); /* fixed: option gia trong AJAX search thi thong bao roi reload reset filter */
+                return false;
+            }
+
+            select.classList.remove('is-invalid');
+        }
+
+        const sortDirInput = document.getElementById('sort_dir');
+        if (sortDirInput && !['asc', 'desc'].includes(sortDirInput.value)) {
+            showPatientSearchError('Chiều sắp xếp không hợp lệ. Trang sẽ được tải lại.');
+            reloadPatientSearchPage(); /* fixed: hidden sort bi sua thi reload reset DOM */
+            return false;
+        }
+
+        return true;
+    } /* fixed: so voi snapshot ban dau, khong tin option vua bi chen bang DevTools */
+
+    function getFieldLabel(field) {
+        const label = document.querySelector('label[for="' + field.id + '"]');
+        return label ? label.textContent.trim() : (field.name || 'trường này');
+    }
+
+    function firstValidationMessage(data) {
+        const errors = data && data.data && data.data.errors ? data.data.errors : null;
+        if (!errors) return '';
+
+        const firstKey = Object.keys(errors)[0];
+        return firstKey && errors[firstKey] && errors[firstKey][0] ? errors[firstKey][0] : '';
+    }
+
+    function showPatientSearchError(message) {
+        const safeMessage = message || 'Dữ liệu bộ lọc không hợp lệ.';
+        const resultsContainer = document.getElementById('patients-results-container');
+        if (window.showAppNotification) {
+            window.showAppNotification(safeMessage, 'warning');
+        }
+
+        resultsContainer.innerHTML = buildPatientSearchErrorHtml('Dữ liệu bộ lọc không hợp lệ', safeMessage);
+    }
+
+    function reloadPatientSearchPage(delay = 1600) {
+        if (window.patientSearchReloadScheduled) return;
+
+        window.patientSearchReloadScheduled = true;
+        setTimeout(function() {
+            window.location.reload();
+        }, delay);
+    }
+
+    function buildPatientSearchErrorHtml(title, message) {
+        return `
+            <div class="col-12 py-5 text-center">
+                <div class="text-danger mb-2"><i class="bi bi-exclamation-triangle-fill fs-2"></i></div>
+                <h6 class="fw-bold text-slate-800">${escapeHtml(title)}</h6>
+                <p class="text-muted text-sm mb-0">${escapeHtml(message)}</p>
+            </div>
+        `;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     /**

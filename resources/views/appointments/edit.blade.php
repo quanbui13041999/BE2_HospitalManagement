@@ -75,7 +75,7 @@
         @csrf
         @method('PUT')
         <input type="hidden" name="new_appointment_time" id="new_appointment_time">
-        <input type="hidden" name="version" value="{{ optional($appointment->updated_at)->format('Y-m-d H:i:s') }}"> {{-- fixed: optimistic lock de phat hien form doi lich da cu --}}
+        <input type="hidden" name="version" value="{{ $appointment->version_token }}"> {{-- fixed: optimistic lock bang token vi bang appointments khong co updated_at --}}
 
         {{-- Thông tin người đặt lịch --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6 overflow-hidden">

@@ -868,7 +868,7 @@
                                         <button type="button" class="btn-cancel"
                                             onclick="openModal(this)"
                                             data-action="{{ route('appointments.cancel', $item->appointment_id) }}"
-                                            data-version="{{ optional($item->updated_at)->format('Y-m-d H:i:s') }}">
+                                            data-version="{{ $item->version_token ?? '' }}">
                                             ✕ Huỷ
                                         </button>
                                     @else
