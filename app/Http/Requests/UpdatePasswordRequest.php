@@ -23,9 +23,7 @@ class UpdatePasswordRequest extends FormRequest
                 'max:72',
                 'confirmed',
                 'different:current_password',
-                'regex:/[a-z]/',
-                'regex:/[A-Z]/',
-                'regex:/[0-9]/',
+                'regex:/\A[A-Za-z0-9]+\z/',
             ],
         ];
     }
@@ -40,7 +38,7 @@ class UpdatePasswordRequest extends FormRequest
             'new_password.max' => 'Mật khẩu mới không được vượt quá 72 ký tự.',
             'new_password.confirmed' => 'Xác nhận mật khẩu không khớp.',
             'new_password.different' => 'Mật khẩu mới phải khác mật khẩu hiện tại.',
-            'new_password.regex' => 'Mật khẩu mới phải có chữ thường, chữ hoa và số.',
+            'new_password.regex' => 'Mật khẩu mới chỉ được nhập chữ và số, không nhập khoảng trắng hoặc ký tự đặc biệt.',
         ];
     }
 }
