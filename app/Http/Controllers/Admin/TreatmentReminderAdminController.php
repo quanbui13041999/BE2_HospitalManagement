@@ -53,8 +53,16 @@ class TreatmentReminderAdminController extends Controller
     }
 
     /** Form tạo nhắc nhở thủ công */
-    public function create()
+    public function create(Request $request)
     {
+        if ($request->has('user_id')) {
+            $userId = $this->validRouteId($request->query('user_id'));
+
+            if (! $userId || ! User::where('role_id', 3)->where('status', 1)->find($userId)) {
+                return $this->redirectToTreatmentIndexNotFound();
+            }
+        }
+
         $patients = User::where('role_id', 3)->where('status', 1)->orderBy('full_name')->get();
         $records  = MedicalRecord::with('patient')->latest()->get();
         return view('admin.treatment_reminder.create', compact('patients', 'records'));
