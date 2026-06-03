@@ -247,7 +247,7 @@
                                 <p class="small text-muted mb-0">Đặt chỗ trực tiếp thực hiện dịch vụ không qua bác sĩ</p>
                             </div>
                             
-                            <form action="{{ route('user.services.book', $service->service_id) }}" method="POST">
+                            <form action="{{ route('user.services.book', $service->service_id) }}" method="POST" id="bookingForm">
                                 @csrf
                                 
                                 {{-- Price Type --}}
@@ -290,8 +290,9 @@
                                 </div>
 
                                 @auth
-                                    <button type="submit" class="btn btn-success btn-lg w-100 font-outfit fw-bold py-2.5 d-flex align-items-center justify-content-center gap-1" style="background: #10b981; border: none; border-radius: 10px; font-size: 15px;">
-                                        <i class="bi bi-wallet2"></i> Tiến hành Thanh Toán & Đặt Chỗ
+                                    <input type="hidden" name="payment_option" id="paymentOption" value="now">
+                                    <button type="button" id="btnOpenBookingConfirm" class="btn btn-success btn-lg w-100 font-outfit fw-bold py-2.5 d-flex align-items-center justify-content-center gap-1" style="background: #10b981; border: none; border-radius: 10px; font-size: 15px;">
+                                        <i class="bi bi-calendar2-check-fill"></i> Tiến hành Đặt lịch khám
                                     </button>
                                 @else
                                     <a href="{{ route('login', ['redirect' => url()->current()]) }}" class="btn btn-warning btn-lg w-100 font-outfit fw-bold text-white py-2.5 d-flex align-items-center justify-content-center gap-1" style="border: none; border-radius: 10px; font-size: 15px;">
@@ -336,6 +337,49 @@
     </div>
 </div>
 
+{{-- ── MODAL XÁC NHẬN THANH TOÁN (PAY NOW OR LATER) ────────────────── --}}
+<div class="modal fade" id="bookingConfirmModal" tabindex="-1" aria-labelledby="bookingConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-success text-white border-0 py-3" style="border-radius: 16px 16px 0 0;">
+                <h5 class="modal-title fw-bold font-outfit" id="bookingConfirmModalLabel">
+                    <i class="bi bi-wallet2 me-2"></i>Chọn hình thức thanh toán
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <p class="text-muted small mb-1">Dịch vụ đã chọn</p>
+                    <h5 class="fw-bold text-dark font-outfit mb-3">{{ $service->service_name }}</h5>
+                    <div class="p-3 bg-light rounded-4 border">
+                        <div class="row g-2 text-start small">
+                            <div class="col-6 text-muted">Mức giá chọn:</div>
+                            <div class="col-6 text-end fw-bold text-dark" id="modalPriceType">Giá Thường</div>
+                            <div class="col-6 text-muted">Ngày thực hiện:</div>
+                            <div class="col-6 text-end fw-bold text-dark" id="modalWorkDate">01/01/2026</div>
+                            <div class="col-6 text-muted">Giờ hẹn khám:</div>
+                            <div class="col-6 text-end fw-bold text-dark" id="modalTime">13:30</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info py-2.5 px-3 small border-0 mb-0" style="border-radius: 10px;">
+                    <i class="bi bi-info-circle-fill text-success me-1"></i>
+                    Vui lòng chọn hình thức thanh toán để hoàn tất thủ tục đăng ký lịch khám.
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light d-flex gap-2" style="border-radius: 0 0 16px 16px;">
+                <button type="button" class="btn btn-outline-secondary flex-fill font-outfit fw-bold btn-sm py-2.5" id="btnPayLater" style="border-radius: 10px;">
+                    <i class="bi bi-clock-history"></i> Thanh toán sau
+                </button>
+                <button type="button" class="btn btn-success flex-fill font-outfit fw-bold btn-sm py-2.5" id="btnPayNow" style="background: #10b981; border: none; border-radius: 10px;">
+                    <i class="bi bi-credit-card-fill"></i> Thanh toán ngay
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('styles')
 <style>
     .show-service-icon-wrapper {
@@ -352,6 +396,80 @@
         border-color: rgba(13,110,253,0.2) !important;
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bookingForm = document.getElementById('bookingForm');
+    const btnOpenConfirm = document.getElementById('btnOpenBookingConfirm');
+    const payOptionInput = document.getElementById('paymentOption');
+    const btnPayNow = document.getElementById('btnPayNow');
+    const btnPayLater = document.getElementById('btnPayLater');
+    
+    if (btnOpenConfirm && bookingForm) {
+        // Khởi tạo Bootstrap modal
+        const confirmModal = new bootstrap.Modal(document.getElementById('bookingConfirmModal'));
+
+        btnOpenConfirm.addEventListener('click', function() {
+            // Validate form trước khi mở modal
+            if (!bookingForm.checkValidity()) {
+                bookingForm.reportValidity();
+                return;
+            }
+
+            // Lấy thông tin từ form để hiển thị lên modal
+            const priceSelect = bookingForm.querySelector('[name="price_type"]');
+            const priceText = priceSelect ? priceSelect.options[priceSelect.selectedIndex].text : '';
+            const workDate = bookingForm.querySelector('[name="work_date"]').value;
+            const apptTime = bookingForm.querySelector('[name="appointment_time"]').value;
+
+            // Định dạng ngày thành dd/mm/yyyy
+            let formattedDate = workDate;
+            if (workDate) {
+                const parts = workDate.split('-');
+                if (parts.length === 3) {
+                    formattedDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+                }
+            }
+
+            // Gán dữ liệu vào modal
+            document.getElementById('modalPriceType').textContent = priceText;
+            document.getElementById('modalWorkDate').textContent = formattedDate;
+            document.getElementById('modalTime').textContent = apptTime + ' (' + (apptTime >= '12:00' ? 'Chiều' : 'Sáng') + ')';
+
+            // Mở modal
+            confirmModal.show();
+        });
+
+        // Click Thanh toán ngay
+        btnPayNow.addEventListener('click', function() {
+            payOptionInput.value = 'now';
+            submitBookingForm('btnPayNow');
+        });
+
+        // Click Thanh toán sau
+        btnPayLater.addEventListener('click', function() {
+            payOptionInput.value = 'later';
+            submitBookingForm('btnPayLater');
+        });
+
+        function submitBookingForm(activeBtnId) {
+            // Disable tất cả các nút để tránh nhấn nhiều lần
+            btnPayNow.disabled = true;
+            btnPayLater.disabled = true;
+            btnOpenConfirm.disabled = true;
+
+            const activeBtn = document.getElementById(activeBtnId);
+            if (activeBtn) {
+                activeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Đang xử lý...';
+            }
+
+            bookingForm.submit();
+        }
+    }
+});
+</script>
 @endpush
 
 @endsection

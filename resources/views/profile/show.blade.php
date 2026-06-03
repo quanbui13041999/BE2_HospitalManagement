@@ -74,7 +74,8 @@
             <div class="avatar-shell">
                 <img src="{{ $user->avatar_url ? asset('storage/' . $user->avatar_url) : asset('images/default-avatar.png') }}"
                     alt="Ảnh đại diện của {{ $user->full_name }}"
-                    class="avatar-image">
+                    class="avatar-image"
+                    onerror="this.onerror=null; this.src='{{ asset('images/default-avatar.png') }}';">
                 <span class="status-dot {{ $user->status ? 'online' : 'offline' }}"
                     title="{{ $user->status ? 'Đang hoạt động' : 'Không hoạt động' }}"></span>
             </div>

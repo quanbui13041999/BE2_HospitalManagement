@@ -32,7 +32,8 @@
             <div class="avatar-upload-area">
                 <div class="avatar-preview-wrap">
                     <img src="{{ $user->avatar_url ? asset('storage/' . $user->avatar_url) : asset('images/default-avatar.png') }}"
-                         alt="Avatar" class="avatar-preview" id="avatarPreview">
+                         alt="Avatar" class="avatar-preview" id="avatarPreview"
+                         onerror="this.onerror=null; this.src='{{ asset('images/default-avatar.png') }}';">
                     <label for="avatar" class="avatar-upload-btn" title="Thay đổi ảnh">✎</label>
                     <input type="file" id="avatar" name="avatar"
                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"

@@ -190,7 +190,9 @@ class PaymentService
             if ($payOsResult['success']) {
                 // Lưu payment link id từ PayOS vào trường transaction_ref để đối soát webhook
                 $payment->update([
-                    'transaction_ref' => ($payOsResult['paymentLinkId'] ?? null) ?: $ref
+                    'transaction_ref' => ($payOsResult['paymentLinkId'] ?? null) ?: $ref,
+                    'checkout_url' => $payOsResult['checkoutUrl'] ?? null,
+                    'qr_content' => $payOsResult['qrContent'] ?? null,
                 ]);
                 
                 $result['qr_content'] = $payOsResult['qrContent'];

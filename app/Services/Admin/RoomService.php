@@ -354,10 +354,12 @@ class RoomService
         $created = 0;
         $skipped = 0;
         $deleted = 0;
+        $allocatedDetails = [];
+        $skippedDetails = [];
 
         \Illuminate\Support\Facades\DB::transaction(function () use (
             $startDate, $endDate, $doctors, $rooms, $sessions, $slotDuration, $maxSlot, $overwrite, $deptId,
-            &$created, &$skipped, &$deleted
+            &$created, &$skipped, &$deleted, &$allocatedDetails, &$skippedDetails
         ) {
             if ($overwrite) {
                 // Xóa ca cũ không có lượt đặt trong khoảng ngày
@@ -385,6 +387,7 @@ class RoomService
             $curr = $startDate->copy();
             while ($curr->lte($endDate)) {
                 $workDateStr = $curr->toDateString();
+                $formattedDate = \Carbon\Carbon::parse($workDateStr)->format('d/m/Y');
 
                 foreach ($doctors as $doctor) {
                     // Ưu tiên các phòng thuộc khoa của bác sĩ
@@ -405,6 +408,12 @@ class RoomService
 
                         if ($hasDocConflict) {
                             $skipped++;
+                            $skippedDetails[] = [
+                                'doctor'  => $doctor->full_name,
+                                'date'    => $formattedDate,
+                                'session' => $session['label'],
+                                'reason'  => 'Bác sĩ đã có lịch trực khác trong ca này'
+                            ];
                             continue;
                         }
 
@@ -456,8 +465,20 @@ class RoomService
                                 'note'          => 'Tự động phân bổ (' . $session['label'] . ')',
                             ]);
                             $created++;
+                            $allocatedDetails[] = [
+                                'doctor'  => $doctor->full_name,
+                                'room'    => $selectedRoom->room_code,
+                                'date'    => $formattedDate,
+                                'session' => $session['label']
+                            ];
                         } else {
                             $skipped++;
+                            $skippedDetails[] = [
+                                'doctor'  => $doctor->full_name,
+                                'date'    => $formattedDate,
+                                'session' => $session['label'],
+                                'reason'  => 'Không còn phòng khám trống cho ca này'
+                            ];
                         }
                     }
                 }
@@ -475,8 +496,11 @@ class RoomService
         }
 
         return [
-            'success' => true,
-            'message' => $msg,
+            'success'   => true,
+            'message'   => $msg,
+            'allocated' => $allocatedDetails,
+            'skipped'   => $skippedDetails,
+            'deleted_count' => $deleted
         ];
     }
 }

@@ -70,8 +70,18 @@ class RoomController extends Controller
     {
         // Optimistic locking: kiểm tra dữ liệu có bị thay đổi bởi tab khác không
         $lockVersion = $request->input('_lock_version');
-        if ($lockVersion !== null && $room->updated_at !== null) {
+        if ($room->updated_at !== null) {
             $dbTimestamp = (string) $room->updated_at->timestamp;
+            if ($lockVersion === null || $lockVersion === '') {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Mã phiên làm việc bị thiếu. Vui lòng tải lại trang.',
+                    ], 409);
+                }
+                return redirect()->route('admin.rooms.edit', $room)
+                    ->with('error', 'Mã phiên làm việc bị thiếu. Vui lòng tải lại trang.');
+            }
             if ($lockVersion !== $dbTimestamp) {
                 if ($request->ajax() || $request->wantsJson()) {
                     return response()->json([
@@ -100,6 +110,14 @@ class RoomController extends Controller
                 ),
             ]
         );
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật phòng thành công!',
+                'room' => $room->fresh(),
+            ]);
+        }
 
         return redirect()->route('admin.rooms.show', $room)
             ->with('success', 'Cập nhật phòng thành công!');
@@ -137,7 +155,20 @@ class RoomController extends Controller
         $error = $this->roomService->destroyRoom($room);
 
         if ($error) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $error,
+                ], 400);
+            }
             return back()->with('error', $error);
+        }
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Xoá phòng khám thành công!',
+            ]);
         }
 
         return redirect()->route('admin.rooms.index')
@@ -196,7 +227,23 @@ class RoomController extends Controller
         $res = $this->roomService->autoAllocateSchedules($request->all());
 
         if (!$res['success']) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $res['message']
+                ], 400);
+            }
             return back()->with('error', $res['message']);
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'   => true,
+                'message'   => $res['message'],
+                'allocated' => $res['allocated'] ?? [],
+                'skipped'   => $res['skipped'] ?? [],
+                'deleted_count' => $res['deleted_count'] ?? 0
+            ]);
         }
 
         return redirect()
@@ -211,6 +258,20 @@ class RoomController extends Controller
 
     public function updateSchedule(DoctorScheduleRequest $request, DoctorSchedule $schedule)
     {
+        // Optimistic locking: kiểm tra dữ liệu có bị thay đổi ở tab khác không
+        $lockVersion = $request->input('_lock_version');
+        if ($schedule->updated_at !== null) {
+            $dbTimestamp = (string) $schedule->updated_at->timestamp;
+            if ($lockVersion === null || $lockVersion === '') {
+                return redirect()->route('admin.rooms.schedule.edit', $schedule)
+                    ->with('error', 'Mã phiên làm việc bị thiếu. Vui lòng tải lại trang.');
+            }
+            if ($lockVersion !== $dbTimestamp) {
+                return redirect()->route('admin.rooms.schedule.edit', $schedule)
+                    ->with('error', 'Lịch trực bác sĩ đã được thay đổi ở phiên làm việc khác. Vui lòng tải lại trang.');
+            }
+        }
+
         $errors = $this->roomService->updateSchedule($schedule, $request->validated());
 
         if ($errors) {

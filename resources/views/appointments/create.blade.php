@@ -1490,7 +1490,7 @@
                 const price = parseInt(doc.price) || 0;
                 const initials = doc.full_name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase();
                 const avatar = doc.avatar_url
-                    ? `<img src="${doc.avatar_url}" alt="${doc.full_name}">`
+                    ? `<img src="${doc.avatar_url}" alt="${doc.full_name}" onerror="this.onerror=null; this.parentNode.innerHTML='${initials}';">`
                     : initials;
                 const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
 
@@ -1822,7 +1822,7 @@
             const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
             const initials = doc.full_name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase();
             const avatar = doc.avatar_url
-                ? `<img src="${doc.avatar_url}" alt="${doc.full_name}">`
+                ? `<img src="${doc.avatar_url}" alt="${doc.full_name}" onerror="this.onerror=null; this.parentNode.innerHTML='${initials}';">`
                 : initials;
 
             body.innerHTML = `

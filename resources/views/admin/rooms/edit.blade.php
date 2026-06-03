@@ -239,5 +239,52 @@ function showError(el, msg) {
     }
     fb.textContent = msg;
 }
+
+// Realtime check database changes
+function startRealtimeCheck(type, id, lockVersion) {
+    const interval = setInterval(async () => {
+        try {
+            const response = await fetch(`/admin/api/check-entity-status?type=${type}&id=${id}&lock_version=${lockVersion}`);
+            const data = await response.json();
+            if (data.success && data.status !== 'unchanged') {
+                clearInterval(interval);
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100vw';
+                overlay.style.height = '100vh';
+                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                overlay.style.zIndex = '99999';
+                overlay.style.display = 'flex';
+                overlay.style.justifyContent = 'center';
+                overlay.style.alignItems = 'center';
+                overlay.style.backdropFilter = 'blur(5px)';
+                overlay.innerHTML = `
+                    <div class="card shadow-lg border-0 text-center p-4 m-3" style="max-width: 500px; border-radius: 16px;">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
+                            </div>
+                            <h4 class="card-title text-danger fw-bold mb-3">Cảnh báo đồng bộ dữ liệu</h4>
+                            <p class="card-text text-secondary mb-4" style="font-size: 1.1rem;">${data.message}</p>
+                            <button onclick="window.location.reload();" class="btn btn-primary btn-lg px-4" style="border-radius: 8px;">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Tải lại trang
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                document.querySelectorAll('form input, form select, form textarea, form button').forEach(el => {
+                    el.disabled = true;
+                });
+            }
+        } catch (error) {
+            console.error('Lỗi khi kiểm tra trạng thái thực thể:', error);
+        }
+    }, 5000);
+}
+
+startRealtimeCheck('room', '{{ $room->room_id }}', '{{ $room->updated_at?->timestamp }}');
 </script>
 @endpush

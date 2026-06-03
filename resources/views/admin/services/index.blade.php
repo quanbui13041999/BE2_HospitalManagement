@@ -1330,6 +1330,7 @@ document.getElementById('addPriceForm').addEventListener('submit', async functio
             showToast(data.message, 'success');
             form.reset();
             formContainer.classList.add('d-none');
+            window.needReload = true;
             
             // Reload price table instantly inside details modal
             reloadModalPrices();
@@ -1484,6 +1485,7 @@ async function savePriceInline(priceId) {
             showToast('Lỗi trùng lặp khoảng thời gian bảng giá!', 'warning');
         } else if (data.success) {
             showToast(data.message, 'success');
+            window.needReload = true;
             reloadModalPrices();
         } else {
             inlineErr.textContent = data.message || 'Gặp lỗi khi lưu';
@@ -1510,6 +1512,7 @@ async function deletePriceAjax(priceId) {
         
         if (data.success) {
             showToast(data.message, 'success');
+            window.needReload = true;
             reloadModalPrices();
         } else {
             showToast(data.message || 'Xoá giá thất bại', 'danger');
@@ -1575,6 +1578,16 @@ document.getElementById('deleteServiceForm').addEventListener('submit', async fu
 document.addEventListener('DOMContentLoaded', function () {
     const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltipEls.forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover' }));
+
+    // Re-load page on modal close if price was added/edited/deleted
+    const viewModalEl = document.getElementById('viewServiceModal');
+    if (viewModalEl) {
+        viewModalEl.addEventListener('hidden.bs.modal', function () {
+            if (window.needReload) {
+                window.location.reload();
+            }
+        });
+    }
 
     // ── Realtime polling: phát hiện thay đổi mỗi 20 giây ──────
     const ADMIN_DATA_URL = '{{ route("admin.services.data") }}';

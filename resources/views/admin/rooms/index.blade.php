@@ -41,40 +41,46 @@
 
     .room-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
     }
 
     .room-card {
-        border-radius: 12px;
-        padding: 16px 14px;
+        border-radius: 14px;
+        padding: 20px 18px;
         cursor: pointer;
-        transition: .2s;
-        border: 2px solid transparent;
+        transition: all .25s ease;
+        border: 1px solid #edf1f7;
+        background: #fff;
         user-select: none;
         position: relative;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .03);
     }
 
     .room-card:hover {
         border-color: #0D47A1;
-        box-shadow: 0 4px 16px rgba(13, 71, 161, .14);
-        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(13, 71, 161, .15);
+        transform: translateY(-3px);
     }
 
     .room-card.s-using {
         background: #F0F4FF;
+        border-color: #c7d2fe;
     }
 
     .room-card.s-empty {
         background: #E8F5E9;
+        border-color: #c8e6c9;
     }
 
     .room-card.s-maintain {
         background: #FFEBEE;
+        border-color: #ffcdd2;
     }
 
     .room-card.s-clean {
         background: #FFFDE7;
+        border-color: #fff9c4;
     }
 
     .room-card-code {
@@ -235,9 +241,9 @@
             <p class="text-muted small mb-0">Theo dõi trạng thái phòng và phân bổ bác sĩ theo ca làm việc</p>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.rooms.create') }}" class="btn btn-outline-primary">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCreateRoom">
                 <i class="bi bi-plus-circle me-1"></i>Thêm phòng
-            </a>
+            </button>
         </div>
     </div>
 
@@ -345,7 +351,12 @@
                                 <i class="bi bi-three-dots-vertical"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 13px;">
-                                <li><a class="dropdown-item" href="{{ route('admin.rooms.edit', $room) }}"><i class="bi bi-pencil me-2 text-primary"></i>Sửa phòng</a></li>
+                                <li>
+                                    <button type="button" class="dropdown-item"
+                                        onclick="openEditRoomModal('{{ $room->room_id }}', '{{ addslashes($room->room_code) }}', '{{ addslashes($room->room_name) }}', '{{ $room->department_id }}', '{{ $room->room_type }}', '{{ $room->status }}', '{{ addslashes($room->notes) }}', '{{ $room->updated_at?->timestamp }}', '{{ route('admin.rooms.update', $room) }}')">
+                                        <i class="bi bi-pencil me-2 text-primary"></i>Sửa phòng
+                                    </button>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <button type="button" class="dropdown-item text-danger"
@@ -356,14 +367,27 @@
                         </div>
 
                         <div class="room-card-code">{{ $room->room_code }}</div>
-                        <div class="room-card-label">{{ $room->status }}</div>
-                        @if($todayDoc)
-                        <div class="room-card-doc">
-                            <i class="bi bi-person-fill me-1"></i>{{ $todayDoc->doctor->full_name ?? '' }}
+                        <div class="room-card-name text-muted small fw-semibold text-truncate mb-1" title="{{ $room->room_name ?? '' }}">{{ $room->room_name ?? '—' }}</div>
+                        
+                        <div class="d-flex align-items-center gap-1 my-2">
+                            <span class="badge bg-secondary-subtle text-secondary small" style="font-size: 10px;">
+                                <i class="bi bi-tag-fill me-1"></i>{{ $room->room_type }}
+                            </span>
+                            <span class="badge bg-primary-subtle text-primary small" style="font-size: 10px;">
+                                <i class="bi bi-hospital me-1"></i>{{ $room->department->department_name ?? 'Không rõ khoa' }}
+                            </span>
                         </div>
-                        @else
-                        <div class="room-card-doc text-muted">+ Chưa phân ca</div>
-                        @endif
+
+                        <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-light-subtle">
+                            <div class="room-card-label fw-bold">{{ $room->status }}</div>
+                            @if($todayDoc)
+                            <div class="room-card-doc small text-dark fw-semibold" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $todayDoc->doctor->full_name ?? '' }}">
+                                <i class="bi bi-person-fill me-1 text-primary"></i>{{ $todayDoc->doctor->full_name ?? '' }}
+                            </div>
+                            @else
+                            <div class="room-card-doc text-muted small">+ Chưa phân ca</div>
+                            @endif
+                        </div>
                     </div>
                     @endforeach
                 </div>
@@ -439,10 +463,6 @@
                         </a>
                         <a href="{{ route('admin.rooms.schedule.create') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
                             <i class="bi bi-plus-circle text-success"></i> Tạo ca làm việc mới
-                            <i class="bi bi-chevron-right ms-auto text-muted"></i>
-                        </a>
-                        <a href="{{ route('admin.rooms.create') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
-                            <i class="bi bi-door-open text-info"></i> Thêm phòng khám
                             <i class="bi bi-chevron-right ms-auto text-muted"></i>
                         </a>
                     </div>
@@ -833,6 +853,146 @@
             }
         </script>
 
+        {{-- Modal Thêm phòng khám mới --}}
+        <div class="modal fade" id="modalCreateRoom" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-plus-circle me-2 text-primary"></i>Thêm phòng khám mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="{{ route('admin.rooms.store') }}" id="createRoomFormModal" novalidate>
+                        @csrf
+                        <div class="modal-body row g-3">
+                            {{-- Mã phòng --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="create_room_code">Mã phòng <span class="text-danger">*</span></label>
+                                <input type="text" name="room_code" id="create_room_code" class="form-control" placeholder="VD: P501" maxlength="20" required>
+                                <div class="char-count" id="create_room_code_count">0 / 20</div>
+                            </div>
+                            {{-- Tên phòng --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="create_room_name">Tên phòng</label>
+                                <input type="text" name="room_name" id="create_room_name" class="form-control" placeholder="VD: Tim mạch" maxlength="100">
+                                <div class="char-count" id="create_room_name_count">0 / 100</div>
+                            </div>
+                            {{-- Khoa phụ trách --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="create_department_id">Khoa phụ trách</label>
+                                <select name="department_id" id="create_department_id" class="form-select">
+                                    <option value="">-- Chọn khoa (không bắt buộc) --</option>
+                                    @foreach($departments as $dept)
+                                        <option value="{{ $dept->department_id }}">{{ $dept->department_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- Loại phòng --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="create_room_type">Loại phòng <span class="text-danger">*</span></label>
+                                <select name="room_type" id="create_room_type" class="form-select" required>
+                                    <option value="">-- Chọn loại phòng --</option>
+                                    @foreach($roomTypes as $type)
+                                        <option value="{{ $type }}">{{ $type }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- Trạng thái --}}
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold" for="create_status">Trạng thái <span class="text-danger">*</span></label>
+                                <select name="status" id="create_status" class="form-select" required>
+                                    @foreach($roomStatuses as $st)
+                                        <option value="{{ $st }}" {{ $st === 'Trống' ? 'selected' : '' }}>{{ $st }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- Ghi chú --}}
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold" for="create_notes">Ghi chú</label>
+                                <textarea name="notes" id="create_notes" class="form-control" rows="3" maxlength="500" placeholder="Ghi chú thêm..."></textarea>
+                                <div class="char-count" id="create_notes_count">0 / 500</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-primary" id="createRoomSubmitBtn">
+                                <i class="bi bi-floppy me-1"></i>Tạo phòng
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- Modal Sửa phòng khám --}}
+        <div class="modal fade" id="modalEditRoom" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-pencil-square me-2 text-primary"></i>Sửa phòng khám: <span id="editRoomTitle" class="text-primary"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" id="editRoomFormModal" novalidate>
+                        @csrf @method('PUT')
+                        <input type="hidden" name="_lock_version" id="edit_lock_version">
+                        <div class="modal-body row g-3">
+                            {{-- Mã phòng --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Mã phòng <span class="text-muted small">(Không thể sửa)</span></label>
+                                <input type="text" id="edit_room_code" class="form-control locked-field" readonly disabled>
+                            </div>
+                            {{-- Tên phòng --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="edit_room_name">Tên phòng</label>
+                                <input type="text" name="room_name" id="edit_room_name" class="form-control" placeholder="VD: Tim mạch" maxlength="100">
+                                <div class="char-count" id="edit_room_name_count">0 / 100</div>
+                            </div>
+                            {{-- Khoa phụ trách --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="edit_department_id">Khoa phụ trách</label>
+                                <select name="department_id" id="edit_department_id" class="form-select">
+                                    <option value="">-- Không thuộc khoa --</option>
+                                    @foreach($departments as $dept)
+                                        <option value="{{ $dept->department_id }}">{{ $dept->department_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- Loại phòng --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="edit_room_type">Loại phòng <span class="text-danger">*</span></label>
+                                <select name="room_type" id="edit_room_type" class="form-select" required>
+                                    <option value="">-- Chọn loại phòng --</option>
+                                    @foreach($roomTypes as $type)
+                                        <option value="{{ $type }}">{{ $type }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- Trạng thái --}}
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold" for="edit_status">Trạng thái <span class="text-danger">*</span></label>
+                                <select name="status" id="edit_status" class="form-select" required>
+                                    @foreach($roomStatuses as $st)
+                                        <option value="{{ $st }}">{{ $st }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- Ghi chú --}}
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold" for="edit_notes">Ghi chú</label>
+                                <textarea name="notes" id="edit_notes" class="form-control" rows="3" maxlength="500" placeholder="Ghi chú thêm..."></textarea>
+                                <div class="char-count" id="edit_notes_count">0 / 500</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-primary" id="editRoomSubmitBtn">
+                                <i class="bi bi-floppy me-1"></i>Lưu thay đổi
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         {{-- Modal xác nhận xóa phòng --}}
         <div class="modal fade" id="modalDeleteRoom" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
@@ -870,6 +1030,233 @@
             document.getElementById('deleteRoomName').textContent = roomName || 'Không có tên';
             document.getElementById('deleteRoomForm').action = actionUrl;
             new bootstrap.Modal(document.getElementById('modalDeleteRoom')).show();
+        }
+
+        // ── Char counter cho Modals ──────────────────────────────────────────
+        function bindCharCount(inputId, counterId, max) {
+            const el = document.getElementById(inputId);
+            const counter = document.getElementById(counterId);
+            if (!el || !counter) return;
+            const update = () => {
+                const len = el.value.length;
+                counter.textContent = len + ' / ' + max;
+                counter.className = 'char-count' + (len >= max ? ' over' : len >= max * 0.8 ? ' warn' : '');
+            };
+            el.addEventListener('input', update);
+            update();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            bindCharCount('create_room_code', 'create_room_code_count', 20);
+            bindCharCount('create_room_name', 'create_room_name_count', 100);
+            bindCharCount('create_notes',     'create_notes_count',     500);
+
+            bindCharCount('edit_room_name', 'edit_room_name_count', 100);
+            bindCharCount('edit_notes',     'edit_notes_count',     500);
+        });
+
+        // Realtime check interval cho modal edit
+        let editRealtimeCheckInterval = null;
+
+        function openEditRoomModal(roomId, roomCode, roomName, departmentId, roomType, status, notes, lockVersion, actionUrl) {
+            document.getElementById('editRoomTitle').textContent = roomCode;
+            document.getElementById('edit_room_code').value = roomCode;
+            document.getElementById('edit_room_name').value = roomName === 'undefined' ? '' : roomName;
+            document.getElementById('edit_department_id').value = departmentId || '';
+            document.getElementById('edit_room_type').value = roomType;
+            document.getElementById('edit_status').value = status;
+            document.getElementById('edit_notes').value = notes === 'undefined' ? '' : notes;
+            document.getElementById('edit_lock_version').value = lockVersion;
+            document.getElementById('editRoomFormModal').action = actionUrl;
+
+            // Xóa validation cũ
+            const form = document.getElementById('editRoomFormModal');
+            form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+
+            // Hiển thị modal
+            const modalEl = document.getElementById('modalEditRoom');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            // Khởi chạy Realtime Checking khi mở modal sửa phòng khám
+            if (editRealtimeCheckInterval) clearInterval(editRealtimeCheckInterval);
+            editRealtimeCheckInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/admin/api/check-entity-status?type=room&id=${roomId}&lock_version=${lockVersion}`);
+                    const data = await response.json();
+                    if (data.success && data.status !== 'unchanged') {
+                        clearInterval(editRealtimeCheckInterval);
+                        alert(data.message);
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi kiểm tra trạng thái thực thể:', error);
+                }
+            }, 5000);
+        }
+
+        // Dừng Realtime Checking khi đóng modal sửa
+        document.addEventListener('DOMContentLoaded', () => {
+            const modalEl = document.getElementById('modalEditRoom');
+            if (modalEl) {
+                modalEl.addEventListener('hidden.bs.modal', () => {
+                    if (editRealtimeCheckInterval) {
+                        clearInterval(editRealtimeCheckInterval);
+                        editRealtimeCheckInterval = null;
+                    }
+                });
+            }
+        });
+
+        // ── Client-side validation cho Create Modal ─────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            const createForm = document.getElementById('createRoomFormModal');
+            if (createForm) {
+                createForm.addEventListener('submit', function(e) {
+                    let valid = true;
+                    const code = document.getElementById('create_room_code');
+                    const type = document.getElementById('create_room_type');
+                    const status = document.getElementById('create_status');
+
+                    [code, type, status].forEach(el => el.classList.remove('is-invalid'));
+
+                    const codePattern = /^[A-Za-z0-9\-\.]+$/;
+                    if (!code.value.trim()) {
+                        showError(code, 'Mã phòng là bắt buộc.'); valid = false;
+                    } else if (!codePattern.test(code.value.trim())) {
+                        showError(code, 'Mã phòng chỉ được chứa chữ cái, số, dấu gạch ngang và dấu chấm.'); valid = false;
+                    } else if (code.value.length > 20) {
+                        showError(code, 'Mã phòng không được vượt quá 20 ký tự.'); valid = false;
+                    }
+
+                    if (!type.value) {
+                        showError(type, 'Vui lòng chọn loại phòng.'); valid = false;
+                    }
+                    if (!status.value) {
+                        showError(status, 'Vui lòng chọn trạng thái.'); valid = false;
+                    }
+
+                    if (!valid) {
+                        e.preventDefault();
+                    } else {
+                        // Double submit protection
+                        const btn = document.getElementById('createRoomSubmitBtn');
+                        btn.disabled = true;
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang tạo...';
+                    }
+                });
+            }
+
+            const editForm = document.getElementById('editRoomFormModal');
+            if (editForm) {
+                editForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    let valid = true;
+                    const name = document.getElementById('edit_room_name');
+                    const type = document.getElementById('edit_room_type');
+                    const status = document.getElementById('edit_status');
+
+                    [name, type, status].forEach(el => el.classList.remove('is-invalid'));
+
+                    if (!type.value) {
+                        showError(type, 'Vui lòng chọn loại phòng.'); valid = false;
+                    }
+                    if (!status.value) {
+                        showError(status, 'Vui lòng chọn trạng thái.'); valid = false;
+                    }
+
+                    if (!valid) return;
+
+                    // Double submit protection
+                    const btn = document.getElementById('editRoomSubmitBtn');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang lưu...';
+
+                    try {
+                        const formData = new FormData(editForm);
+                        const response = await fetch(editForm.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+                        const data = await response.json();
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-floppy me-1"></i>Lưu thay đổi';
+
+                        if (response.status === 409) {
+                            showToast(data.message || 'Xung đột dữ liệu. Vui lòng tải lại trang.', 'warning');
+                            bootstrap.Modal.getInstance(document.getElementById('modalEditRoom')).hide();
+                        } else if (response.status === 422) {
+                            Object.keys(data.errors).forEach(key => {
+                                const input = editForm.querySelector(`[name="${key}"]`);
+                                if (input) showError(input, data.errors[key][0]);
+                            });
+                            showToast('Thông tin nhập liệu không hợp lệ', 'warning');
+                        } else if (data.success) {
+                            showToast(data.message || 'Cập nhật phòng thành công!', 'success');
+                            bootstrap.Modal.getInstance(document.getElementById('modalEditRoom')).hide();
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showToast(data.message || 'Cập nhật thất bại', 'danger');
+                        }
+                    } catch (err) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-floppy me-1"></i>Lưu thay đổi';
+                        showToast('Lỗi máy chủ', 'danger');
+                    }
+                });
+            }
+
+            const deleteForm = document.getElementById('deleteRoomForm');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const btn = deleteForm.querySelector('button[type="submit"]');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang xóa...';
+                    
+                    try {
+                        const response = await fetch(deleteForm.action, {
+                            method: 'POST',
+                            body: new FormData(deleteForm),
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+                        const data = await response.json();
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Xóa phòng';
+                        
+                        if (response.status === 400 || !data.success) {
+                            showToast(data.message || 'Không thể xóa phòng do ràng buộc dữ liệu.', 'danger');
+                            bootstrap.Modal.getInstance(document.getElementById('modalDeleteRoom')).hide();
+                        } else if (data.success) {
+                            showToast(data.message || 'Xóa phòng thành công!', 'success');
+                            bootstrap.Modal.getInstance(document.getElementById('modalDeleteRoom')).hide();
+                            setTimeout(() => window.location.reload(), 1000);
+                        }
+                    } catch (err) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Xóa phòng';
+                        showToast('Lỗi máy chủ', 'danger');
+                    }
+                });
+            }
+        });
+
+        function showError(el, msg) {
+            el.classList.add('is-invalid');
+            let fb = el.nextElementSibling;
+            if (!fb || !fb.classList.contains('invalid-feedback')) {
+                fb = document.createElement('div');
+                fb.className = 'invalid-feedback';
+                el.parentNode.insertBefore(fb, el.nextSibling);
+            }
+            fb.textContent = msg;
         }
 
         // ── Realtime polling: cập nhật phòng khám mỗi 30 giây ───────────────

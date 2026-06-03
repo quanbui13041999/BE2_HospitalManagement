@@ -420,8 +420,9 @@
                                         </td>
                                         <td class="py-3 px-4">
                                             <div class="flex items-center gap-3">
-                                                <img src="{{ $doctor['avatar_url'] ?? 'https://via.placeholder.com/40' }}"
-                                                    alt="Doctor" class="w-10 h-10 rounded-full object-cover">
+                                                <img src="{{ $doctor['avatar_url'] ?? asset('images/default-avatar.png') }}"
+                                                    alt="Doctor" class="w-10 h-10 rounded-full object-cover"
+                                                    onerror="this.onerror=null; this.src='{{ asset('images/default-avatar.png') }}';">
                                                 <span class="font-medium">{{ $doctor['full_name'] }}</span>
                                             </div>
                                         </td>
@@ -457,8 +458,9 @@
 
                 @if(!empty($topDoctorWeek))
                     <div class="text-center py-4">
-                        <img src="{{ $topDoctorWeek['avatar_url'] ?? 'https://via.placeholder.com/100' }}"
-                            alt="Doctor" class="w-20 h-20 rounded-full object-cover mx-auto mb-3">
+                        <img src="{{ $topDoctorWeek['avatar_url'] ?? asset('images/default-avatar.png') }}"
+                            alt="Doctor" class="w-20 h-20 rounded-full object-cover mx-auto mb-3"
+                            onerror="this.onerror=null; this.src='{{ asset('images/default-avatar.png') }}';">
                         <h3 class="text-xl font-bold text-gray-900 mb-2">{{ $topDoctorWeek['full_name'] }}</h3>
                         <div class="mb-4">
                             <p class="text-3xl font-bold text-blue-600">{{ $topDoctorWeek['appointment_count'] }}</p>

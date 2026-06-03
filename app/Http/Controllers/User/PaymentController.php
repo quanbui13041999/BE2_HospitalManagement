@@ -106,11 +106,57 @@ class PaymentController extends Controller
             return redirect()->route('user.payments.show', $payment->appointment_id)
                 ->with('error', 'Giao dịch đã hết hạn. Vui lòng tạo giao dịch mới.');
         }
+
+        // Nếu không phải phương thức QR, chuyển sang trang cổng tương ứng
+        if ($payment->method !== 'QR') {
+            if (in_array($payment->method, ['ATM', 'MoMo', 'ZaloPay'])) {
+                return redirect()->route('user.payments.gateway', $paymentId);
+            }
+            return redirect()->route('user.payments.show', $payment->appointment_id)
+                ->with('info', 'Phương thức thanh toán này không hỗ trợ hiển thị mã QR.');
+        }
         
-        $qrContent   = session('qr_content', 'HOSPITAL|' . $payment->transaction_ref . '|' . (int)$payment->total_amount . '|Thanh toan lich kham');
+        $qrContent   = session('qr_content', $payment->qr_content);
         $totalAmount = session('total_amount', $payment->total_amount);
-        $checkoutUrl = session('checkout_url');
+        $checkoutUrl = session('checkout_url', $payment->checkout_url);
         $isRealMode  = $this->paymentService->isPayOsConfigured();
+
+        // Nếu thiếu qrContent (ví dụ: truy cập trực tiếp từ lịch sử thanh toán mà chưa được lưu trong DB)
+        if (!$qrContent) {
+            $payOsService = app(\App\Services\PayOsService::class);
+            $payOsResult = $payOsService->createPaymentLink(
+                $payment->payment_id,
+                (int) $payment->total_amount,
+                "Thanh toan lich kham {$payment->appointment_id}",
+                route('user.payments.success', $payment->payment_id),
+                route('user.payments.show', $payment->appointment_id)
+            );
+
+            if ($payOsResult['success']) {
+                $qrContent   = $payOsResult['qrContent'];
+                $checkoutUrl = $payOsResult['checkoutUrl'] ?? null;
+                
+                $updateData = [
+                    'checkout_url' => $checkoutUrl,
+                    'qr_content' => $qrContent,
+                ];
+                
+                if ($isRealMode && !empty($payOsResult['paymentLinkId'])) {
+                    $updateData['transaction_ref'] = $payOsResult['paymentLinkId'];
+                } elseif (!$isRealMode) {
+                    $updateData['transaction_ref'] = 'MOCK_REF_' . $payment->payment_id;
+                }
+                
+                $payment->update($updateData);
+            } else {
+                $qrContent = sprintf(
+                    'HOSPITAL|%s|%d|Thanh toan lich kham %s',
+                    $payment->transaction_ref,
+                    (int) $payment->total_amount,
+                    $payment->appointment_id
+                );
+            }
+        }
         
         return view('user.payments.qr', compact('payment', 'qrContent', 'totalAmount', 'checkoutUrl', 'isRealMode'));
     }
