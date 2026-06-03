@@ -92,8 +92,14 @@ class AdminRehabExerciseController extends Controller
             ->with('success', 'Bài tập đã được tạo thành công!');
     }
 
-    public function edit(RehabExercise $exercise): View
+    public function edit($exercise)
     {
+        $exercise = $this->findExerciseFromRoute($exercise);
+
+        if (! $exercise) {
+            return $this->redirectToRehabIndexNotFound();
+        }
+
         return view('admin.rehab_form', [
             'exercise'      => $exercise,
             'categories'    => $this->categoryOptions(),
@@ -103,8 +109,14 @@ class AdminRehabExerciseController extends Controller
         ]);
     }
 
-    public function update(RehabExerciseRequest $request, int $exercise): RedirectResponse
+    public function update(RehabExerciseRequest $request, $exercise): RedirectResponse
     {
+        $exercise = $this->validRouteId($exercise);
+
+        if (! $exercise) {
+            return $this->redirectToRehabIndexNotFound();
+        }
+
         $data = $request->validated();
         $snapshot = $data['rehab_snapshot'];
         unset($data['rehab_snapshot']);
@@ -135,9 +147,7 @@ class AdminRehabExerciseController extends Controller
         });
 
         if ($result === 'missing') {
-            return redirect()
-                ->route('admin.rehab.index')
-                ->with('warning', 'Bài tập đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+            return $this->redirectToRehabIndexNotFound();
         }
 
         if ($result === 'stale') {
@@ -155,8 +165,14 @@ class AdminRehabExerciseController extends Controller
             ->with('success', 'Bài tập đã được cập nhật!');
     }
 
-    public function destroy(int $exercise): RedirectResponse
+    public function destroy($exercise): RedirectResponse
     {
+        $exercise = $this->validRouteId($exercise);
+
+        if (! $exercise) {
+            return $this->redirectToRehabIndexNotFound();
+        }
+
         $lockKey = $this->rehabDeleteLockKey($exercise);
 
         if (! $this->acquireRehabLock($lockKey)) {
@@ -185,9 +201,7 @@ class AdminRehabExerciseController extends Controller
         }
 
         if ($result === 'missing') {
-            return redirect()
-                ->route('admin.rehab.index')
-                ->with('warning', 'Bài tập đã được người khác xóa trước đó. Vui lòng tải lại danh sách.');
+            return $this->redirectToRehabIndexNotFound();
         }
 
         if ($thumbnail) {
@@ -262,5 +276,30 @@ class AdminRehabExerciseController extends Controller
     private function normalizeForCompare(string $value): string
     {
         return mb_strtolower(preg_replace('/\s+/u', ' ', trim($value)), 'UTF-8');
+    }
+
+    private function findExerciseFromRoute($id): ?RehabExercise
+    {
+        if ($id instanceof RehabExercise) {
+            return $id;
+        }
+
+        $id = $this->validRouteId($id);
+
+        return $id ? RehabExercise::find($id) : null;
+    }
+
+    private function validRouteId($id): ?int
+    {
+        $id = trim((string) $id);
+
+        return preg_match('/\A[1-9][0-9]*\z/', $id) ? (int) $id : null;
+    }
+
+    private function redirectToRehabIndexNotFound(): RedirectResponse
+    {
+        return redirect()
+            ->route('admin.rehab.index')
+            ->with('warning', 'Không tìm thấy trang bài tập phục hồi.');
     }
 }

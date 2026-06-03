@@ -70,19 +70,29 @@ class AdminNutritionController extends Controller
             ->with('success', 'Bài viết đã được tạo thành công!');
     }
 
-    public function edit(int $article)
+    public function edit(string $article)
     {
-        $article = NutritionArticle::find($article);
+        if (! ctype_digit($article)) {
+            return $this->invalidArticlePath();
+        }
+
+        $article = NutritionArticle::find((int) $article);
 
         if (! $article) {
             return redirect()->route('admin.nutrition.index')
-                ->with('warning', 'Bài viết đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn bài viết từ danh sách.');
         }
 
         $doctors = Doctor::where('status', 1)->get(['doctor_id', 'full_name']);
         $articleSnapshot = $this->articleSnapshot($article);
 
         return view('nutrition.admin.edit', compact('article', 'doctors', 'articleSnapshot'));
+    }
+
+    public function invalidArticlePath()
+    {
+        return redirect()->route('admin.nutrition.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn bài viết từ danh sách.');
     }
 
     public function update(Request $request, int $article)
@@ -198,19 +208,29 @@ class AdminNutritionController extends Controller
             ->with('success', 'Quy tắc dinh dưỡng đã được thêm thành công!');
     }
 
-    public function rulesEdit(int $rule)
+    public function rulesEdit(string $rule)
     {
-        $rule = DiseaseNutritionRule::find($rule);
+        if (! ctype_digit($rule)) {
+            return $this->invalidRulePath();
+        }
+
+        $rule = DiseaseNutritionRule::find((int) $rule);
 
         if (! $rule) {
             return redirect()->route('admin.nutrition.rules.index')
-                ->with('warning', 'Quy tắc dinh dưỡng đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn quy tắc từ danh sách.');
         }
 
         $foods = Food::active()->orderBy('food_name')->get();
         $ruleSnapshot = $this->ruleSnapshot($rule);
 
         return view('nutrition.admin.rules.edit', compact('rule', 'foods', 'ruleSnapshot'));
+    }
+
+    public function invalidRulePath()
+    {
+        return redirect()->route('admin.nutrition.rules.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn quy tắc từ danh sách.');
     }
 
     public function rulesUpdate(Request $request, int $rule)
@@ -328,18 +348,28 @@ class AdminNutritionController extends Controller
             ->with('success', 'Món ăn mới đã được thêm vào cơ sở dữ liệu!');
     }
 
-    public function foodsEdit(int $food)
+    public function foodsEdit(string $food)
     {
-        $food = Food::find($food);
+        if (! ctype_digit($food)) {
+            return $this->invalidFoodPath();
+        }
+
+        $food = Food::find((int) $food);
 
         if (! $food) {
             return redirect()->route('admin.nutrition.foods.index')
-                ->with('warning', 'Thực phẩm đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn thực phẩm từ danh sách.');
         }
 
         $foodSnapshot = $this->foodSnapshot($food);
 
         return view('nutrition.admin.foods.edit', compact('food', 'foodSnapshot'));
+    }
+
+    public function invalidFoodPath()
+    {
+        return redirect()->route('admin.nutrition.foods.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn thực phẩm từ danh sách.');
     }
 
     public function foodsUpdate(Request $request, int $food)
@@ -434,11 +464,11 @@ class AdminNutritionController extends Controller
         $request->merge(['icd_code' => $request->filled('icd_code') ? strtoupper($request->input('icd_code')) : null]);
 
         return $request->validate([
-            'disease_name' => ['required', 'string', 'min:3', 'max:120', 'regex:/\A[\pL\s]+\z/u'],
+            'disease_name' => ['required', 'string', 'min:3', 'max:120', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'icd_code' => ['nullable', 'string', 'max:10', 'regex:/\A[A-Z][0-9]{1,2}(\.[0-9A-Z]{1,2})?\z/'],
             'food_id' => ['required', 'integer', 'min:1', Rule::exists('foods', 'food_id')],
             'recommendation_type' => ['required', Rule::in(['should_eat', 'should_avoid'])],
-            'reason' => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\s]+\z/u'],
+            'reason' => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'rule_snapshot' => $isUpdate ? ['required', 'string', 'size:64'] : ['prohibited'],
             'rule_id' => ['prohibited'],
             'created_at' => ['prohibited'],
@@ -450,7 +480,7 @@ class AdminNutritionController extends Controller
     {
         return $request->validate([
             'food_name' => ['required', 'string', 'min:2', 'max:80', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
-            'calories_per_100g' => ['required', 'integer', 'min:0', 'max:5000'],
+            'calories_per_100g' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:0', 'max:5000'],
             'description' => ['nullable', 'string', 'max:300', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
             'status' => ['required', Rule::in(['0', '1', 0, 1])],
             'food_snapshot' => $isUpdate ? ['required', 'string', 'size:64'] : ['prohibited'],
@@ -484,13 +514,13 @@ class AdminNutritionController extends Controller
             'in' => 'Giá trị được chọn không hợp lệ.',
             'exists' => 'Dữ liệu được chọn không tồn tại.',
             'prohibited' => 'Không được gửi dữ liệu này từ trình duyệt.',
-            'regex' => 'Dữ liệu nhập sai định dạng.',
+            'regex' => 'Dữ liệu nhập sai định dạng; ô số chỉ dùng số 0-9, không dùng số full-width hoặc ký tự lạ.',
             'title.regex' => 'Tiêu đề chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'content.regex' => 'Nội dung chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'target_disease.regex' => 'Tên bệnh chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
-            'disease_name.regex' => 'Tên bệnh lý chỉ được nhập chữ và khoảng trắng.',
+            'disease_name.regex' => 'Tên bệnh lý chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'icd_code.regex' => 'Mã ICD không đúng định dạng, ví dụ E11 hoặc I10.',
-            'reason.regex' => 'Lý do chỉ được nhập chữ và khoảng trắng.',
+            'reason.regex' => 'Lý do chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'food_name.regex' => 'Tên thực phẩm chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'description.regex' => 'Mô tả chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'article_snapshot.required' => 'Dữ liệu đã cũ, vui lòng tải lại trang trước khi lưu.',

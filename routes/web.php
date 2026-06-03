@@ -214,10 +214,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/',                    [DocumentController::class, 'index'])->name('index');
         Route::post('/',                   [DocumentController::class, 'store'])->name('store');
         Route::get('/{document}/view',     [DocumentController::class, 'show'])->name('show');
-        Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
+        Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download')->whereNumber('document');
         Route::get('/{document}/edit',     [DocumentController::class, 'edit'])->name('edit');
-        Route::put('/{document}',          [DocumentController::class, 'update'])->name('update');
-        Route::delete('/{document}',       [DocumentController::class, 'destroy'])->name('destroy');
+        Route::put('/{document}',          [DocumentController::class, 'update'])->name('update')->whereNumber('document');
+        Route::delete('/{document}',       [DocumentController::class, 'destroy'])->name('destroy')->whereNumber('document');
     });
 
     // --------------------------------------------------------
@@ -247,7 +247,7 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth'])->prefix('treatment')->name('treatment.')->group(function () {
     Route::get('/',                    [TreatmentReminderController::class, 'index'])->name('index');
-    Route::post('/confirm/{reminder}', [TreatmentReminderController::class, 'confirm'])->name('confirm');
+    Route::post('/confirm/{reminder}', [TreatmentReminderController::class, 'confirm'])->name('confirm')->whereNumber('reminder');
     Route::post('/instruction/toggle', [TreatmentReminderController::class, 'toggleInstruction'])->name('instruction.toggle');
     Route::get('/report',              [TreatmentReminderController::class, 'report'])->name('report');
 });
@@ -322,18 +322,18 @@ Route::prefix('medical-records')
         Route::post('/', [MedicalRecordController::class, 'store'])->name('store');
         Route::get('/{id}', [MedicalRecordController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [MedicalRecordController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [MedicalRecordController::class, 'update'])->name('update');
-        Route::delete('/{id}', [MedicalRecordController::class, 'destroy'])->name('destroy');
-        Route::get('/{id}/print', [MedicalRecordController::class, 'print'])->name('print');
+        Route::put('/{id}', [MedicalRecordController::class, 'update'])->name('update')->whereNumber('id');
+        Route::delete('/{id}', [MedicalRecordController::class, 'destroy'])->name('destroy')->whereNumber('id');
+        Route::get('/{id}/print', [MedicalRecordController::class, 'print'])->name('print')->whereNumber('id');
 
         // File đính kèm
-        Route::post('/{id}/attachments', [MedicalRecordController::class, 'uploadAttachment'])->name('attachments.upload');
-        Route::get('/{recordId}/attachments/{attachmentId}/view', [MedicalRecordController::class, 'viewAttachment'])->name('attachments.view');
-        Route::delete('/{recordId}/attachments/{attachmentId}', [MedicalRecordController::class, 'deleteAttachment'])->name('attachments.destroy');
+        Route::post('/{id}/attachments', [MedicalRecordController::class, 'uploadAttachment'])->name('attachments.upload')->whereNumber('id');
+        Route::get('/{recordId}/attachments/{attachmentId}/view', [MedicalRecordController::class, 'viewAttachment'])->name('attachments.view')->whereNumber('recordId')->whereNumber('attachmentId');
+        Route::delete('/{recordId}/attachments/{attachmentId}', [MedicalRecordController::class, 'deleteAttachment'])->name('attachments.destroy')->whereNumber('recordId')->whereNumber('attachmentId');
 
         // Kết quả xét nghiệm (chỉ Doctor/Admin)
-        Route::put('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'updateOrderResult'])->name('orders.update-result');
-        Route::delete('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'deleteOrderResult'])->name('orders.delete-result');
+        Route::put('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'updateOrderResult'])->name('orders.update-result')->whereNumber('recordId')->whereNumber('orderId');
+        Route::delete('/{recordId}/orders/{orderId}/result', [MedicalRecordController::class, 'deleteOrderResult'])->name('orders.delete-result')->whereNumber('recordId')->whereNumber('orderId');
     });
 
 Route::middleware('auth')
@@ -347,9 +347,11 @@ Route::middleware('auth')
 // Bác sĩ xem tiền sử & tài liệu của bệnh nhân
 Route::middleware('auth')->group(function () {
     Route::get('/health/patient/{patientId}', [HealthBackgroundController::class, 'showPatient'])
+        ->whereNumber('patientId')
         ->name('health.patient.show');
 
     Route::get('/documents/patient/{patientId}', [DocumentController::class, 'indexPatient'])
+        ->whereNumber('patientId')
         ->name('documents.patient.index');
 });
 
@@ -557,7 +559,7 @@ Route::middleware(['auth'])->group(function () {
     // Tuân thủ điều trị
     Route::prefix('treatment')->name('treatment.')->group(function () {
         Route::get('/', [TreatmentReminderController::class, 'index'])->name('index');
-        Route::post('/confirm/{reminder}', [TreatmentReminderController::class, 'confirm'])->name('confirm');
+        Route::post('/confirm/{reminder}', [TreatmentReminderController::class, 'confirm'])->name('confirm')->whereNumber('reminder');
         Route::post('/instruction/toggle', [TreatmentReminderController::class, 'toggleInstruction'])->name('instruction.toggle');
         Route::get('/report', [TreatmentReminderController::class, 'report'])->name('report');
     });
@@ -565,7 +567,7 @@ Route::middleware(['auth'])->group(function () {
     // Thư viện phục hồi chức năng
     Route::prefix('rehab-exercises')->name('rehab.')->group(function () {
         Route::get('/', [RehabExerciseController::class, 'index'])->name('index');
-        Route::get('/{exercise}', [RehabExerciseController::class, 'show'])->name('show');
+        Route::get('/{exercise}', [RehabExerciseController::class, 'show'])->name('show')->whereNumber('exercise');
     });
 
 
@@ -619,8 +621,8 @@ Route::middleware(['auth', 'role:1,2'])->prefix('admin/nutrition')->name('admin.
     Route::get('/create', [AdminNutritionController::class, 'create'])->name('create');
     Route::post('/', [AdminNutritionController::class, 'store'])->name('store');
     Route::get('/{article}/edit', [AdminNutritionController::class, 'edit'])->name('edit');
-    Route::put('/{article}', [AdminNutritionController::class, 'update'])->name('update');
-    Route::delete('/{article}', [AdminNutritionController::class, 'destroy'])->name('destroy');
+    Route::put('/{article}', [AdminNutritionController::class, 'update'])->name('update')->whereNumber('article');
+    Route::delete('/{article}', [AdminNutritionController::class, 'destroy'])->name('destroy')->whereNumber('article');
 
     // 2. Quản lý quy tắc gợi ý thực đơn (Disease Nutrition Rules)
     Route::prefix('rules')->name('rules.')->group(function () {
@@ -628,8 +630,8 @@ Route::middleware(['auth', 'role:1,2'])->prefix('admin/nutrition')->name('admin.
         Route::get('/create', [AdminNutritionController::class, 'rulesCreate'])->name('create');
         Route::post('/', [AdminNutritionController::class, 'rulesStore'])->name('store');
         Route::get('/{rule}/edit', [AdminNutritionController::class, 'rulesEdit'])->name('edit');
-        Route::put('/{rule}', [AdminNutritionController::class, 'rulesUpdate'])->name('update');
-        Route::delete('/{rule}', [AdminNutritionController::class, 'rulesDestroy'])->name('destroy');
+        Route::put('/{rule}', [AdminNutritionController::class, 'rulesUpdate'])->name('update')->whereNumber('rule');
+        Route::delete('/{rule}', [AdminNutritionController::class, 'rulesDestroy'])->name('destroy')->whereNumber('rule');
     });
 
     // 3. Quản lý danh mục thực phẩm & calo (Foods Database)
@@ -638,15 +640,15 @@ Route::middleware(['auth', 'role:1,2'])->prefix('admin/nutrition')->name('admin.
         Route::get('/create', [AdminNutritionController::class, 'foodsCreate'])->name('create');
         Route::post('/', [AdminNutritionController::class, 'foodsStore'])->name('store');
         Route::get('/{food}/edit', [AdminNutritionController::class, 'foodsEdit'])->name('edit');
-        Route::put('/{food}', [AdminNutritionController::class, 'foodsUpdate'])->name('update');
-        Route::delete('/{food}', [AdminNutritionController::class, 'foodsDestroy'])->name('destroy');
+        Route::put('/{food}', [AdminNutritionController::class, 'foodsUpdate'])->name('update')->whereNumber('food');
+        Route::delete('/{food}', [AdminNutritionController::class, 'foodsDestroy'])->name('destroy')->whereNumber('food');
     });
 });
 
 Route::middleware(['auth'])->prefix('patient/nutrition')->name('patient.nutrition.')->group(function () {
     Route::get('/', [PatientNutritionController::class, 'index'])->name('index');
     Route::post('/meal-log', [PatientNutritionController::class, 'storeMealLog'])->name('meal-log.store');
-    Route::delete('/meal-log/{mealLog}', [PatientNutritionController::class, 'destroyMealLog'])->name('meal-log.destroy');
+    Route::delete('/meal-log/{mealLog}', [PatientNutritionController::class, 'destroyMealLog'])->name('meal-log.destroy')->whereNumber('mealLog');
 });
 
 // ============================================================
@@ -661,10 +663,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:create,App\Models\HealthTracking')->group(function () {
         Route::get('/health-tracking/create', [HealthTrackingController::class, 'create'])->name('health-tracking.create');
         Route::post('/health-tracking', [HealthTrackingController::class, 'store'])->name('health-tracking.store');
-        Route::get('/health-tracking/{healthTracking}/edit', [HealthTrackingController::class, 'edit'])->name('health-tracking.edit')->whereNumber('healthTracking');
+        Route::get('/health-tracking/{healthTracking}/edit', [HealthTrackingController::class, 'edit'])->name('health-tracking.edit');
         Route::put('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'update'])->name('health-tracking.update')->whereNumber('healthTracking');
         Route::delete('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'destroy'])->name('health-tracking.destroy')->whereNumber('healthTracking');
     });
 
-    Route::get('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'show'])->name('health-tracking.show')->whereNumber('healthTracking');
+    Route::get('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'show'])->name('health-tracking.show');
 });

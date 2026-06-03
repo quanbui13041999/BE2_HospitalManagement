@@ -89,8 +89,14 @@ class MedicalRecordController extends Controller
     /**
      * Xem chi tiết hồ sơ bệnh án – giao diện chính theo thiết kế
      */
-    public function show(int $id): View|RedirectResponse
+    public function show($id): View|RedirectResponse
     {
+        $id = $this->validRouteId($id);
+
+        if (! $id) {
+            return $this->redirectToMedicalRecordsIndexNotFound();
+        }
+
         $user = Auth::user();
 
         if (!$user) {
@@ -246,8 +252,14 @@ class MedicalRecordController extends Controller
 
     // ── EDIT / UPDATE ─────────────────────────────────────────────
 
-    public function edit(int $id): View|RedirectResponse
+    public function edit($id): View|RedirectResponse
     {
+        $id = $this->validRouteId($id);
+
+        if (! $id) {
+            return $this->redirectToMedicalRecordsIndexNotFound();
+        }
+
         $user = Auth::user();
 
         if (!$user) {
@@ -703,6 +715,20 @@ class MedicalRecordController extends Controller
         }
 
         return $this->normalizeDoctorName($record->doctor_name) === $this->normalizeDoctorName($doctorName);
+    }
+
+    private function validRouteId($id): ?int
+    {
+        $id = trim((string) $id);
+
+        return preg_match('/\A[1-9][0-9]*\z/', $id) ? (int) $id : null;
+    }
+
+    private function redirectToMedicalRecordsIndexNotFound(): RedirectResponse
+    {
+        return redirect()
+            ->route('medical-records.index')
+            ->with('warning', 'Không tìm thấy trang hồ sơ bệnh án.');
     }
 
     private function doctorProfileName($user): string

@@ -29,9 +29,15 @@ class RehabExerciseController extends Controller
         ]);
     }
 
-    public function show(RehabExercise $exercise)
+    public function show($exercise)
     {
-        abort_if($exercise->status !== 'published', 404);
+        $exercise = $this->findExerciseFromRoute($exercise);
+
+        if (! $exercise || $exercise->status !== 'published') {
+            return redirect()
+                ->route('rehab.index')
+                ->with('warning', 'Không tìm thấy trang bài tập phục hồi.');
+        }
 
         $exercise->incrementViewCount();
 
@@ -54,5 +60,20 @@ class RehabExerciseController extends Controller
             'chan-thuong-the-thao'  => 'Chấn thương Thể thao',
             'ho-hap-tim-mach'       => 'Hô hấp - Tim mạch',
         ];
+    }
+
+    private function findExerciseFromRoute($id): ?RehabExercise
+    {
+        if ($id instanceof RehabExercise) {
+            return $id;
+        }
+
+        $id = trim((string) $id);
+
+        if (! preg_match('/\A[1-9][0-9]*\z/', $id)) {
+            return null;
+        }
+
+        return RehabExercise::find((int) $id);
     }
 }

@@ -106,30 +106,44 @@ class HealthTrackingController extends Controller
         }
     }
 
-    public function show(int $healthTracking)
+    public function show(string $healthTracking)
     {
-        $healthTracking = HealthTracking::find($healthTracking);
+        if (! ctype_digit($healthTracking)) {
+            return $this->invalidTrackingPath();
+        }
+
+        $healthTracking = HealthTracking::find((int) $healthTracking);
 
         if (! $healthTracking) {
             return redirect()->route('health-tracking.index')
-                ->with('warning', 'Nhật ký sức khỏe đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn nhật ký từ danh sách.');
         }
 
         $this->authorize('view', $healthTracking);
         return view('health-tracking.show', ['tracking' => $healthTracking]);
     }
 
-    public function edit(int $healthTracking)
+    public function edit(string $healthTracking)
     {
-        $healthTracking = HealthTracking::find($healthTracking);
+        if (! ctype_digit($healthTracking)) {
+            return $this->invalidTrackingPath();
+        }
+
+        $healthTracking = HealthTracking::find((int) $healthTracking);
 
         if (! $healthTracking) {
             return redirect()->route('health-tracking.index')
-                ->with('warning', 'Nhật ký sức khỏe đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn nhật ký từ danh sách.');
         }
 
         $this->authorize('update', $healthTracking);
         return view('health-tracking.edit', ['tracking' => $healthTracking]);
+    }
+
+    public function invalidTrackingPath()
+    {
+        return redirect()->route('health-tracking.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn nhật ký từ danh sách.');
     }
 
     public function update(HealthTrackingRequest $request, int $healthTracking)

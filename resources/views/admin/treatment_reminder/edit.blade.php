@@ -60,7 +60,7 @@
                                       maxlength="255"
                                       data-no-edge-space="1"
                                       data-error-required="Vui lòng nhập nội dung nhắc nhở."
-                                      data-error-pattern="Nội dung nhắc nhở chỉ được nhập chữ và khoảng trắng giữa các từ."
+                                      data-error-pattern="Nội dung nhắc nhở chỉ được nhập chữ tiếng Việt, số, khoảng trắng và các dấu . , ; : ( ) / + - % – —."
                                       data-error-edge-space="Nội dung nhắc nhở không được có khoảng trắng ở đầu hoặc cuối."
                                       data-error-minlength="Nội dung nhắc nhở phải có ít nhất 5 ký tự.">{{ old('message', $reminder->message) }}</textarea>
                             @error('message') <div class="invalid-feedback">{{ $message }}</div> @enderror

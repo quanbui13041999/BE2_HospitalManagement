@@ -29,9 +29,20 @@ class TreatmentReminderAdminController extends Controller
     }
 
     /** Chi tiết 1 bệnh nhân */
-    public function show(int $userId)
+    public function show($userId)
     {
-        $user    = User::where('role_id', 3)->findOrFail($userId);
+        $userId = $this->validRouteId($userId);
+
+        if (! $userId) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
+        $user = User::where('role_id', 3)->find($userId);
+
+        if (! $user) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
         $data    = $this->service->getDashboardData($userId);
         $records = MedicalRecord::where('patient_id', $userId) // patient_id in medical_records
             ->with(['prescriptions', 'doctor'])
@@ -103,17 +114,34 @@ class TreatmentReminderAdminController extends Controller
     }
 
     /** Form sửa nhắc nhở */
-    public function edit(int $reminderId)
+    public function edit($reminderId)
     {
-        $reminder = TreatmentReminder::findOrFail($reminderId);
+        $reminderId = $this->validRouteId($reminderId);
+
+        if (! $reminderId) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
+        $reminder = TreatmentReminder::find($reminderId);
+
+        if (! $reminder) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
         $reminderSnapshot = $this->reminderSnapshot($reminder);
 
         return view('admin.treatment_reminder.edit', compact('reminder', 'reminderSnapshot'));
     }
 
     /** Cập nhật nhắc nhở */
-    public function update(StoreTreatmentReminderRequest $request, int $reminderId)
+    public function update(StoreTreatmentReminderRequest $request, $reminderId)
     {
+        $reminderId = $this->validRouteId($reminderId);
+
+        if (! $reminderId) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
         $data = $request->validated();
         $snapshot = $data['reminder_snapshot'];
         unset($data['reminder_snapshot']);
@@ -138,8 +166,7 @@ class TreatmentReminderAdminController extends Controller
         });
 
         if ($result === 'missing') {
-            return redirect()->route('admin.treatment.index')
-                ->with('warning', 'Nhắc nhở đã bị xóa trước đó. Vui lòng tải lại danh sách.');
+            return $this->redirectToTreatmentIndexNotFound();
         }
 
         if ($result === 'stale') {
@@ -192,8 +219,14 @@ class TreatmentReminderAdminController extends Controller
     }
 
     /** Xóa nhắc nhở */
-    public function destroy(int $reminderId)
+    public function destroy($reminderId)
     {
+        $reminderId = $this->validRouteId($reminderId);
+
+        if (! $reminderId) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
         $lockKey = $this->reminderDeleteLockKey($reminderId);
 
         if (! $this->acquireReminderLock($lockKey)) {
@@ -220,7 +253,7 @@ class TreatmentReminderAdminController extends Controller
         }
 
         if ($result['status'] === 'missing') {
-            return back()->with('warning', 'Nhắc nhở đã được người khác xóa trước đó. Vui lòng tải lại dữ liệu.');
+            return $this->redirectToTreatmentIndexNotFound();
         }
 
         return redirect()
@@ -231,9 +264,20 @@ class TreatmentReminderAdminController extends Controller
     /**
      * Tự động tạo nhắc nhở từ đơn thuốc của 1 hồ sơ.
      */
-    public function generateFromRecord(int $recordId)
+    public function generateFromRecord($recordId)
     {
-        $record = MedicalRecord::findOrFail($recordId);
+        $recordId = $this->validRouteId($recordId);
+
+        if (! $recordId) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
+        $record = MedicalRecord::find($recordId);
+
+        if (! $record) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
         $count = $this->service->generateFromRecord($record);
         return back()->with('success', "Đã tạo {$count} nhắc nhở từ hồ sơ bệnh án!");
     }
@@ -251,9 +295,20 @@ class TreatmentReminderAdminController extends Controller
     /** ============================================================
      * BỔ SUNG: Form tạo hướng dẫn/bài tập tại nhà cho bệnh nhân
      * ============================================================ */
-    public function createInstruction(int $userId)
+    public function createInstruction($userId)
     {
-        $user = User::where('role_id', 3)->findOrFail($userId);
+        $userId = $this->validRouteId($userId);
+
+        if (! $userId) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
+        $user = User::where('role_id', 3)->find($userId);
+
+        if (! $user) {
+            return $this->redirectToTreatmentIndexNotFound();
+        }
+
         return view('admin.treatment_reminder.create_instruction', compact('user'));
     }
 
@@ -282,5 +337,19 @@ class TreatmentReminderAdminController extends Controller
         // Điều hướng ngược về trang chi tiết của bệnh nhân vừa tạo theo đúng cấu trúc route mới
         return redirect()->route('admin.treatment.show', $request->user_id)
             ->with('success', 'Đã thêm bài tập tại nhà thành công!');
+    }
+
+    private function validRouteId($id): ?int
+    {
+        $id = trim((string) $id);
+
+        return preg_match('/\A[1-9][0-9]*\z/', $id) ? (int) $id : null;
+    }
+
+    private function redirectToTreatmentIndexNotFound()
+    {
+        return redirect()
+            ->route('admin.treatment.index')
+            ->with('warning', 'Không tìm thấy trang nhắc nhở điều trị.');
     }
 }

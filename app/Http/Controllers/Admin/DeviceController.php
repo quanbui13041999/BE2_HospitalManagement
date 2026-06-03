@@ -64,12 +64,16 @@ class DeviceController extends Controller
 
     public function edit($id)
     {
+        $id = $this->validRouteId($id);
+
+        if (!$id) {
+            return $this->redirectToDevicesIndexNotFound();
+        }
+
         $device = Device::with('type')->find($id);
 
         if (!$device) {
-            return redirect()->route('admin.devices.index')
-                ->with('warning', 'Thiết bị vừa bị admin khác xóa. Trang sẽ được tải lại để cập nhật dữ liệu mới.')
-                ->with('reload_page', true);
+            return $this->redirectToDevicesIndexNotFound();
         }
 
         $types = DeviceType::orderBy('name')->get();
@@ -79,6 +83,12 @@ class DeviceController extends Controller
 
     public function update(UpdateDeviceRequest $request, $id)
     {
+        $id = $this->validRouteId($id);
+
+        if (!$id) {
+            return $this->redirectToDevicesIndexNotFound();
+        }
+
         $data = $request->validated();
         unset($data['lock_version']);
 
@@ -118,6 +128,12 @@ class DeviceController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        $id = $this->validRouteId($id);
+
+        if (!$id) {
+            return $this->redirectToDevicesIndexNotFound();
+        }
+
         $request->validate([
             'lock_version' => ['required', 'integer', 'min:1'],
         ]);
@@ -151,5 +167,20 @@ class DeviceController extends Controller
     private function isConstraintConflict(QueryException $e): bool
     {
         return (string) $e->getCode() === '23000';
+    }
+
+    private function validRouteId($id): ?int
+    {
+        $id = trim((string) $id);
+
+        return preg_match('/\A[1-9][0-9]*\z/', $id) ? (int) $id : null;
+    }
+
+    private function redirectToDevicesIndexNotFound()
+    {
+        return redirect()
+            ->route('admin.devices.index')
+            ->with('warning', 'Không tìm thấy trang thiết bị.')
+            ->with('reload_page', true);
     }
 }
