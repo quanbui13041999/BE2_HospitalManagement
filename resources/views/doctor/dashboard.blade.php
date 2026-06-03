@@ -809,7 +809,7 @@
             pointer-events: none;
         }
 
-        .toast {
+        .toast-item {
             min-width: 260px;
             max-width: 360px;
             padding: 14px 18px;
@@ -824,11 +824,11 @@
             pointer-events: auto;
         }
 
-        .toast.success {
+        .toast-item.success {
             border-left-color: var(--c-green);
         }
 
-        .toast.error {
+        .toast-item.error {
             border-left-color: var(--c-red);
         }
 
@@ -1495,7 +1495,20 @@
                 const text = await res.text();
                 try {
                     const json = text ? JSON.parse(text) : {};
-                    if (!res.ok) return { success: false, status: res.status, message: json.message || (json.error || res.statusText), errors: json.errors || null };
+                    if (!res.ok) {
+                        return {
+                            success: false,
+                            status: res.status,
+                            message: json.message || (json.error || res.statusText),
+                            errors: json.errors || null,
+                        };
+                    }
+                    if (json.success === undefined) {
+                        json.success = true;
+                    }
+                    if (!json.message) {
+                        json.message = res.statusText || 'Thao tác thành công.';
+                    }
                     return json;
                 } catch (e) {
                     return { success: res.ok, status: res.status, message: text || res.statusText };
@@ -1521,10 +1534,25 @@
         function escHtml(s = '') { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
         function toast(msg, type = 'success') {
+            const message = msg || (type === 'success' ? 'Thao tác thành công.' : 'Đã có lỗi xảy ra.');
             const el = document.createElement('div');
-            el.className = `toast ${type}`;
-            el.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span class="toast-msg">${escHtml(msg)}</span>`;
-            document.getElementById('toast-container').appendChild(el);
+            el.className = `toast-item ${type}`;
+            el.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span class="toast-msg">${escHtml(message)}</span>`;
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.position = 'fixed';
+                container.style.top = '24px';
+                container.style.right = '24px';
+                container.style.zIndex = '9999';
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '10px';
+                container.style.pointerEvents = 'none';
+                document.body.appendChild(container);
+            }
+            container.appendChild(el);
             setTimeout(() => el.remove(), 3500);
         }
 
@@ -1964,10 +1992,9 @@
             }
 
             // success
-            toast(data.message, 'success');
+            toast(data.message || (isEdit ? 'Cập nhật bác sĩ thành công.' : 'Thêm bác sĩ thành công.'), 'success');
             // if server created a user, show credentials to admin
             if (data.created_user) {
-                const cu = data.created_user;
                 const info = `Tài khoản đã tạo:\nEmail: ${cu.email}\nUser ID: ${cu.user_id}${cu.plain_password ? '\nMật khẩu: ' + cu.plain_password : ''}`;
                 alert(info);
             }
@@ -2046,7 +2073,7 @@
             const data = await api('DELETE', `/doctors/${deleteTargetId}`, payload);
 
             btn.disabled = false; btn.textContent = 'Xóa vĩnh viễn';
-            toast(data.message, data.success ? 'success' : 'error');
+            toast(data.message || 'Xóa bác sĩ thành công.', data.success ? 'success' : 'error');
 
             if (data.success) {
                 closeDeleteModal();

@@ -492,7 +492,7 @@ class DashboardController extends Controller
         if ($oldVersion !== $validated['version']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bản ghi đã bị thay đổi bởi người khác. Vui lòng tải lại và thử lại.',
+                'message' => 'Dữ liệu đã được thay đổi trước đó. Vui lòng thử lại.',
             ], 409);
         }
 
@@ -534,7 +534,7 @@ class DashboardController extends Controller
             if ($e->getMessage() === 'CONFLICT') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Bản ghi đã bị thay đổi bởi người khác. Vui lòng tải lại và thử lại.',
+                    'message' => 'Dữ liệu đã được thay đổi trước đó. Vui lòng thử lại.',
                 ], 409);
             }
             throw $e;
@@ -597,7 +597,7 @@ class DashboardController extends Controller
         if ($oldVersion !== (int)$validated['version']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bản ghi đã bị thay đổi bởi người khác. Vui lòng tải lại và thử lại.',
+                'message' => 'Dữ liệu đã được thay đổi trước đó. Vui lòng thử lại.',
             ], 409);
         }
 
@@ -629,7 +629,7 @@ class DashboardController extends Controller
             if ($e->getMessage() === 'CONFLICT') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Bản ghi đã bị xóa bởi người khác hoặc phiên bản không khớp. Vui lòng tải lại.',
+                    'message' => 'Dữ liệu đã được thay đổi trước đó. Vui lòng thử lại.',
                 ], 409);
             }
             throw $e;
