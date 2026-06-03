@@ -8,7 +8,7 @@
     <div class="page-header">
         <a href="{{ route('profile.show') }}" class="back-link">← Quay lại</a>
         <h1 class="page-title">Đổi mật khẩu</h1>
-        <p class="page-subtitle">Mật khẩu mới phải có ít nhất 8 ký tự, có chữ hoa, chữ thường, số và khác mật khẩu hiện tại.</p>
+        <p class="page-subtitle">Mật khẩu mới phải có ít nhất 8 ký tự, chỉ gồm chữ và số, không có khoảng trắng hoặc ký tự đặc biệt, và khác mật khẩu hiện tại.</p>
     </div>
 
     @if(session('warning'))
@@ -37,7 +37,8 @@
             <div class="input-wrap">
                 <input type="password" id="new_password" name="new_password"
                        class="form-input @error('new_password') is-error @enderror"
-                       minlength="8" maxlength="72" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,72}"
+                       minlength="8" maxlength="72" pattern="[A-Za-z0-9]{8,72}"
+                       title="Mật khẩu mới chỉ được nhập chữ và số, không nhập khoảng trắng hoặc ký tự đặc biệt."
                        placeholder="Ít nhất 8 ký tự" autocomplete="new-password" oninput="checkStrength(this.value)">
                 <button type="button" class="toggle-pw" onclick="togglePw('new_password', this)" tabindex="-1">👁</button>
             </div>
@@ -52,7 +53,8 @@
             <label for="new_password_confirmation" class="form-label">Xác nhận mật khẩu mới <span class="required">*</span></label>
             <div class="input-wrap">
                 <input type="password" id="new_password_confirmation" name="new_password_confirmation"
-                       class="form-input" minlength="8" maxlength="72"
+                       class="form-input" minlength="8" maxlength="72" pattern="[A-Za-z0-9]{8,72}"
+                       title="Xác nhận mật khẩu chỉ được nhập chữ và số, không nhập khoảng trắng hoặc ký tự đặc biệt."
                        placeholder="Nhập lại mật khẩu mới" autocomplete="new-password">
                 <button type="button" class="toggle-pw" onclick="togglePw('new_password_confirmation', this)" tabindex="-1">👁</button>
             </div>

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             SqlDumpDataSeeder::class,
             DoctorScheduleAvailabilitySeeder::class,
             FoodSeeder::class,
+            UserSeeder::class,
             NutritionArticleSeeder::class,
             DiseaseNutritionRuleSeeder::class,
             DeviceSeeder::class,

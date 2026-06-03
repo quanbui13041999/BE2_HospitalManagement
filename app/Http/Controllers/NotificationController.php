@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class NotificationController extends Controller
 {
@@ -16,7 +17,8 @@ class NotificationController extends Controller
     {
         $request->validate([
             'status' => 'nullable|in:all,read,unread',
-            'type' => 'nullable|string|max:80',
+            'type' => ['nullable', 'string', 'max:80', 'not_regex:/\A[\s\x{3000}]*\z/u'],
+            'page' => 'nullable|integer|min:1|max:1000',
         ]);
 
         $user = Auth::user();
@@ -25,18 +27,24 @@ class NotificationController extends Controller
         $status = $request->input('status', 'all');
         $type = $request->input('type');
 
-        $notifications = $this->notifications->listForUser(
-            $user,
-            $status === 'all' ? null : $status,
-            $type
-        );
-
         $types = $this->notifications->visibleQuery($user)
             ->selectRaw('COALESCE(type, notif_type) as notification_type')
             ->whereRaw('COALESCE(type, notif_type) IS NOT NULL')
             ->distinct()
             ->orderBy('notification_type')
             ->pluck('notification_type');
+
+        if ($type && !$types->contains($type)) {
+            throw ValidationException::withMessages([
+                'type' => 'Loại thông báo không hợp lệ. Vui lòng chọn lại từ danh sách.',
+            ]);
+        } /* fixed: chan option type gia khong nam trong danh sach thong bao hien thi */
+
+        $notifications = $this->notifications->listForUser(
+            $user,
+            $status === 'all' ? null : $status,
+            $type
+        );
 
         $layout = $this->layoutFor($user);
 
@@ -74,6 +82,12 @@ class NotificationController extends Controller
 
     public function dropdown()
     {
+        if (!$this->expectsJsonRequest(request())) {
+            return redirect()
+                ->route('notifications.index')
+                ->with('warning', 'Đường dẫn dữ liệu thông báo không hợp lệ. Trang đã được tải lại.');
+        } /* fixed: khong hien JSON tho khi user go truc tiep URL dropdown */
+
         $user = Auth::user();
         abort_unless($user instanceof User, 401);
 
@@ -105,6 +119,12 @@ class NotificationController extends Controller
 
     public function unreadCount()
     {
+        if (!$this->expectsJsonRequest(request())) {
+            return redirect()
+                ->route('notifications.index')
+                ->with('warning', 'Đường dẫn dữ liệu thông báo không hợp lệ. Trang đã được tải lại.');
+        } /* fixed: API count chi tra JSON cho AJAX */
+
         $user = Auth::user();
         abort_unless($user instanceof User, 401);
 
@@ -150,5 +170,10 @@ class NotificationController extends Controller
             'unread_count' => 0,
             'data' => ['marked_count' => $count, 'unread_count' => 0],
         ]);
+    }
+
+    private function expectsJsonRequest(Request $request): bool
+    {
+        return $request->expectsJson() || $request->ajax();
     }
 }

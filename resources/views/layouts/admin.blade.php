@@ -424,6 +424,98 @@ document.addEventListener('submit', function (event) {
     }
 });
 
+function appSnapshotSelectOptions(root = document) {
+    root.querySelectorAll('select[name]').forEach(function (select) {
+        if (select.dataset.allowedValues) return;
+
+        select.dataset.allowedValues = JSON.stringify(
+            Array.from(select.options).map(option => option.value)
+        );
+    });
+}
+
+function appSelectLabel(select) {
+    const label = select.id ? document.querySelector(`label[for="${select.id}"]`) : null;
+    return label ? label.textContent.trim() : (select.getAttribute('name') || 'Trường chọn');
+}
+
+function appReloadCurrentPage(delay = 1600) {
+    if (window.appReloadScheduled) return;
+
+    window.appReloadScheduled = true;
+    setTimeout(function () {
+        window.location.reload();
+    }, delay);
+}
+
+function appReloadCleanUrl(delay = 1800) {
+    if (window.appReloadScheduled) return;
+
+    window.appReloadScheduled = true;
+    setTimeout(function () {
+        window.location.replace(window.location.pathname);
+    }, delay);
+}
+
+function appValidateSelectOptions(root = document) {
+    const invalidSelect = Array.from(root.querySelectorAll('select[name]')).find(function (select) {
+        let allowedValues = [];
+
+        try {
+            allowedValues = JSON.parse(select.dataset.allowedValues || '[]');
+        } catch (e) {
+            allowedValues = [];
+        }
+
+        return allowedValues.length > 0 && !allowedValues.includes(select.value);
+    });
+
+    if (!invalidSelect) return true;
+
+    invalidSelect.classList.add('is-invalid');
+    invalidSelect.focus();
+    window.showAppNotification(
+        appSelectLabel(invalidSelect) + ' không hợp lệ. Trang sẽ được tải lại.',
+        'warning'
+    );
+    appReloadCurrentPage(); /* fixed: select bi chen bang DevTools thi thong bao roi reload de reset DOM */
+
+    return false;
+}
+
+window.appSnapshotSelectOptions = appSnapshotSelectOptions;
+window.appValidateSelectOptions = appValidateSelectOptions;
+appSnapshotSelectOptions(); /* fixed: chot option hop le ban dau, chan option gia chen bang DevTools */
+
+document.addEventListener('submit', function (event) {
+    if (!appValidateSelectOptions(event.target)) {
+        event.preventDefault();
+    }
+});
+
+function appDisableSubmitButtons(form) {
+    if (!form || form.dataset.submitLocked === '1') return false;
+    form.dataset.submitLocked = '1';
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (button) {
+        button.disabled = true;
+        if (button.tagName === 'BUTTON' && !button.dataset.originalText) {
+            button.dataset.originalText = button.innerHTML;
+            button.innerHTML = 'Đang xử lý...';
+        }
+    });
+    return true;
+}
+
+document.addEventListener('submit', function (event) {
+    const form = event.target.closest('form[data-disable-submit]');
+    if (!form) return;
+
+    if (!appDisableSubmitButtons(form)) {
+        event.preventDefault();
+        window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+    }
+}); /* fixed: chan double submit tao trung du lieu */
+
 document.addEventListener('submit', function (event) {
     const form = event.target.closest('form[data-confirm]');
     if (!form || form.dataset.confirmed === '1') return;
@@ -437,6 +529,7 @@ document.addEventListener('submit', function (event) {
     messageEl.textContent = form.dataset.confirm || 'Bạn có chắc muốn thực hiện thao tác này?';
     submitBtn.onclick = function () {
         form.dataset.confirmed = '1';
+        appDisableSubmitButtons(form);
         bootstrap.Modal.getOrCreateInstance(modalEl).hide();
         form.submit();
     };
@@ -498,11 +591,29 @@ window.appConfirm = function (message) {
 </script>
 @endif
 
+@if($errors->any())
+<script data-reload-clean-url="{{ request()->isMethod('get') && request()->getQueryString() ? '1' : '0' }}">
+    const currentErrorNotificationScript = document.currentScript;
+    document.addEventListener("DOMContentLoaded", function() {
+        window.showAppNotification("{{ e($errors->first()) }}", 'warning');
+        const shouldReloadCleanUrl = currentErrorNotificationScript?.dataset.reloadCleanUrl === '1';
+        if (shouldReloadCleanUrl) {
+            appReloadCleanUrl(); /* fixed: URL/filter GET sai thi thong bao roi tai lai trang sach query */
+        }
+    });
+</script>
+@endif
+
 <script>
 // Script để cập nhật badge thông báo chưa đọc cho admin
 async function updateAdminUnreadCount() {
     try {
-        const res = await fetch('/admin/chatroom/list');
+        const res = await fetch('/admin/chatroom/list', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
         const data = await res.json();
         if (data.success) {
             const totalUnread = data.rooms.reduce((sum, r) => sum + (r.unread_count || 0), 0);
@@ -530,5 +641,34 @@ if (document.getElementById('admin-unread-badge')) {
         @include('components.chat-widget')
     @endauth
 @include('components.back-to-previous')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form').forEach(function (form) {
+        const method = form.getAttribute('method');
+        if (method && method.toUpperCase() !== 'GET') {
+            form.addEventListener('submit', function (e) {
+                if (form.checkValidity && !form.checkValidity()) {
+                    return;
+                }
+                if (form.dataset.submitting === 'true') {
+                    e.preventDefault();
+                    return false;
+                }
+                form.dataset.submitting = 'true';
+                form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (button) {
+                    button.disabled = true;
+                    if (button.tagName === 'BUTTON') {
+                        button.dataset.originalHtml = button.innerHTML;
+                        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Đang xử lý...';
+                    } else if (button.tagName === 'INPUT') {
+                        button.dataset.originalValue = button.value;
+                        button.value = 'Đang xử lý...';
+                    }
+                });
+            });
+        }
+    });
+});
+</script>
 </body>
 </html>

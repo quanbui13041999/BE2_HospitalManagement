@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->string('avatar_url', 500)->nullable();
             $table->string('bio', 1000)->nullable();
             $table->boolean('status')->default(true);
+            $table->unsignedBigInteger('version')->default(1);
 
             $table->foreign('user_id')
                   ->references('user_id')->on('users')

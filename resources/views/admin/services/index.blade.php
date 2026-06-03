@@ -1030,15 +1030,20 @@ async function openEditModal(serviceId) {
     const form = document.getElementById('editServiceForm');
     form.reset();
     form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-    
+
+    // Reset submit button
+    const editSubmitBtn = form.querySelector('button[type="submit"]');
+    editSubmitBtn.disabled = false;
+    editSubmitBtn.innerHTML = '<i class="bi bi-floppy me-1"></i>Lưu thay đổi';
+
     form.action = `/admin/services/${serviceId}`;
-    
+
     try {
         const res = await fetch(`/admin/services/${serviceId}/edit`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await res.json();
-        
+
         if (data.success) {
             const svc = data.service;
             document.getElementById('edit_service_code').value = svc.service_code;
@@ -1047,7 +1052,17 @@ async function openEditModal(serviceId) {
             document.getElementById('edit_duration_minutes').value = svc.duration_minutes;
             document.getElementById('edit_description').value = svc.description || '';
             document.getElementById('edit_status').value = svc.status ? '1' : '0';
-            
+
+            // Optimistic lock: lưu timestamp updated_at vào hidden input
+            let lockInput = form.querySelector('[name="_lock_version"]');
+            if (!lockInput) {
+                lockInput = document.createElement('input');
+                lockInput.type = 'hidden';
+                lockInput.name = '_lock_version';
+                form.appendChild(lockInput);
+            }
+            lockInput.value = data.updated_at_timestamp || '';
+
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
         } else {
@@ -1104,8 +1119,14 @@ document.getElementById('editServiceForm').addEventListener('submit', async func
         });
         const data = await res.json();
         submitBtn.disabled = false;
-        
-        if (res.status === 422) {
+        submitBtn.innerHTML = '<i class="bi bi-floppy me-1"></i>Lưu thay đổi';
+
+        if (res.status === 409) {
+            // Xung đột Optimistic locking – người khác đã sửa
+            showToast(data.message || 'Dữ liệu đã được người khác cập nhật. Vui lòng tải lại.', 'warning');
+            bootstrap.Modal.getInstance(document.getElementById('editServiceModal')).hide();
+            return;
+        } else if (res.status === 422) {
             Object.keys(data.errors).forEach(key => {
                 const input = form.querySelector(`[name="${key}"]`);
                 if (input) {
@@ -1118,7 +1139,7 @@ document.getElementById('editServiceForm').addEventListener('submit', async func
         } else if (data.success) {
             showToast(data.message, 'success');
             bootstrap.Modal.getInstance(document.getElementById('editServiceModal')).hide();
-            
+
             // Reload page to reflect updates safely with pagination/filters
             setTimeout(() => window.location.reload(), 1000);
         } else {
@@ -1126,6 +1147,7 @@ document.getElementById('editServiceForm').addEventListener('submit', async func
         }
     } catch (err) {
         submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-floppy me-1"></i>Lưu thay đổi';
         showToast('Lỗi máy chủ', 'danger');
     }
 });
@@ -1308,6 +1330,7 @@ document.getElementById('addPriceForm').addEventListener('submit', async functio
             showToast(data.message, 'success');
             form.reset();
             formContainer.classList.add('d-none');
+            window.needReload = true;
             
             // Reload price table instantly inside details modal
             reloadModalPrices();
@@ -1462,6 +1485,7 @@ async function savePriceInline(priceId) {
             showToast('Lỗi trùng lặp khoảng thời gian bảng giá!', 'warning');
         } else if (data.success) {
             showToast(data.message, 'success');
+            window.needReload = true;
             reloadModalPrices();
         } else {
             inlineErr.textContent = data.message || 'Gặp lỗi khi lưu';
@@ -1488,6 +1512,7 @@ async function deletePriceAjax(priceId) {
         
         if (data.success) {
             showToast(data.message, 'success');
+            window.needReload = true;
             reloadModalPrices();
         } else {
             showToast(data.message || 'Xoá giá thất bại', 'danger');
@@ -1553,6 +1578,16 @@ document.getElementById('deleteServiceForm').addEventListener('submit', async fu
 document.addEventListener('DOMContentLoaded', function () {
     const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltipEls.forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover' }));
+
+    // Re-load page on modal close if price was added/edited/deleted
+    const viewModalEl = document.getElementById('viewServiceModal');
+    if (viewModalEl) {
+        viewModalEl.addEventListener('hidden.bs.modal', function () {
+            if (window.needReload) {
+                window.location.reload();
+            }
+        });
+    }
 
     // ── Realtime polling: phát hiện thay đổi mỗi 20 giây ──────
     const ADMIN_DATA_URL = '{{ route("admin.services.data") }}';

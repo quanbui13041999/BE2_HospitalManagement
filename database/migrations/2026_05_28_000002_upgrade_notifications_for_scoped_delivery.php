@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     private function notificationsTable(): ?string
     {
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') {
+            return Schema::hasTable('Notifications') ? 'Notifications' : null;
+        }
+
         if (Schema::hasTable('notifications')) {
             return 'notifications';
         }
@@ -40,7 +44,7 @@ return new class extends Migration {
         }
 
         Schema::table($notificationsTable, function (Blueprint $table) use ($notificationsTable) {
-            if (Schema::hasColumn($notificationsTable, 'user_id')) {
+            if (Schema::hasColumn($notificationsTable, 'user_id') && \Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
                 $table->unsignedInteger('user_id')->nullable()->change();
             }
 

@@ -16,8 +16,13 @@ class DoctorStatisticService
      */
     public function getDashboardData(Request $request)
     {
-        $selectedMonthStr = $request->input('month', Carbon::now()->format('Y-m'));
-        $selectedDate = Carbon::createFromFormat('Y-m', $selectedMonthStr)->startOfMonth();
+        $selectedMonthStr = $request->input('month');
+        try {
+            $selectedDate = $selectedMonthStr ? Carbon::createFromFormat('Y-m', $selectedMonthStr)->startOfMonth() : Carbon::now()->startOfMonth();
+        } catch (\Exception $e) {
+            $selectedDate = Carbon::now()->startOfMonth();
+        }
+        $selectedMonthStr = $selectedDate->format('Y-m');
         $previousDate = $selectedDate->copy()->subMonth();
 
         $selectedDoctorId = $request->input('doctor_id', 'all');

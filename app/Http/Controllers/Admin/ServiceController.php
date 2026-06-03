@@ -20,6 +20,15 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function index(Request $request)
     {
+        // Validate page param: phải là số nguyên dương
+        $page = $request->query('page');
+        if ($page !== null && (!ctype_digit((string) $page) || (int) $page < 1)) {
+            return redirect()->route('admin.services.index', array_merge(
+                $request->except('page'),
+                ['page' => 1]
+            ))->with('error', 'Tham số trang không hợp lệ, đã chuyển về trang 1.');
+        }
+
         return view('admin.services.index', $this->serviceService->buildIndexData($request));
     }
 
@@ -74,9 +83,11 @@ class ServiceController extends Controller
         if (request()->ajax() || request()->wantsJson()) {
             $service->load(['department']);
             return response()->json([
-                'success' => true,
-                'service' => $service,
-                'departments' => $this->serviceService->buildEditData($service)['departments'],
+                'success'              => true,
+                'service'              => $service,
+                'departments'          => $this->serviceService->buildEditData($service)['departments'],
+                // Optimistic lock token: frontend dùng giá trị này để phát hiện xung đột
+                'updated_at_timestamp' => $service->updated_at?->timestamp,
             ]);
         }
         return view('admin.services.edit', $this->serviceService->buildEditData($service));
@@ -87,6 +98,32 @@ class ServiceController extends Controller
     // ----------------------------------------------------------------
     public function update(ServiceUpdateRequest $request, Service $service)
     {
+        // Optimistic locking: kiểm tra xung đột cập nhật 2 tab
+        $lockVersion = $request->input('_lock_version');
+        if ($service->updated_at !== null) {
+            $dbTimestamp = (string) $service->updated_at->timestamp;
+            if ($lockVersion === null || $lockVersion === '') {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Mã phiên làm việc bị thiếu. Vui lòng tải lại trang.',
+                    ], 409);
+                }
+                return redirect()->route('admin.services.edit', $service)
+                    ->with('error', 'Mã phiên làm việc bị thiếu. Vui lòng tải lại trang.');
+            }
+            if ($lockVersion !== $dbTimestamp) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Dữ liệu dịch vụ đã được người khác cập nhật. Vui lòng tải lại trang trước khi cập nhật.',
+                    ], 409);
+                }
+                return redirect()->route('admin.services.edit', $service)
+                    ->with('error', 'Dịch vụ đã được người khác cập nhật trước đó. Vui lòng tải lại trang trước khi tiếp tục chỉnh sửa.');
+            }
+        }
+
         $this->serviceService->updateService($service, $request->validated());
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -174,6 +211,31 @@ class ServiceController extends Controller
     public function updatePrice(ServicePriceRequest $request, Service $service, ServicePrice $price)
     {
         abort_if($price->service_id !== $service->service_id, 403);
+
+        // Optimistic locking: kiểm tra dữ liệu có bị thay đổi ở tab khác không
+        $lockVersion = $request->input('_lock_version');
+        if ($price->updated_at !== null) {
+            $dbTimestamp = (string) $price->updated_at->timestamp;
+            if ($lockVersion === null || $lockVersion === '') {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Mã phiên làm việc bị thiếu. Vui lòng tải lại trang.',
+                    ], 409);
+                }
+                return back()->with('error', 'Mã phiên làm việc bị thiếu. Vui lòng tải lại trang.');
+            }
+            if ($lockVersion !== $dbTimestamp) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Mức giá đã được người khác cập nhật. Vui lòng tải lại trang.',
+                    ], 409);
+                }
+                return back()->with('error', 'Mức giá đã được người khác cập nhật trước đó. Vui lòng tải lại trang.');
+            }
+        }
+
         $this->serviceService->updatePrice($price, $request->validated());
 
         if ($request->ajax() || $request->wantsJson()) {

@@ -22,7 +22,7 @@
         </form>
     @endif
 
-    <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" class="profile-form">
+    <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" class="profile-form" novalidate>
         @csrf
         @method('PUT')
         <input type="hidden" name="profile_snapshot" value="{{ $profileSnapshot }}">
@@ -32,7 +32,8 @@
             <div class="avatar-upload-area">
                 <div class="avatar-preview-wrap">
                     <img src="{{ $user->avatar_url ? asset('storage/' . $user->avatar_url) : asset('images/default-avatar.png') }}"
-                         alt="Avatar" class="avatar-preview" id="avatarPreview">
+                         alt="Avatar" class="avatar-preview" id="avatarPreview"
+                         onerror="this.onerror=null; this.src='{{ asset('images/default-avatar.png') }}';">
                     <label for="avatar" class="avatar-upload-btn" title="Thay đổi ảnh">✎</label>
                     <input type="file" id="avatar" name="avatar"
                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
@@ -60,7 +61,8 @@
                     <input type="text" id="full_name" name="full_name"
                            value="{{ old('full_name', $user->full_name) }}"
                            class="form-input @error('full_name') is-error @enderror"
-                           maxlength="80" pattern="^[A-Za-zÀ-ỹ\s]+$"
+                           maxlength="80" pattern="^(?![Bb][Ss][A-Za-zÀ-ỹ])([Bb][Ss](\.\s?|\s))?[A-Za-zÀ-ỹ]+(\s[A-Za-zÀ-ỹ]+)*$"
+                           spellcheck="false" autocomplete="name"
                            placeholder="Nhập họ và tên đầy đủ">
                     @error('full_name') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
@@ -111,7 +113,7 @@
                     <input type="text" id="address" name="address"
                            value="{{ old('address', $user->address) }}"
                            class="form-input @error('address') is-error @enderror"
-                           maxlength="150" pattern="^[A-Za-zÀ-ỹ0-9\s,.\-/]+$"
+                           maxlength="150" pattern="^[A-Za-zÀ-ỹ0-9,.\-/]+(\s[A-Za-zÀ-ỹ0-9,.\-/]+)*$"
                            placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành">
                     @error('address') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
@@ -142,6 +144,134 @@ function previewAvatar(input) {
     reader.onload = e => document.getElementById('avatarPreview').src = e.target.result;
     reader.readAsDataURL(file);
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector('.profile-form');
+    if (!form) return;
+
+    const namePattern = /^(?![Bb][Ss][\p{L}\p{M}])(?:[Bb][Ss](?:\.\s?|\s))?[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u;
+    const phonePattern = /^(0|\+84)[0-9]{9,10}$/;
+    const addressPattern = /^[\p{L}\p{M}\p{N},.\-/]+(?: [\p{L}\p{M}\p{N},.\-/]+)*$/u;
+
+    const validators = {
+        full_name(input) {
+            const value = input.value;
+            if (!value.trim()) return 'Họ và tên không được để trống.';
+            if (hasEdgeSpaces(value)) return 'Họ và tên không được có khoảng trắng thừa ở đầu hoặc cuối.';
+            if (value.length < 2) return 'Họ và tên phải có ít nhất 2 ký tự.';
+            if (value.length > 80) return 'Họ và tên không vượt quá 80 ký tự.';
+            if (!namePattern.test(value)) {
+                return 'Họ và tên chỉ nhập chữ, có thể bắt đầu bằng BS. nếu là bác sĩ. Ví dụ: BS. Nguyễn Thị Thu.';
+            }
+            return '';
+        },
+        email(input) {
+            const value = input.value;
+            if (!value) return 'Email không được để trống.';
+            if (hasEdgeSpaces(value)) return 'Email không được có khoảng trắng thừa ở đầu hoặc cuối.';
+            if (value.length > 100) return 'Email không vượt quá 100 ký tự.';
+            if (!input.validity.valid) return 'Email không hợp lệ.';
+            return '';
+        },
+        phone(input) {
+            const value = input.value;
+            if (value && hasEdgeSpaces(value)) {
+                return 'Số điện thoại không được có khoảng trắng thừa ở đầu hoặc cuối.';
+            }
+            if (value && !phonePattern.test(value)) {
+                return 'Số điện thoại phải bắt đầu bằng 0 hoặc +84 và chỉ chứa chữ số.';
+            }
+            return '';
+        },
+        date_of_birth(input) {
+            if (input.value && input.max && input.value > input.max) {
+                return 'Ngày sinh phải trước ngày hôm nay.';
+            }
+            return '';
+        },
+        address(input) {
+            const value = input.value;
+            if (value && hasEdgeSpaces(value)) return 'Địa chỉ không được có khoảng trắng thừa ở đầu hoặc cuối.';
+            if (value.length > 150) return 'Địa chỉ không vượt quá 150 ký tự.';
+            if (value && !addressPattern.test(value)) {
+                return 'Địa chỉ chỉ được nhập chữ, số và các dấu , . - /.';
+            }
+            return '';
+        },
+    };
+
+    function hasEdgeSpaces(value) {
+        return /^\s|\s$/u.test(value);
+    }
+
+    function showFieldError(input, message) {
+        const group = input.closest('.form-group');
+        if (!group) return;
+
+        input.classList.add('is-error');
+        input.setAttribute('aria-invalid', 'true');
+        input.setCustomValidity(message);
+
+        let error = group.querySelector('.field-error');
+        if (!error) {
+            error = document.createElement('p');
+            error.className = 'field-error';
+            group.appendChild(error);
+        }
+        error.textContent = message;
+    }
+
+    function clearFieldError(input) {
+        const group = input.closest('.form-group');
+        input.classList.remove('is-error');
+        input.removeAttribute('aria-invalid');
+        input.setCustomValidity('');
+
+        group?.querySelectorAll('.field-error').forEach(error => error.remove());
+    }
+
+    function validateField(input) {
+        const validator = validators[input.name];
+        if (!validator) return true;
+
+        input.setCustomValidity('');
+        const message = validator(input);
+        if (message) {
+            showFieldError(input, message);
+            return false;
+        }
+
+        clearFieldError(input);
+        return true;
+    }
+
+    Object.keys(validators).forEach(name => {
+        const input = form.elements[name];
+        if (!input) return;
+
+        input.addEventListener('input', () => validateField(input));
+        input.addEventListener('change', () => validateField(input));
+        input.addEventListener('blur', () => validateField(input));
+    });
+
+    form.addEventListener('submit', event => {
+        const fields = Object.keys(validators)
+            .map(name => form.elements[name])
+            .filter(Boolean);
+
+        let firstInvalid = null;
+        fields.forEach(input => {
+            if (!validateField(input) && !firstInvalid) {
+                firstInvalid = input;
+            }
+        });
+
+        if (firstInvalid) {
+            event.preventDefault();
+            firstInvalid.focus();
+        }
+    });
+});
 </script>
 
 <style>

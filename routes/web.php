@@ -20,6 +20,7 @@ use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Doctor\DoctorScheduleController;
 use App\Http\Controllers\Doctor\DashboardController;
+use App\Http\Controllers\Doctor\SlotHoldController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\AdminNutritionController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\Doctor\DoctorAppointmentController;
 use App\Http\Controllers\PatientNutritionController;
 use App\Http\Controllers\Admin\PatientSearchController;
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\EntityStatusController;
 
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
@@ -54,6 +56,8 @@ use App\Http\Controllers\Admin\TreatmentReminderAdminController;
 // TRANG CHỦ & AUTH
 // ============================================================
 
+Route::pattern('id', '[0-9]+'); /* fixed: URL id=abc khong vao controller, tra 404 than thien */
+
 Route::get('/', [HomeController::class, 'welcome'])->name('home');
 
 Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
@@ -70,15 +74,15 @@ Route::post('/logout',   [AuthController::class, 'logout'])->name('logout');
 Route::prefix('dich-vu')->name('user.services.')->controller(UserServiceController::class)->group(function () {
     Route::get('/data',    'publicServicesData')->name('data');   // Realtime polling
     Route::get('/',        'index')->name('index');
-    Route::get('/{id}',    'show')->name('show');
-    Route::get('/{id}/gia/{priceType}', 'getPrice')->name('get-price');
+    Route::get('/{id}',    'show')->name('show')->whereNumber('id');
+    Route::get('/{id}/gia/{priceType}', 'getPrice')->name('get-price')->whereNumber('id');
 });
 
 Route::redirect('/services', '/dich-vu', 301);
 
 // Tin tức công khai (không cần đăng nhập)
 Route::get('/news',      [NewsController::class, 'index'])->name('news.index');
-Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
+Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show')->whereNumber('id');
 
 // Trang bác sĩ
 Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
@@ -97,8 +101,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/dropdown', [NotificationController::class, 'dropdown'])->name('dropdown');
         Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('mark-all-read');
-        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
-        Route::post('/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('mark-read');
+        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show')->whereNumber('notification');
+        Route::post('/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('mark-read')->whereNumber('notification');
     });
 
     // --------------------------------------------------------
@@ -108,6 +112,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/',          [AppointmentController::class, 'create'])->name('create');
         Route::post('/',         [AppointmentController::class, 'store'])->name('store');
         Route::get('/schedules', [AppointmentController::class, 'getSchedules'])->name('schedules');
+        // Quick reschedule from day-off notification email
+        Route::get('/xac-nhan-doi-lich', [AppointmentController::class, 'confirmRescheduleFromEmail'])->name('reschedule-confirm');
     });
 
     // Đăng ký dịch vụ & Thanh toán riêng lẻ (không qua bác sĩ)
@@ -117,6 +123,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/appointments/suggest',    [AppointmentController::class, 'suggest'])->name('appointments.suggest');
     Route::get('/api/appointments/timeslots',  [AppointmentController::class, 'timeslots'])->name('appointments.timeslots');
     Route::get('/api/appointments/queue-info', [AppointmentController::class, 'getQueueInfo'])->name('appointments.queue-info');
+    Route::post('/api/appointments/reminders/send', [AppointmentController::class, 'sendEmailReminders'])->middleware(['auth','is_admin'])->name('appointments.reminders.send');
+
+    Route::post('/api/slot-hold', [SlotHoldController::class, 'hold'])->name('slot.hold');
+    Route::delete('/api/slot-hold', [SlotHoldController::class, 'release'])->name('slot.release');
+    Route::get('/api/slot-hold/status', [SlotHoldController::class, 'status'])->name('slot.status');
 
     // --------------------------------------------------------
     // Lịch hẹn — Route chính (user.appointments.*)
@@ -143,15 +154,15 @@ Route::middleware('auth')->group(function () {
     // --------------------------------------------------------
     Route::prefix('payments')->name('user.payments.')->group(function () {
         Route::get('/history',                          [UserPaymentController::class, 'history'])->name('history');
-        Route::get('/appointment/{appointmentId}',      [UserPaymentController::class, 'show'])->name('show');
+        Route::get('/appointment/{appointmentId}',      [UserPaymentController::class, 'show'])->name('show')->whereNumber('appointmentId');
         Route::post('/store',                           [UserPaymentController::class, 'store'])->name('store');
-        Route::get('/{paymentId}/qr',                  [UserPaymentController::class, 'qr'])->name('qr');
-        Route::get('/{paymentId}/gateway',             [UserPaymentController::class, 'gateway'])->name('gateway');
-        Route::get('/{paymentId}/check',               [UserPaymentController::class, 'check'])->name('check');
-        Route::post('/{paymentId}/confirm',             [UserPaymentController::class, 'confirm'])->name('confirm');
-        Route::get('/{paymentId}/fail',                [UserPaymentController::class, 'fail'])->name('fail');
-        Route::post('/{paymentId}/fail',               [UserPaymentController::class, 'fail'])->name('fail.post');
-        Route::get('/{paymentId}/success',             [UserPaymentController::class, 'success'])->name('success');
+        Route::get('/{paymentId}/qr',                  [UserPaymentController::class, 'qr'])->name('qr')->whereNumber('paymentId');
+        Route::get('/{paymentId}/gateway',             [UserPaymentController::class, 'gateway'])->name('gateway')->whereNumber('paymentId');
+        Route::get('/{paymentId}/check',               [UserPaymentController::class, 'check'])->name('check')->whereNumber('paymentId');
+        Route::post('/{paymentId}/confirm',             [UserPaymentController::class, 'confirm'])->name('confirm')->whereNumber('paymentId');
+        Route::get('/{paymentId}/fail',                [UserPaymentController::class, 'fail'])->name('fail')->whereNumber('paymentId');
+        Route::post('/{paymentId}/fail',               [UserPaymentController::class, 'fail'])->name('fail.post')->whereNumber('paymentId');
+        Route::get('/{paymentId}/success',             [UserPaymentController::class, 'success'])->name('success')->whereNumber('paymentId');
     });
 
     // --------------------------------------------------------
@@ -216,9 +227,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/',                        [ChatController::class, 'index'])->name('index');
         Route::post('/room',                   [ChatController::class, 'getOrCreateRoom'])->name('room');
-        Route::get('/messages/{roomId}',       [ChatController::class, 'getMessages'])->name('messages');
+        Route::get('/messages/{roomId}',       [ChatController::class, 'getMessages'])->name('messages')->whereNumber('roomId');
         Route::post('/send',                   [ChatController::class, 'sendMessage'])->name('send');
-        Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall');
+        Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall')->whereNumber('messageId');
     });
 
     // --------------------------------------------------------
@@ -228,6 +239,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/appointments', [DoctorAppointmentController::class, 'index'])->name('appointments.index');
     });
 });
+
 
 // ============================================================
 // HỆ THỐNG NHẮC NHỞ TUÂN THỦ ĐIỀU TRỊ – Patient
@@ -256,6 +268,8 @@ Route::prefix('doctor')->name('doctor.')->middleware('auth')->group(function () 
     Route::post('/dashboard/reviews/{id}/reply',            [DashboardController::class, 'replyReview']);
     Route::delete('/dashboard/reviews/{id}/reply',          [DashboardController::class, 'deleteReply']);
     Route::get('/dashboard/doctors/list',                   [DashboardController::class, 'doctorsList']);
+    Route::get('/dashboard/doctors/{id}',                 [DashboardController::class, 'getDoctor']);
+
     Route::post('/dashboard/doctors/upload-avatar',         [DashboardController::class, 'uploadAvatar']);
     Route::post('/dashboard/doctors',                       [DashboardController::class, 'storeDoctor']);
     Route::put('/dashboard/doctors/{id}',                   [DashboardController::class, 'updateDoctor']);
@@ -287,6 +301,11 @@ Route::prefix('api/v1')->middleware('auth')->group(function () {
 
         // Utility
         Route::get('doctors',                     [DoctorScheduleController::class, 'listDoctors']);
+    });
+
+    // Appointments
+    Route::prefix('appointments')->group(function () {
+        Route::post('reschedule-confirm',         [AppointmentController::class, 'quickRescheduleFromDayOff']);
     });
 });
 
@@ -351,6 +370,7 @@ Route::prefix('medical_history')
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/api/check-entity-status', [EntityStatusController::class, 'checkStatus'])->name('api.check-status');
     Route::get('/dashboard/data', [AdminDashboardController::class, 'data'])->name('dashboard.data');
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
@@ -363,16 +383,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::get('/',               [AdminServiceController::class, 'index'])->name('index');
         Route::get('/create',         [AdminServiceController::class, 'create'])->name('create');
         Route::post('/',              [AdminServiceController::class, 'store'])->name('store');
-        Route::get('/{service}',      [AdminServiceController::class, 'show'])->name('show');
-        Route::get('/{service}/edit', [AdminServiceController::class, 'edit'])->name('edit');
-        Route::put('/{service}',      [AdminServiceController::class, 'update'])->name('update');
-        Route::delete('/{service}',   [AdminServiceController::class, 'destroy'])->name('destroy');
-        Route::patch('/{service}/toggle-status', [AdminServiceController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/{service}',      [AdminServiceController::class, 'show'])->name('show')->whereNumber('service');
+        Route::get('/{service}/edit', [AdminServiceController::class, 'edit'])->name('edit')->whereNumber('service');
+        Route::put('/{service}',      [AdminServiceController::class, 'update'])->name('update')->whereNumber('service');
+        Route::delete('/{service}',   [AdminServiceController::class, 'destroy'])->name('destroy')->whereNumber('service');
+        Route::patch('/{service}/toggle-status', [AdminServiceController::class, 'toggleStatus'])->name('toggle-status')->whereNumber('service');
 
         // Bảng giá (nested)
-        Route::post('/{service}/prices',           [AdminServiceController::class, 'storePrice'])->name('prices.store');
-        Route::put('/{service}/prices/{price}',    [AdminServiceController::class, 'updatePrice'])->name('prices.update');
-        Route::delete('/{service}/prices/{price}', [AdminServiceController::class, 'destroyPrice'])->name('prices.destroy');
+        Route::post('/{service}/prices',           [AdminServiceController::class, 'storePrice'])->name('prices.store')->whereNumber('service');
+        Route::put('/{service}/prices/{price}',    [AdminServiceController::class, 'updatePrice'])->name('prices.update')->whereNumber(['service', 'price']);
+        Route::delete('/{service}/prices/{price}', [AdminServiceController::class, 'destroyPrice'])->name('prices.destroy')->whereNumber(['service', 'price']);
     });
 
     // --------------------------------------------------------
@@ -382,7 +402,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
 
         // Lịch tuần
         Route::get('/weekly',          [RoomController::class, 'weeklySchedule'])->name('weekly');
-        Route::get('/weekly/{roomId}', [RoomController::class, 'weeklySchedule'])->name('weekly.room');
+        Route::get('/weekly/{roomId}', [RoomController::class, 'weeklySchedule'])->name('weekly.room')->whereNumber('roomId');
         Route::get('/weekly-ajax',     [RoomController::class, 'weeklyScheduleAjax'])->name('weekly.ajax');
 
         // Quản lý ca trực
@@ -392,9 +412,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
             Route::get('/create',          [RoomController::class, 'createSchedule'])->name('create');
             Route::post('/',               [RoomController::class, 'storeSchedule'])->name('store');
             Route::post('/auto-allocate',  [RoomController::class, 'autoAllocate'])->name('auto-allocate');
-            Route::get('/{schedule}/edit', [RoomController::class, 'editSchedule'])->name('edit');
-            Route::put('/{schedule}',      [RoomController::class, 'updateSchedule'])->name('update');
-            Route::delete('/{schedule}',   [RoomController::class, 'destroySchedule'])->name('destroy');
+            Route::get('/{schedule}/edit', [RoomController::class, 'editSchedule'])->name('edit')->whereNumber('schedule');
+            Route::put('/{schedule}',      [RoomController::class, 'updateSchedule'])->name('update')->whereNumber('schedule');
+            Route::delete('/{schedule}',   [RoomController::class, 'destroySchedule'])->name('destroy')->whereNumber('schedule');
             Route::get('/check-conflict',  [RoomController::class, 'checkConflict'])->name('check-conflict');
         });
 
@@ -403,11 +423,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
         Route::get('/',                [RoomController::class, 'index'])->name('index');
         Route::get('/create',          [RoomController::class, 'create'])->name('create');
         Route::post('/',               [RoomController::class, 'store'])->name('store');
-        Route::get('/{room}',          [RoomController::class, 'show'])->name('show');
-        Route::get('/{room}/edit',     [RoomController::class, 'edit'])->name('edit');
-        Route::put('/{room}',          [RoomController::class, 'update'])->name('update');
-        Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status');
-        Route::delete('/{room}',       [RoomController::class, 'destroy'])->name('destroy');
+        Route::get('/{room}',          [RoomController::class, 'show'])->name('show')->whereNumber('room');
+        Route::get('/{room}/edit',     [RoomController::class, 'edit'])->name('edit')->whereNumber('room');
+        Route::put('/{room}',          [RoomController::class, 'update'])->name('update')->whereNumber('room');
+        Route::patch('/{room}/status', [RoomController::class, 'updateStatus'])->name('update-status')->whereNumber('room');
+        Route::delete('/{room}',       [RoomController::class, 'destroy'])->name('destroy')->whereNumber('room');
     });
 
     // --------------------------------------------------------
@@ -415,12 +435,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     // --------------------------------------------------------
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('/',                         [PaymentController::class, 'index'])->name('index');
-        Route::get('/checkout/{invoiceId}',     [PaymentController::class, 'checkout'])->name('checkout');
-        Route::get('/{paymentId}',              [PaymentController::class, 'show'])->name('show');
+        Route::get('/checkout/{invoiceId}',     [PaymentController::class, 'checkout'])->name('checkout')->whereNumber('invoiceId');
+        Route::get('/{paymentId}',              [PaymentController::class, 'show'])->name('show')->whereNumber('paymentId');
         Route::post('/store',                   [PaymentController::class, 'store'])->name('store');
-        Route::get('/{paymentId}/qr',           [PaymentController::class, 'qr'])->name('qr');
-        Route::post('/{paymentId}/confirm',     [PaymentController::class, 'confirm'])->name('confirm');
-        Route::post('/{paymentId}/fail',        [PaymentController::class, 'fail'])->name('fail');
+        Route::get('/{paymentId}/qr',           [PaymentController::class, 'qr'])->name('qr')->whereNumber('paymentId');
+        Route::post('/{paymentId}/confirm',     [PaymentController::class, 'confirm'])->name('confirm')->whereNumber('paymentId');
+        Route::post('/{paymentId}/fail',        [PaymentController::class, 'fail'])->name('fail')->whereNumber('paymentId');
     });
 
     // --------------------------------------------------------
@@ -451,8 +471,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     Route::resource('news', AdminNewsController::class)
         ->parameters(['news' => 'id'])
         ->except(['show']);
-    Route::patch('news/{id}/toggle',     [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
-    Route::post('news/{id}/send-email',  [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
+    Route::patch('news/{id}/toggle',     [AdminNewsController::class, 'togglePublish'])->name('news.toggle')->whereNumber('id');
+    Route::post('news/{id}/send-email',  [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail')->whereNumber('id');
 
     // --------------------------------------------------------
     // Chat CSKH – Admin/Staff Routes
@@ -469,11 +489,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     Route::prefix('chatroom')->name('chatroom.')->group(function () {
         Route::get('/',                        [ChatRoomController::class, 'index'])->name('index');
         Route::get('/list',                    [ChatRoomController::class, 'listJson'])->name('list');
-        Route::get('/{roomId}/messages',       [ChatRoomController::class, 'getMessages'])->name('messages');
-        Route::post('/{roomId}/send',          [ChatRoomController::class, 'sendMessage'])->name('send');
-        Route::post('/{roomId}/close',         [ChatRoomController::class, 'closeRoom'])->name('close');
-        Route::delete('/{roomId}',             [ChatRoomController::class, 'deleteRoom'])->name('delete');
-        Route::delete('/messages/{messageId}', [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
+        Route::get('/{roomId}/messages',       [ChatRoomController::class, 'getMessages'])->name('messages')->whereNumber('roomId');
+        Route::post('/{roomId}/send',          [ChatRoomController::class, 'sendMessage'])->name('send')->whereNumber('roomId');
+        Route::post('/{roomId}/close',         [ChatRoomController::class, 'closeRoom'])->name('close')->whereNumber('roomId');
+        Route::delete('/{roomId}',             [ChatRoomController::class, 'deleteRoom'])->name('delete')->whereNumber('roomId');
+        Route::delete('/messages/{messageId}', [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage')->whereNumber('messageId');
     });
 
     Route::resource('device-types', DeviceTypeController::class)
@@ -562,7 +582,7 @@ Route::middleware(['auth'])->group(function () {
 Route::prefix('admin')->middleware(['auth', 'role:Admin,Lễ tân,Bác sĩ'])->group(function () {
     Route::get('/patients/search', [PatientSearchController::class, 'index'])->name('admin.patients.search');
     Route::get('/patients/search/results', [PatientSearchController::class, 'search'])->name('admin.patients.search.results');
-    Route::get('/patients/{id}/detail', [PatientSearchController::class, 'detail'])->name('admin.patients.detail');
+    Route::get('/patients/{id}/detail', [PatientSearchController::class, 'detail'])->name('admin.patients.detail')->whereNumber('id');
     Route::post('/patients/ai-search', [PatientSearchController::class, 'aiSearch'])->name('admin.patients.ai-search');
 });
 // ============================================================

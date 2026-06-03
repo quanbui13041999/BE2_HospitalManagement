@@ -12,7 +12,7 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
-        <form action="{{ route('admin.news.update', $article->news_id) }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('admin.news.update', $article->news_id) }}" method="POST" enctype="multipart/form-data" data-disable-submit>
             @csrf
             @method('PUT')
             <input type="hidden" name="version" value="{{ $article->news_version }}"> {{-- fixed: phat hien form cu khi nhieu admin cung sua --}}

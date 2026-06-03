@@ -19,8 +19,13 @@ class Doctor extends Model
         'avatar_url',
         'bio',
         'status',
+        'version',
     ];
 
+    protected $casts = [
+        'status'  => 'boolean',
+        'version' => 'integer',
+    ];
 
     public function user()
     {

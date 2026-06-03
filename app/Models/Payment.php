@@ -26,6 +26,8 @@ class Payment extends Model
         'payment_date',
         'transaction_ref',
         'notes',
+        'checkout_url',
+        'qr_content',
     ]; /* fixed: dong mass assignment, khong dung guarded rong */
 
     protected $casts = [

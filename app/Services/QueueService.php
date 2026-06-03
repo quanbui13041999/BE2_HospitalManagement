@@ -55,6 +55,21 @@ class QueueService
                 ->lockForUpdate()
                 ->firstOrFail(); /* fixed: khoa ca kham de nhieu le tan check-in cung luc khong trung so thu tu */
 
+            if (!empty($data['appointment_id']) || !empty($data['user_id'])) {
+                $duplicate = QueueTicket::where('schedule_id', $scheduleId)
+                    ->whereDate('queue_date', today())
+                    ->whereIn('status', ['waiting', 'calling', 'in_progress'])
+                    ->when(!empty($data['appointment_id']), fn ($query) => $query->where('appointment_id', $data['appointment_id']))
+                    ->when(empty($data['appointment_id']) && !empty($data['user_id']), fn ($query) => $query->where('user_id', $data['user_id']))
+                    ->exists();
+
+                if ($duplicate) {
+                    throw ValidationException::withMessages([
+                        'ticket' => 'Bệnh nhân này đã có trong hàng đợi. Trang sẽ được tải lại để cập nhật danh sách.',
+                    ]);
+                }
+            } /* fixed: chan bam luu lien tuc tao nhieu ticket trung khi co appointment/user */
+
             // Lấy số thứ tự tiếp theo cho ngày + ca này
             $lastNumber = QueueTicket::where('schedule_id', $scheduleId)
                 ->whereDate('queue_date', today())
@@ -159,6 +174,7 @@ class QueueService
     public function startExam(int $ticketId): QueueTicket
     {
         return DB::transaction(function () use ($ticketId) {
+            /** @var QueueTicket $ticket */
             $ticket = QueueTicket::with(['appointment.payment'])
                 ->where('ticket_id', $ticketId)
                 ->lockForUpdate()
@@ -177,6 +193,13 @@ class QueueService
             }
 
             $ticket->update(['status' => 'in_progress', 'started_at' => now()]);
+
+            if ($ticket->appointment_id) {
+                Appointment::where('appointment_id', $ticket->appointment_id)
+                    ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])
+                    ->update(['status' => 'Đang khám']); /* fixed: da vao phong kham thi benh nhan khong the huy lich */
+            }
+
             broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
             return $ticket;
         });
@@ -231,7 +254,7 @@ class QueueService
 
                 if ($appointment) {
                     $appointment->update(['status' => 'Hoàn thành']);
-                    app(MedicalRecordService::class)->createBlankRecordFromAppointment($appointment->fresh([
+                    app(\App\Services\MedicalRecordService::class)->createBlankRecordFromAppointment($appointment->fresh([
                         'user',
                         'service',
                         'schedule.doctor',

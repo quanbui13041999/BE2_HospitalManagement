@@ -147,7 +147,11 @@ class ServiceService
     public function deleteService(Service $service): void
     {
         $hasAppointments = \App\Models\Appointment::where('service_id', $service->service_id)->exists();
-        $hasInvoices = \App\Models\InvoiceItem::where('service_id', $service->service_id)->exists();
+        
+        $hasInvoices = false;
+        if (\Illuminate\Support\Facades\Schema::hasTable('invoice_items')) {
+            $hasInvoices = \App\Models\InvoiceItem::where('service_id', $service->service_id)->exists();
+        }
 
         if ($hasAppointments || $hasInvoices) {
             throw new \Exception('Không thể xoá dịch vụ này vì đã có dữ liệu liên quan (lịch hẹn khám hoặc hoá đơn bệnh nhân) trong hệ thống. Vui lòng đổi trạng thái dịch vụ sang "Tạm ngưng" để không tiếp nhận thêm lịch hẹn mới.');

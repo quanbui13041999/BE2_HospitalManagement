@@ -14,135 +14,138 @@ class StoreMedicalRecordRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array((int) (Auth::user()?->role_id ?? 0), [1, 2], true);
+        return in_array((int) ($this->currentUser()?->role_id ?? 0), [1, 2], true);
     }
 
     public function rules(): array
     {
+        $user = $this->currentUser();
+
         return [
-            'patient_id'      => [
+            'patient_id' => [
                 'required',
                 'integer',
                 Rule::exists('users', 'user_id')->where(fn ($query) => $query->where('role_id', 3)),
             ],
-            'patient_name'    => ['required', 'string', 'max:100', 'regex:/\A[\pL\s.\'-]+\z/u'],
-            'patient_code'    => ['nullable', 'string', 'max:30', 'regex:/\ABN\d{1,10}\z/u'],
-            'doctor_id'       => [
+            'patient_name' => ['required', 'string', 'max:100', 'regex:/\A[\pL\s.\'-]+\z/u'],
+            'patient_code' => ['nullable', 'string', 'max:30', 'regex:/\ABN\d{1,10}\z/u'],
+            'doctor_id' => [
                 'required',
                 'integer',
-                (int) (Auth::user()?->role_id ?? 0) === 2
-                    ? Rule::in([(int) Auth::user()->user_id])
+                (int) ($user?->role_id ?? 0) === 2
+                    ? Rule::in([(int) $user->user_id])
                     : Rule::exists('users', 'user_id')->where(fn ($query) => $query->where('role_id', 2)),
             ],
-            'doctor_name'     => ['required', 'string', 'max:100', 'regex:/\A[\pL\s.\'-]+\z/u'],
-            'appointment_id'  => ['nullable', 'integer', Rule::exists('appointments', 'appointment_id')],
-            'exam_date'       => 'required|date',
-            'exam_time'       => 'nullable|date_format:H:i',
-            'visit_type'      => 'required|in:Tái khám,Khám mới,Cấp cứu',
+            'doctor_name' => ['required', 'string', 'max:100', 'regex:/\A[\pL\s.\'-]+\z/u'],
+            'appointment_id' => ['nullable', 'integer', Rule::exists('appointments', 'appointment_id')],
+            'exam_date' => 'required|date',
+            'exam_time' => 'nullable|date_format:H:i',
+            'visit_type' => 'required|in:Tái khám,Khám mới,Cấp cứu',
             'chief_complaint' => ['required', 'string', 'max:1000', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
-            'record_id'       => 'prohibited',
-            'record_code'     => 'prohibited',
-            'status'          => 'prohibited',
-            'status_note'     => 'prohibited',
-            'created_at'      => 'prohibited',
-            'updated_at'      => 'prohibited',
+            'record_id' => 'prohibited',
+            'record_code' => 'prohibited',
+            'status' => 'prohibited',
+            'status_note' => 'prohibited',
+            'created_at' => 'prohibited',
+            'updated_at' => 'prohibited',
             'record_snapshot' => 'prohibited',
 
             // Chỉ số sinh tồn
-            'vitals'                        => 'required|array',
-            'vitals.blood_pressure'         => ['required', 'string', 'max:20', 'regex:/\A\d{2,3}\/\d{2,3}\z/'],
-            'vitals.bp_status'              => 'nullable|in:normal,high,low',
-            'vitals.heart_rate'             => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:1', 'max:300'],
-            'vitals.hr_status'              => 'nullable|in:normal,high,low',
-            'vitals.temperature'            => ['required', 'numeric', 'min:36', 'max:40', 'regex:/\A\d+(\.\d{1,2})?\z/'],
-            'vitals.temp_status'            => 'nullable|in:normal,high,low',
-            'vitals.spo2'                   => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:50', 'max:100'],
-            'vitals.spo2_status'            => 'nullable|in:normal,high,low',
-            'vitals.weight'                 => ['required', 'numeric', 'min:1', 'max:500', 'regex:/\A\d+(\.\d{1,2})?\z/'],
-            'vitals.blood_sugar'            => ['nullable', 'numeric', 'min:1', 'max:1000', 'regex:/\A\d+(\.\d{1,2})?\z/'],
-            'vitals.sugar_status'           => 'nullable|in:normal,high,low',
+            'vitals' => 'required|array',
+            'vitals.blood_pressure' => ['required', 'string', 'max:20', 'regex:/\A\d{2,3}\/\d{2,3}\z/'],
+            'vitals.bp_status' => 'nullable|in:normal,high,low',
+            'vitals.heart_rate' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:1', 'max:300'],
+            'vitals.hr_status' => 'nullable|in:normal,high,low',
+            'vitals.temperature' => ['required', 'numeric', 'min:36', 'max:40', 'regex:/\A\d+(\.\d{1,2})?\z/'],
+            'vitals.temp_status' => 'nullable|in:normal,high,low',
+            'vitals.spo2' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'min:50', 'max:100'],
+            'vitals.spo2_status' => 'nullable|in:normal,high,low',
+            'vitals.weight' => ['required', 'numeric', 'min:1', 'max:500', 'regex:/\A\d+(\.\d{1,2})?\z/'],
+            'vitals.blood_sugar' => ['nullable', 'numeric', 'min:1', 'max:1000', 'regex:/\A\d+(\.\d{1,2})?\z/'],
+            'vitals.sugar_status' => 'nullable|in:normal,high,low',
 
             // Dị ứng
-            'allergies'                  => 'nullable|array',
-            'allergies.*.allergen'       => ['nullable', 'string', 'max:100', 'regex:/\A[\pL\s\/\-]+\z/u'],
+            'allergies' => 'nullable|array',
+            'allergies.*.allergen' => ['nullable', 'string', 'max:100', 'regex:/\A[\pL\s\/\-]+\z/u'],
             'allergies.*.allergen_custom' => ['nullable', 'string', 'max:100', 'regex:/\A[\pL\s\/\-]+\z/u'],
-            'allergies.*.severity'       => 'nullable|in:Nhẹ,Vừa,Nặng',
-            'allergies.*.reaction'       => ['nullable', 'string', 'max:200', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
+            'allergies.*.severity' => 'nullable|in:Nhẹ,Vừa,Nặng',
+            'allergies.*.reaction' => ['nullable', 'string', 'max:200', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
 
             // Chẩn đoán
-            'diagnoses'                         => 'required|array|min:1',
-            'diagnoses.*.diagnosis_name'        => ['required', 'string', 'max:150', 'regex:/\A[\pL\pN\s.,;:()\/+\-]+\z/u'],
+            'diagnoses' => 'required|array|min:1',
+            'diagnoses.*.diagnosis_name' => ['required', 'string', 'max:150', 'regex:/\A[\pL\pN\s.,;:()\/+\-]+\z/u'],
             'diagnoses.*.diagnosis_name_custom' => ['nullable', 'string', 'max:150', 'regex:/\A[\pL\pN\s.,;:()\/+\-]+\z/u'],
-            'diagnoses.*.icd_code'              => ['nullable', 'string', 'max:20', 'regex:/\A[A-Z][0-9]{1,2}(\.[0-9A-Z]{1,2})?\z/'],
-            'diagnoses.*.diagnosis_type'        => 'required|in:primary,secondary,complication',
-            'diagnoses.*.note'                  => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
+            'diagnoses.*.icd_code' => ['nullable', 'string', 'max:20', 'regex:/\A[A-Z][0-9]{1,2}(\.[0-9A-Z]{1,2})?\z/'],
+            'diagnoses.*.diagnosis_type' => 'required|in:primary,secondary,complication',
+            'diagnoses.*.note' => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
 
             // Đơn thuốc
-            'prescriptions'                     => 'nullable|array',
-            'prescriptions.*.drug_name'         => ['nullable', 'string', 'max:120', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
-            'prescriptions.*.drug_name_custom'  => ['nullable', 'string', 'max:120', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
-            'prescriptions.*.dosage'            => ['nullable', 'string', 'max:100', 'regex:/\A[\pL\pN\s.,;:()\/+\-%]+\z/u'],
-            'prescriptions.*.instructions'      => ['nullable', 'string', 'max:300', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
-            'prescriptions.*.duration_days'     => ['nullable', 'regex:/\A[0-9]+\z/', 'integer', 'min:1', 'max:365'],
-            'prescriptions.*.quantity'          => ['nullable', 'regex:/\A[0-9]+\z/', 'integer', 'min:1', 'max:10000'],
+            'prescriptions' => 'nullable|array',
+            'prescriptions.*.drug_name' => ['nullable', 'string', 'max:120', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
+            'prescriptions.*.drug_name_custom' => ['nullable', 'string', 'max:120', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
+            'prescriptions.*.dosage' => ['nullable', 'string', 'max:100', 'regex:/\A[\pL\pN\s.,;:()\/+\-%]+\z/u'],
+            'prescriptions.*.instructions' => ['nullable', 'string', 'max:300', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
+            'prescriptions.*.duration_days' => ['nullable', 'regex:/\A[0-9]+\z/', 'integer', 'min:1', 'max:365'],
+            'prescriptions.*.quantity' => ['nullable', 'regex:/\A[0-9]+\z/', 'integer', 'min:1', 'max:10000'],
 
             // Chỉ định xét nghiệm
-            'orders'                    => 'nullable|array',
-            'orders.*.order_type'       => 'nullable|in:lab,imaging,other',
-            'orders.*.order_name'       => ['nullable', 'string', 'max:150', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
+            'orders' => 'nullable|array',
+            'orders.*.order_type' => 'nullable|in:lab,imaging,other',
+            'orders.*.order_name' => ['nullable', 'string', 'max:150', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
             'orders.*.order_name_custom' => ['nullable', 'string', 'max:150', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
-            'orders.*.description'      => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
+            'orders.*.description' => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\s.,;:()\/+\-]+\z/u'],
 
             // Tập đính kèm
-            'attachments'    => 'nullable|array',
-            'attachments.*'  => 'file|max:10240|mimes:pdf,jpg,jpeg,png',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240|mimes:pdf,jpg,jpeg,png',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'patient_id.required'          => 'Vui lòng chọn bệnh nhân.',
-            'patient_id.exists'            => 'Bệnh nhân không tồn tại.',
-            'patient_name.required'        => 'Vui lòng nhập tên bệnh nhân.',
-            'doctor_id.required'           => 'Vui lòng chọn bác sĩ.',
-            'doctor_name.required'         => 'Vui lòng nhập tên bác sĩ.',
-            'exam_date.required'           => 'Vui lòng chọn ngày khám.',
-            'exam_date.date'               => 'Ngày khám không hợp lệ.',
-            'visit_type.required'          => 'Vui lòng chọn loại khám.',
-            'chief_complaint.required'     => 'Vui lòng nhập lý do đến khám.',
-            'chief_complaint.regex'        => 'Lý do đến khám / triệu chứng chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
-            'vitals.required'              => 'Vui lòng nhập đầy đủ chỉ số sinh tồn.',
+            'patient_id.required' => 'Vui lòng chọn bệnh nhân.',
+            'patient_id.exists' => 'Bệnh nhân không tồn tại.',
+            'patient_name.required' => 'Vui lòng nhập tên bệnh nhân.',
+            'doctor_id.required' => 'Vui lòng chọn bác sĩ.',
+            'doctor_name.required' => 'Vui lòng nhập tên bác sĩ.',
+            'exam_date.required' => 'Vui lòng chọn ngày khám.',
+            'exam_date.date' => 'Ngày khám không hợp lệ.',
+            'visit_type.required' => 'Vui lòng chọn loại khám.',
+            'chief_complaint.required' => 'Vui lòng nhập lý do đến khám.',
+            'chief_complaint.regex' => 'Lý do đến khám / triệu chứng chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
+            'vitals.required' => 'Vui lòng nhập đầy đủ chỉ số sinh tồn.',
             'vitals.blood_pressure.required' => 'Vui lòng nhập huyết áp.',
-            'vitals.blood_pressure.regex'    => 'Huyết áp phải đúng dạng 120/80.',
-            'vitals.heart_rate.required'   => 'Vui lòng nhập nhịp tim.',
-            'vitals.heart_rate.integer'    => 'Nhịp tim phải là số nguyên.',
-            'vitals.heart_rate.min'        => 'Nhịp tim phải lớn hơn 0.',
-            'vitals.heart_rate.max'        => 'Nhịp tim không được vượt quá 300 bpm.',
-            'vitals.temperature.required'  => 'Vui lòng nhập nhiệt độ.',
-            'vitals.temperature.min'       => 'Nhiệt độ chỉ hợp lệ từ 36°C đến 40°C.',
-            'vitals.temperature.max'       => 'Nhiệt độ chỉ hợp lệ từ 36°C đến 40°C.',
-            'vitals.spo2.required'         => 'Vui lòng nhập chỉ số SpO2.',
-            'vitals.spo2.integer'          => 'SpO2 phải là số nguyên.',
-            'vitals.spo2.min'              => 'SpO2 tối thiểu là 50%.',
-            'vitals.spo2.max'              => 'SpO2 không được vượt quá 100%.',
-            'vitals.weight.required'       => 'Vui lòng nhập cân nặng.',
-            'vitals.weight.min'            => 'Cân nặng phải lớn hơn 0 kg.',
-            'vitals.weight.max'            => 'Cân nặng không được vượt quá 500 kg.',
-            'vitals.blood_sugar.min'       => 'Đường huyết phải lớn hơn 0.',
-            'vitals.blood_sugar.max'       => 'Đường huyết không được vượt quá 1000.',
-            'diagnoses.required'           => 'Vui lòng thêm ít nhất 1 chẩn đoán.',
-            'diagnoses.min'                => 'Vui lòng thêm ít nhất 1 chẩn đoán.',
-            'regex'                        => 'Dữ liệu nhập sai định dạng hoặc có ký tự không hợp lệ.',
-            'prohibited'                   => 'Không được gửi dữ liệu hệ thống từ trình duyệt.',
-            'attachments.*.mimes'          => 'Tập đính kèm chỉ được nhận file PDF, JPG, JPEG hoặc PNG.',
-            'attachments.*.max'            => 'Tập đính kèm tối đa 10MB.',
+            'vitals.blood_pressure.regex' => 'Huyết áp phải đúng dạng 120/80.',
+            'vitals.heart_rate.required' => 'Vui lòng nhập nhịp tim.',
+            'vitals.heart_rate.integer' => 'Nhịp tim phải là số nguyên.',
+            'vitals.heart_rate.min' => 'Nhịp tim phải lớn hơn 0.',
+            'vitals.heart_rate.max' => 'Nhịp tim không được vượt quá 300 bpm.',
+            'vitals.temperature.required' => 'Vui lòng nhập nhiệt độ.',
+            'vitals.temperature.min' => 'Nhiệt độ chỉ hợp lệ từ 36°C đến 40°C.',
+            'vitals.temperature.max' => 'Nhiệt độ chỉ hợp lệ từ 36°C đến 40°C.',
+            'vitals.spo2.required' => 'Vui lòng nhập chỉ số SpO2.',
+            'vitals.spo2.integer' => 'SpO2 phải là số nguyên.',
+            'vitals.spo2.min' => 'SpO2 tối thiểu là 50%.',
+            'vitals.spo2.max' => 'SpO2 không được vượt quá 100%.',
+            'vitals.weight.required' => 'Vui lòng nhập cân nặng.',
+            'vitals.weight.min' => 'Cân nặng phải lớn hơn 0 kg.',
+            'vitals.weight.max' => 'Cân nặng không được vượt quá 500 kg.',
+            'vitals.blood_sugar.min' => 'Đường huyết phải lớn hơn 0.',
+            'vitals.blood_sugar.max' => 'Đường huyết không được vượt quá 1000.',
+            'diagnoses.required' => 'Vui lòng thêm ít nhất 1 chẩn đoán.',
+            'diagnoses.min' => 'Vui lòng thêm ít nhất 1 chẩn đoán.',
+            'regex' => 'Dữ liệu nhập sai định dạng hoặc có ký tự không hợp lệ.',
+            'prohibited' => 'Không được gửi dữ liệu hệ thống từ trình duyệt.',
+            'attachments.*.mimes' => 'Tập đính kèm chỉ được nhận file PDF, JPG, JPEG hoặc PNG.',
+            'attachments.*.max' => 'Tập đính kèm tối đa 10MB.',
         ];
     }
 
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
+            $user = $this->currentUser();
             $patient = $this->filled('patient_id')
                 ? User::where('user_id', $this->integer('patient_id'))->where('role_id', 3)->first()
                 : null;
@@ -161,7 +164,7 @@ class StoreMedicalRecordRequest extends FormRequest
                 $validator->errors()->add('doctor_id', 'Bac si khong hop le.');
             }
 
-            if ((int) (Auth::user()?->role_id ?? 0) === 2 && $this->integer('doctor_id') !== (int) Auth::user()->user_id) {
+            if ((int) ($user?->role_id ?? 0) === 2 && $this->integer('doctor_id') !== (int) $user->user_id) {
                 $validator->errors()->add('doctor_id', 'Bac si chi duoc tao phieu kham cua chinh minh.');
             }
 
@@ -206,23 +209,23 @@ class StoreMedicalRecordRequest extends FormRequest
         $this->applyCustomRows();
 
         // Chuyển đổi patient_id và doctor_id sang integer
-        if ($this->has('patient_id') && !empty($this->patient_id)) {
+        if ($this->has('patient_id') && ! empty($this->patient_id)) {
             $this->merge(['patient_id' => (int) $this->patient_id]);
         }
-        
-        if ($this->has('doctor_id') && !empty($this->doctor_id)) {
+
+        if ($this->has('doctor_id') && ! empty($this->doctor_id)) {
             $this->merge(['doctor_id' => (int) $this->doctor_id]);
         }
-        
+
         // Đảm bảo diagnoses là mảng
-        if (!$this->has('diagnoses') || empty($this->diagnoses)) {
+        if (! $this->has('diagnoses') || empty($this->diagnoses)) {
             $this->merge(['diagnoses' => []]);
         }
-        
+
         // Lọc bỏ dòng rỗng trong diagnoses
         if ($this->has('diagnoses') && is_array($this->diagnoses)) {
             $filtered = array_values(array_filter($this->diagnoses, function ($item) {
-                return !empty(trim($item['diagnosis_name'] ?? ''));
+                return ! empty(trim($item['diagnosis_name'] ?? ''));
             }));
             $filtered = array_map(function ($item) {
                 if (empty($item['diagnosis_type'])) {
@@ -233,27 +236,27 @@ class StoreMedicalRecordRequest extends FormRequest
             }, $filtered);
             $this->merge(['diagnoses' => $filtered]);
         }
-        
+
         // Lọc bỏ dòng rỗng trong allergies
         if ($this->has('allergies') && is_array($this->allergies)) {
             $filtered = array_values(array_filter($this->allergies, function ($item) {
-                return !empty(trim($item['allergen'] ?? ''));
+                return ! empty(trim($item['allergen'] ?? ''));
             }));
             $this->merge(['allergies' => empty($filtered) ? null : $filtered]);
         }
-        
+
         // Lọc bỏ dòng rỗng trong prescriptions
         if ($this->has('prescriptions') && is_array($this->prescriptions)) {
             $filtered = array_values(array_filter($this->prescriptions, function ($item) {
-                return !empty(trim($item['drug_name'] ?? ''));
+                return ! empty(trim($item['drug_name'] ?? ''));
             }));
             $this->merge(['prescriptions' => empty($filtered) ? null : $filtered]);
         }
-        
+
         // Lọc bỏ dòng rỗng trong orders
         if ($this->has('orders') && is_array($this->orders)) {
             $filtered = array_values(array_filter($this->orders, function ($item) {
-                return !empty(trim($item['order_name'] ?? ''));
+                return ! empty(trim($item['order_name'] ?? ''));
             }));
             $this->merge(['orders' => empty($filtered) ? null : $filtered]);
         }
@@ -326,12 +329,19 @@ class StoreMedicalRecordRequest extends FormRequest
             }
 
             foreach ($data[$group] as &$row) {
-                if (($row[$field] ?? null) === 'other' && ! empty($row[$field . '_custom'])) {
-                    $row[$field] = $row[$field . '_custom'];
+                if (($row[$field] ?? null) === 'other' && ! empty($row[$field.'_custom'])) {
+                    $row[$field] = $row[$field.'_custom'];
                 }
             }
         }
 
         $this->replace($data);
+    }
+
+    private function currentUser(): ?User
+    {
+        $userId = Auth::id();
+
+        return $userId ? User::find($userId) : null;
     }
 }

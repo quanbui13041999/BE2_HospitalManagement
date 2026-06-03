@@ -17,16 +17,14 @@ class ProfileController extends Controller
 {
     public function show(): View
     {
-        /** @var User $user */
-        $user = Auth::user();
+        $user = $this->currentUser();
 
         return view('profile.show', compact('user'));
     }
 
     public function edit(): View
     {
-        /** @var User $user */
-        $user = Auth::user();
+        $user = $this->currentUser();
         $profileSnapshot = $this->profileSnapshot($user);
 
         return view('profile.edit', compact('user', 'profileSnapshot'));
@@ -148,11 +146,25 @@ class ProfileController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'address' => $user->address,
-            'date_of_birth' => $user->date_of_birth?->format('Y-m-d'),
+            'date_of_birth' => $this->formatProfileDate($user->date_of_birth),
             'gender' => $user->gender,
             'avatar_url' => $user->avatar_url,
         ];
 
         return hash_hmac('sha256', json_encode($payload), (string) config('app.key'));
+    }
+
+    private function currentUser(): User
+    {
+        return User::findOrFail(Auth::id());
+    }
+
+    private function formatProfileDate(mixed $date): ?string
+    {
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d');
+        }
+
+        return $date ? (string) $date : null;
     }
 }

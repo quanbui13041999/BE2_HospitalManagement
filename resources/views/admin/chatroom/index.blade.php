@@ -109,14 +109,23 @@ let allRooms = [];
 // Tải danh sách phòng
 async function loadRooms() {
     try {
-        const res = await fetch('/admin/chatroom/list');
+        const res = await fetch('/admin/chatroom/list', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
         const data = await res.json();
         if (data.success) {
             allRooms = data.rooms;
             renderRooms(allRooms);
             document.getElementById('rooms-count').textContent = data.rooms.length;
+        } else if (window.showAppNotification) {
+            window.showAppNotification(data.message || 'Không tải được danh sách chat.', 'warning');
         }
-    } catch(e) {}
+    } catch(e) {
+        if (window.showAppNotification) window.showAppNotification('Không tải được danh sách chat.', 'error');
+    }
 }
 
 function renderRooms(rooms) {
@@ -176,7 +185,12 @@ async function loadAdminMessages(incremental = false) {
     if (!currentRoomId) return;
     const url = `/admin/chatroom/${currentRoomId}/messages` + (incremental ? `?after_id=${adminLastMsgId}` : '');
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
         const data = await res.json();
         if (data.success) {
             if (!incremental) {
@@ -188,8 +202,13 @@ async function loadAdminMessages(incremental = false) {
                 adminLastMsgId = Math.max(adminLastMsgId, ...data.messages.map(m => m.message_id));
                 scrollAdminToBottom();
             }
+        } else if (window.showAppNotification) {
+            window.showAppNotification(data.message || 'Không tải được tin nhắn. Vui lòng tải lại danh sách.', 'warning'); /* fixed: thao tac tren phong da xoa phai hien thong bao */
+            await loadRooms();
         }
-    } catch(e) {}
+    } catch(e) {
+        if (window.showAppNotification) window.showAppNotification('Không tải được tin nhắn.', 'error');
+    }
 }
 
 function appendAdminMessage(msg) {
@@ -232,7 +251,7 @@ async function adminSendMessage() {
     input.value = '';
 
     try {
-        await fetch(`/admin/chatroom/${currentRoomId}/send`, {
+        const res = await fetch(`/admin/chatroom/${currentRoomId}/send`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -240,37 +259,61 @@ async function adminSendMessage() {
             },
             body: JSON.stringify({ message_text: text })
         });
+        const data = await res.json();
+        if (!data.success) {
+            input.value = text;
+            window.showAppNotification(data.message || 'Không gửi được tin nhắn.', 'warning');
+            await loadRooms();
+            return;
+        }
         await loadAdminMessages(true);
-    } catch(e) {}
+    } catch(e) {
+        input.value = text;
+        if (window.showAppNotification) window.showAppNotification('Không gửi được tin nhắn.', 'error');
+    }
 }
 
 async function closeCurrentRoom() {
     if (!currentRoomId) return;
     if (window.appConfirm && !await window.appConfirm('Đóng phòng chat này?')) return;
     try {
-        await fetch(`/admin/chatroom/${currentRoomId}/close`, {
+        const res = await fetch(`/admin/chatroom/${currentRoomId}/close`, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
         });
+        const data = await res.json();
+        if (!data.success) {
+            window.showAppNotification(data.message || 'Không đóng được phòng chat.', 'warning');
+            await loadRooms();
+            return;
+        }
         document.getElementById('chat-room-status').textContent = 'Trạng thái: Đóng';
         clearInterval(adminPollInterval);
         await loadRooms();
-    } catch(e) {}
+    } catch(e) {
+        if (window.showAppNotification) window.showAppNotification('Không đóng được phòng chat.', 'error');
+    }
 }
 
 async function deleteCurrentRoom() {
     if (!currentRoomId) return;
     if (window.appConfirm && !await window.appConfirm('Xác nhận xóa vĩnh viễn phòng chat này và toàn bộ tin nhắn?')) return;
     try {
-        await fetch(`/admin/chatroom/${currentRoomId}`, {
+        const res = await fetch(`/admin/chatroom/${currentRoomId}`, {
             method: 'DELETE',
             headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
         });
+        const data = await res.json();
+        if (!data.success) {
+            window.showAppNotification(data.message || 'Không xóa được phòng chat.', 'warning');
+        }
         currentRoomId = null;
         document.getElementById('chat-area').style.display = 'none';
         document.getElementById('no-room-selected').style.display = 'flex';
         await loadRooms();
-    } catch(e) {}
+    } catch(e) {
+        if (window.showAppNotification) window.showAppNotification('Không xóa được phòng chat.', 'error');
+    }
 }
 
 async function deleteAdminMessage(msgId, element) {
@@ -283,8 +326,13 @@ async function deleteAdminMessage(msgId, element) {
         const data = await res.json();
         if (data.success) {
             element.remove();
+        } else if (window.showAppNotification) {
+            window.showAppNotification(data.message || 'Không xóa được tin nhắn.', 'warning'); /* fixed: xoa lan 2 bao loi tren man hinh */
+            await loadAdminMessages(false);
         }
-    } catch(e) {}
+    } catch(e) {
+        if (window.showAppNotification) window.showAppNotification('Không xóa được tin nhắn.', 'error');
+    }
 }
 
 document.getElementById('search-rooms').addEventListener('input', function() {

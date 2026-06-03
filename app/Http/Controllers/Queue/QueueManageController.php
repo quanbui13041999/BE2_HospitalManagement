@@ -7,6 +7,7 @@ use App\Models\{DoctorSchedule, QueueTicket};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class QueueManageController extends Controller
@@ -57,7 +58,7 @@ class QueueManageController extends Controller
     public function searchPatient(Request $request)
     {
         $validated = $request->validate([
-            'keyword' => 'nullable|string|max:100',
+            'keyword' => ['nullable', 'string', 'max:100', 'not_regex:/\A[\s\x{3000}]*\z/u'],
         ]); /* fixed: gioi han input tim kiem, tranh query voi chuoi qua dai/du lieu tho */
 
         $keyword  = trim($validated['keyword'] ?? '');
@@ -76,18 +77,30 @@ class QueueManageController extends Controller
     public function checkin(Request $request)
     {
         $validated = $request->validate([
-            'schedule_id'  => 'required|exists:doctorschedules,schedule_id',
-            'patient_name' => 'required|string|max:100',
-            'priority'     => 'required|in:normal,elderly,disabled,emergency',
-            'patient_phone'=> 'nullable|string|max:15',
+            'schedule_id'  => [
+                'required',
+                'integer',
+                Rule::exists('doctorschedules', 'schedule_id')->where(function ($query) {
+                    $query->whereDate('work_date', today())
+                        ->where('status', 'Hoạt động');
+                }),
+            ],
+            'patient_name' => ['required', 'string', 'max:100', 'not_regex:/\A[\s\x{3000}]*\z/u'],
+            'priority'     => ['required', Rule::in(['normal', 'elderly', 'disabled', 'emergency'])],
+            'patient_phone'=> ['nullable', 'string', 'max:15', 'regex:/\A[0-9+\-\s]{8,15}\z/'],
             'patient_email'=> 'nullable|email|max:100',
-            'notes'        => 'nullable|string|max:255',
-            'appointment_id' => 'nullable|exists:appointments,appointment_id',
-            'user_id'      => 'nullable|exists:users,user_id',
-        ]);
+            'notes'        => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
+            'appointment_id' => 'nullable|integer|exists:appointments,appointment_id',
+            'user_id'      => 'nullable|integer|exists:users,user_id',
+        ]); /* fixed: schedule_id phai la ca dang hoat dong hom nay, khong chi exists */
 
         try {
             $ticket = $this->queueService->checkin($validated); /* fixed: chi truyen input da validate, tranh mass assignment/input poisoning */
+        } catch (ValidationException $e) {
+            return back()
+                ->with('warning', $e->validator->errors()->first() ?: 'Dữ liệu check-in không hợp lệ.')
+                ->with('reload_page', true)
+                ->withInput(); /* fixed: double submit/check-in trung thi bao tren man hinh va reload */
         } catch (\Throwable $e) {
             Log::error('Queue check-in failed', [
                 'schedule_id' => $validated['schedule_id'] ?? null,
@@ -111,7 +124,7 @@ class QueueManageController extends Controller
     public function skip(Request $request, int $ticketId)
     {
         $validated = $request->validate([
-            'reason' => 'nullable|string|max:255',
+            'reason' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
         ]);
 
         try {

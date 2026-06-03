@@ -63,6 +63,8 @@
         </div>
         <form method="POST" action="{{ route('admin.rooms.update', $room) }}" id="editRoomForm" novalidate>
             @csrf @method('PUT')
+            {{-- Optimistic lock token: timestamp của updated_at để phát hiện xung đột 2 tab --}}
+            <input type="hidden" name="_lock_version" value="{{ $room->updated_at?->timestamp }}">
             <div class="card-body row g-3">
 
                 {{-- Mã phòng – READONLY, không cho sửa --}}
@@ -201,7 +203,7 @@ function bindCharCount(inputId, counterId, max) {
 bindCharCount('room_name', 'room_name_count', 100);
 bindCharCount('notes',     'notes_count',     500);
 
-// ── Client-side validation ────────────────────────────────────
+// ── Submit protection: disable sau khi click để tránh double-submit ──
 document.getElementById('editRoomForm').addEventListener('submit', function(e) {
     let valid = true;
     const type   = document.getElementById('room_type');
@@ -216,7 +218,15 @@ document.getElementById('editRoomForm').addEventListener('submit', function(e) {
         showError(status, 'Vui lòng chọn trạng thái.'); valid = false;
     }
 
-    if (!valid) e.preventDefault();
+    if (!valid) {
+        e.preventDefault();
+        return;
+    }
+
+    // Disable nút submit sau khi form hợp lệ để tránh double-submit
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang lưu...';
 });
 
 function showError(el, msg) {
@@ -229,5 +239,52 @@ function showError(el, msg) {
     }
     fb.textContent = msg;
 }
+
+// Realtime check database changes
+function startRealtimeCheck(type, id, lockVersion) {
+    const interval = setInterval(async () => {
+        try {
+            const response = await fetch(`/admin/api/check-entity-status?type=${type}&id=${id}&lock_version=${lockVersion}`);
+            const data = await response.json();
+            if (data.success && data.status !== 'unchanged') {
+                clearInterval(interval);
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100vw';
+                overlay.style.height = '100vh';
+                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                overlay.style.zIndex = '99999';
+                overlay.style.display = 'flex';
+                overlay.style.justifyContent = 'center';
+                overlay.style.alignItems = 'center';
+                overlay.style.backdropFilter = 'blur(5px)';
+                overlay.innerHTML = `
+                    <div class="card shadow-lg border-0 text-center p-4 m-3" style="max-width: 500px; border-radius: 16px;">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
+                            </div>
+                            <h4 class="card-title text-danger fw-bold mb-3">Cảnh báo đồng bộ dữ liệu</h4>
+                            <p class="card-text text-secondary mb-4" style="font-size: 1.1rem;">${data.message}</p>
+                            <button onclick="window.location.reload();" class="btn btn-primary btn-lg px-4" style="border-radius: 8px;">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Tải lại trang
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                document.querySelectorAll('form input, form select, form textarea, form button').forEach(el => {
+                    el.disabled = true;
+                });
+            }
+        } catch (error) {
+            console.error('Lỗi khi kiểm tra trạng thái thực thể:', error);
+        }
+    }, 5000);
+}
+
+startRealtimeCheck('room', '{{ $room->room_id }}', '{{ $room->updated_at?->timestamp }}');
 </script>
 @endpush

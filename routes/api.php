@@ -16,6 +16,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::get('/cron/reminders', function () {
+    $service = app(App\Services\AppointmentReminderService::class);
+    $stats = $service->sendPendingReminders();
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Appointment reminders sent',
+        'stats' => $stats,
+    ]);
+});
+
 // Endpoint tiếp nhận webhook ngân hàng từ PayOS
 Route::post('/payments/webhook', [PaymentWebhookController::class, 'handlePayOsWebhook']);
-

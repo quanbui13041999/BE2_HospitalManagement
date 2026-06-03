@@ -290,9 +290,7 @@ function queueManage() {
                     });
                     this.stats   = data.stats;
                 }
-            } catch (e) {
-                console.error("Failed to load queue updates:", e);
-            }
+            } catch (e) {}
         },
 
         getPriorityLabel(priority) {

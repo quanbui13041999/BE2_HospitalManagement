@@ -2,18 +2,19 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class RehabExerciseRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $user = auth()->user();
+        $userId = Auth::id();
+        $user = $userId ? User::find($userId) : null;
 
-        return $user && method_exists($user, 'isAdmin')
-            ? $user->isAdmin()
-            : (int) ($user->role_id ?? 0) === 1;
+        return $user?->isAdmin() ?? false;
     }
 
     protected function prepareForValidation(): void
@@ -98,5 +99,4 @@ class RehabExerciseRequest extends FormRequest
             'updated_at.prohibited' => 'Ngày cập nhật do hệ thống tự ghi nhận.',
         ];
     }
-
 }

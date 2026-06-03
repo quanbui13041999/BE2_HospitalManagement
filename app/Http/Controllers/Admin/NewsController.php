@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 
 class NewsController extends Controller
@@ -33,8 +34,12 @@ class NewsController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $request->validate([
+            'page' => 'nullable|integer|min:1|max:1000',
+        ]); /* fixed: chan URL page=abc/page qua lon */
+
         $news = HospitalNews::with('author')
             ->orderByDesc('created_at')
             ->paginate(20);
@@ -174,6 +179,12 @@ class NewsController extends Controller
                     ->with('reload_page', true);
             }
 
+            if ($e instanceof ModelNotFoundException) {
+                return back()
+                    ->with('warning', 'Bài viết không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.')
+                    ->with('reload_page', true); /* fixed: xoa item da mat phai bao loi hop le */
+            }
+
             Log::error('Delete news failed', [
                 'news_id' => $id,
                 'user_id' => Auth::id(),
@@ -216,6 +227,10 @@ class NewsController extends Controller
         } catch (ConcurrentModificationException $e) {
             return back()
                 ->with('warning', $e->getMessage())
+                ->with('reload_page', true);
+        } catch (ModelNotFoundException $e) {
+            return back()
+                ->with('warning', 'Bài viết không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.')
                 ->with('reload_page', true);
         }
 
@@ -277,6 +292,10 @@ class NewsController extends Controller
             return back()
                 ->with('warning', $e->getMessage())
                 ->with('reload_page', true);
+        } catch (ModelNotFoundException $e) {
+            return back()
+                ->with('warning', 'Bài viết không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.')
+                ->with('reload_page', true); /* fixed: gui email sau khi bai bi xoa phai bao loi hop le */
         }
 
         $sentCount = 0;

@@ -18,7 +18,7 @@ class GeminiChatService
 
     public function __construct()
     {
-        $this->apiKey = config('services.gemini.api_key');
+        $this->apiKey = (string) (config('services.gemini.api_key') ?? '');
         $this->caBundle = config('services.gemini.ca_bundle');
         $this->primaryModel = (string) config('services.gemini.model', 'gemini-flash-latest');
         $this->fallbackModels = $this->parseFallbackModels((string) config('services.gemini.fallback_models', ''));

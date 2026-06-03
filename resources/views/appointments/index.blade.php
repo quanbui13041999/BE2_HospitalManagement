@@ -822,6 +822,7 @@
                                 'Đã hủy' => 'badge-cancelled',
                                 'Dời lịch' => 'badge-cancelled',
                                 'Đã thanh toán' => 'badge-confirmed',
+                                'Đang khám' => 'badge-confirmed',
                                 'Đã khám' => 'badge-done',
                                 'Hoàn thành' => 'badge-done',
                                 ];
@@ -867,13 +868,16 @@
                                         <button type="button" class="btn-cancel"
                                             onclick="openModal(this)"
                                             data-action="{{ route('appointments.cancel', $item->appointment_id) }}"
-                                            data-version="{{ optional($item->updated_at)->format('Y-m-d H:i:s') }}">
+                                            data-version="{{ $item->version_token ?? '' }}">
                                             ✕ Huỷ
                                         </button>
                                     @else
                                         <span class="payment-status payment-unpaid">Không thể hủy trong vòng 1 giờ trước giờ khám</span>
                                     @endif
                                 </div>
+
+                                @elseif($item->status === 'Đang khám')
+                                    <span class="payment-status payment-unpaid">Lịch hẹn đang khám, không thể hủy.</span>
 
                                 @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
                                 @php
@@ -1028,7 +1032,7 @@
             </div>
             <h3>Xác nhận hủy lịch</h3>
             <p>Bạn có chắc muốn hủy lịch khám này không? Hành động này không thể hoàn tác.</p>
-            <form id="cancelForm" method="POST">
+            <form id="cancelForm" method="POST" data-disable-submit>
                 @csrf
                 <input type="hidden" name="version" id="cancelVersion">
                 <textarea name="cancel_reason" maxlength="255" placeholder="Nhập lý do hủy (tùy chọn)"></textarea>
@@ -1107,6 +1111,21 @@
         }
 
         bindStandaloneInputLimitWarnings();
+
+        document.querySelectorAll('form[data-disable-submit]').forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.dataset.submitLocked === '1') {
+                    event.preventDefault();
+                    window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+                    return;
+                }
+
+                form.dataset.submitLocked = '1';
+                form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function(button) {
+                    button.disabled = true;
+                });
+            });
+        }); /* fixed: chan double submit huy lich */
     </script>
     @if(session('reload_page'))
     <script>

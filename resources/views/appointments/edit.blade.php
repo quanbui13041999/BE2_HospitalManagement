@@ -71,11 +71,11 @@
     </div>
     @endif
 
-    <form action="{{ route('appointments.update', $appointment->appointment_id) }}" method="POST" id="reschedule-form">
+    <form action="{{ route('appointments.update', $appointment->appointment_id) }}" method="POST" id="reschedule-form" data-disable-submit>
         @csrf
         @method('PUT')
         <input type="hidden" name="new_appointment_time" id="new_appointment_time">
-        <input type="hidden" name="version" value="{{ optional($appointment->updated_at)->format('Y-m-d H:i:s') }}"> {{-- fixed: optimistic lock de phat hien form doi lich da cu --}}
+        <input type="hidden" name="version" value="{{ $appointment->version_token }}"> {{-- fixed: optimistic lock bang token vi bang appointments khong co updated_at --}}
 
         {{-- Thông tin người đặt lịch --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
@@ -223,13 +223,25 @@
         if (checkedRadio) onScheduleSelect(checkedRadio);
     });
 
+    let isSubmitting = false;
+
     const rescheduleForm = document.getElementById('reschedule-form');
     if (rescheduleForm) {
         rescheduleForm.addEventListener('submit', function(e) {
+        if (isSubmitting) {
+            e.preventDefault();
+            return;
+        }
         const btn = document.getElementById('submit-btn');
         const spinner = document.getElementById('spinner');
         const icon = document.getElementById('submit-icon');
-        if (btn.disabled) return;
+
+        if (btn.disabled) {
+            e.preventDefault();
+            return;
+        }
+
+        isSubmitting = true;
         btn.disabled = true;
         spinner.style.display = 'inline-block';
         icon.style.display = 'none';
@@ -280,6 +292,21 @@
     }
 
     bindStandaloneInputLimitWarnings();
+
+    document.querySelectorAll('form[data-disable-submit]').forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (form.dataset.submitLocked === '1') {
+                event.preventDefault();
+                window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+                return;
+            }
+
+            form.dataset.submitLocked = '1';
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function(button) {
+                button.disabled = true;
+            });
+        });
+    }); /* fixed: chan double submit doi lich */
 </script>
 @if(session('reload_page'))
 <div id="appointment-reload-message"
