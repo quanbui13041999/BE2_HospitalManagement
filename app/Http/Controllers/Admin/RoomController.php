@@ -289,7 +289,7 @@ class RoomController extends Controller
             return back()->with('error', 'Không thể xoá ca đã có bệnh nhân đặt lịch.');
         }
 
-        $date = $schedule->work_date->toDateString();
+        $date = $schedule->work_date->date::toDateString();
         $schedule->delete();
 
         return redirect()
