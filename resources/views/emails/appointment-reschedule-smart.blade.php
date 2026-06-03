@@ -269,6 +269,14 @@
     .btn-secondary:hover {
       background: #d1d5db;
     }
+    .btn-danger {
+      background: #dc2626;
+      color: #fff;
+      flex: 1;
+    }
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
 
     /* No alternatives */
     .no-alt {
@@ -363,6 +371,16 @@
           <span class="info-value">{{ $typeLabel }}{{ $reason ? ' — ' . $reason : '' }}</span>
         </div>
       </div>
+    </div>
+
+    <div class="cta-section" style="margin-top: 18px; padding-top: 22px; border-top: 1px solid #e5e7eb;">
+      <div class="cta-title">Hành động nhanh</div>
+      <div class="btn-group" style="margin-top: 14px;">
+        <a href="{{ $doctorOffUrl }}" class="btn btn-primary" style="display:inline-block;">🔄 Dời lịch</a>
+        <a href="{{ $doctorOffUrl }}?action=cancel" class="btn btn-danger" style="display:inline-block;">❌ Hủy lịch</a>
+        <a href="{{ $bookingUrl }}" class="btn btn-secondary" style="display:inline-block;">📆 Đặt lịch mới</a>
+      </div>
+      <p style="font-size:13px; color:#6b7280; margin-top:12px;">Nhấn vào một trong các hành động trên để tiếp tục dời lịch hoặc huỷ lịch nhanh chóng.</p>
     </div>
 
     <!-- Gợi ý bác sĩ -->

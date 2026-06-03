@@ -194,7 +194,7 @@ class AppointmentController extends Controller
         return view('appointments.edit', compact('appointment', 'availableSchedules'));
     }
 
-    public function doctorOff(int $id)
+    public function doctorOff(Request $request, int $id)
     {
         if ($redirect = $this->redirectIfNotPatientAppointmentFlow()) {
             return $redirect;
@@ -211,6 +211,36 @@ class AppointmentController extends Controller
         if ($appointment->status !== 'Bác sĩ nghỉ') {
             return redirect()->route('appointments.index')
                 ->withErrors(['msg' => 'Lịch hẹn này không bị ảnh hưởng bởi bác sĩ nghỉ.']);
+        }
+
+        if ($request->query('action') === 'cancel') {
+            try {
+                $result = $this->appointmentService->cancelAppointment(
+                    $id,
+                    Auth::id(),
+                    [
+                        'cancel_reason' => 'Hủy nhanh do bác sĩ nghỉ',
+                        'version' => $appointment->version_token,
+                        'ip_address' => $request->ip(),
+                    ]
+                );
+
+                return redirect()->route('appointments.index')
+                    ->with('success', $result['message']);
+            } catch (ConcurrentModificationException $e) {
+                return redirect()->route('appointments.index')
+                    ->with('warning', $e->getMessage())
+                    ->with('reload_page', true);
+            } catch (\Exception $e) {
+                Log::error('Doctor-off cancel failed', [
+                    'appointment_id' => $id,
+                    'user_id' => Auth::id(),
+                    'error' => $e->getMessage(),
+                ]);
+
+                return redirect()->route('appointments.index')
+                    ->withErrors(['msg' => 'Không thể hủy lịch hiện tại. Vui lòng thử lại sau.']);
+            }
         }
 
         return view('appointments.doctor-off', compact('appointment'));
