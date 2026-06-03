@@ -112,13 +112,17 @@ class DocumentController extends Controller
 
     // ── SHOW ─────────────────────────────────────────────────────
 
-    public function show(int $document)
+    public function show(string $document)
     {
-        $document = MedicalDocument::find($document);
+        if (! ctype_digit($document)) {
+            return $this->invalidDocumentPath();
+        }
+
+        $document = MedicalDocument::find((int) $document);
 
         if (! $document) {
             return redirect()->route('documents.index')
-                ->with('warning', 'Tai lieu da bi xoa truoc do. Vui long tai lai danh sach.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn tài liệu từ danh sách.');
         }
 
         $this->authorizeDocument($document, false);
@@ -136,19 +140,29 @@ class DocumentController extends Controller
 
     // ── EDIT ──────────────────────────────────────────────────────
 
-    public function edit(int $document)
+    public function edit(string $document)
     {
-        $document = MedicalDocument::find($document);
+        if (! ctype_digit($document)) {
+            return $this->invalidDocumentPath();
+        }
+
+        $document = MedicalDocument::find((int) $document);
 
         if (! $document) {
             return redirect()->route('documents.index')
-                ->with('warning', 'Tai lieu da bi xoa truoc do. Vui long tai lai danh sach.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn tài liệu từ danh sách.');
         }
 
         $this->authorizeDocument($document);
         $documentSnapshot = $this->documentSnapshot($document);
 
         return view('documents.edit', compact('document', 'documentSnapshot'));
+    }
+
+    public function invalidDocumentPath()
+    {
+        return redirect()->route('documents.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn tài liệu từ danh sách.');
     }
 
     // ── UPDATE ───────────────────────────────────────────────────

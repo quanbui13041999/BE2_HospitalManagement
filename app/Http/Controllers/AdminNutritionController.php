@@ -70,19 +70,29 @@ class AdminNutritionController extends Controller
             ->with('success', 'Bài viết đã được tạo thành công!');
     }
 
-    public function edit(int $article)
+    public function edit(string $article)
     {
-        $article = NutritionArticle::find($article);
+        if (! ctype_digit($article)) {
+            return $this->invalidArticlePath();
+        }
+
+        $article = NutritionArticle::find((int) $article);
 
         if (! $article) {
             return redirect()->route('admin.nutrition.index')
-                ->with('warning', 'Bài viết đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn bài viết từ danh sách.');
         }
 
         $doctors = Doctor::where('status', 1)->get(['doctor_id', 'full_name']);
         $articleSnapshot = $this->articleSnapshot($article);
 
         return view('nutrition.admin.edit', compact('article', 'doctors', 'articleSnapshot'));
+    }
+
+    public function invalidArticlePath()
+    {
+        return redirect()->route('admin.nutrition.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn bài viết từ danh sách.');
     }
 
     public function update(Request $request, int $article)
@@ -198,19 +208,29 @@ class AdminNutritionController extends Controller
             ->with('success', 'Quy tắc dinh dưỡng đã được thêm thành công!');
     }
 
-    public function rulesEdit(int $rule)
+    public function rulesEdit(string $rule)
     {
-        $rule = DiseaseNutritionRule::find($rule);
+        if (! ctype_digit($rule)) {
+            return $this->invalidRulePath();
+        }
+
+        $rule = DiseaseNutritionRule::find((int) $rule);
 
         if (! $rule) {
             return redirect()->route('admin.nutrition.rules.index')
-                ->with('warning', 'Quy tắc dinh dưỡng đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn quy tắc từ danh sách.');
         }
 
         $foods = Food::active()->orderBy('food_name')->get();
         $ruleSnapshot = $this->ruleSnapshot($rule);
 
         return view('nutrition.admin.rules.edit', compact('rule', 'foods', 'ruleSnapshot'));
+    }
+
+    public function invalidRulePath()
+    {
+        return redirect()->route('admin.nutrition.rules.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn quy tắc từ danh sách.');
     }
 
     public function rulesUpdate(Request $request, int $rule)
@@ -328,18 +348,28 @@ class AdminNutritionController extends Controller
             ->with('success', 'Món ăn mới đã được thêm vào cơ sở dữ liệu!');
     }
 
-    public function foodsEdit(int $food)
+    public function foodsEdit(string $food)
     {
-        $food = Food::find($food);
+        if (! ctype_digit($food)) {
+            return $this->invalidFoodPath();
+        }
+
+        $food = Food::find((int) $food);
 
         if (! $food) {
             return redirect()->route('admin.nutrition.foods.index')
-                ->with('warning', 'Thực phẩm đã bị người khác xóa trước đó. Vui lòng tải lại danh sách.');
+                ->with('warning', 'Không tìm thấy trang. Vui lòng chọn thực phẩm từ danh sách.');
         }
 
         $foodSnapshot = $this->foodSnapshot($food);
 
         return view('nutrition.admin.foods.edit', compact('food', 'foodSnapshot'));
+    }
+
+    public function invalidFoodPath()
+    {
+        return redirect()->route('admin.nutrition.foods.index')
+            ->with('warning', 'Không tìm thấy trang. Vui lòng chọn thực phẩm từ danh sách.');
     }
 
     public function foodsUpdate(Request $request, int $food)

@@ -203,9 +203,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('tai-lieu')->name('documents.')->group(function () {
         Route::get('/',                    [DocumentController::class, 'index'])->name('index');
         Route::post('/',                   [DocumentController::class, 'store'])->name('store');
-        Route::get('/{document}/view',     [DocumentController::class, 'show'])->name('show')->whereNumber('document');
+        Route::get('/{document}/view',     [DocumentController::class, 'show'])->name('show');
         Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download')->whereNumber('document');
-        Route::get('/{document}/edit',     [DocumentController::class, 'edit'])->name('edit')->whereNumber('document');
+        Route::get('/{document}/edit',     [DocumentController::class, 'edit'])->name('edit');
         Route::put('/{document}',          [DocumentController::class, 'update'])->name('update')->whereNumber('document');
         Route::delete('/{document}',       [DocumentController::class, 'destroy'])->name('destroy')->whereNumber('document');
     });
@@ -602,7 +602,7 @@ Route::middleware(['auth', 'role:1,2'])->prefix('admin/nutrition')->name('admin.
     Route::get('/', [AdminNutritionController::class, 'index'])->name('index');
     Route::get('/create', [AdminNutritionController::class, 'create'])->name('create');
     Route::post('/', [AdminNutritionController::class, 'store'])->name('store');
-    Route::get('/{article}/edit', [AdminNutritionController::class, 'edit'])->name('edit')->whereNumber('article');
+    Route::get('/{article}/edit', [AdminNutritionController::class, 'edit'])->name('edit');
     Route::put('/{article}', [AdminNutritionController::class, 'update'])->name('update')->whereNumber('article');
     Route::delete('/{article}', [AdminNutritionController::class, 'destroy'])->name('destroy')->whereNumber('article');
 
@@ -611,7 +611,7 @@ Route::middleware(['auth', 'role:1,2'])->prefix('admin/nutrition')->name('admin.
         Route::get('/', [AdminNutritionController::class, 'rulesIndex'])->name('index');
         Route::get('/create', [AdminNutritionController::class, 'rulesCreate'])->name('create');
         Route::post('/', [AdminNutritionController::class, 'rulesStore'])->name('store');
-        Route::get('/{rule}/edit', [AdminNutritionController::class, 'rulesEdit'])->name('edit')->whereNumber('rule');
+        Route::get('/{rule}/edit', [AdminNutritionController::class, 'rulesEdit'])->name('edit');
         Route::put('/{rule}', [AdminNutritionController::class, 'rulesUpdate'])->name('update')->whereNumber('rule');
         Route::delete('/{rule}', [AdminNutritionController::class, 'rulesDestroy'])->name('destroy')->whereNumber('rule');
     });
@@ -621,7 +621,7 @@ Route::middleware(['auth', 'role:1,2'])->prefix('admin/nutrition')->name('admin.
         Route::get('/', [AdminNutritionController::class, 'foodsIndex'])->name('index');
         Route::get('/create', [AdminNutritionController::class, 'foodsCreate'])->name('create');
         Route::post('/', [AdminNutritionController::class, 'foodsStore'])->name('store');
-        Route::get('/{food}/edit', [AdminNutritionController::class, 'foodsEdit'])->name('edit')->whereNumber('food');
+        Route::get('/{food}/edit', [AdminNutritionController::class, 'foodsEdit'])->name('edit');
         Route::put('/{food}', [AdminNutritionController::class, 'foodsUpdate'])->name('update')->whereNumber('food');
         Route::delete('/{food}', [AdminNutritionController::class, 'foodsDestroy'])->name('destroy')->whereNumber('food');
     });
@@ -645,10 +645,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:create,App\Models\HealthTracking')->group(function () {
         Route::get('/health-tracking/create', [HealthTrackingController::class, 'create'])->name('health-tracking.create');
         Route::post('/health-tracking', [HealthTrackingController::class, 'store'])->name('health-tracking.store');
-        Route::get('/health-tracking/{healthTracking}/edit', [HealthTrackingController::class, 'edit'])->name('health-tracking.edit')->whereNumber('healthTracking');
+        Route::get('/health-tracking/{healthTracking}/edit', [HealthTrackingController::class, 'edit'])->name('health-tracking.edit');
         Route::put('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'update'])->name('health-tracking.update')->whereNumber('healthTracking');
         Route::delete('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'destroy'])->name('health-tracking.destroy')->whereNumber('healthTracking');
     });
 
-    Route::get('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'show'])->name('health-tracking.show')->whereNumber('healthTracking');
+    Route::get('/health-tracking/{healthTracking}', [HealthTrackingController::class, 'show'])->name('health-tracking.show');
 });
