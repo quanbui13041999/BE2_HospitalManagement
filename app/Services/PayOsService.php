@@ -113,21 +113,22 @@ class PayOsService
         } catch (Exception $e) {
             Log::error('Lỗi khi gọi API PayOS: ' . $e->getMessage());
             
-            // Thử lấy lại thông tin link thanh toán cũ qua API V2 (để tự động xử lý trường hợp trùng đơn hàng hoặc liên kết đã tạo trước đó)
-            try {
-                $existing = $this->payOS->paymentRequests->get($paymentId, ['asArray' => true]);
+            // Lỗi 231 = đơn thanh toán đã tồn tại trên PayOS
+            // API GET /v2/payment-requests/{id} KHÔNG trả về checkoutUrl/qrCode
+            // → phải lấy từ DB đã lưu sẵn khi tạo lần đầu
+            $payment = \App\Models\Payment::where('payment_id', $paymentId)->first();
+            if ($payment && $payment->checkout_url && $payment->qr_content) {
+                Log::info('PayOS: Sử dụng link thanh toán đã lưu trong DB cho payment #' . $paymentId);
                 return [
                     'success' => true,
                     'mock' => false,
-                    'checkoutUrl' => $existing['checkoutUrl'] ?? null,
-                    'qrContent' => $existing['qrCode'] ?? '',
-                    'paymentLinkId' => $existing['paymentLinkId'] ?? $existing['id'] ?? '',
+                    'checkoutUrl' => $payment->checkout_url,
+                    'qrContent' => $payment->qr_content,
+                    'paymentLinkId' => $payment->transaction_ref ?? '',
                 ];
-            } catch (Exception $e2) {
-                Log::error('Không thể lấy lại thông tin link thanh toán cũ từ PayOS: ' . $e2->getMessage());
             }
 
-            // Trả về fallback giả lập khi API ngân hàng bị lỗi kết nối
+            // Trả về fallback khi không có dữ liệu trong DB
             return [
                 'success' => false,
                 'message' => 'Không thể kết nối cổng ngân hàng: ' . $e->getMessage(),
