@@ -14,7 +14,7 @@ class Review extends Model
     protected $fillable = [
         'appointment_id', 'user_id', 'doctor_id',
         'rating', 'comment', 'doctor_reply',
-        'created_at', 'updated_at', 'doctor_reply_updated_at'
+        'created_at', 'updated_at', 'doctor_reply_updated_at', 'version'
     ];
     
     protected $casts = [

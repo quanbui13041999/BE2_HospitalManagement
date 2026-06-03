@@ -51,9 +51,11 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             FoodSeeder::class,
+            UserSeeder::class,
             NutritionArticleSeeder::class,
             DiseaseNutritionRuleSeeder::class,
         ]);
+
     }
 
     private function shouldSkip(string $statement): bool

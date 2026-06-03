@@ -15,7 +15,7 @@ class GeminiChatService
 
     public function __construct()
     {
-        $this->apiKey = config('services.gemini.api_key');
+        $this->apiKey = (string) (config('services.gemini.api_key') ?? '');
     }
 
     public function generateReply(int $roomId, string $userMessage): string

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\WelcomeMail;
 use App\Services\ActivityLogService;
+use Illuminate\Database\QueryException;
 
 class AuthController extends Controller
 {
@@ -40,17 +41,23 @@ class AuthController extends Controller
             'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
         ]);
 
-        $user = User::create([
-            'full_name'     => $request->full_name,
-            'email'         => $request->email,
-            'password'      => Hash::make($request->password),
-            'phone'         => $request->phone,
-            'address'       => $request->address,
-            'date_of_birth' => $request->date_of_birth,
-            'gender'        => $request->gender,
-            'role_id'       => 3,   // User thường
-            'status'        => 1,   // Hoạt động
-        ]);
+        try {
+            $user = User::create([
+                'full_name'     => $request->full_name,
+                'email'         => $request->email,
+                'password'      => Hash::make($request->password),
+                'phone'         => $request->phone,
+                'address'       => $request->address,
+                'date_of_birth' => $request->date_of_birth,
+                'gender'        => $request->gender,
+                'role_id'       => 3,   // User thường
+                'status'        => 1,   // Hoạt động
+            ]);
+        } catch (QueryException $e) {
+            Log::error('AuthController register DB error', ['message' => $e->getMessage(), 'code' => $e->getCode()]);
+            return back()->withErrors(['general' => 'Hệ thống tạm thời không thể xử lý yêu cầu. Vui lòng thử lại sau.'])
+                ->withInput($request->except('password', 'password_confirmation'));
+        }
 
         Auth::login($user);
         ActivityLogService::log(
@@ -84,7 +91,14 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        try {
+            $attempt = Auth::attempt($request->only('email', 'password'), $request->boolean('remember'));
+        } catch (QueryException $e) {
+            Log::error('AuthController login DB error', ['message' => $e->getMessage(), 'code' => $e->getCode(), 'email' => $request->email]);
+            return back()->withErrors(['general' => 'Hệ thống tạm thời không thể đăng nhập. Vui lòng thử lại sau.']);
+        }
+
+        if ($attempt) {
             $request->session()->regenerate();
             ActivityLogService::log(
                 'Đăng nhập',
