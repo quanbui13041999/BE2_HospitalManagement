@@ -297,5 +297,34 @@ if (document.getElementById('admin-unread-badge')) {
         @include('components.chat-widget')
     @endauth
 @include('components.back-to-previous')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form').forEach(function (form) {
+        const method = form.getAttribute('method');
+        if (method && method.toUpperCase() !== 'GET') {
+            form.addEventListener('submit', function (e) {
+                if (form.checkValidity && !form.checkValidity()) {
+                    return;
+                }
+                if (form.dataset.submitting === 'true') {
+                    e.preventDefault();
+                    return false;
+                }
+                form.dataset.submitting = 'true';
+                form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (button) {
+                    button.disabled = true;
+                    if (button.tagName === 'BUTTON') {
+                        button.dataset.originalHtml = button.innerHTML;
+                        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Đang xử lý...';
+                    } else if (button.tagName === 'INPUT') {
+                        button.dataset.originalValue = button.value;
+                        button.value = 'Đang xử lý...';
+                    }
+                });
+            });
+        }
+    });
+});
+</script>
 </body>
 </html>

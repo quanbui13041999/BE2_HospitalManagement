@@ -113,6 +113,20 @@ class PayOsService
         } catch (Exception $e) {
             Log::error('Lỗi khi gọi API PayOS: ' . $e->getMessage());
             
+            // Thử lấy lại thông tin link thanh toán cũ qua API V2 (để tự động xử lý trường hợp trùng đơn hàng hoặc liên kết đã tạo trước đó)
+            try {
+                $existing = $this->payOS->paymentRequests->get($paymentId, ['asArray' => true]);
+                return [
+                    'success' => true,
+                    'mock' => false,
+                    'checkoutUrl' => $existing['checkoutUrl'] ?? null,
+                    'qrContent' => $existing['qrCode'] ?? '',
+                    'paymentLinkId' => $existing['paymentLinkId'] ?? $existing['id'] ?? '',
+                ];
+            } catch (Exception $e2) {
+                Log::error('Không thể lấy lại thông tin link thanh toán cũ từ PayOS: ' . $e2->getMessage());
+            }
+
             // Trả về fallback giả lập khi API ngân hàng bị lỗi kết nối
             return [
                 'success' => false,

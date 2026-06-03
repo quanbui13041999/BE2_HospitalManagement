@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = OFF');
+        }
+
         if (! Schema::hasTable('diagnoses')) {
             Schema::create('diagnoses', function (Blueprint $table) {
                 $table->unsignedBigInteger('diagnosis_id', true);
@@ -186,6 +190,10 @@ return new class extends Migration
                 d.bio,
                 d.status
         ");
+
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = ON');
+        }
     }
 
     public function down(): void

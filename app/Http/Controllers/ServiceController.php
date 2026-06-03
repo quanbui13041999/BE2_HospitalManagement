@@ -125,6 +125,7 @@ class ServiceController extends Controller
             'work_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|string',
             'note' => 'nullable|string|max:255',
+            'payment_option' => 'nullable|string|in:now,later',
         ], [
             'price_type.required' => 'Vui lòng chọn loại mức giá dịch vụ.',
             'work_date.required' => 'Vui lòng chọn ngày thực hiện.',
@@ -221,6 +222,8 @@ class ServiceController extends Controller
             $payment->payment_id
         );
 
+        $paymentOption = $request->input('payment_option', 'now');
+
         // 6. Gọi PayOS sinh QR động real-time
         try {
             $payOsService = app(PayOsService::class);
@@ -232,6 +235,19 @@ class ServiceController extends Controller
                 route('user.payments.fail', $payment->payment_id)
             );
 
+            if ($payOsResult['success']) {
+                $payment->update([
+                    'checkout_url' => $payOsResult['checkoutUrl'] ?? null,
+                    'qr_content' => $payOsResult['qrContent'] ?? null,
+                    'transaction_ref' => $payOsResult['paymentLinkId'] ?? $payment->transaction_ref,
+                ]);
+            }
+
+            if ($paymentOption === 'later') {
+                return redirect()->route('user.payments.history')
+                    ->with('success', 'Đăng ký dịch vụ thành công! Bạn có thể thanh toán hoá đơn này trong Lịch sử thanh toán.');
+            }
+
             return redirect()->route('user.payments.qr', $payment->payment_id)
                 ->with([
                     'qr_content' => $payOsResult['qrContent'],
@@ -239,6 +255,10 @@ class ServiceController extends Controller
                     'checkout_url' => $payOsResult['checkoutUrl'] ?? null,
                 ]);
         } catch (\Exception $e) {
+            if ($paymentOption === 'later') {
+                return redirect()->route('user.payments.history')
+                    ->with('success', 'Đăng ký dịch vụ thành công! Bạn có thể thanh toán hoá đơn này trong Lịch sử thanh toán.');
+            }
             // Fallback giả lập nếu gọi API PayOS lỗi
             return redirect()->route('user.payments.qr', $payment->payment_id)
                 ->with([

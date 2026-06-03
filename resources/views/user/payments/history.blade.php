@@ -134,7 +134,7 @@
                         <p class="text-muted font-inter mx-auto" style="max-width: 420px; font-size: 14px;">
                             Không khớp dữ liệu thanh toán nào theo từ khóa hoặc bộ lọc của bạn. Hãy thử thay đổi bộ lọc hoặc xem danh sách lịch khám.
                         </p>
-                        <a href="{{ route('user.appointments.index') }}" class="btn btn-primary rounded-3 font-outfit fw-bold mt-2 px-4">
+                        <a href="{{ route('appointments.index') }}" class="btn btn-primary rounded-3 font-outfit fw-bold mt-2 px-4">
                             <i class="bi bi-calendar-date me-1"></i> Xem lịch khám của bạn
                         </a>
                     </div>

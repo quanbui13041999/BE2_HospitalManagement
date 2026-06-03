@@ -28,6 +28,7 @@ use App\Http\Controllers\Doctor\DoctorAppointmentController;
 use App\Http\Controllers\PatientNutritionController;
 use App\Http\Controllers\Admin\PatientSearchController;
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\EntityStatusController;
 
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
@@ -360,6 +361,7 @@ Route::prefix('medical_history')
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(function () {
 
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/api/check-entity-status', [EntityStatusController::class, 'checkStatus'])->name('api.check-status');
     Route::get('/dashboard/data', [AdminDashboardController::class, 'data'])->name('dashboard.data');
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
