@@ -55,6 +55,7 @@
       <!-- UPLOAD CARD -->
       <form action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
+        <input type="hidden" name="documents_snapshot" value="{{ $documentsSnapshot }}">
         <div class="upload-card">
           <div class="upload-zone" id="dropZone"
             ondragover="event.preventDefault(); this.classList.add('drag-over')"

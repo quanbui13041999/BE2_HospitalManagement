@@ -18,6 +18,8 @@ class HealthBackgroundController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeTextInputs($request);
+
         $validated = $request->validate(
             HealthBackground::rules(),
             HealthBackground::messages()
@@ -50,5 +52,19 @@ class HealthBackgroundController extends Controller
             compact('healthData', 'patient', 'readonly'),
             HealthBackground::viewOptions()
         );
+    }
+
+    private function normalizeTextInputs(Request $request): void
+    {
+        foreach (['food_allergies', 'drug_allergies', 'other_chronic_diseases'] as $field) {
+            if (! $request->has($field)) {
+                continue;
+            }
+
+            $value = trim((string) $request->input($field));
+            $request->merge([
+                $field => $value === '' ? null : preg_replace('/\s+/u', ' ', $value),
+            ]);
+        }
     }
 }

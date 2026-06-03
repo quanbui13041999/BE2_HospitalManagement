@@ -61,6 +61,7 @@
         </label>
         <textarea id="symptoms" name="symptoms" rows="3" maxlength="1000"
             class="form-control @error('symptoms') is-invalid @enderror"
+            title="Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ."
             placeholder="Mô tả triệu chứng bạn đang gặp phải...">{{ $errors->any() ? old('symptoms') : ($old['symptoms'] ?? '') }}</textarea>
         <div class="d-flex justify-content-between mt-1">
             <div class="invalid-feedback d-block" id="symptomsError">{{ $errors->first('symptoms') }}</div>
@@ -179,7 +180,17 @@ Object.keys(RULES).forEach(name => {
 // Symptoms guard
 const symp = document.getElementById('symptoms'), sc = document.getElementById('symCount');
 const symptomError = document.getElementById('symptomsError');
-const symptomPattern = /^[\p{L}\s]*$/u;
+const symptomPattern = /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u;
+const symptomMessage = 'Triệu chứng chỉ được nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.';
+
+function normalizeSymptoms(trimEnd = false) {
+    let value = symp.value
+        .replace(/\s+/gu, ' ')
+        .replace(/^\s+/u, '');
+
+    if (trimEnd) value = value.trimEnd();
+    if (value !== symp.value) symp.value = value;
+}
 
 function validateSymptoms() {
     const value = symp.value.trim();
@@ -199,7 +210,7 @@ function validateSymptoms() {
 
     if (!symptomPattern.test(value)) {
         symp.classList.add('is-invalid');
-        symptomError.textContent = 'Triệu chứng chỉ được nhập chữ và khoảng trắng, không nhập số hoặc ký tự đặc biệt.';
+        symptomError.textContent = symptomMessage;
         return false;
     }
 
@@ -208,8 +219,30 @@ function validateSymptoms() {
     return true;
 }
 
-symp.addEventListener('input', validateSymptoms);
-symp.addEventListener('paste', () => setTimeout(validateSymptoms, 0));
+symp.addEventListener('keydown', e => {
+    const ok = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'];
+    if (ok.includes(e.key) || e.ctrlKey || e.metaKey) return;
+
+    if (e.key === ' ') {
+        const cursor = symp.selectionStart ?? symp.value.length;
+        if (cursor === 0 || symp.value[cursor - 1] === ' ' || symp.value[cursor] === ' ') {
+            e.preventDefault();
+            symptomError.textContent = symptomMessage;
+            symp.classList.add('is-invalid');
+        }
+        return;
+    }
+
+    if (!/^[\p{L}\p{M}]$/u.test(e.key)) {
+        e.preventDefault();
+        symptomError.textContent = symptomMessage;
+        symp.classList.add('is-invalid');
+    }
+});
+symp.addEventListener('input', () => { normalizeSymptoms(false); validateSymptoms(); });
+symp.addEventListener('blur', () => { normalizeSymptoms(true); validateSymptoms(); });
+symp.addEventListener('paste', () => setTimeout(() => { normalizeSymptoms(false); validateSymptoms(); }, 0));
+normalizeSymptoms(true);
 validateSymptoms();
 
 // Submit guard
@@ -228,6 +261,7 @@ document.getElementById('healthForm').addEventListener('submit', function(e) {
         const r = validate(name, v);
         if (r && !r.ok) { applyState(input, r); bad = true; }
     });
+    normalizeSymptoms(true);
     if (!validateSymptoms()) bad = true;
     if (bad) {
         e.preventDefault();

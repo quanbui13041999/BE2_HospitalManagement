@@ -135,5 +135,78 @@ document.addEventListener('DOMContentLoaded', function () {
 
     heightInput.addEventListener('input', calculateBMI);
     weightInput.addEventListener('input', calculateBMI);
+
+    const vietnameseWordInputs = document.querySelectorAll('.js-vietnamese-words');
+    const vietnameseWordPattern = /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u;
+    const vietnameseWordMessage = 'Chỉ nhập chữ tiếng Việt và đúng một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.';
+
+    function normalizeVietnameseWords(input) {
+        const original = input.value;
+        const normalized = original
+            .replace(/\s+/gu, ' ')
+            .replace(/^\s+/u, '');
+
+        if (normalized !== original) {
+            input.value = normalized;
+        }
+
+        const trimmed = input.value.trimEnd();
+        const isValid = trimmed === '' || vietnameseWordPattern.test(trimmed);
+        input.setCustomValidity(isValid ? '' : vietnameseWordMessage);
+        input.classList.toggle('is-invalid', !isValid);
+
+        if (isValid && input.value.trim() !== '') {
+            input.classList.add('is-valid');
+        } else {
+            input.classList.remove('is-valid');
+        }
+    }
+
+    vietnameseWordInputs.forEach(input => {
+        input.addEventListener('keydown', function (event) {
+            const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End', 'Enter'];
+            if (allowedKeys.includes(event.key) || event.ctrlKey || event.metaKey) {
+                return;
+            }
+
+            if (event.key === ' ') {
+                const cursor = input.selectionStart ?? input.value.length;
+                if (cursor === 0 || input.value[cursor - 1] === ' ' || input.value[cursor] === ' ') {
+                    event.preventDefault();
+                    input.setCustomValidity(vietnameseWordMessage);
+                }
+                return;
+            }
+
+            if (!/^[\p{L}\p{M}]$/u.test(event.key)) {
+                event.preventDefault();
+                input.setCustomValidity(vietnameseWordMessage);
+            }
+        });
+
+        input.addEventListener('input', () => normalizeVietnameseWords(input));
+        input.addEventListener('blur', function () {
+            input.value = input.value.trim().replace(/\s+/gu, ' ');
+            normalizeVietnameseWords(input);
+        });
+        input.addEventListener('paste', () => setTimeout(() => normalizeVietnameseWords(input), 0));
+        normalizeVietnameseWords(input);
+    });
+
+    const healthForm = heightInput.closest('form');
+    healthForm?.addEventListener('submit', function (event) {
+        for (const input of vietnameseWordInputs) {
+            input.value = input.value.trim().replace(/\s+/gu, ' ');
+            normalizeVietnameseWords(input);
+
+            if (input.validationMessage) {
+                event.preventDefault();
+                input.focus();
+                input.reportValidity();
+                break;
+            }
+        }
+    });
+
     calculateBMI();
 });
