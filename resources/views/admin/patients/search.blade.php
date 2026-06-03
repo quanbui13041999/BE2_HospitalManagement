@@ -772,8 +772,7 @@
                 buildPagination(data.total, data.current_page, data.last_page);
             }
         })
-        .catch(err => {
-            console.error('Error fetching search results:', err);
+        .catch(() => {
             resultsContainer.innerHTML = `
                 <div class="col-12 py-5 text-center">
                     <div class="text-danger mb-2"><i class="bi bi-exclamation-triangle-fill fs-2"></i></div>
@@ -881,10 +880,9 @@
                 document.getElementById('ai-explanation-text').textContent = data.message || 'Không thể phân tích yêu cầu. Vui lòng thử lại hoặc dùng tìm kiếm thường.';
             }
         })
-        .catch(err => {
+        .catch(() => {
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = originalHtml;
-            console.error('AI Search Connection Error:', err);
             document.getElementById('ai-explanation-box').classList.remove('d-none');
             document.getElementById('ai-explanation-text').textContent = 'Kết nối AI chưa ổn định. Vui lòng thử lại hoặc dùng tìm kiếm thường.';
         });
@@ -1012,8 +1010,7 @@
                 `;
             }
         })
-        .catch(err => {
-            console.error('Error fetching clinical details:', err);
+        .catch(() => {
             modalBody.innerHTML = `
                 <div class="text-center py-5 text-danger">
                     <i class="bi bi-wifi-off fs-1 d-block mb-3"></i>

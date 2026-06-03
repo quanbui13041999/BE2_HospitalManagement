@@ -424,6 +424,29 @@ document.addEventListener('submit', function (event) {
     }
 });
 
+function appDisableSubmitButtons(form) {
+    if (!form || form.dataset.submitLocked === '1') return false;
+    form.dataset.submitLocked = '1';
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (button) {
+        button.disabled = true;
+        if (button.tagName === 'BUTTON' && !button.dataset.originalText) {
+            button.dataset.originalText = button.innerHTML;
+            button.innerHTML = 'Đang xử lý...';
+        }
+    });
+    return true;
+}
+
+document.addEventListener('submit', function (event) {
+    const form = event.target.closest('form[data-disable-submit]');
+    if (!form) return;
+
+    if (!appDisableSubmitButtons(form)) {
+        event.preventDefault();
+        window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+    }
+}); /* fixed: chan double submit tao trung du lieu */
+
 document.addEventListener('submit', function (event) {
     const form = event.target.closest('form[data-confirm]');
     if (!form || form.dataset.confirmed === '1') return;
@@ -437,6 +460,7 @@ document.addEventListener('submit', function (event) {
     messageEl.textContent = form.dataset.confirm || 'Bạn có chắc muốn thực hiện thao tác này?';
     submitBtn.onclick = function () {
         form.dataset.confirmed = '1';
+        appDisableSubmitButtons(form);
         bootstrap.Modal.getOrCreateInstance(modalEl).hide();
         form.submit();
     };

@@ -47,7 +47,7 @@
                         <td>
                             <div class="d-flex align-items-center">
                                 @if($item->thumbnail)
-                                <img src="{{ $item->thumbnail_url }}" class="rounded me-2" width="40" height="40" style="object-cover">
+                                <img src="{{ $item->thumbnail_url }}" class="rounded me-2" width="40" height="40" style="object-fit: cover;">
                                 @endif
                                 <div>
                                     <div class="fw-bold text-truncate" style="max-width: 250px;">{{ $item->title }}</div>
@@ -63,7 +63,7 @@
                             </span>
                         </td>
                         <td>
-                            <form action="{{ route('admin.news.toggle', $item->news_id) }}" method="POST" class="d-inline">
+                            <form action="{{ route('admin.news.toggle', $item->news_id) }}" method="POST" class="d-inline" data-disable-submit>
                                 @csrf
                                 @method('PATCH')
                                 <input type="hidden" name="version" value="{{ $item->news_version }}">
@@ -76,7 +76,7 @@
                             @if($item->email_sent)
                             <span class="text-success" title="Đã gửi email"><i class="bi bi-check-circle-fill"></i> Đã gửi</span>
                             @else
-                            <form action="{{ route('admin.news.sendEmail', $item->news_id) }}" method="POST" class="d-inline">
+                            <form action="{{ route('admin.news.sendEmail', $item->news_id) }}" method="POST" class="d-inline" data-disable-submit>
                                 @csrf
                                 <input type="hidden" name="version" value="{{ $item->news_version }}">
                                 <button type="submit" class="btn btn-sm btn-outline-primary" {{ !$item->is_published ? 'disabled' : '' }} title="Gửi email cho bệnh nhân">
@@ -92,7 +92,7 @@
                                 <a href="{{ route('admin.news.edit', $item->news_id) }}" class="btn btn-sm btn-outline-secondary" title="Sửa">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form action="{{ route('admin.news.destroy', $item->news_id) }}" method="POST" class="d-inline" data-confirm="Bạn có chắc chắn muốn xóa bài viết này?">
+                                <form action="{{ route('admin.news.destroy', $item->news_id) }}" method="POST" class="d-inline" data-confirm="Bạn có chắc chắn muốn xóa bài viết này?" data-disable-submit>
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="version" value="{{ $item->news_version }}">

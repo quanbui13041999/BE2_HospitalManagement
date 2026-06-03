@@ -30,7 +30,11 @@ class AppointmentService
 {
     private function assertFreshVersion(?string $expectedVersion, mixed $actualVersion): void
     {
-        if (!$expectedVersion || !$actualVersion) {
+        if (!$expectedVersion) {
+            throw new ConcurrentModificationException('Thiếu phiên bản dữ liệu. Trang sẽ được tải lại trước khi thao tác.');
+        }
+
+        if (!$actualVersion) {
             return;
         }
 

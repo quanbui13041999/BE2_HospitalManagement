@@ -71,7 +71,7 @@
     </div>
     @endif
 
-    <form action="{{ route('appointments.update', $appointment->appointment_id) }}" method="POST" id="reschedule-form">
+    <form action="{{ route('appointments.update', $appointment->appointment_id) }}" method="POST" id="reschedule-form" data-disable-submit>
         @csrf
         @method('PUT')
         <input type="hidden" name="new_appointment_time" id="new_appointment_time">
@@ -280,6 +280,21 @@
     }
 
     bindStandaloneInputLimitWarnings();
+
+    document.querySelectorAll('form[data-disable-submit]').forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (form.dataset.submitLocked === '1') {
+                event.preventDefault();
+                window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+                return;
+            }
+
+            form.dataset.submitLocked = '1';
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function(button) {
+                button.disabled = true;
+            });
+        });
+    }); /* fixed: chan double submit doi lich */
 </script>
 @if(session('reload_page'))
 <div id="appointment-reload-message"

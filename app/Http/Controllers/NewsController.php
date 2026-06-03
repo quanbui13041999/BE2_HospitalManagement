@@ -13,6 +13,7 @@ class NewsController extends Controller
         $categories = ['Thông báo', 'Sức khỏe', 'Chương trình', 'Hướng dẫn', 'Khẩn cấp'];
         $validated = $request->validate([
             'category' => ['nullable', Rule::in($categories)],
+            'page' => 'nullable|integer|min:1|max:1000',
         ]); /* fixed: validate category tu query string truoc khi loc */
 
         $category = $validated['category'] ?? null;

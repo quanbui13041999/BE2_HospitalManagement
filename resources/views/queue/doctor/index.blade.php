@@ -257,9 +257,7 @@ function doctorSchedule(scheduleId) {
                     }));
                     this.stats = data.stats;
                 }
-            } catch (e) {
-                console.error("Failed to load doctor schedule snapshots:", e);
-            }
+            } catch (e) {}
         },
 
         getPriorityLabel(priority) {

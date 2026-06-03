@@ -132,7 +132,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('queue.manage.checkin.store') }}" id="checkinForm">
+                    <form method="POST" action="{{ route('queue.manage.checkin.store') }}" id="checkinForm" data-disable-submit>
                         @csrf
                         
                         {{-- Hidden inputs --}}

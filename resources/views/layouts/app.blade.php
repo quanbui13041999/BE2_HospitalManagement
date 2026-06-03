@@ -138,12 +138,15 @@
         function appInputLimitMessage(field) {
             const label = document.querySelector(`label[for="${field.id}"]`);
             const name = label ? label.textContent.trim() : (field.getAttribute('name') || 'Trường này');
-            return `${name} tối đa ${field.maxLength} ký tự. Vui lòng rút ngắn nội dung.`;
+            return `${name} tối đa ${field.getAttribute('maxlength')} ký tự. Vui lòng rút ngắn nội dung.`;
         }
 
         document.addEventListener('input', function (event) {
             const field = event.target;
-            if (!field || field.maxLength <= 0 || field.value.length < field.maxLength) return;
+            if (!field || !field.matches('input[maxlength], textarea[maxlength]')) return;
+
+            const maxLength = Number(field.getAttribute('maxlength'));
+            if (!Number.isFinite(maxLength) || maxLength <= 0 || field.value.length < maxLength) return;
             if (field.dataset.limitNotified === '1') return;
 
             field.dataset.limitNotified = '1';
@@ -153,13 +156,19 @@
 
         document.addEventListener('blur', function (event) {
             const field = event.target;
-            if (!field || field.maxLength <= 0 || field.value.length < field.maxLength) return;
+            if (!field || !field.matches('input[maxlength], textarea[maxlength]')) return;
+
+            const maxLength = Number(field.getAttribute('maxlength'));
+            if (!Number.isFinite(maxLength) || maxLength <= 0 || field.value.length < maxLength) return;
             field.dataset.limitNotified = '';
         }, true);
 
         document.addEventListener('submit', function (event) {
             const invalidField = Array.from(event.target.querySelectorAll('input[maxlength], textarea[maxlength]'))
-                .find(field => field.value.length > field.maxLength);
+                .find(field => {
+                    const maxLength = Number(field.getAttribute('maxlength'));
+                    return Number.isFinite(maxLength) && maxLength > 0 && field.value.length > maxLength;
+                });
 
             if (invalidField) {
                 event.preventDefault();
@@ -168,6 +177,29 @@
                 window.showAppNotification(appInputLimitMessage(invalidField), 'warning');
             }
         });
+
+        function appDisableSubmitButtons(form) {
+            if (!form || form.dataset.submitLocked === '1') return false;
+            form.dataset.submitLocked = '1';
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (button) {
+                button.disabled = true;
+                if (button.tagName === 'BUTTON' && !button.dataset.originalText) {
+                    button.dataset.originalText = button.innerHTML;
+                    button.innerHTML = 'Đang xử lý...';
+                }
+            });
+            return true;
+        }
+
+        document.addEventListener('submit', function (event) {
+            const form = event.target.closest('form[data-disable-submit]');
+            if (!form) return;
+
+            if (!appDisableSubmitButtons(form)) {
+                event.preventDefault();
+                window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+            }
+        }); /* fixed: chan double submit tao trung du lieu */
 
         document.addEventListener('submit', function (event) {
             const form = event.target.closest('form[data-confirm]');
@@ -182,6 +214,7 @@
             messageEl.textContent = form.dataset.confirm || 'Bạn có chắc muốn thực hiện thao tác này?';
             submitBtn.onclick = function () {
                 form.dataset.confirmed = '1';
+                appDisableSubmitButtons(form);
                 bootstrap.Modal.getOrCreateInstance(modalEl).hide();
                 form.submit();
             };

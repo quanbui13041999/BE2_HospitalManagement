@@ -286,7 +286,7 @@ async function sendChatMessage() {
     document.getElementById('chat-send-btn').innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i>';
 
     try {
-        await fetch('/chat/send', {
+        const res = await fetch('/chat/send', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -294,9 +294,22 @@ async function sendChatMessage() {
             },
             body: JSON.stringify({ room_id: chatRoomId, message_text: text })
         });
+        const data = await res.json();
+        if (!data.success) {
+            document.querySelectorAll('.msg-temp').forEach(el => el.remove());
+            input.value = text;
+            if (window.showAppNotification) {
+                window.showAppNotification(data.message || 'Không gửi được tin nhắn.', 'warning');
+            }
+            return;
+        }
         // Không cần gọi loadMessages ngay vì polling sẽ lo việc đồng bộ ID thực
     } catch (e) {
-        console.error("Send failed", e);
+        document.querySelectorAll('.msg-temp').forEach(el => el.remove());
+        input.value = text;
+        if (window.showAppNotification) {
+            window.showAppNotification('Không gửi được tin nhắn. Vui lòng thử lại sau.', 'error');
+        }
     }
 }
 
@@ -325,8 +338,14 @@ async function recallChatMessage(msgId, element) {
         const data = await res.json();
         if (data.success) {
             element.remove();
+        } else if (window.showAppNotification) {
+            window.showAppNotification(data.message || 'Không thu hồi được tin nhắn.', 'warning'); /* fixed: thu hoi lan 2 bao loi tren man hinh */
         }
-    } catch (e) {}
+    } catch (e) {
+        if (window.showAppNotification) {
+            window.showAppNotification('Không thu hồi được tin nhắn.', 'error');
+        }
+    }
 }
 
 function scrollToBottom() {

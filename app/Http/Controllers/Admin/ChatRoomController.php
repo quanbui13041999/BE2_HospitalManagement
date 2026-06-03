@@ -22,6 +22,10 @@ class ChatRoomController extends Controller
      */
     public function index(): \Illuminate\View\View
     {
+        request()->validate([
+            'page' => 'nullable|integer|min:1|max:1000',
+        ]); /* fixed: chan URL page=abc/page qua lon */
+
         $rooms = ChatRoom::with([
                 'patient:user_id,full_name,email,avatar_url',
                 'staff:user_id,full_name',
@@ -74,7 +78,18 @@ class ChatRoomController extends Controller
      */
     public function getMessages(Request $request, int $roomId): \Illuminate\Http\JsonResponse
     {
-        $room = ChatRoom::findOrFail($roomId);
+        $request->validate([
+            'after_id' => 'nullable|integer|min:0',
+        ]); /* fixed: validate query polling */
+
+        $room = ChatRoom::find($roomId);
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 404);
+        }
 
         $query = ChatMessage::where('room_id', $roomId)
             ->with('sender:user_id,full_name,avatar_url,role_id');
@@ -133,11 +148,19 @@ class ChatRoomController extends Controller
      */
     public function sendMessage(Request $request, int $roomId): \Illuminate\Http\JsonResponse
     {
-        $request->validate(['message_text' => 'required|string|max:2000']);
+        $request->validate(['message_text' => ['required', 'string', 'max:2000', 'not_regex:/\A[\s\x{3000}]*\z/u']]);
 
         $room = ChatRoom::where('room_id', $roomId)
             ->where('status', 'Mở')
-            ->firstOrFail(); /* fixed: khong cho gui vao phong da dong */
+            ->first();
+
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không còn mở hoặc đã bị xóa. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 409); /* fixed: gui vao phong da dong/xoa phai bao UI */
+        }
 
         try {
             return DB::transaction(function () use ($request, $room, $roomId) {
@@ -183,7 +206,23 @@ class ChatRoomController extends Controller
      */
     public function closeRoom(int $roomId): \Illuminate\Http\JsonResponse
     {
-        $room = ChatRoom::findOrFail($roomId);
+        $room = ChatRoom::find($roomId);
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 404);
+        }
+
+        if ($room->status !== 'Mở') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat đã được người khác đóng trước đó. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 409); /* fixed: dong phong o tab thu 2 phai bao loi */
+        }
+
         $room->update(['status' => 'Đóng', 'closed_at' => now()]);
 
         return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
@@ -195,12 +234,25 @@ class ChatRoomController extends Controller
      */
     public function deleteRoom(int $roomId): \Illuminate\Http\JsonResponse
     {
-        DB::transaction(function () use ($roomId) {
-            $room = ChatRoom::findOrFail($roomId);
+        $deleted = DB::transaction(function () use ($roomId) {
+            $room = ChatRoom::where('room_id', $roomId)->lockForUpdate()->first();
+            if (!$room) {
+                return false;
+            }
+
             // Xóa tất cả tin nhắn trong phòng trước (nếu database không dùng Cascade delete)
             ChatMessage::where('room_id', $roomId)->delete();
             $room->delete();
+            return true;
         }); /* fixed: xoa phong va tin nhan cung transaction */
+
+        if (!$deleted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không tồn tại hoặc đã bị xóa. Vui lòng tải lại danh sách.',
+                'data' => null,
+            ], 404); /* fixed: xoa lan 2 bao loi ro */
+        }
 
         return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);
     }
@@ -211,7 +263,15 @@ class ChatRoomController extends Controller
      */
     public function deleteMessage(int $messageId): \Illuminate\Http\JsonResponse
     {
-        $message = ChatMessage::findOrFail($messageId);
+        $message = ChatMessage::find($messageId);
+        if (!$message) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tin nhắn không tồn tại hoặc đã bị xóa. Vui lòng tải lại cuộc trò chuyện.',
+                'data' => null,
+            ], 404);
+        }
+
         $message->delete();
 
         return response()->json(['success' => true, 'message' => 'OK', 'data' => null]);

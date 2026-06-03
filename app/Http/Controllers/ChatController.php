@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\GeminiChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
@@ -34,20 +35,21 @@ class ChatController extends Controller
         $userId = Auth::id();
 
         try {
-            // Tìm phòng chat đang mở của user
-            $room = ChatRoom::where('user_id', $userId)
-                ->where('status', 'Mở')
-                ->first();
+            $room = DB::transaction(function () use ($userId) {
+                User::whereKey($userId)->lockForUpdate()->first(); /* fixed: chan 2 tab tao trung phong chat dang mo */
 
-            // Nếu chưa có thì tạo mới
-            if (!$room) {
-                $room = ChatRoom::create([
+                $room = ChatRoom::where('user_id', $userId)
+                    ->where('status', 'Mở')
+                    ->lockForUpdate()
+                    ->first();
+
+                return $room ?: ChatRoom::create([
                     'user_id'    => $userId,
                     'doctor_id'  => null,
                     'status'     => 'Mở',
                     'created_at' => now(),
                 ]);
-            }
+            });
         } catch (\Throwable $e) {
             Log::error('Create chat room failed', [
                 'user_id' => $userId,
@@ -75,6 +77,10 @@ class ChatController extends Controller
      */
     public function getMessages(Request $request, int $roomId): \Illuminate\Http\JsonResponse
     {
+        $request->validate([
+            'after_id' => 'nullable|integer|min:0',
+        ]); /* fixed: chan URL after_id=abc */
+
         $userId = Auth::id();
 
         // Kiểm tra quyền truy cập phòng
@@ -126,7 +132,7 @@ class ChatController extends Controller
     {
         $request->validate([
             'room_id'      => 'required|integer|exists:chatrooms,room_id',
-            'message_text' => 'required|string|max:2000',
+            'message_text' => ['required', 'string', 'max:2000', 'not_regex:/\A[\s\x{3000}]*\z/u'],
         ]);
 
         $userId = Auth::id();
@@ -200,13 +206,29 @@ class ChatController extends Controller
         $userId = Auth::id();
         $message = ChatMessage::where('message_id', $messageId)
             ->where('sender_id', $userId) // Chỉ được thu hồi tin nhắn của chính mình
-            ->firstOrFail();
+            ->first();
+
+        if (!$message) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tin nhắn không tồn tại hoặc đã bị thu hồi. Vui lòng tải lại cuộc trò chuyện.',
+                'data' => null,
+            ], 404); /* fixed: xoa lan 2 bao loi ro thay vi im lang */
+        }
 
         // Kiểm tra xem phòng có còn đang mở không
         $room = ChatRoom::where('room_id', $message->room_id)
             ->where('user_id', $userId)
             ->where('status', 'Mở')
-            ->firstOrFail();
+            ->first();
+
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phòng chat không còn mở. Vui lòng tải lại cuộc trò chuyện.',
+                'data' => null,
+            ], 409); /* fixed: thao tac tren phong da dong/xoa phai bao loi */
+        }
 
         $message->delete();
 

@@ -205,9 +205,7 @@
                         const data = payload.data || payload; // fixed: ho tro JSON wrapper {success,message,data}
                         this.applySnapshot(data);
                     }
-                } catch (e) {
-                    console.error("Failed to fetch queue snapshot", e);
-                }
+                } catch (e) {}
             },
 
             applySnapshot(data) {

@@ -16,7 +16,8 @@ class NotificationController extends Controller
     {
         $request->validate([
             'status' => 'nullable|in:all,read,unread',
-            'type' => 'nullable|string|max:80',
+            'type' => ['nullable', 'string', 'max:80', 'not_regex:/\A[\s\x{3000}]*\z/u'],
+            'page' => 'nullable|integer|min:1|max:1000',
         ]);
 
         $user = Auth::user();

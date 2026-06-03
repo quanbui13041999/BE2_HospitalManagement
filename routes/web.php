@@ -54,6 +54,8 @@ use App\Http\Controllers\Admin\TreatmentReminderAdminController;
 // TRANG CHỦ & AUTH
 // ============================================================
 
+Route::pattern('id', '[0-9]+'); /* fixed: URL id=abc khong vao controller, tra 404 than thien */
+
 Route::get('/', [HomeController::class, 'welcome'])->name('home');
 
 Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
@@ -78,7 +80,7 @@ Route::redirect('/services', '/dich-vu', 301);
 
 // Tin tức công khai (không cần đăng nhập)
 Route::get('/news',      [NewsController::class, 'index'])->name('news.index');
-Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
+Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show')->whereNumber('id');
 
 // Trang bác sĩ
 Route::get('/bac-si', [HomeController::class, 'welcome'])->name('doctors.index');
@@ -97,8 +99,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/dropdown', [NotificationController::class, 'dropdown'])->name('dropdown');
         Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('mark-all-read');
-        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
-        Route::post('/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('mark-read');
+        Route::get('/{notification}', [NotificationController::class, 'show'])->name('show')->whereNumber('notification');
+        Route::post('/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('mark-read')->whereNumber('notification');
     });
 
     // --------------------------------------------------------
@@ -216,9 +218,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/',                        [ChatController::class, 'index'])->name('index');
         Route::post('/room',                   [ChatController::class, 'getOrCreateRoom'])->name('room');
-        Route::get('/messages/{roomId}',       [ChatController::class, 'getMessages'])->name('messages');
+        Route::get('/messages/{roomId}',       [ChatController::class, 'getMessages'])->name('messages')->whereNumber('roomId');
         Route::post('/send',                   [ChatController::class, 'sendMessage'])->name('send');
-        Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall');
+        Route::delete('/messages/{messageId}', [ChatController::class, 'recallMessage'])->name('recall')->whereNumber('messageId');
     });
 
     // --------------------------------------------------------
@@ -449,8 +451,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     Route::resource('news', AdminNewsController::class)
         ->parameters(['news' => 'id'])
         ->except(['show']);
-    Route::patch('news/{id}/toggle',     [AdminNewsController::class, 'togglePublish'])->name('news.toggle');
-    Route::post('news/{id}/send-email',  [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail');
+    Route::patch('news/{id}/toggle',     [AdminNewsController::class, 'togglePublish'])->name('news.toggle')->whereNumber('id');
+    Route::post('news/{id}/send-email',  [AdminNewsController::class, 'sendEmail'])->name('news.sendEmail')->whereNumber('id');
 
     // --------------------------------------------------------
     // Chat CSKH – Admin/Staff Routes
@@ -467,11 +469,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'is_admin'])->group(
     Route::prefix('chatroom')->name('chatroom.')->group(function () {
         Route::get('/',                        [ChatRoomController::class, 'index'])->name('index');
         Route::get('/list',                    [ChatRoomController::class, 'listJson'])->name('list');
-        Route::get('/{roomId}/messages',       [ChatRoomController::class, 'getMessages'])->name('messages');
-        Route::post('/{roomId}/send',          [ChatRoomController::class, 'sendMessage'])->name('send');
-        Route::post('/{roomId}/close',         [ChatRoomController::class, 'closeRoom'])->name('close');
-        Route::delete('/{roomId}',             [ChatRoomController::class, 'deleteRoom'])->name('delete');
-        Route::delete('/messages/{messageId}', [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage');
+        Route::get('/{roomId}/messages',       [ChatRoomController::class, 'getMessages'])->name('messages')->whereNumber('roomId');
+        Route::post('/{roomId}/send',          [ChatRoomController::class, 'sendMessage'])->name('send')->whereNumber('roomId');
+        Route::post('/{roomId}/close',         [ChatRoomController::class, 'closeRoom'])->name('close')->whereNumber('roomId');
+        Route::delete('/{roomId}',             [ChatRoomController::class, 'deleteRoom'])->name('delete')->whereNumber('roomId');
+        Route::delete('/messages/{messageId}', [ChatRoomController::class, 'deleteMessage'])->name('deleteMessage')->whereNumber('messageId');
     });
 
     Route::resource('device-types', DeviceTypeController::class)
@@ -560,7 +562,7 @@ Route::middleware(['auth'])->group(function () {
 Route::prefix('admin')->middleware(['auth', 'role:Admin,Lễ tân,Bác sĩ'])->group(function () {
     Route::get('/patients/search', [PatientSearchController::class, 'index'])->name('admin.patients.search');
     Route::get('/patients/search/results', [PatientSearchController::class, 'search'])->name('admin.patients.search.results');
-    Route::get('/patients/{id}/detail', [PatientSearchController::class, 'detail'])->name('admin.patients.detail');
+    Route::get('/patients/{id}/detail', [PatientSearchController::class, 'detail'])->name('admin.patients.detail')->whereNumber('id');
     Route::post('/patients/ai-search', [PatientSearchController::class, 'aiSearch'])->name('admin.patients.ai-search');
 });
 // ============================================================

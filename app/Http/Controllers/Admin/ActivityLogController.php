@@ -150,6 +150,7 @@ class ActivityLogController extends Controller
             'status' => 'nullable|string|max:80',
             'date_from' => 'nullable|date_format:Y-m-d',
             'date_to' => 'nullable|date_format:Y-m-d|after_or_equal:date_from',
+            'page' => 'nullable|integer|min:1|max:1000',
         ]); /* fixed: validate filter log truoc khi dua vao query */
 
         $roleName = (string) $request->query('role_name', '');

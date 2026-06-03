@@ -10,6 +10,7 @@ use App\Services\Doctor\AppointmentQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 /**
  * AppointmentController
@@ -79,10 +80,10 @@ class AppointmentController extends Controller
             'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
             'service_id' => 'nullable|integer|exists:services,service_id',
             'work_date' => 'required|date|after_or_equal:today',
-            'appointment_time' => 'required|string|max:10',
-            'note' => 'nullable|string|max:255',
+            'appointment_time' => ['required', 'string', 'max:10', 'regex:/\A\d{2}:\d{2}\z/'],
+            'note' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
             'is_priority' => 'nullable',
-            'priority_type' => 'nullable|string|max:255',
+            'priority_type' => ['nullable', 'string', 'max:255', Rule::in(['Trẻ em dưới 6 tuổi', 'Người già trên 80 tuổi', 'Phụ nữ có thai', 'Người khuyết tật', 'Cấp cứu'])],
         ], [
             'schedule_id.required' => 'Vui lòng chọn khung giờ khám.',
             'schedule_id.exists' => 'Khung giờ không hợp lệ.',
@@ -135,8 +136,14 @@ class AppointmentController extends Controller
         }
 
         $userId = Auth::id();
-        $status = $request->input('status', 'all');
-        $sort = $request->input('sort', 'desc');
+        $validated = $request->validate([
+            'status' => ['nullable', Rule::in(['all', 'upcoming', 'completed', 'cancelled'])],
+            'sort' => ['nullable', Rule::in(['asc', 'desc'])],
+            'page' => 'nullable|integer|min:1|max:1000',
+        ]); /* fixed: chan URL page/status/sort bi sua thanh gia tri khong hop le */
+
+        $status = $validated['status'] ?? 'all';
+        $sort = $validated['sort'] ?? 'desc';
 
         $counts = $this->appointmentService->getUserAppointmentStats($userId);
         $appointments = $this->appointmentService->getUserAppointments($userId, $status, $sort);
@@ -216,8 +223,8 @@ class AppointmentController extends Controller
 
         $request->validate([
             'new_schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
-            'new_appointment_time' => 'required|string|max:10',
-            'reschedule_reason' => 'nullable|string|max:255',
+            'new_appointment_time' => ['required', 'string', 'max:10', 'regex:/\A\d{2}:\d{2}\z/'],
+            'reschedule_reason' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
             'version' => 'nullable|date',
         ], [
             'new_schedule_id.required' => 'Vui lòng chọn khung giờ mới.',
@@ -266,7 +273,7 @@ class AppointmentController extends Controller
         }
 
         $request->validate([
-            'cancel_reason' => 'nullable|string|max:255',
+            'cancel_reason' => ['nullable', 'string', 'max:255', 'not_regex:/\A[\s\x{3000}]*\z/u'],
             'version' => 'nullable|date',
         ]);
 
@@ -373,7 +380,7 @@ class AppointmentController extends Controller
 
         $request->validate([
             'schedule_id' => 'required|integer|exists:doctorschedules,schedule_id',
-            'appointment_time' => 'nullable|string',
+            'appointment_time' => ['nullable', 'string', 'max:10', 'regex:/\A\d{2}:\d{2}\z/'],
             'appointment_id' => 'nullable|integer|exists:appointments,appointment_id',
         ]);
 

@@ -999,7 +999,7 @@
                 </div>
             @endif
 
-            <form id="booking-form" action="{{ route('appointments.store') }}" method="POST">
+            <form id="booking-form" action="{{ route('appointments.store') }}" method="POST" data-disable-submit>
                 @csrf
                 <input type="hidden" name="schedule_id" id="schedule_id">
                 <input type="hidden" name="appointment_time" id="appointment_time">
@@ -1300,7 +1300,7 @@
         <a href="#">Hỗ trợ</a>
     </footer>
 
-    <script id="doctors-by-dept-data" type="application/json">{!! json_encode($doctorsByDept) !!}</script>
+    <script id="doctors-by-dept-data" type="application/json">@json($doctorsByDept)</script>
 
     <script>
         // ══════════════════════════════════════════════════════════════
@@ -1570,8 +1570,7 @@
                     displayQueueInfo(data);
                     spinner.style.display = 'none';
                 })
-                .catch(err => {
-                    console.error('Queue fetch error:', err);
+                .catch(() => {
                     spinner.innerHTML = '<span style="color:#e5484d">❌ Lỗi kết nối</span>';
                 });
         }
@@ -1889,6 +1888,21 @@
         }
 
         bindStandaloneInputLimitWarnings();
+
+        document.querySelectorAll('form[data-disable-submit]').forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.dataset.submitLocked === '1') {
+                    event.preventDefault();
+                    window.showAppNotification('Yêu cầu đang được xử lý, vui lòng không bấm lưu nhiều lần.', 'warning');
+                    return;
+                }
+
+                form.dataset.submitLocked = '1';
+                form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function(button) {
+                    button.disabled = true;
+                });
+            });
+        }); /* fixed: chan double submit dat lich */
     </script>
     @if(session('reload_page'))
     <div id="appointment-reload-message"
