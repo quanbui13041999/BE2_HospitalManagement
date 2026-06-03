@@ -267,6 +267,8 @@ Route::prefix('doctor')->name('doctor.')->middleware('auth')->group(function () 
     Route::post('/dashboard/reviews/{id}/reply',            [DashboardController::class, 'replyReview']);
     Route::delete('/dashboard/reviews/{id}/reply',          [DashboardController::class, 'deleteReply']);
     Route::get('/dashboard/doctors/list',                   [DashboardController::class, 'doctorsList']);
+    Route::get('/dashboard/doctors/{id}',                 [DashboardController::class, 'getDoctor']);
+
     Route::post('/dashboard/doctors/upload-avatar',         [DashboardController::class, 'uploadAvatar']);
     Route::post('/dashboard/doctors',                       [DashboardController::class, 'storeDoctor']);
     Route::put('/dashboard/doctors/{id}',                   [DashboardController::class, 'updateDoctor']);

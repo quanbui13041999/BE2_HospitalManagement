@@ -1346,7 +1346,7 @@
                             <label style="display:flex;align-items:center;gap:8px"><input id="f-create-account" type="checkbox"> Tạo tài khoản (email & mật khẩu)</label>
                             <div style="display:none;flex-direction:column;gap:8px" id="account-fields">
                                 <input id="f-email" type="email" placeholder="Email đăng nhập (vd: bs@example.com)" style="width:100%">
-                                <input id="f-password" type="password" placeholder="Mật khẩu (tùy chọn, để trống để tạo ngẫu nhiên)" style="width:100%">
+                                <input id="f-password" name="password" type="password" autocomplete="new-password" placeholder="Mật khẩu (tùy chọn, để trống để tạo ngẫu nhiên)" style="width:100%">
                                 <span class="err">Email phải hợp lệ và chưa tồn tại.</span>
                             </div>
                         </div>
@@ -1866,6 +1866,13 @@
         // ── Submit add / edit ──────────────────────────────
         async function submitDoctorForm(e) {
             e.preventDefault();
+
+            const btn = document.getElementById('doc-submit-btn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Đang lưu...';
+
             let ok = true;
 
             function validate(inputId, condition) {
@@ -1880,18 +1887,24 @@
             const full_name = validate('f-full-name', v => v.length > 0);
             const user_id = document.getElementById('f-user-id')?.value || '';
             const department_id = validate('f-department-id', v => v !== '');
-            if (!ok) return;
+            if (!ok) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                return;
+            }
 
             const doctorId = document.getElementById('f-id').value;
+            const versionValue = doctorId ? parseInt(document.getElementById('f-version').value) : null;
+
             const payload = {
                 full_name,
-                user_id: parseInt(user_id),
-                department_id: parseInt(department_id),
+                user_id: user_id ? parseInt(user_id) : null,
+                department_id: parseInt(department_id) || 0,
                 experience: parseInt(document.getElementById('f-experience').value) || 0,
                 price: parseFloat(document.getElementById('f-price').value) || 0,
                 avatar_url: document.getElementById('f-avatar-url').value.trim() || null,
                 bio: document.getElementById('f-bio').value.trim() || null,
-                status: parseInt(document.getElementById('f-status').value),
+                status: parseInt(document.getElementById('f-status').value) || 1,
             };
             if (doctorId) {
                 payload.version = parseInt(document.getElementById('f-version').value) || 1;
@@ -1905,13 +1918,11 @@
                 payload.password = password || null;
             }
 
-            const btn = document.getElementById('doc-submit-btn');
-            btn.disabled = true;
-
             const isEdit = !!doctorId;
             const data = await api(isEdit ? 'PUT' : 'POST', isEdit ? `/doctors/${doctorId}` : '/doctors', payload);
 
             btn.disabled = false;
+            btn.innerHTML = originalText;
 
             // Clear previous field errors
             document.querySelectorAll('#doctor-form .field').forEach(f => {
@@ -2020,9 +2031,20 @@
         async function confirmDelete() {
             if (!deleteTargetId) return;
             const btn = document.getElementById('del-confirm-btn');
-            btn.disabled = true; btn.textContent = 'Đang xóa...';
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = 'Đang xóa...';
 
-            const data = await api('DELETE', `/doctors/${deleteTargetId}`);
+            const docData = await api('GET', `/doctors/${deleteTargetId}`);
+            if (!docData.success) {
+                btn.disabled = false; btn.textContent = 'Xóa vĩnh viễn';
+                toast('Không thể lấy thông tin bác sĩ hiện tại. Vui lòng thử lại.', 'error');
+                return;
+            }
+
+            const payload = { version: docData.doctor.version };
+            const data = await api('DELETE', `/doctors/${deleteTargetId}`, payload);
+
             btn.disabled = false; btn.textContent = 'Xóa vĩnh viễn';
             toast(data.message, data.success ? 'success' : 'error');
 

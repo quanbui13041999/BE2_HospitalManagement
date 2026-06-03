@@ -4,6 +4,9 @@
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Doctor\StoreDoctorRequest;
+use App\Http\Requests\Doctor\UpdateDoctorRequest;
+use App\Http\Requests\Doctor\UploadAvatarRequest;
 use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Services\Doctor\DoctorDashboardService;
@@ -12,7 +15,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Database\QueryException;
 
 class DashboardController extends Controller
 {
@@ -154,6 +159,12 @@ class DashboardController extends Controller
      */
     public function reviews(Request $request): JsonResponse
     {
+        $request->validate([
+            'page'      => 'nullable|integer|min:1',
+            'per_page'  => 'nullable|integer|min:1|max:100',
+            'doctor_id' => 'nullable|integer|min:1',
+        ]);
+
         [$doctorId, $isAdmin] = $this->resolveContext($request);
 
         $paginated = $this->service->getReviews(
@@ -201,6 +212,7 @@ class DashboardController extends Controller
         [, $isAdmin] = $this->resolveContext();
 
         $result = $this->service->deleteReply($id, $isAdmin);
+
 
         return response()->json($result, $result['success'] ? 200 : 403);
     }
@@ -264,43 +276,56 @@ class DashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
         }
 
-        $perPage = $request->integer('per_page', 10);
-        $search  = $request->input('search', '');
-        $status  = $request->input('status', '');
-
-        $query = Doctor::with('department:department_id,department_name')
-            ->withReviewStats()
-            ->when($search, fn($q) => $q
-                ->where('doctors.full_name', 'like', "%{$search}%")
-                ->orWhereHas('department', fn($dq) => $dq->where('department_name', 'like', "%{$search}%"))
-            )
-            ->when($status !== '', fn($q) => $q->where('doctors.status', $status))
-            ->orderBy('doctors.full_name');
-
-        $paginated = $query->paginate($perPage);
-
-        return response()->json([
-            'success' => true,
-            'data'    => $paginated->map(fn($d) => [
-                'doctor_id'       => $d->doctor_id,
-                'user_id'         => $d->user_id,
-                'full_name'       => $d->full_name,
-                'department_id'   => $d->department_id,
-                'department_name' => $d->department?->department_name,
-                'experience'      => $d->experience,
-                'price'           => $d->price,
-                'avatar_url'      => $d->avatar_url,
-                'bio'             => $d->bio,
-                'status'          => $d->status,
-                'avg_rating'      => $d->avg_rating,
-                'total_reviews'   => $d->total_reviews,
-            ]),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'last_page'    => $paginated->lastPage(),
-                'total'        => $paginated->total(),
-            ],
+        $request->validate([
+            'page'      => 'nullable|integer|min:1',
+            'per_page'  => 'nullable|integer|min:1|max:100',
+            'search'    => 'nullable|string|max:255',
+            'status'    => 'nullable|string|in:0,1',
         ]);
+
+        try {
+            $perPage = $request->integer('per_page', 10);
+            $search  = $request->input('search', '');
+            $status  = $request->input('status', '');
+
+            $query = Doctor::with('department:department_id,department_name')
+                ->withReviewStats()
+                ->when($search, fn($q) => $q
+                    ->where('doctors.full_name', 'like', "%{$search}%")
+                    ->orWhereHas('department', fn($dq) => $dq->where('department_name', 'like', "%{$search}%"))
+                )
+                ->when($status !== '', fn($q) => $q->where('doctors.status', $status))
+                ->orderBy('doctors.full_name');
+
+            $paginated = $query->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data'    => $paginated->map(fn($d) => [
+                    'doctor_id'       => $d->doctor_id,
+                    'user_id'         => $d->user_id,
+                    'full_name'       => $d->full_name,
+                    'department_id'   => $d->department_id,
+                    'department_name' => $d->department?->department_name,
+                    'experience'      => $d->experience,
+                    'price'           => $d->price,
+                    'avatar_url'      => $d->avatar_url,
+                    'bio'             => $d->bio,
+                    'status'          => $d->status,
+                    'version'         => $d->version ?? 1,
+                    'avg_rating'      => $d->avg_rating,
+                    'total_reviews'   => $d->total_reviews,
+                ]),
+                'meta' => [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page'    => $paginated->lastPage(),
+                    'total'        => $paginated->total(),
+                ],
+            ]);
+        } catch (QueryException $e) {
+            \Log::error('doctorsList DB error', ['message' => $e->getMessage(), 'code' => $e->getCode()]);
+            return response()->json(['success' => false, 'message' => 'Không thể tải danh sách bác sĩ hiện tại. Vui lòng thử lại sau.'], 503);
+        }
     }
 
     /**
@@ -310,6 +335,10 @@ class DashboardController extends Controller
     {
         if (!Auth::user()->isAdmin()) {
             return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
+        }
+
+        if ($id <= 0) {
+            return response()->json(['success' => false, 'message' => 'ID bác sĩ không hợp lệ.'], 404);
         }
 
         $doctor = Doctor::with('department:department_id,department_name')->find($id);
@@ -337,59 +366,102 @@ class DashboardController extends Controller
     /**
      * POST /doctor/dashboard/doctors
      */
-    public function storeDoctor(Request $request): JsonResponse
+    public function storeDoctor(StoreDoctorRequest $request): JsonResponse
     {
-        if (!Auth::user()->isAdmin()) {
-            return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
+        $validated = $request->validated();
+
+        if (!$validated['user_id'] && !($validated['email'] ?? null)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lòng cung cấp User ID hoặc Email để tạo bác sĩ.',
+                'status'  => 422,
+            ], 422);
         }
 
-        $validated = $request->validate([
-            'full_name'     => 'required|string|max:100',
-            'user_id'       => 'nullable|integer|exists:users,user_id|unique:doctors,user_id',
-            'email'         => 'nullable|email|unique:users,email',
-            'password'      => 'nullable|string|min:6',
-            'department_id' => 'required|integer|exists:departments,department_id',
-            'experience'    => 'nullable|integer|min:0|max:60',
-            'price'         => 'nullable|numeric|min:0',
-            'avatar_url'    => 'nullable|string|max:255',
-            'bio'           => 'nullable|string|max:2000',
-            'status'        => 'required|in:0,1',
-        ]);
+        $doctor = null;
+        $createdUser = null;
+        $plainPassword = null;
 
         try {
-            DB::transaction(function () use ($validated, &$doctor) {
-                // Create user if email provided
+            DB::transaction(function () use ($validated, &$doctor, &$createdUser, &$plainPassword) {
                 $userId = $validated['user_id'];
-                if (!$userId && $validated['email']) {
-                    $user = \App\Models\User::create([
+                $email = $validated['email'] ?? null;
+
+                if (!$userId && $email) {
+                    $plainPassword = !empty($validated['password'])
+                        ? $validated['password']
+                        : \Illuminate\Support\Str::random(12);
+
+                    $createdUser = \App\Models\User::create([
                         'full_name'  => $validated['full_name'],
-                        'email'      => $validated['email'],
-                        'password'   => $validated['password'] ? Hash::make($validated['password']) : null,
+                        'email'      => $email,
+                        'password'   => Hash::make($plainPassword),
                         'avatar_url' => $validated['avatar_url'] ?? null,
                         'status'     => $validated['status'] ?? 1,
                         'is_admin'   => 0,
+                        'role_id'    => 2,
                     ]);
-                    $userId = $user->user_id;
+
+                    $userId = $createdUser->user_id;
                 }
 
-                // Create doctor
-                $doctor = Doctor::create(array_merge($validated, [
-                    'user_id' => $userId,
-                    'version' => 1
-                ]));
+                $doctor = Doctor::create([
+                    'user_id'       => $userId,
+                    'full_name'     => $validated['full_name'],
+                    'department_id' => $validated['department_id'],
+                    'experience'    => $validated['experience'],
+                    'price'         => $validated['price'],
+                    'avatar_url'    => $validated['avatar_url'],
+                    'bio'           => $validated['bio'],
+                    'status'        => $validated['status'],
+                    'version'       => 1,
+                ]);
             });
 
-            return response()->json([
+            if (!$doctor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lỗi: không thể tạo bác sĩ.',
+                ], 500);
+            }
+
+            $response = [
                 'success' => true,
                 'message' => 'Đã thêm bác sĩ thành công.',
                 'doctor'  => [
                     'doctor_id'     => $doctor->doctor_id,
                     'full_name'     => $doctor->full_name,
                     'department_id' => $doctor->department_id,
+                    'version'       => $doctor->version ?? 1,
                 ],
-            ], 201);
+            ];
+
+            if ($createdUser) {
+                $response['created_user'] = [
+                    'email'          => $createdUser->email,
+                    'user_id'        => $createdUser->user_id,
+                    'plain_password' => $plainPassword,
+                ];
+            }
+
+            return response()->json($response, 201);
+        } catch (QueryException $e) {
+            \Log::error('QueryException creating doctor: ' . $e->getMessage());
+            
+            // Handle unique constraint violations
+            if (str_contains($e->getMessage(), 'unique') || str_contains($e->getMessage(), 'Duplicate')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email hoặc User ID đã tồn tại trong hệ thống.'
+                ], 409);
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi cơ sở dữ liệu: ' . $e->getMessage()
+            ], 500);
         } catch (\Exception $e) {
-            \Log::error('Error creating doctor: ' . $e->getMessage());
+            \Log::error('Error creating doctor: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Lỗi khi thêm bác sĩ: ' . $e->getMessage()
@@ -403,10 +475,10 @@ class DashboardController extends Controller
     /**
      * PUT /doctor/dashboard/doctors/{id}
      */
-    public function updateDoctor(Request $request, int $id): JsonResponse
+    public function updateDoctor(UpdateDoctorRequest $request, int $id): JsonResponse
     {
-        if (!Auth::user()->isAdmin()) {
-            return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
+        if ($id <= 0) {
+            return response()->json(['success' => false, 'message' => 'ID bác sĩ không hợp lệ.'], 404);
         }
 
         $doctor = Doctor::find($id);
@@ -414,26 +486,9 @@ class DashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Bác sĩ không tồn tại.'], 404);
         }
 
-        $validated = $request->validate([
-            'full_name'     => 'required|string|max:100',
-            'user_id'       => [
-                'nullable',
-                'integer',
-                'exists:users,user_id',
-                Rule::unique('doctors', 'user_id')->ignore($doctor->doctor_id, 'doctor_id'),
-            ],
-            'email'         => 'nullable|email|unique:users,email,' . ($doctor->user_id ?? 'NULL') . ',user_id',
-            'password'      => 'nullable|string|min:6',
-            'department_id' => 'required|integer|exists:departments,department_id',
-            'experience'    => 'nullable|integer|min:0|max:60',
-            'price'         => 'nullable|numeric|min:0',
-            'avatar_url'    => 'nullable|string|max:255',
-            'bio'           => 'nullable|string|max:2000',
-            'status'        => 'required|in:0,1',
-            'version'       => 'required|integer|min:1',
-        ]);
-
+        $validated = $request->validated();
         $oldVersion = $doctor->version ?? 1;
+
         if ($oldVersion !== $validated['version']) {
             return response()->json([
                 'success' => false,
@@ -441,38 +496,78 @@ class DashboardController extends Controller
             ], 409);
         }
 
-        DB::transaction(function () use ($doctor, $validated, $oldVersion) {
-            // optimistic locking update (atomic): only update if version matches oldVersion
-            $data = $validated;
-            unset($data['version']);
-            $newVersion = $oldVersion + 1;
+        try {
+            DB::transaction(function () use ($doctor, $validated, $oldVersion) {
+                $data = $validated;
+                unset($data['version']);
 
-            $updated = Doctor::where('doctor_id', $doctor->doctor_id)
-                ->where('version', $oldVersion)
-                ->update(array_merge($data, ['version' => $newVersion]));
-
-            if ($updated === 0) {
-                throw new \RuntimeException('CONFLICT');
-            }
-
-            // Sync user (best-effort; concurrency conflicts here are less likely)
-            if (!empty($validated['user_id'])) {
-                $user = \App\Models\User::find($validated['user_id']);
-                if ($user) {
-                    $user->update([
-                        'full_name'  => $validated['full_name'],
-                        'avatar_url' => $validated['avatar_url'] ?? $user->avatar_url,
-                        'status'     => $validated['status'],
-                    ] + (!empty($validated['email']) ? ['email' => $validated['email']] : [])
-                      + (!empty($validated['password']) ? ['password' => Hash::make($validated['password'])] : []));
+                if (empty($data['avatar_url'])) {
+                    $data['avatar_url'] = $doctor->avatar_url;
                 }
+
+                $newVersion = $oldVersion + 1;
+
+                $updated = Doctor::where('doctor_id', $doctor->doctor_id)
+                    ->where('version', $oldVersion)
+                    ->update(array_merge($data, ['version' => $newVersion]));
+
+                if ($updated === 0) {
+                    throw new \RuntimeException('CONFLICT');
+                }
+
+                if (!empty($validated['user_id'])) {
+                    $user = \App\Models\User::find($validated['user_id']);
+                    if ($user) {
+                        $user->update([
+                            'full_name'  => $validated['full_name'],
+                            'avatar_url' => !empty($validated['avatar_url']) ? $validated['avatar_url'] : $user->avatar_url,
+                            'status'     => $validated['status'],
+                        ] + (!empty($validated['email']) ? ['email' => $validated['email']] : [])
+                          + (!empty($validated['password']) ? ['password' => Hash::make($validated['password'])] : []));
+                    }
+                }
+            });
+
+            // Refresh doctor from database to get the updated version
+            $doctor->refresh();
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'CONFLICT') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bản ghi đã bị thay đổi bởi người khác. Vui lòng tải lại và thử lại.',
+                ], 409);
             }
-        });
+            throw $e;
+        } catch (QueryException $e) {
+            \Log::error('QueryException updating doctor: ' . $e->getMessage());
+            
+            if (str_contains($e->getMessage(), 'unique') || str_contains($e->getMessage(), 'Duplicate')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email hoặc User ID đã tồn tại. Vui lòng chọn giá trị khác.',
+                ], 409);
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi cơ sở dữ liệu: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Error updating doctor: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi cập nhật: ' . $e->getMessage()
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Đã cập nhật thông tin bác sĩ.',
-            'doctor'  => ['doctor_id' => $doctor->doctor_id, 'full_name' => $doctor->full_name],
+            'doctor'  => [
+                'doctor_id' => $doctor->doctor_id,
+                'full_name' => $doctor->full_name,
+                'version' => $doctor->version,
+            ],
         ]);
     }
 
@@ -483,6 +578,10 @@ class DashboardController extends Controller
     {
         if (!Auth::user()->isAdmin()) {
             return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
+        }
+
+        if ($id <= 0) {
+            return response()->json(['success' => false, 'message' => 'ID bác sĩ không hợp lệ.'], 404);
         }
 
         $validated = $request->validate([
@@ -502,55 +601,84 @@ class DashboardController extends Controller
             ], 409);
         }
 
-        $hasActive = Appointment::whereHas('schedule', fn($q) => $q->where('doctor_id', $id))
-            ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám', 'Đã thanh toán'])
-            ->exists();
+        try {
+            $hasActive = Appointment::whereHas('schedule', fn($q) => $q->where('doctor_id', $id))
+                ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám', 'Đã thanh toán'])
+                ->exists();
 
-        if ($hasActive) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không thể xóa: bác sĩ còn lịch hẹn chưa hoàn thành.',
-            ], 422);
-        }
-
-        DB::transaction(function () use ($doctor, $oldVersion) {
-            // atomic delete/disable with version check
-            $updated = Doctor::where('doctor_id', $doctor->doctor_id)
-                ->where('version', $oldVersion)
-                ->update(['status' => 0]);
-
-            if ($updated === 0) {
-                throw new \RuntimeException('CONFLICT');
+            if ($hasActive) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể xóa: bác sĩ còn lịch hẹn chưa hoàn thành.',
+                ], 422);
             }
 
-            $doctor->delete();
-        });
+            DB::transaction(function () use ($doctor, $oldVersion) {
+                // Atomic delete with version check
+                $updated = Doctor::where('doctor_id', $doctor->doctor_id)
+                    ->where('version', $oldVersion)
+                    ->delete();
 
-        return response()->json(['success' => true, 'message' => 'Đã xóa bác sĩ thành công.']);
+                if ($updated === 0) {
+                    throw new \RuntimeException('CONFLICT');
+                }
+            });
+
+            return response()->json(['success' => true, 'message' => 'Đã xóa bác sĩ thành công.']);
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'CONFLICT') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bản ghi đã bị xóa bởi người khác hoặc phiên bản không khớp. Vui lòng tải lại.',
+                ], 409);
+            }
+            throw $e;
+        } catch (QueryException $e) {
+            \Log::error('QueryException deleting doctor: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi cơ sở dữ liệu: Không thể xóa bác sĩ. Có thể bác sĩ được tham chiếu bởi dữ liệu khác.'
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Error deleting doctor: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi xóa: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
      * POST /doctor/dashboard/doctors/upload-avatar
      */
-    public function uploadAvatar(Request $request): JsonResponse
+    public function uploadAvatar(UploadAvatarRequest $request): JsonResponse
     {
-        if (!Auth::user()->isAdmin()) {
-            return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
+        try {
+            $validated = $request->validated();
+            $file = $request->file('avatar');
+            
+            if (!$file) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy tệp ảnh.',
+                ], 400);
+            }
+
+            $path = $file->store('images/doctors', 'public');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tải ảnh lên thành công.',
+                'path'    => $path,
+                'url'     => '/storage/' . $path,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error uploading avatar: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi tải ảnh: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $validated = $request->validate([
-            'avatar' => 'required|image|max:5120',
-        ]);
-
-        $file = $request->file('avatar');
-        $path = $file->store('images/doctors', 'public');
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Uploaded',
-            'path'    => $path,
-            'url'     => '/storage/' . $path,
-        ]);
     }
 }
 
