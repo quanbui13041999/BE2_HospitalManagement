@@ -192,6 +192,13 @@ class QueueService
             }
 
             $ticket->update(['status' => 'in_progress', 'started_at' => now()]);
+
+            if ($ticket->appointment_id) {
+                Appointment::where('appointment_id', $ticket->appointment_id)
+                    ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đã thanh toán'])
+                    ->update(['status' => 'Đang khám']); /* fixed: da vao phong kham thi benh nhan khong the huy lich */
+            }
+
             broadcast(new QueueUpdated($ticket->schedule_id))->toOthers();
             return $ticket;
         });

@@ -822,6 +822,7 @@
                                 'Đã hủy' => 'badge-cancelled',
                                 'Dời lịch' => 'badge-cancelled',
                                 'Đã thanh toán' => 'badge-confirmed',
+                                'Đang khám' => 'badge-confirmed',
                                 'Đã khám' => 'badge-done',
                                 'Hoàn thành' => 'badge-done',
                                 ];
@@ -874,6 +875,9 @@
                                         <span class="payment-status payment-unpaid">Không thể hủy trong vòng 1 giờ trước giờ khám</span>
                                     @endif
                                 </div>
+
+                                @elseif($item->status === 'Đang khám')
+                                    <span class="payment-status payment-unpaid">Lịch hẹn đang khám, không thể hủy.</span>
 
                                 @elseif(in_array($item->status, ['Đã khám', 'Đã Khám', 'Hoàn thành', 'Hoàn Thành']))
                                 @php

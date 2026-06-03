@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Models\ChatRoom;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
+use App\Models\Appointment;
+use App\Models\QueueTicket;
 use App\Models\User;
+use App\Services\QueueService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -124,5 +127,81 @@ class TenFeatureHardeningTest extends TestCase
                 'patient_phone' => '０１２３４５６７８９',
             ])
             ->assertSessionHasErrors(['patient_name', 'patient_phone']); // fixed: khoang trang/full-width number bi validate
+    }
+
+    public function test_patient_cannot_cancel_appointment_after_exam_has_started(): void
+    {
+        $patient = User::create([
+            'full_name' => 'Patient In Exam',
+            'email' => 'patient_in_exam_' . uniqid() . '@example.test',
+            'password' => Hash::make('secret123'),
+            'role_id' => 3,
+            'status' => 1,
+        ]);
+
+        $schedule = DoctorSchedule::whereDate('work_date', today())
+            ->where('status', 'Hoạt động')
+            ->first();
+        $createdSchedule = false;
+
+        if (!$schedule) {
+            $doctor = Doctor::firstOrFail();
+            $schedule = DoctorSchedule::create([
+                'doctor_id' => $doctor->doctor_id,
+                'room_id' => 1,
+                'work_date' => today(),
+                'start_time' => '08:00:00',
+                'end_time' => '12:00:00',
+                'slot_duration' => 15,
+                'max_slot' => 20,
+                'status' => 'Hoạt động',
+            ]);
+            $createdSchedule = true;
+        }
+
+        $appointment = Appointment::create([
+            'user_id' => $patient->user_id,
+            'schedule_id' => $schedule->schedule_id,
+            'appointment_time' => today()->setTime(10, 0),
+            'queue_number' => 1,
+            'status' => 'Đã xác nhận',
+            'created_at' => now(),
+        ]);
+
+        $ticket = QueueTicket::create([
+            'appointment_id' => $appointment->appointment_id,
+            'schedule_id' => $schedule->schedule_id,
+            'user_id' => $patient->user_id,
+            'patient_name' => $patient->full_name,
+            'queue_date' => today(),
+            'queue_number' => 1,
+            'priority' => 'emergency',
+            'priority_sort' => 1,
+            'status' => 'calling',
+            'checkin_time' => now(),
+            'est_wait_minutes' => 0,
+        ]);
+
+        try {
+            app(QueueService::class)->startExam($ticket->ticket_id);
+
+            $appointment->refresh();
+            $this->assertSame('Đang khám', $appointment->status); // fixed: bat dau kham phai khoa huy lich
+
+            $this->actingAs($patient)
+                ->post(route('appointments.cancel', $appointment->appointment_id), [
+                    'version' => now()->format('Y-m-d H:i:s'),
+                    'cancel_reason' => 'Muốn hủy khi đang khám',
+                ])
+                ->assertSessionHasErrors(['msg']);
+        } finally {
+            QueueTicket::where('ticket_id', $ticket->ticket_id)->delete();
+            Appointment::where('appointment_id', $appointment->appointment_id)->delete();
+            $patient->delete();
+
+            if ($createdSchedule) {
+                DoctorSchedule::where('schedule_id', $schedule->schedule_id)->delete();
+            }
+        }
     }
 }
