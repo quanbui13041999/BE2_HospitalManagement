@@ -59,7 +59,7 @@
         </div>
     </div>
     <script>
-        const targetUrl = @json(url('/'));
+        const targetUrl = "{{ url('/') }}";
         const notice = document.createElement('div');
         notice.textContent = 'Đã xảy ra lỗi, trang sẽ được tải lại.';
         notice.setAttribute('role', 'alert');

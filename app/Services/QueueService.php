@@ -174,6 +174,7 @@ class QueueService
     public function startExam(int $ticketId): QueueTicket
     {
         return DB::transaction(function () use ($ticketId) {
+            /** @var QueueTicket $ticket */
             $ticket = QueueTicket::with(['appointment.payment'])
                 ->where('ticket_id', $ticketId)
                 ->lockForUpdate()

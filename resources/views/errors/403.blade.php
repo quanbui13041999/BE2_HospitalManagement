@@ -113,7 +113,7 @@
         @endauth
     </div>
     <script>
-        const targetUrl = @json(url('/'));
+        const targetUrl = "{{ url('/') }}";
         const notice = document.createElement('div');
         notice.textContent = 'Bạn không thể truy cập trang này. Trang sẽ được tải lại.';
         notice.setAttribute('role', 'alert');
