@@ -1,10 +1,15 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{TreatmentReminder, User, MedicalRecord, TreatmentHomeInstruction};
-use App\Services\{TreatmentReminderService, ComplianceReportService};
 use App\Http\Requests\Admin\StoreTreatmentReminderRequest;
+use App\Models\MedicalRecord;
+use App\Models\TreatmentHomeInstruction;
+use App\Models\TreatmentReminder;
+use App\Models\User;
+use App\Services\ComplianceReportService;
+use App\Services\TreatmentReminderService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +18,7 @@ class TreatmentReminderAdminController extends Controller
 {
     public function __construct(
         private TreatmentReminderService $service,
-        private ComplianceReportService  $reportService
+        private ComplianceReportService $reportService
     ) {}
 
     /** Danh sách bệnh nhân & tổng quan tuân thủ */
@@ -22,7 +27,7 @@ class TreatmentReminderAdminController extends Controller
         $patients = User::where('role_id', 3)
             ->where('status', 1)
             ->withCount(['treatmentReminders as total_reminders',
-                         'treatmentConfirmations as confirmed_reminders'])
+                'treatmentConfirmations as confirmed_reminders'])
             ->paginate(15);
 
         return view('admin.treatment_reminder.index', compact('patients'));
@@ -43,7 +48,7 @@ class TreatmentReminderAdminController extends Controller
             return $this->redirectToTreatmentIndexNotFound();
         }
 
-        $data    = $this->service->getDashboardData($userId);
+        $data = $this->service->getDashboardData($userId);
         $records = MedicalRecord::where('patient_id', $userId) // patient_id in medical_records
             ->with(['prescriptions', 'doctor'])
             ->latest('created_at')
@@ -64,7 +69,8 @@ class TreatmentReminderAdminController extends Controller
         }
 
         $patients = User::where('role_id', 3)->where('status', 1)->orderBy('full_name')->get();
-        $records  = MedicalRecord::with('patient')->latest()->get();
+        $records = MedicalRecord::with('patient')->latest()->get();
+
         return view('admin.treatment_reminder.create', compact('patients', 'records'));
     }
 
@@ -117,6 +123,7 @@ class TreatmentReminderAdminController extends Controller
                 ->withInput()
                 ->with('warning', 'Nhắc nhở này đã tồn tại cho bệnh nhân trong cùng phút. Hệ thống không tạo trùng, vui lòng tải lại dữ liệu.');
         }
+
         return redirect()->route('admin.treatment.show', $data['user_id'])
             ->with('success', 'Đã tạo nhắc nhở thành công!');
     }
@@ -202,7 +209,7 @@ class TreatmentReminderAdminController extends Controller
 
     private function reminderCreateLockKey(int $userId, string $type, Carbon $remindAt): string
     {
-        return 'treatment_reminder_create:' . implode(':', [
+        return 'treatment_reminder_create:'.implode(':', [
             $userId,
             $type,
             $remindAt->copy()->format('YmdHi'),
@@ -211,7 +218,7 @@ class TreatmentReminderAdminController extends Controller
 
     private function reminderDeleteLockKey(int $reminderId): string
     {
-        return 'treatment_reminder_delete:' . $reminderId;
+        return 'treatment_reminder_delete:'.$reminderId;
     }
 
     private function acquireReminderLock(string $lockKey): bool
@@ -287,6 +294,7 @@ class TreatmentReminderAdminController extends Controller
         }
 
         $count = $this->service->generateFromRecord($record);
+
         return back()->with('success', "Đã tạo {$count} nhắc nhở từ hồ sơ bệnh án!");
     }
 
@@ -297,6 +305,7 @@ class TreatmentReminderAdminController extends Controller
             $request->integer('month', now()->month),
             $request->integer('year', now()->year)
         );
+
         return view('admin.treatment_reminder.compliance', compact('report'));
     }
 
@@ -326,20 +335,20 @@ class TreatmentReminderAdminController extends Controller
     public function storeInstruction(Request $request)
     {
         $request->validate([
-            'user_id'          => 'required|integer',
+            'user_id' => 'required|integer',
             'instruction_text' => 'required|string|max:255',
-            'detail'           => 'nullable|string',
-            'icon'             => 'nullable|string',
+            'detail' => 'nullable|string',
+            'icon' => 'nullable|string',
         ]);
 
         TreatmentHomeInstruction::create([
-            'user_id'          => $request->user_id,
-            'record_id'        => null, // Tạo tự do trực tiếp từ trang hồ sơ tuân thủ nên tạm để null
+            'user_id' => $request->user_id,
+            'record_id' => null, // Tạo tự do trực tiếp từ trang hồ sơ tuân thủ nên tạm để null
             'instruction_text' => $request->instruction_text,
-            'detail'           => $request->detail,
-            'icon'             => $request->icon ?? 'tasks',
-            'sort_order'       => 0,
-            'is_active'        => 1,
+            'detail' => $request->detail,
+            'icon' => $request->icon ?? 'tasks',
+            'sort_order' => 0,
+            'is_active' => 1,
         ]);
 
         // Điều hướng ngược về trang chi tiết của bệnh nhân vừa tạo theo đúng cấu trúc route mới

@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Service;
-use App\Repositories\ServiceRepository;
 use App\Models\Appointment;
 use App\Models\Payment;
 use App\Models\PaymentItem;
-use App\Services\PayOsService;
+use App\Models\Service;
+use App\Models\User;
+use App\Repositories\ServiceRepository;
 use App\Services\NotificationService;
+use App\Services\PayOsService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
-
 
 class ServiceController extends Controller
 {
@@ -25,7 +25,7 @@ class ServiceController extends Controller
     public function index(Request $request)
     {
         $data = [
-            'services'    => $this->repo->filteredPublicServices($request),
+            'services' => $this->repo->filteredPublicServices($request),
             'departments' => $this->repo->activeDepartments(),
         ];
 
@@ -40,29 +40,30 @@ class ServiceController extends Controller
         $services = $this->repo->filteredPublicServices($request);
 
         $list = $services->getCollection()->map(function ($s) {
-            $priceNormal = $s->activePrices->first(fn($p) => str_contains(strtolower($p->price_type), 'thường') || str_contains(strtolower($p->price_type), 'normal')) ?? $s->activePrices->first();
-            $priceBhyt = $s->activePrices->first(fn($p) => str_contains(strtolower($p->price_type), 'bhyt') || str_contains(strtolower($p->price_type), 'bảo hiểm'));
-            $priceVip = $s->activePrices->first(fn($p) => str_contains(strtolower($p->price_type), 'vip') || str_contains(strtolower($p->price_type), 'cao cấp'));
+            $priceNormal = $s->activePrices->first(fn ($p) => str_contains(strtolower($p->price_type), 'thường') || str_contains(strtolower($p->price_type), 'normal')) ?? $s->activePrices->first();
+            $priceBhyt = $s->activePrices->first(fn ($p) => str_contains(strtolower($p->price_type), 'bhyt') || str_contains(strtolower($p->price_type), 'bảo hiểm'));
+            $priceVip = $s->activePrices->first(fn ($p) => str_contains(strtolower($p->price_type), 'vip') || str_contains(strtolower($p->price_type), 'cao cấp'));
             $lowestPrice = $s->activePrices->min('price');
+
             return [
-                'service_id'       => $s->service_id,
-                'service_code'     => $s->service_code,
-                'service_name'     => $s->service_name,
-                'description'      => $s->description,
+                'service_id' => $s->service_id,
+                'service_code' => $s->service_code,
+                'service_name' => $s->service_name,
+                'description' => $s->description,
                 'duration_minutes' => $s->duration_minutes,
-                'department'       => $s->department?->department_name,
-                'price_normal'     => $priceNormal?->price,
-                'price_bhyt'       => $priceBhyt?->price,
-                'price_vip'        => $priceVip?->price,
-                'lowest_price'     => $lowestPrice,
-                'show_url'         => route('user.services.show', $s->service_id),
-                'book_url'         => route('user.services.show', $s->service_id),
+                'department' => $s->department?->department_name,
+                'price_normal' => $priceNormal?->price,
+                'price_bhyt' => $priceBhyt?->price,
+                'price_vip' => $priceVip?->price,
+                'lowest_price' => $lowestPrice,
+                'show_url' => route('user.services.show', $s->service_id),
+                'book_url' => route('user.services.show', $s->service_id),
             ];
         });
 
         return response()->json([
-            'total'     => $services->total(),
-            'services'  => $list,
+            'total' => $services->total(),
+            'services' => $list,
             'timestamp' => now()->toIso8601String(),
         ]);
     }
@@ -74,7 +75,7 @@ class ServiceController extends Controller
     {
         $service = Service::with(['department', 'activePrices'])->find($id);
 
-        abort_if(!$service || !$service->status, 404, 'Dịch vụ không tồn tại hoặc không khả dụng.');
+        abort_if(! $service || ! $service->status, 404, 'Dịch vụ không tồn tại hoặc không khả dụng.');
 
         $related = $this->repo->relatedServices($service);
 
@@ -91,23 +92,32 @@ class ServiceController extends Controller
     {
         $service = Service::find($id);
 
-        abort_if(!$service, 404, 'Dịch vụ không tồn tại.');
+        abort_if(! $service, 404, 'Dịch vụ không tồn tại.');
 
         $price = $service->activePrices()
             ->where('price_type', $priceType)
             ->first();
 
-        if (!$price) {
+        if (! $price) {
             return response()->json(['error' => 'Giá không khả dụng.'], 404);
         }
 
         return response()->json([
-            'price_id'    => $price->price_id,
-            'service_id'  => $service->service_id,
-            'price_type'  => $priceType,
-            'price'       => $price->price,
-            'effective'   => $price->effective_date->toDateString(),
+            'price_id' => $price->price_id,
+            'service_id' => $service->service_id,
+            'price_type' => $priceType,
+            'price' => $price->price,
+            'effective' => $this->formatDateValue($price->effective_date),
         ]);
+    }
+
+    private function formatDateValue(mixed $date): ?string
+    {
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d');
+        }
+
+        return $date ? Carbon::parse($date)->toDateString() : null;
     }
 
     /**
@@ -115,7 +125,7 @@ class ServiceController extends Controller
      */
     public function bookService(Request $request, int $id)
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Vui lòng đăng nhập để đặt và thanh toán dịch vụ.');
         }
@@ -134,7 +144,7 @@ class ServiceController extends Controller
         ]);
 
         $service = Service::find($id);
-        if (!$service || !$service->status) {
+        if (! $service || ! $service->status) {
             return back()->with('error', 'Dịch vụ không tồn tại hoặc đã ngừng hoạt động.');
         }
 
@@ -142,14 +152,14 @@ class ServiceController extends Controller
             ->where('price_type', $request->price_type)
             ->first();
 
-        if (!$priceRecord) {
+        if (! $priceRecord) {
             return back()->with('error', 'Mức giá đã chọn hiện không khả dụng.');
         }
 
         $subtotal = (float) $priceRecord->price;
 
         // 1. Tạo bản ghi đặt lịch hẹn cho dịch vụ (schedule_id = null)
-        $appointmentDatetime = $request->work_date . ' ' . $request->appointment_time . ':00';
+        $appointmentDatetime = $request->work_date.' '.$request->appointment_time.':00';
         $duration = $service->duration_minutes ?? 30;
         $appointmentEndtime = Carbon::parse($appointmentDatetime)->addMinutes($duration)->format('Y-m-d H:i:s');
 
@@ -162,12 +172,12 @@ class ServiceController extends Controller
             'queue_number' => null,
             'status' => 'Chờ thanh toán',
             'is_priority' => false,
-            'note' => $request->note ?? ('Đăng ký dịch vụ: ' . $service->service_name),
+            'note' => $request->note ?? ('Đăng ký dịch vụ: '.$service->service_name),
         ]);
 
         // 2. Tính giảm giá BHYT & Thành viên nếu có
-        $user = Auth::user();
-        
+        $user = User::findOrFail(Auth::id());
+
         $insurance = null;
         $insuranceDiscount = 0;
         if ($request->price_type === 'BHYT') {
@@ -187,7 +197,7 @@ class ServiceController extends Controller
         $discountAmount = $insuranceDiscount + $membershipDiscount;
         $totalAmount = max(0, $subtotal - $discountAmount);
 
-        $ref = 'PAY-' . strtoupper(Str::random(10));
+        $ref = 'PAY-'.strtoupper(Str::random(10));
 
         // 3. Tạo Hóa đơn thanh toán
         $payment = Payment::create([
@@ -206,7 +216,7 @@ class ServiceController extends Controller
         // 4. Tạo Payment Item
         PaymentItem::create([
             'payment_id' => $payment->payment_id,
-            'item_name' => $service->service_name . ' (' . $request->price_type . ')',
+            'item_name' => $service->service_name.' ('.$request->price_type.')',
             'quantity' => 1,
             'unit_price' => $subtotal,
             'subtotal' => $subtotal,
@@ -216,7 +226,7 @@ class ServiceController extends Controller
         app(NotificationService::class)->createForUser(
             Auth::id(),
             'Đăng ký dịch vụ thành công',
-            'Bạn đã đăng ký dịch vụ ' . $service->service_name . ' vào ' . Carbon::parse($appointmentDatetime)->format('H:i d/m/Y') . '. Số tiền cần thanh toán: ' . number_format($totalAmount, 0, ',', '.') . 'đ.',
+            'Bạn đã đăng ký dịch vụ '.$service->service_name.' vào '.Carbon::parse($appointmentDatetime)->format('H:i d/m/Y').'. Số tiền cần thanh toán: '.number_format($totalAmount, 0, ',', '.').'đ.',
             'payment_created',
             'payment',
             $payment->payment_id
@@ -230,7 +240,7 @@ class ServiceController extends Controller
             $payOsResult = $payOsService->createPaymentLink(
                 $payment->payment_id,
                 (int) $totalAmount,
-                "Thanh toan DV " . $appointment->appointment_id,
+                'Thanh toan DV '.$appointment->appointment_id,
                 route('user.payments.success', $payment->payment_id),
                 route('user.payments.fail', $payment->payment_id)
             );
@@ -259,10 +269,11 @@ class ServiceController extends Controller
                 return redirect()->route('user.payments.history')
                     ->with('success', 'Đăng ký dịch vụ thành công! Bạn có thể thanh toán hoá đơn này trong Lịch sử thanh toán.');
             }
+
             // Fallback giả lập nếu gọi API PayOS lỗi
             return redirect()->route('user.payments.qr', $payment->payment_id)
                 ->with([
-                    'qr_content' => 'HOSPITAL|STANDALONE_' . $payment->payment_id . '|' . $totalAmount . '|Thanh toan dich vu',
+                    'qr_content' => 'HOSPITAL|STANDALONE_'.$payment->payment_id.'|'.$totalAmount.'|Thanh toan dich vu',
                     'total_amount' => $totalAmount,
                 ]);
         }

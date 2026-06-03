@@ -6,7 +6,9 @@ use App\Models\DiseaseNutritionRule;
 use App\Models\Food;
 use App\Models\MealLog;
 use App\Models\NutritionArticle;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -20,7 +22,7 @@ class PatientNutritionController extends Controller
 
     public function index()
     {
-        $user = Auth::user();
+        $user = User::findOrFail(Auth::id());
 
         $latestDiagnoses = DB::table('diagnoses')
             ->join('medical_records', 'diagnoses.record_id', '=', 'medical_records.record_id')
@@ -70,12 +72,18 @@ class PatientNutritionController extends Controller
         $calorieByMeal = $todayLogs->groupBy('meal_type')->map(fn ($logs) => $logs->sum('total_calories_intake'));
 
         $allFoods = Food::active()->orderBy('food_name')->get(['food_id', 'food_name', 'calories_per_100g']);
-        $diseaseNames = $latestDiagnoses->pluck('diagnosis_name');
+        /** @var Collection<int, string> $diseaseNames */
+        $diseaseNames = $latestDiagnoses
+            ->pluck('diagnosis_name')
+            ->map(fn (mixed $name): string => trim((string) $name))
+            ->filter()
+            ->unique()
+            ->values();
 
         $expertArticles = NutritionArticle::published()
             ->where(function ($q) use ($diseaseNames) {
-                foreach ($diseaseNames as $name) {
-                    $q->orWhere('target_disease', 'LIKE', "%{$name}%");
+                foreach ($diseaseNames->all() as $diseaseName) {
+                    $q->orWhere('target_disease', 'LIKE', '%'.$diseaseName.'%');
                 }
             })
             ->latest()
@@ -122,7 +130,7 @@ class PatientNutritionController extends Controller
             'prohibited' => 'Không được gửi dữ liệu hệ thống từ trình duyệt.',
         ]);
 
-        $lockKey = 'meal_log_create:' . sha1(Auth::id() . '|' . today()->toDateString() . '|' . $validated['meal_type'] . '|' . $validated['food_id']);
+        $lockKey = 'meal_log_create:'.sha1(Auth::id().'|'.today()->toDateString().'|'.$validated['meal_type'].'|'.$validated['food_id']);
 
         if (! $this->acquireNutritionLock($lockKey)) {
             return back()->withInput()->with('warning', 'Đang có thao tác ghi nhật ký giống dữ liệu này. Vui lòng tải lại trang.');
@@ -174,7 +182,7 @@ class PatientNutritionController extends Controller
 
     public function destroyMealLog(int $mealLog)
     {
-        $lockKey = 'meal_log_delete:' . $mealLog;
+        $lockKey = 'meal_log_delete:'.$mealLog;
 
         if (! $this->acquireNutritionLock($lockKey)) {
             return back()->with('warning', 'Đang có thao tác xóa nhật ký này. Vui lòng tải lại trang.');

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RehabExerciseRequest;
 use App\Models\RehabExercise;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -15,10 +16,10 @@ class AdminRehabExerciseController extends Controller
     public function index(): View
     {
         $stats = [
-            'total'     => RehabExercise::count(),
+            'total' => RehabExercise::count(),
             'published' => RehabExercise::published()->count(),
-            'draft'     => RehabExercise::draft()->count(),
-            'views'     => RehabExercise::sum('view_count'),
+            'draft' => RehabExercise::draft()->count(),
+            'views' => RehabExercise::sum('view_count'),
         ];
 
         $exercises = RehabExercise::with('author')
@@ -26,20 +27,20 @@ class AdminRehabExerciseController extends Controller
             ->paginate(10);
 
         return view('admin.rehab_management', [
-            'stats'      => $stats,
-            'exercises'  => $exercises,
+            'stats' => $stats,
+            'exercises' => $exercises,
             'categories' => $this->categoryOptions(),
-            'phases'     => $this->phaseOptions(),
+            'phases' => $this->phaseOptions(),
         ]);
     }
 
     public function create(): View
     {
         return view('admin.rehab_form', [
-            'exercise'      => new RehabExercise(),
-            'categories'    => $this->categoryOptions(),
-            'phases'        => $this->phaseOptions(),
-            'isEdit'        => false,
+            'exercise' => new RehabExercise,
+            'categories' => $this->categoryOptions(),
+            'phases' => $this->phaseOptions(),
+            'isEdit' => false,
             'rehabSnapshot' => null,
         ]);
     }
@@ -47,7 +48,7 @@ class AdminRehabExerciseController extends Controller
     public function store(RehabExerciseRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $data['created_by'] = auth()->id();
+        $data['created_by'] = Auth::id();
         $lockKey = $this->rehabCreateLockKey($data['category'], $data['phase'], $data['title']);
 
         if (! $this->acquireRehabLock($lockKey)) {
@@ -101,10 +102,10 @@ class AdminRehabExerciseController extends Controller
         }
 
         return view('admin.rehab_form', [
-            'exercise'      => $exercise,
-            'categories'    => $this->categoryOptions(),
-            'phases'        => $this->phaseOptions(),
-            'isEdit'        => true,
+            'exercise' => $exercise,
+            'categories' => $this->categoryOptions(),
+            'phases' => $this->phaseOptions(),
+            'isEdit' => true,
             'rehabSnapshot' => $this->rehabSnapshot($exercise),
         ]);
     }
@@ -216,10 +217,10 @@ class AdminRehabExerciseController extends Controller
     private function categoryOptions(): array
     {
         return [
-            'co-xuong-khop'       => 'Cơ - Xương - Khớp',
-            'than-kinh-dot-quy'   => 'Thần kinh - Đột quỵ',
-            'chan-thuong-the-thao'=> 'Chấn thương Thể thao',
-            'ho-hap-tim-mach'     => 'Hô hấp - Tim mạch',
+            'co-xuong-khop' => 'Cơ - Xương - Khớp',
+            'than-kinh-dot-quy' => 'Thần kinh - Đột quỵ',
+            'chan-thuong-the-thao' => 'Chấn thương Thể thao',
+            'ho-hap-tim-mach' => 'Hô hấp - Tim mạch',
         ];
     }
 
@@ -228,7 +229,7 @@ class AdminRehabExerciseController extends Controller
         return [
             'cap-tinh' => 'Giai đoạn Cấp tính',
             'phuc-hoi' => 'Giai đoạn Phục hồi',
-            'duy-tri'  => 'Duy trì',
+            'duy-tri' => 'Duy trì',
         ];
     }
 
@@ -249,7 +250,7 @@ class AdminRehabExerciseController extends Controller
 
     private function rehabCreateLockKey(string $category, string $phase, string $title): string
     {
-        return 'rehab_create:' . sha1(implode('|', [
+        return 'rehab_create:'.sha1(implode('|', [
             $category,
             $phase,
             $this->normalizeForCompare($title),
@@ -258,7 +259,7 @@ class AdminRehabExerciseController extends Controller
 
     private function rehabDeleteLockKey(int $exerciseId): string
     {
-        return 'rehab_exercise_delete:' . $exerciseId;
+        return 'rehab_exercise_delete:'.$exerciseId;
     }
 
     private function acquireRehabLock(string $lockKey): bool

@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Vaccine;
-use App\Services\Admin\VaccineService;
 use App\Http\Requests\Admin\StoreVaccineRequest;
 use App\Http\Requests\Admin\UpdateVaccineRequest;
-use Illuminate\Http\Request;
+use App\Models\Vaccine;
+use App\Services\Admin\VaccineService;
 
 class VaccineController extends Controller
 {
@@ -16,6 +15,7 @@ class VaccineController extends Controller
     public function index()
     {
         $vaccines = $this->vaccineService->getPaginated(10);
+
         return view('admin.vaccines.index', compact('vaccines'));
     }
 
@@ -47,6 +47,7 @@ class VaccineController extends Controller
     {
         try {
             $this->vaccineService->deleteVaccine($vaccine);
+
             return redirect()->route('admin.vaccines.index')->with('success', 'Xóa vắc xin thành công.');
         } catch (\Exception $e) {
             return redirect()->route('admin.vaccines.index')->with('error', 'Không thể xóa vắc xin này vì đã có dữ liệu liên quan.');

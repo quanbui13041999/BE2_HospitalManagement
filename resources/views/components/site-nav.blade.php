@@ -228,12 +228,13 @@
                     @endif
                     <a href="{{ route('doctor.schedule') }}" class="hc-site-nav__link {{ request()->routeIs('doctor.schedule') ? 'is-active' : '' }}">🗓️ Lịch làm việc</a>
                     <a href="{{ route('medical-records.index') }}" class="hc-site-nav__link {{ request()->routeIs('medical-records.*') ? 'is-active' : '' }}">📁 Hồ sơ bệnh án</a>
+                    <a href="{{ route('admin.nutrition.index') }}" class="hc-site-nav__link {{ request()->routeIs('admin.nutrition.*') ? 'is-active' : '' }}">🥗 Quản lí dinh dưỡng</a>
                 @endif
 
                 <a href="{{ route('treatment.index') }}" class="hc-site-nav__link {{ request()->routeIs('treatment.*') ? 'is-active' : '' }}">⏰ Tuân thủ điều trị</a>
 
                 @if($isAdmin)
-                    <a href="{{ route('admin.dashboard') }}" class="hc-site-nav__link {{ request()->routeIs('admin.*') ? 'is-active' : '' }}">📊 Admin</a>
+                    <a href="{{ route('admin.dashboard') }}" class="hc-site-nav__link {{ request()->routeIs('admin.*') && ! request()->routeIs('admin.nutrition.*') ? 'is-active' : '' }}">📊 Admin</a>
                 @endif
             @endauth
         </div>

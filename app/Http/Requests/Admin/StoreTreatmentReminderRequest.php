@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\MedicalRecord;
 use App\Models\TreatmentReminder;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -12,7 +13,10 @@ class StoreTreatmentReminderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) Auth::user()?->isAdmin();
+        $userId = Auth::id();
+        $user = $userId ? User::find($userId) : null;
+
+        return $user?->isAdmin() ?? false;
     }
 
     protected function prepareForValidation(): void

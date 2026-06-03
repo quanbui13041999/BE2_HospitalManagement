@@ -78,7 +78,7 @@ class ActivityLogController extends Controller
                     ->orWhere('description', 'like', "%{$search}%")
                     ->orWhere('ip_address', 'like', "%{$search}%")
                     ->orWhere('subject_type', 'like', "%{$search}%")
-                    ->when(is_numeric($search), fn($numericQuery) => $numericQuery->orWhere('subject_id', (int) $search))
+                    ->when(is_numeric($search), fn ($numericQuery) => $numericQuery->orWhere('subject_id', (int) $search))
                     ->orWhereHas('user', function ($userQuery) use ($search) {
                         $userQuery->where('full_name', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%");
@@ -90,7 +90,7 @@ class ActivityLogController extends Controller
             $roleName = $filters['role_name'];
             $query->where(function ($q) use ($roleName) {
                 $q->where('role_name', $roleName)
-                    ->orWhereHas('user.role', fn($roleQuery) => $roleQuery->where('role_name', $roleName));
+                    ->orWhereHas('user.role', fn ($roleQuery) => $roleQuery->where('role_name', $roleName));
             });
         }
 
@@ -162,16 +162,16 @@ class ActivityLogController extends Controller
         $subjectOptions = $this->subjectOptions();
 
         $invalidSelects = [];
-        if ($roleName !== '' && !array_key_exists($roleName, $roleOptions)) {
+        if ($roleName !== '' && ! array_key_exists($roleName, $roleOptions)) {
             $invalidSelects['role_name'] = 'Vai trò không hợp lệ. Vui lòng chọn lại từ danh sách.';
         }
-        if ($action !== '' && !array_key_exists($action, self::ACTION_OPTIONS)) {
+        if ($action !== '' && ! array_key_exists($action, self::ACTION_OPTIONS)) {
             $invalidSelects['action'] = 'Hành động không hợp lệ. Vui lòng chọn lại từ danh sách.';
         }
-        if ($subjectType !== '' && !array_key_exists($subjectType, $subjectOptions)) {
+        if ($subjectType !== '' && ! array_key_exists($subjectType, $subjectOptions)) {
             $invalidSelects['subject_type'] = 'Đối tượng không hợp lệ. Vui lòng chọn lại từ danh sách.';
         }
-        if ($status !== '' && !array_key_exists($status, self::STATUS_OPTIONS)) {
+        if ($status !== '' && ! array_key_exists($status, self::STATUS_OPTIONS)) {
             $invalidSelects['status'] = 'Trạng thái không hợp lệ. Vui lòng chọn lại từ danh sách.';
         }
 
@@ -197,7 +197,7 @@ class ActivityLogController extends Controller
             ->where('role_name', '!=', '')
             ->distinct()
             ->pluck('role_name')
-            ->mapWithKeys(fn($role) => [$role => $role])
+            ->mapWithKeys(fn ($role) => [$role => $role])
             ->all();
 
         return collect(self::ROLE_OPTIONS)->merge($fromLogs)->sortKeys()->all();
@@ -210,7 +210,7 @@ class ActivityLogController extends Controller
             ->where('subject_type', '!=', '')
             ->distinct()
             ->pluck('subject_type')
-            ->mapWithKeys(fn($type) => [$type => self::SUBJECT_OPTIONS[$type] ?? $type])
+            ->mapWithKeys(fn ($type) => [$type => self::SUBJECT_OPTIONS[$type] ?? $type])
             ->all();
 
         return collect(self::SUBJECT_OPTIONS)->merge($fromLogs)->sortKeys()->all();
@@ -219,7 +219,7 @@ class ActivityLogController extends Controller
     private function validDate(mixed $date): string
     {
         $date = trim((string) $date);
-        if (!$date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        if (! $date || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             return '';
         }
 
@@ -269,7 +269,7 @@ class ActivityLogController extends Controller
             default => [],
         };
 
-        if (!$keywords) {
+        if (! $keywords) {
             return;
         }
 

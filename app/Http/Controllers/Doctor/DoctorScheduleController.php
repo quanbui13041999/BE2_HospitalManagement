@@ -1,7 +1,9 @@
 <?php
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // app/Http/Controllers/DoctorScheduleController.php
 // ═══════════════════════════════════════════════════════════════════════════════
+
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
@@ -9,11 +11,12 @@ use App\Http\Requests\StoreDayOffRequest;
 use App\Http\Requests\StoreRecurringScheduleRequest;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
+use App\Models\User;
 use App\Services\Doctor\DayOffService;
 use App\Services\Doctor\RecurringScheduleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Controller xử lý 2 nhóm chức năng:
@@ -33,7 +36,7 @@ class DoctorScheduleController extends Controller
 {
     public function __construct(
         private readonly RecurringScheduleService $recurringService,
-        private readonly DayOffService            $dayOffService,
+        private readonly DayOffService $dayOffService,
     ) {}
 
     /**
@@ -43,8 +46,8 @@ class DoctorScheduleController extends Controller
      */
     private function canAccessDoctor(int $doctorId): bool
     {
-        $user = auth()->user();
-        if (!$user) {
+        $user = $this->currentUser();
+        if (! $user) {
             return false;
         }
 
@@ -57,6 +60,13 @@ class DoctorScheduleController extends Controller
         }
 
         return false;
+    }
+
+    private function currentUser(): ?User
+    {
+        $userId = Auth::id();
+
+        return $userId ? User::find($userId) : null;
     }
 
     // =========================================================================
@@ -74,7 +84,7 @@ class DoctorScheduleController extends Controller
         $data = $request->validated();
         $doctorId = $data['doctor_id'];
 
-        if (!$this->canAccessDoctor($doctorId)) {
+        if (! $this->canAccessDoctor($doctorId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền xem lịch cho bác sĩ này.',
@@ -85,7 +95,7 @@ class DoctorScheduleController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $preview,
+            'data' => $preview,
         ]);
     }
 
@@ -102,7 +112,7 @@ class DoctorScheduleController extends Controller
         $data = $request->validated();
         $doctorId = $data['doctor_id'];
 
-        if (!$this->canAccessDoctor($doctorId)) {
+        if (! $this->canAccessDoctor($doctorId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền tạo lịch cho bác sĩ này.',
@@ -114,7 +124,7 @@ class DoctorScheduleController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Đã tạo {$result['created']} lịch, bỏ qua {$result['skipped']} lịch đã tồn tại.",
-            'data'    => [
+            'data' => [
                 'created' => $result['created'],
                 'skipped' => $result['skipped'],
             ],
@@ -132,15 +142,15 @@ class DoctorScheduleController extends Controller
      */
     public function indexRecurring(Request $request, int $doctorId): JsonResponse
     {
-        if (!$this->canAccessDoctor($doctorId)) {
+        if (! $this->canAccessDoctor($doctorId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền xem lịch của bác sĩ này.',
             ], 403);
         }
 
-        $from    = $request->input('from', now()->toDateString());
-        $to      = $request->input('to', now()->addWeeks(4)->toDateString());
+        $from = $request->input('from', now()->toDateString());
+        $to = $request->input('to', now()->addWeeks(4)->toDateString());
         $perPage = $request->integer('per_page', 20);
 
         $schedules = DoctorSchedule::forDoctor($doctorId)
@@ -152,7 +162,7 @@ class DoctorScheduleController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $schedules,
+            'data' => $schedules,
         ]);
     }
 
@@ -165,7 +175,7 @@ class DoctorScheduleController extends Controller
     {
         $schedule = DoctorSchedule::findOrFail($scheduleId);
 
-        if (!$this->canAccessDoctor($schedule->doctor_id)) {
+        if (! $this->canAccessDoctor($schedule->doctor_id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền xoá lịch của bác sĩ này.',
@@ -210,7 +220,7 @@ class DoctorScheduleController extends Controller
         $data = $request->validated();
         $doctorId = $data['doctor_id'];
 
-        if (!$this->canAccessDoctor($doctorId)) {
+        if (! $this->canAccessDoctor($doctorId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền đăng ký nghỉ cho bác sĩ này.',
@@ -227,7 +237,7 @@ class DoctorScheduleController extends Controller
         return response()->json([
             'success' => true,
             'message' => $msg,
-            'data'    => $result,
+            'data' => $result,
         ], 201);
     }
 
@@ -239,7 +249,7 @@ class DoctorScheduleController extends Controller
      */
     public function indexDayOff(int $doctorId): JsonResponse
     {
-        if (!$this->canAccessDoctor($doctorId)) {
+        if (! $this->canAccessDoctor($doctorId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền xem ngày nghỉ của bác sĩ này.',
@@ -253,8 +263,8 @@ class DoctorScheduleController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $list,
-            'total'   => $list->count(),
+            'data' => $list,
+            'total' => $list->count(),
         ]);
     }
 
@@ -269,7 +279,7 @@ class DoctorScheduleController extends Controller
     {
         $schedule = DoctorSchedule::findOrFail($scheduleId);
 
-        if (!$this->canAccessDoctor($schedule->doctor_id)) {
+        if (! $this->canAccessDoctor($schedule->doctor_id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền mở lại lịch của bác sĩ này.',
@@ -297,8 +307,8 @@ class DoctorScheduleController extends Controller
      */
     public function listDoctors(): JsonResponse
     {
-        $user = auth()->user();
-        if (!$user) {
+        $user = $this->currentUser();
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền xem danh sách bác sĩ.',
@@ -321,7 +331,7 @@ class DoctorScheduleController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $doctors,
+            'data' => $doctors,
         ]);
     }
 }

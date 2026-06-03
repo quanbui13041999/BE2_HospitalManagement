@@ -23,9 +23,9 @@ class RehabExerciseController extends Controller
             ->withQueryString();
 
         return view('patient.rehab_exercises', [
-            'exercises'      => $exercises,
+            'exercises' => $exercises,
             'activeCategory' => $category,
-            'categories'     => $categories,
+            'categories' => $categories,
         ]);
     }
 
@@ -54,11 +54,11 @@ class RehabExerciseController extends Controller
     private function categoryList(): array
     {
         return [
-            null                    => 'Tất cả bài tập',
-            'co-xuong-khop'         => 'Cơ - Xương - Khớp',
-            'than-kinh-dot-quy'     => 'Thần kinh - Đột quỵ',
-            'chan-thuong-the-thao'  => 'Chấn thương Thể thao',
-            'ho-hap-tim-mach'       => 'Hô hấp - Tim mạch',
+            null => 'Tất cả bài tập',
+            'co-xuong-khop' => 'Cơ - Xương - Khớp',
+            'than-kinh-dot-quy' => 'Thần kinh - Đột quỵ',
+            'chan-thuong-the-thao' => 'Chấn thương Thể thao',
+            'ho-hap-tim-mach' => 'Hô hấp - Tim mạch',
         ];
     }
 

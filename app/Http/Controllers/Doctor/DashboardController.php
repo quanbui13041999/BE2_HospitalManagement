@@ -1,4 +1,5 @@
 <?php
+
 // app/Http/Controllers/Doctor/DashboardController.php
 
 namespace App\Http\Controllers\Doctor;
@@ -8,18 +9,21 @@ use App\Http\Requests\Doctor\StoreDoctorRequest;
 use App\Http\Requests\Doctor\UpdateDoctorRequest;
 use App\Http\Requests\Doctor\UploadAvatarRequest;
 use App\Models\Appointment;
+use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\MedicalRecord;
 use App\Models\QueueTicket;
+use App\Models\User;
 use App\Services\Doctor\DoctorDashboardService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use Illuminate\Database\QueryException;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
@@ -35,23 +39,23 @@ class DashboardController extends Controller
     /**
      * Hiển thị trang dashboard
      */
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
-        $user    = Auth::user();
+        $user = $this->currentUser();
         $isAdmin = $user->isAdmin();
 
         $currentDoctor = $isAdmin ? null : $user->doctor;
 
-        if (!$isAdmin && !$currentDoctor) {
+        if (! $isAdmin && ! $currentDoctor) {
             abort(403, 'Tài khoản này chưa được liên kết với hồ sơ bác sĩ.');
         }
 
         $doctorId = $currentDoctor?->doctor_id;
 
         $doctors = $isAdmin ? $this->service->getDoctorsList() : collect([$currentDoctor]);
-        $stats   = $this->service->getStats($doctorId ?? 0, $isAdmin);
+        $stats = $this->service->getStats($doctorId ?? 0, $isAdmin);
 
-        $departments = \App\Models\Department::select('department_id', 'department_name as name')
+        $departments = Department::select('department_id', 'department_name as name')
             ->orderBy('department_name')
             ->get();
 
@@ -78,10 +82,11 @@ class DashboardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data'    => $appointments->map(fn($a) => $this->formatAppointment($a)),
+                'data' => $appointments->map(fn ($a) => $this->formatAppointment($a)),
             ]);
         } catch (\Exception $e) {
-            \Log::error('todayAppointments error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('todayAppointments error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -101,7 +106,7 @@ class DashboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $appointments->map(fn($a) => $this->formatAppointment($a)),
+            'data' => $appointments->map(fn ($a) => $this->formatAppointment($a)),
         ]);
     }
 
@@ -162,8 +167,8 @@ class DashboardController extends Controller
     public function reviews(Request $request): JsonResponse
     {
         $request->validate([
-            'page'      => 'nullable|integer|min:1',
-            'per_page'  => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
             'doctor_id' => 'nullable|integer|min:1',
         ]);
 
@@ -178,11 +183,11 @@ class DashboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $paginated->map(fn($r) => $this->formatReview($r)),
-            'meta'    => [
+            'data' => $paginated->map(fn ($r) => $this->formatReview($r)),
+            'meta' => [
                 'current_page' => $paginated->currentPage(),
-                'last_page'    => $paginated->lastPage(),
-                'total'        => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+                'total' => $paginated->total(),
             ],
         ]);
     }
@@ -215,7 +220,6 @@ class DashboardController extends Controller
 
         $result = $this->service->deleteReply($id, $isAdmin);
 
-
         return response()->json($result, $result['success'] ? 200 : 403);
     }
 
@@ -225,11 +229,16 @@ class DashboardController extends Controller
 
     private function resolveContext(?Request $request = null): array
     {
-        $user    = Auth::user();
+        $user = $this->currentUser();
         $isAdmin = $user->isAdmin();
         $doctorId = $isAdmin ? 0 : ($user->doctor?->doctor_id ?? 0);
 
         return [$doctorId, $isAdmin];
+    }
+
+    private function currentUser(): User
+    {
+        return User::findOrFail(Auth::id());
     }
 
     private function formatAppointment($a): array
@@ -254,20 +263,20 @@ class DashboardController extends Controller
             ->count();
 
         return [
-            'id'              => $a->appointment_id,
-            'patient_id'      => $a->user_id,
-            'patient_name'    => $a->patient_name,
-            'patient_phone'   => $a->patient_phone,
-            'service_name'    => $a->service_name ?? 'Khám tổng quát',
-            'doctor_name'     => $a->doctor_name,
-            'appointment_time'=> $a->appointment_time?->format('Y-m-d H:i'),
-            'queue_number'    => $a->queue_number,
-            'status'          => $a->status,
-            'exam_status'     => $examStatus,
-            'queue_status'    => $queueStatus,
+            'id' => $a->appointment_id,
+            'patient_id' => $a->user_id,
+            'patient_name' => $a->patient_name,
+            'patient_phone' => $a->patient_phone,
+            'service_name' => $a->service_name ?? 'Khám tổng quát',
+            'doctor_name' => $a->doctor_name,
+            'appointment_time' => $a->appointment_time?->format('Y-m-d H:i'),
+            'queue_number' => $a->queue_number,
+            'status' => $a->status,
+            'exam_status' => $examStatus,
+            'queue_status' => $queueStatus,
             'queue_ticket_id' => $queueTicket?->ticket_id,
-            'note'            => $a->note,
-            'slot_duration'   => $a->slot_duration ?? 30,
+            'note' => $a->note,
+            'slot_duration' => $a->slot_duration ?? 30,
             'medical_record_id' => $record?->record_id,
             'medical_record_url' => $record ? route('medical-records.show', $record->record_id) : null,
             'medical_record_edit_url' => $record ? route('medical-records.edit', $record->record_id) : null,
@@ -282,17 +291,17 @@ class DashboardController extends Controller
     private function formatReview($r): array
     {
         return [
-            'id'                      => $r->review_id,
-            'appointment_id'          => $r->appointment_id,
-            'patient_name'            => $r->user?->full_name ?? 'Ẩn danh',
-            'patient_avatar'          => $r->user?->avatar_url,
-            'doctor_name'             => $r->doctor?->full_name,
-            'rating'                  => $r->rating,
-            'comment'                 => $r->comment,
-            'doctor_reply'            => $r->doctor_reply,
+            'id' => $r->review_id,
+            'appointment_id' => $r->appointment_id,
+            'patient_name' => $r->user?->full_name ?? 'Ẩn danh',
+            'patient_avatar' => $r->user?->avatar_url,
+            'doctor_name' => $r->doctor?->full_name,
+            'rating' => $r->rating,
+            'comment' => $r->comment,
+            'doctor_reply' => $r->doctor_reply,
             'doctor_reply_updated_at' => $r->doctor_reply_updated_at?->format('Y-m-d H:i'),
-            'created_at'              => $r->created_at?->format('Y-m-d H:i'),
-            'can_edit_reply'          => true,
+            'created_at' => $r->created_at?->format('Y-m-d H:i'),
+            'can_edit_reply' => true,
         ];
     }
 
@@ -305,58 +314,59 @@ class DashboardController extends Controller
      */
     public function doctorsList(Request $request): JsonResponse
     {
-        if (!Auth::user()->isAdmin()) {
+        if (! $this->currentUser()->isAdmin()) {
             return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
         }
 
         $request->validate([
-            'page'      => 'nullable|integer|min:1',
-            'per_page'  => 'nullable|integer|min:1|max:100',
-            'search'    => 'nullable|string|max:255',
-            'status'    => 'nullable|string|in:0,1',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'search' => 'nullable|string|max:255',
+            'status' => 'nullable|string|in:0,1',
         ]);
 
         try {
             $perPage = $request->integer('per_page', 10);
-            $search  = $request->input('search', '');
-            $status  = $request->input('status', '');
+            $search = $request->input('search', '');
+            $status = $request->input('status', '');
 
             $query = Doctor::with('department:department_id,department_name')
                 ->withReviewStats()
-                ->when($search, fn($q) => $q
+                ->when($search, fn ($q) => $q
                     ->where('doctors.full_name', 'like', "%{$search}%")
-                    ->orWhereHas('department', fn($dq) => $dq->where('department_name', 'like', "%{$search}%"))
+                    ->orWhereHas('department', fn ($dq) => $dq->where('department_name', 'like', "%{$search}%"))
                 )
-                ->when($status !== '', fn($q) => $q->where('doctors.status', $status))
+                ->when($status !== '', fn ($q) => $q->where('doctors.status', $status))
                 ->orderBy('doctors.full_name');
 
             $paginated = $query->paginate($perPage);
 
             return response()->json([
                 'success' => true,
-                'data'    => $paginated->map(fn($d) => [
-                    'doctor_id'       => $d->doctor_id,
-                    'user_id'         => $d->user_id,
-                    'full_name'       => $d->full_name,
-                    'department_id'   => $d->department_id,
+                'data' => $paginated->map(fn ($d) => [
+                    'doctor_id' => $d->doctor_id,
+                    'user_id' => $d->user_id,
+                    'full_name' => $d->full_name,
+                    'department_id' => $d->department_id,
                     'department_name' => $d->department?->department_name,
-                    'experience'      => $d->experience,
-                    'price'           => $d->price,
-                    'avatar_url'      => $d->avatar_url,
-                    'bio'             => $d->bio,
-                    'status'          => $d->status,
-                    'version'         => $d->version ?? 1,
-                    'avg_rating'      => $d->avg_rating,
-                    'total_reviews'   => $d->total_reviews,
+                    'experience' => $d->experience,
+                    'price' => $d->price,
+                    'avatar_url' => $d->avatar_url,
+                    'bio' => $d->bio,
+                    'status' => $d->status,
+                    'version' => $d->version ?? 1,
+                    'avg_rating' => $d->avg_rating,
+                    'total_reviews' => $d->total_reviews,
                 ]),
                 'meta' => [
                     'current_page' => $paginated->currentPage(),
-                    'last_page'    => $paginated->lastPage(),
-                    'total'        => $paginated->total(),
+                    'last_page' => $paginated->lastPage(),
+                    'total' => $paginated->total(),
                 ],
             ]);
         } catch (QueryException $e) {
-            \Log::error('doctorsList DB error', ['message' => $e->getMessage(), 'code' => $e->getCode()]);
+            Log::error('doctorsList DB error', ['message' => $e->getMessage(), 'code' => $e->getCode()]);
+
             return response()->json(['success' => false, 'message' => 'Không thể tải danh sách bác sĩ hiện tại. Vui lòng thử lại sau.'], 503);
         }
     }
@@ -366,7 +376,7 @@ class DashboardController extends Controller
      */
     public function getDoctor(int $id): JsonResponse
     {
-        if (!Auth::user()->isAdmin()) {
+        if (! $this->currentUser()->isAdmin()) {
             return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
         }
 
@@ -375,23 +385,23 @@ class DashboardController extends Controller
         }
 
         $doctor = Doctor::with('department:department_id,department_name')->find($id);
-        if (!$doctor) {
+        if (! $doctor) {
             return response()->json(['success' => false, 'message' => 'Bác sĩ không tồn tại.'], 404);
         }
 
         return response()->json([
             'success' => true,
-            'doctor'  => [
-                'doctor_id'     => $doctor->doctor_id,
-                'user_id'       => $doctor->user_id,
-                'full_name'     => $doctor->full_name,
+            'doctor' => [
+                'doctor_id' => $doctor->doctor_id,
+                'user_id' => $doctor->user_id,
+                'full_name' => $doctor->full_name,
                 'department_id' => $doctor->department_id,
-                'experience'    => $doctor->experience,
-                'price'         => $doctor->price,
-                'avatar_url'    => $doctor->avatar_url,
-                'bio'           => $doctor->bio,
-                'status'        => $doctor->status,
-                'version'       => $doctor->version ?? 1,
+                'experience' => $doctor->experience,
+                'price' => $doctor->price,
+                'avatar_url' => $doctor->avatar_url,
+                'bio' => $doctor->bio,
+                'status' => $doctor->status,
+                'version' => $doctor->version ?? 1,
             ],
         ]);
     }
@@ -403,11 +413,11 @@ class DashboardController extends Controller
     {
         $validated = $request->validated();
 
-        if (!($validated['user_id'] ?? null) && !($validated['email'] ?? null)) {
+        if (! ($validated['user_id'] ?? null) && ! ($validated['email'] ?? null)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vui lòng cung cấp User ID hoặc Email để tạo bác sĩ.',
-                'status'  => 422,
+                'status' => 422,
             ], 422);
         }
 
@@ -420,38 +430,38 @@ class DashboardController extends Controller
                 $userId = $validated['user_id'] ?? null; /* fixed: tao bac si bang email khong bat buoc co user_id */
                 $email = $validated['email'] ?? null;
 
-                if (!$userId && $email) {
-                    $plainPassword = !empty($validated['password'])
+                if (! $userId && $email) {
+                    $plainPassword = ! empty($validated['password'])
                         ? $validated['password']
-                        : \Illuminate\Support\Str::random(12);
+                        : Str::random(12);
 
-                    $createdUser = \App\Models\User::create([
-                        'full_name'  => $validated['full_name'],
-                        'email'      => $email,
-                        'password'   => Hash::make($plainPassword),
+                    $createdUser = User::create([
+                        'full_name' => $validated['full_name'],
+                        'email' => $email,
+                        'password' => Hash::make($plainPassword),
                         'avatar_url' => $validated['avatar_url'] ?? null,
-                        'status'     => $validated['status'] ?? 1,
-                        'is_admin'   => 0,
-                        'role_id'    => 2,
+                        'status' => $validated['status'] ?? 1,
+                        'is_admin' => 0,
+                        'role_id' => 2,
                     ]);
 
                     $userId = $createdUser->user_id;
                 }
 
                 $doctor = Doctor::create([
-                    'user_id'       => $userId,
-                    'full_name'     => $validated['full_name'],
+                    'user_id' => $userId,
+                    'full_name' => $validated['full_name'],
                     'department_id' => $validated['department_id'],
-                    'experience'    => $validated['experience'],
-                    'price'         => $validated['price'],
-                    'avatar_url'    => $validated['avatar_url'],
-                    'bio'           => $validated['bio'],
-                    'status'        => $validated['status'],
-                    'version'       => 1,
+                    'experience' => $validated['experience'],
+                    'price' => $validated['price'],
+                    'avatar_url' => $validated['avatar_url'],
+                    'bio' => $validated['bio'],
+                    'status' => $validated['status'],
+                    'version' => 1,
                 ]);
             });
 
-            if (!$doctor) {
+            if (! $doctor) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Lỗi: không thể tạo bác sĩ.',
@@ -461,43 +471,44 @@ class DashboardController extends Controller
             $response = [
                 'success' => true,
                 'message' => 'Đã thêm bác sĩ thành công.',
-                'doctor'  => [
-                    'doctor_id'     => $doctor->doctor_id,
-                    'full_name'     => $doctor->full_name,
+                'doctor' => [
+                    'doctor_id' => $doctor->doctor_id,
+                    'full_name' => $doctor->full_name,
                     'department_id' => $doctor->department_id,
-                    'version'       => $doctor->version ?? 1,
+                    'version' => $doctor->version ?? 1,
                 ],
             ];
 
             if ($createdUser) {
                 $response['created_user'] = [
-                    'email'          => $createdUser->email,
-                    'user_id'        => $createdUser->user_id,
+                    'email' => $createdUser->email,
+                    'user_id' => $createdUser->user_id,
                     'plain_password' => $plainPassword,
                 ];
             }
 
             return response()->json($response, 201);
         } catch (QueryException $e) {
-            \Log::error('QueryException creating doctor: ' . $e->getMessage());
-            
+            Log::error('QueryException creating doctor: '.$e->getMessage());
+
             // Handle unique constraint violations
             if (str_contains($e->getMessage(), 'unique') || str_contains($e->getMessage(), 'Duplicate')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Email hoặc User ID đã tồn tại trong hệ thống.'
+                    'message' => 'Email hoặc User ID đã tồn tại trong hệ thống.',
                 ], 409);
             }
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi cơ sở dữ liệu: ' . $e->getMessage()
+                'message' => 'Lỗi cơ sở dữ liệu: '.$e->getMessage(),
             ], 500);
         } catch (\Exception $e) {
-            \Log::error('Error creating doctor: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Error creating doctor: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi khi thêm bác sĩ: ' . $e->getMessage()
+                'message' => 'Lỗi khi thêm bác sĩ: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -515,7 +526,7 @@ class DashboardController extends Controller
         }
 
         $doctor = Doctor::find($id);
-        if (!$doctor) {
+        if (! $doctor) {
             return response()->json(['success' => false, 'message' => 'Bác sĩ không tồn tại.'], 404);
         }
 
@@ -548,15 +559,15 @@ class DashboardController extends Controller
                     throw new \RuntimeException('CONFLICT');
                 }
 
-                if (!empty($validated['user_id'])) {
-                    $user = \App\Models\User::find($validated['user_id']);
+                if (! empty($validated['user_id'])) {
+                    $user = User::find($validated['user_id']);
                     if ($user) {
                         $user->update([
-                            'full_name'  => $validated['full_name'],
-                            'avatar_url' => !empty($validated['avatar_url']) ? $validated['avatar_url'] : $user->avatar_url,
-                            'status'     => $validated['status'],
-                        ] + (!empty($validated['email']) ? ['email' => $validated['email']] : [])
-                          + (!empty($validated['password']) ? ['password' => Hash::make($validated['password'])] : []));
+                            'full_name' => $validated['full_name'],
+                            'avatar_url' => ! empty($validated['avatar_url']) ? $validated['avatar_url'] : $user->avatar_url,
+                            'status' => $validated['status'],
+                        ] + (! empty($validated['email']) ? ['email' => $validated['email']] : [])
+                          + (! empty($validated['password']) ? ['password' => Hash::make($validated['password'])] : []));
                     }
                 }
             });
@@ -572,31 +583,32 @@ class DashboardController extends Controller
             }
             throw $e;
         } catch (QueryException $e) {
-            \Log::error('QueryException updating doctor: ' . $e->getMessage());
-            
+            Log::error('QueryException updating doctor: '.$e->getMessage());
+
             if (str_contains($e->getMessage(), 'unique') || str_contains($e->getMessage(), 'Duplicate')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Email hoặc User ID đã tồn tại. Vui lòng chọn giá trị khác.',
                 ], 409);
             }
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi cơ sở dữ liệu: ' . $e->getMessage()
+                'message' => 'Lỗi cơ sở dữ liệu: '.$e->getMessage(),
             ], 500);
         } catch (\Exception $e) {
-            \Log::error('Error updating doctor: ' . $e->getMessage());
+            Log::error('Error updating doctor: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi khi cập nhật: ' . $e->getMessage()
+                'message' => 'Lỗi khi cập nhật: '.$e->getMessage(),
             ], 500);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Đã cập nhật thông tin bác sĩ.',
-            'doctor'  => [
+            'doctor' => [
                 'doctor_id' => $doctor->doctor_id,
                 'full_name' => $doctor->full_name,
                 'version' => $doctor->version,
@@ -609,7 +621,7 @@ class DashboardController extends Controller
      */
     public function destroyDoctor(Request $request, int $id): JsonResponse
     {
-        if (!Auth::user()->isAdmin()) {
+        if (! $this->currentUser()->isAdmin()) {
             return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
         }
 
@@ -622,12 +634,12 @@ class DashboardController extends Controller
         ]);
 
         $doctor = Doctor::find($id);
-        if (!$doctor) {
+        if (! $doctor) {
             return response()->json(['success' => false, 'message' => 'Bác sĩ không tồn tại.'], 404);
         }
 
         $oldVersion = $doctor->version ?? 1;
-        if ($oldVersion !== (int)$validated['version']) {
+        if ($oldVersion !== (int) $validated['version']) {
             return response()->json([
                 'success' => false,
                 'message' => 'Dữ liệu đã được thay đổi trước đó. Vui lòng thử lại.',
@@ -635,7 +647,7 @@ class DashboardController extends Controller
         }
 
         try {
-            $hasActive = Appointment::whereHas('schedule', fn($q) => $q->where('doctor_id', $id))
+            $hasActive = Appointment::whereHas('schedule', fn ($q) => $q->where('doctor_id', $id))
                 ->whereIn('status', ['Chờ xác nhận', 'Đã xác nhận', 'Đang khám', 'Đã thanh toán'])
                 ->exists();
 
@@ -667,16 +679,18 @@ class DashboardController extends Controller
             }
             throw $e;
         } catch (QueryException $e) {
-            \Log::error('QueryException deleting doctor: ' . $e->getMessage());
+            Log::error('QueryException deleting doctor: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi cơ sở dữ liệu: Không thể xóa bác sĩ. Có thể bác sĩ được tham chiếu bởi dữ liệu khác.'
+                'message' => 'Lỗi cơ sở dữ liệu: Không thể xóa bác sĩ. Có thể bác sĩ được tham chiếu bởi dữ liệu khác.',
             ], 500);
         } catch (\Exception $e) {
-            \Log::error('Error deleting doctor: ' . $e->getMessage());
+            Log::error('Error deleting doctor: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi khi xóa: ' . $e->getMessage()
+                'message' => 'Lỗi khi xóa: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -689,8 +703,8 @@ class DashboardController extends Controller
         try {
             $validated = $request->validated();
             $file = $request->file('avatar');
-            
-            if (!$file) {
+
+            if (! $file) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Không tìm thấy tệp ảnh.',
@@ -702,14 +716,15 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tải ảnh lên thành công.',
-                'path'    => $path,
-                'url'     => '/storage/' . $path,
+                'path' => $path,
+                'url' => '/storage/'.$path,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error uploading avatar: ' . $e->getMessage());
+            Log::error('Error uploading avatar: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi khi tải ảnh: ' . $e->getMessage(),
+                'message' => 'Lỗi khi tải ảnh: '.$e->getMessage(),
             ], 500);
         }
     }

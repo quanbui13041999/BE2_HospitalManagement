@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-
-use App\Models\User;
-use App\Models\Doctor;
 use App\Models\Appointment;
-use App\Models\Service;
+use App\Models\Doctor;
 use App\Models\Room;
+use App\Models\Service;
+use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
 {
@@ -35,7 +34,7 @@ class HomeController extends Controller
                 'rooms' => Room::count(),
             ];
         } catch (QueryException $exception) {
-            \Log::error('HomeController could not load stats', [
+            Log::error('HomeController could not load stats', [
                 'message' => $exception->getMessage(),
                 'code' => $exception->getCode(),
             ]);
