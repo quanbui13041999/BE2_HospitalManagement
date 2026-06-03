@@ -6,7 +6,9 @@
             <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 16px; background: linear-gradient(145deg, #ffffff, #fdfdfd);">
                 <div class="d-flex align-items-center gap-4 flex-wrap flex-sm-nowrap">
                     @if($patient->avatar_url)
-                        <img src="{{ $patient->avatar_url }}" alt="{{ $patient->full_name }}" class="rounded-circle shadow-sm" style="width: 100px; height: 100px; object-fit: cover; border: 4px solid #f1f5f9;">
+                        <img src="{{ $patient->avatar_url }}" alt="{{ $patient->full_name }}"
+                             class="rounded-circle shadow-sm" style="width: 100px; height: 100px; object-fit: cover; border: 4px solid #f1f5f9;"
+                             onerror="this.onerror=null; this.src='/images/default-avatar.png';">
                     @else
                         <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm fw-bold fs-2" style="width: 100px; height: 100px; border: 4px solid #dbeafe;">
                             {{ substr($patient->full_name ?? 'P', 0, 1) }}

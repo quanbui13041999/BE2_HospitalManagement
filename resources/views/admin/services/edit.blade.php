@@ -60,6 +60,8 @@
     <form method="POST" action="{{ route('admin.services.update', $service) }}"
           id="editServiceFormPage" novalidate>
         @csrf @method('PUT')
+        {{-- Optimistic lock token: phát hiện xung đột cập nhật 2 tab --}}
+        <input type="hidden" name="_lock_version" value="{{ $service->updated_at?->timestamp }}">
         <div class="card shadow-sm form-card">
             <div class="card-header fw-semibold">
                 <i class="bi bi-pencil me-2 text-primary"></i>Thông tin dịch vụ
@@ -167,7 +169,7 @@
 
             </div>
             <div class="card-footer d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="svcSubmitBtn">
                     <i class="bi bi-floppy me-1"></i>Lưu thay đổi
                 </button>
                 <a href="{{ route('admin.services.show', $service) }}" class="btn btn-outline-secondary">
@@ -217,7 +219,15 @@ document.getElementById('editServiceFormPage').addEventListener('submit', functi
         showError(status, 'Vui lòng chọn trạng thái.'); valid = false;
     }
 
-    if (!valid) e.preventDefault();
+    if (!valid) {
+        e.preventDefault();
+        return;
+    }
+
+    // Disable nút sau khi form hợp lệ
+    const btn = document.getElementById('svcSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang lưu...';
 });
 
 function showError(el, msg) {
