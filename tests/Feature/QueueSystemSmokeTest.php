@@ -46,13 +46,19 @@ class QueueSystemSmokeTest extends TestCase
         }
 
         // 2. Find a doctor who has a schedule today, or create one
-        $schedule = DoctorSchedule::whereDate('work_date', today())
+        $schedule = DoctorSchedule::whereHas('doctor.user', function ($query) {
+                $query->where('role_id', 2);
+            })
+            ->whereDate('work_date', today())
             ->where('status', 'Hoạt động')
             ->first();
 
         if (!$schedule) {
-            // Let's find any doctor and create a schedule for today
-            $doctor = Doctor::first();
+            // Only use a doctor account that can access the doctor queue routes.
+            $doctor = Doctor::whereHas('user', function ($query) {
+                    $query->where('role_id', 2);
+                })
+                ->firstOrFail();
             $schedule = DoctorSchedule::create([
                 'doctor_id' => $doctor->doctor_id,
                 'room_id' => 1,
@@ -68,7 +74,7 @@ class QueueSystemSmokeTest extends TestCase
         }
 
         // Find the user model associated with this doctor
-        $doctorUser = User::find($doctor->user_id);
+        $doctorUser = $doctor->user()->where('role_id', 2)->firstOrFail();
 
         // Ensure we clean up any pre-existing tickets for today's schedule to avoid conflicts
         QueueTicket::where('schedule_id', $schedule->schedule_id)->delete();
