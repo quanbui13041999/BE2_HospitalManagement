@@ -60,7 +60,7 @@
                                 <div class="row g-3 mb-3">
                                     <div class="col-6">
                                         <label class="form-label small text-muted">NHÓM MÁU</label>
-                                        <select name="nhommau" class="form-select border-light-subtle @error('nhommau') is-invalid @enderror">
+                                        <select name="nhommau" class="form-select border-light-subtle @error('nhommau') is-invalid @enderror" required data-required-message="Vui lòng chọn nhóm máu.">
                                             <option value="">Chưa chọn</option>
                                             @foreach($bloodGroups as $type)
                                                 <option value="{{ $type }}" @selected(old('nhommau', $healthData->blood_group ?? '') === $type)>
@@ -73,7 +73,7 @@
 
                                     <div class="col-6">
                                         <label class="form-label small text-muted">YẾU TỐ RH</label>
-                                        <select name="yeuto_rh" class="form-select border-light-subtle @error('yeuto_rh') is-invalid @enderror">
+                                        <select name="yeuto_rh" class="form-select border-light-subtle @error('yeuto_rh') is-invalid @enderror" required data-required-message="Vui lòng chọn yếu tố Rh.">
                                             <option value="">Chưa chọn</option>
                                             <option value="positive" @selected(old('yeuto_rh', $healthData->yeuto_rh ?? '') === 'positive')>Dương tính (+)</option>
                                             <option value="negative" @selected(old('yeuto_rh', $healthData->yeuto_rh ?? '') === 'negative')>Âm tính (-)</option>

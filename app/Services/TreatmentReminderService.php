@@ -148,16 +148,20 @@ class TreatmentReminderService
             for ($day = 0; $day < $durationDays; $day++) {
                 $date = Carbon::parse($startDate)->addDays($day)->toDateString();
                 foreach ($times as $time) {
-                    TreatmentReminder::firstOrCreate([
+                    $message = "{$rx->drug_name} {$rx->dosage} — {$rx->instructions}";
+
+                    $reminder = TreatmentReminder::firstOrCreate([
                         'user_id'       => $userId,
                         'record_id'     => $record->record_id,
                         'reminder_type' => 'medicine',
                         'remind_at'     => "{$date} {$time}",
+                        'message'       => $message,
                     ], [
-                        'message'  => "{$rx->drug_name} {$rx->dosage} — {$rx->instructions}",
                         'is_sent'  => 0,
                     ]);
-                    $count++;
+                    if ($reminder->wasRecentlyCreated) {
+                        $count++;
+                    }
                 }
             }
         }

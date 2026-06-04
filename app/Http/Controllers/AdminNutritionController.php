@@ -460,20 +460,46 @@ class AdminNutritionController extends Controller
 
     private function validateRule(Request $request, bool $isUpdate = false): array
     {
-        $this->mergeClean($request, ['disease_name', 'icd_code', 'reason']);
-        $request->merge(['icd_code' => $request->filled('icd_code') ? strtoupper($request->input('icd_code')) : null]);
+        $request->merge([
+            'icd_code' => $request->filled('icd_code') ? strtoupper(trim((string) $request->input('icd_code'))) : null,
+        ]);
 
         return $request->validate([
-            'disease_name' => ['required', 'string', 'min:3', 'max:120', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
+            'disease_name' => ['bail', 'required', 'string', $this->vietnameseWordsOnlyRule('Tên bệnh lý'), 'min:3', 'max:120'],
             'icd_code' => ['nullable', 'string', 'max:10', 'regex:/\A[A-Z][0-9]{1,2}(\.[0-9A-Z]{1,2})?\z/'],
             'food_id' => ['required', 'integer', 'min:1', Rule::exists('foods', 'food_id')],
             'recommendation_type' => ['required', Rule::in(['should_eat', 'should_avoid'])],
-            'reason' => ['nullable', 'string', 'max:500', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
+            'reason' => ['bail', 'nullable', 'string', $this->vietnameseWordsOnlyRule('Lý do khuyến nghị'), 'max:500'],
             'rule_snapshot' => $isUpdate ? ['required', 'string', 'size:64'] : ['prohibited'],
             'rule_id' => ['prohibited'],
             'created_at' => ['prohibited'],
             'updated_at' => ['prohibited'],
         ], $this->messages());
+    }
+
+    private function vietnameseWordsOnlyRule(string $label): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($label): void {
+            $value = (string) $value;
+
+            if ($value === '') {
+                return;
+            }
+
+            if ($value !== trim($value)) {
+                $fail("{$label} không được có khoảng trắng ở đầu hoặc cuối.");
+                return;
+            }
+
+            if (preg_match('/ {2,}/u', $value)) {
+                $fail("{$label} không được có 2 khoảng trắng liên tiếp.");
+                return;
+            }
+
+            if (! preg_match('/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u', $value)) {
+                $fail("{$label} chỉ được nhập chữ tiếng Việt, không nhập số hoặc ký tự đặc biệt.");
+            }
+        };
     }
 
     private function validateFood(Request $request, bool $isUpdate = false): array
@@ -515,6 +541,12 @@ class AdminNutritionController extends Controller
             'exists' => 'Dữ liệu được chọn không tồn tại.',
             'prohibited' => 'Không được gửi dữ liệu này từ trình duyệt.',
             'regex' => 'Dữ liệu nhập sai định dạng; ô số chỉ dùng số 0-9, không dùng số full-width hoặc ký tự lạ.',
+            'disease_name.required' => 'Vui lòng nhập tên bệnh lý.',
+            'disease_name.min' => 'Tên bệnh lý phải có ít nhất 3 ký tự.',
+            'disease_name.max' => 'Tên bệnh lý không được vượt quá 120 ký tự.',
+            'food_id.required' => 'Vui lòng chọn thực phẩm liên quan.',
+            'recommendation_type.required' => 'Vui lòng chọn loại gợi ý.',
+            'reason.max' => 'Lý do khuyến nghị không được vượt quá 500 ký tự.',
             'title.regex' => 'Tiêu đề chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'content.regex' => 'Nội dung chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
             'target_disease.regex' => 'Tên bệnh chỉ được nhập chữ tiếng Việt và một khoảng trắng giữa các từ, không nhập số hoặc ký tự lạ.',
