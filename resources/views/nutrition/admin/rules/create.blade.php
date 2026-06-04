@@ -18,7 +18,7 @@
             <div class="alert alert-warning">{{ session('warning') }}</div>
         @endif
 
-        <form action="{{ route('admin.nutrition.rules.store') }}" method="POST">
+        <form action="{{ route('admin.nutrition.rules.store') }}" method="POST" data-nutrition-rule-form novalidate>
             @csrf
 
             <div class="row g-3">
@@ -28,7 +28,8 @@
                     <input type="text" name="disease_name" id="disease_name" 
                            class="form-control @error('disease_name') is-invalid @enderror" 
                            placeholder="Ví dụ: Đái tháo đường" 
-                           value="{{ old('disease_name') }}" required minlength="3" maxlength="120" pattern="^[A-Za-zÀ-ỹ\s]+$">
+                           value="{{ old('disease_name') }}" required minlength="3" maxlength="120"
+                           data-vietnamese-words="Tên bệnh lý">
                     <small class="text-muted">Nên nhập chính xác cụm từ chẩn đoán y khoa.</small>
                     @error('disease_name')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -92,6 +93,7 @@
                     <label for="reason" class="form-label fw-semibold">Lý do khuyến nghị / Giải thích</label>
                     <textarea name="reason" id="reason" class="form-control @error('reason') is-invalid @enderror" 
                               rows="3" maxlength="500" placeholder="Giải thích lý do chuyên khoa"
+                              data-vietnamese-words="Lý do khuyến nghị"
                               >{{ old('reason') }}</textarea>
                     @error('reason')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -110,3 +112,5 @@
 </div>
 
 @endsection
+
+@include('nutrition.admin.rules._form_validation')

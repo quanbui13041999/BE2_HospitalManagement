@@ -223,18 +223,79 @@ document.addEventListener('DOMContentLoaded', function () {
         normalizeVietnameseWords(input);
     });
 
+    const requiredSelects = document.querySelectorAll('select[required]');
+
+    function showSelectError(select) {
+        const message = select.dataset.requiredMessage || 'Vui lòng chọn thông tin.';
+
+        select.classList.remove('is-valid');
+        select.classList.add('is-invalid');
+        select.setCustomValidity(message);
+
+        let feedback = select.nextElementSibling;
+        if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            select.after(feedback);
+        }
+
+        feedback.textContent = message;
+    }
+
+    function clearSelectError(select) {
+        select.classList.remove('is-invalid');
+        select.setCustomValidity('');
+
+        const feedback = select.nextElementSibling;
+        if (feedback && feedback.classList.contains('invalid-feedback')) {
+            feedback.textContent = '';
+        }
+
+        if (select.value !== '') {
+            select.classList.add('is-valid');
+        } else {
+            select.classList.remove('is-valid');
+        }
+    }
+
+    function validateRequiredSelect(select) {
+        if (select.value === '') {
+            showSelectError(select);
+            return false;
+        }
+
+        clearSelectError(select);
+        return true;
+    }
+
+    requiredSelects.forEach(select => {
+        select.addEventListener('change', () => validateRequiredSelect(select));
+        select.addEventListener('blur', () => validateRequiredSelect(select));
+    });
+
     const healthForm = heightInput.closest('form');
     healthForm?.addEventListener('submit', function (event) {
+        let firstInvalid = null;
+
+        for (const select of requiredSelects) {
+            if (!validateRequiredSelect(select) && !firstInvalid) {
+                firstInvalid = select;
+            }
+        }
+
         for (const input of vietnameseWordInputs) {
             input.value = input.value.trim().replace(/\s+/gu, ' ');
             normalizeVietnameseWords(input);
 
-            if (input.validationMessage) {
-                event.preventDefault();
-                input.focus();
-                input.reportValidity();
-                break;
+            if (input.validationMessage && !firstInvalid) {
+                firstInvalid = input;
             }
+        }
+
+        if (firstInvalid) {
+            event.preventDefault();
+            firstInvalid.focus();
+            firstInvalid.reportValidity();
         }
     });
 

@@ -52,8 +52,8 @@ class HealthBackground extends Model
     public static function rules(): array
     {
         return [
-            'nhommau' => ['nullable', Rule::in(self::BLOOD_GROUPS)],
-            'yeuto_rh' => ['nullable', Rule::in(self::RH_FACTORS)],
+            'nhommau' => ['required', Rule::in(self::BLOOD_GROUPS)],
+            'yeuto_rh' => ['required', Rule::in(self::RH_FACTORS)],
             'height' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'min:30', 'max:300'],
             'weight' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/', 'numeric', 'min:1', 'max:500'],
             'food_allergies' => ['nullable', 'string', 'max:100', 'regex:/\A[\pL\pM]+(?: [\pL\pM]+)*\z/u'],
@@ -69,6 +69,10 @@ class HealthBackground extends Model
     public static function messages(): array
     {
         return [
+            'nhommau.required' => 'Vui lòng chọn nhóm máu.',
+            'nhommau.in' => 'Nhóm máu đã chọn không hợp lệ.',
+            'yeuto_rh.required' => 'Vui lòng chọn yếu tố Rh.',
+            'yeuto_rh.in' => 'Yếu tố Rh đã chọn không hợp lệ.',
             'height.regex' => 'Chiều cao chỉ được nhập số dương, tối đa 2 chữ số thập phân.',
             'height.min' => 'Chiều cao chỉ hợp lệ từ 30 đến 300 cm.',
             'height.gt' => 'Chiều cao phải lớn hơn 0.',
