@@ -38,8 +38,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return feedback;
         }
 
-        function messageOf(edgeSpace = false, patternMismatch = false) {
+        function messageOf(edgeSpace = false, innerSpace = false, patternMismatch = false) {
             if (edgeSpace) return field.dataset.errorEdgeSpace;
+            if (innerSpace) return field.dataset.errorInnerSpace;
             if (patternMismatch) return field.dataset.errorPattern;
             if (field.validity.valueMissing) return field.dataset.errorRequired;
             if (field.validity.tooShort) return field.dataset.errorMinlength;
@@ -51,7 +52,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const value = field.value || '';
             const empty = value.length === 0;
             const edgeSpace = value !== value.trim();
-            const patternMismatch = !empty && !edgeSpace && !messagePattern.test(value);
+            const innerSpace = / {2,}/u.test(value);
+            const patternMismatch = !empty && !edgeSpace && !innerSpace && !messagePattern.test(value);
             const feedback = feedbackOf();
 
             if (!force && empty) {
@@ -60,11 +62,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 return true;
             }
 
-            const ok = !edgeSpace && !patternMismatch && field.checkValidity();
+            const ok = !edgeSpace && !innerSpace && !patternMismatch && field.checkValidity();
 
             field.classList.toggle('is-valid', ok && !empty);
             field.classList.toggle('is-invalid', !ok);
-            feedback.textContent = ok ? '' : messageOf(edgeSpace, patternMismatch);
+            feedback.textContent = ok ? '' : messageOf(edgeSpace, innerSpace, patternMismatch);
 
             return ok;
         }
