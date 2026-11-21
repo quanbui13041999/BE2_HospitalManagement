@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class PaymentItem extends Model
+{
+    use HasFactory;
+
+    protected $table = 'payment_items';
+    protected $primaryKey = 'item_id';
+    public $timestamps = false;
+
+    protected $fillable = [
+        'payment_id',
+        'item_name',
+        'quantity',
+        'unit_price',
+        'subtotal',
+    ]; /* fixed: dong mass assignment, khong dung guarded rong */
+
+    protected $casts = [
+        'quantity' => 'integer',
+        'unit_price' => 'float',
+        'total_price' => 'float',
+    ];
+
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class, 'payment_id', 'payment_id');
+    }
+
+    public function getTotalPriceAttribute($value)
+    {
+        return $value ?? $this->subtotal;
+    }
+}

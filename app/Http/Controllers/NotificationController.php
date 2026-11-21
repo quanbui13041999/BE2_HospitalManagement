@@ -1,0 +1,179 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Notification;
+use App\Models\User;
+use App\Services\NotificationService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
+
+class NotificationController extends Controller
+{
+    public function __construct(private NotificationService $notifications) {}
+
+    public function index(Request $request)
+    {
+        $request->validate([
+            'status' => 'nullable|in:all,read,unread',
+            'type' => ['nullable', 'string', 'max:80', 'not_regex:/\A[\s\x{3000}]*\z/u'],
+            'page' => 'nullable|integer|min:1|max:1000',
+        ]);
+
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $status = $request->input('status', 'all');
+        $type = $request->input('type');
+
+        $types = $this->notifications->visibleQuery($user)
+            ->selectRaw('COALESCE(type, notif_type) as notification_type')
+            ->whereRaw('COALESCE(type, notif_type) IS NOT NULL')
+            ->distinct()
+            ->orderBy('notification_type')
+            ->pluck('notification_type');
+
+        if ($type && !$types->contains($type)) {
+            throw ValidationException::withMessages([
+                'type' => 'Loại thông báo không hợp lệ. Vui lòng chọn lại từ danh sách.',
+            ]);
+        } /* fixed: chan option type gia khong nam trong danh sach thong bao hien thi */
+
+        $notifications = $this->notifications->listForUser(
+            $user,
+            $status === 'all' ? null : $status,
+            $type
+        );
+
+        $layout = $this->layoutFor($user);
+
+        return view('notifications.index', compact('notifications', 'status', 'type', 'types', 'layout'));
+    }
+
+    public function show(Notification $notification)
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        abort_unless(
+            $this->notifications->visibleQuery($user)->whereKey($notification->getKey())->exists(),
+            403
+        ); /* fixed: chi cho xem thong bao thuoc pham vi user */
+
+        $this->notifications->markAsRead($notification, $user);
+
+        $notification->load('sender');
+        $layout = $this->layoutFor($user);
+
+        return view('notifications.show', compact('notification', 'layout'));
+    }
+
+    private function layoutFor(User $user): string
+    {
+        $roleName = mb_strtolower((string) ($user->role?->role_name ?? ''), 'UTF-8');
+
+        if ((int) $user->role_id === 1 || $roleName === 'admin') {
+            return 'layouts.admin';
+        }
+
+        return 'layouts.user';
+    }
+
+    public function dropdown()
+    {
+        if (!$this->expectsJsonRequest(request())) {
+            return redirect()
+                ->route('notifications.index')
+                ->with('warning', 'Đường dẫn dữ liệu thông báo không hợp lệ. Trang đã được tải lại.');
+        } /* fixed: khong hien JSON tho khi user go truc tiep URL dropdown */
+
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $items = $this->notifications->latestForUser($user, 8)->map(function (Notification $notification) use ($user) {
+            return [
+                'id' => $notification->notification_id,
+                'title' => $notification->title,
+                'message' => str($notification->displayMessage())->limit(90)->toString(),
+                'type' => $notification->displayType(),
+                'is_read' => $notification->isReadBy($user),
+                'created_at' => optional($notification->created_at)->diffForHumans(),
+                'url' => route('notifications.show', $notification),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'unread_count' => $this->notifications->unreadCount($user),
+            'items' => $items,
+            'all_url' => route('notifications.index'),
+            'data' => [
+                'unread_count' => $this->notifications->unreadCount($user),
+                'items' => $items,
+                'all_url' => route('notifications.index'),
+            ],
+        ]);
+    }
+
+    public function unreadCount()
+    {
+        if (!$this->expectsJsonRequest(request())) {
+            return redirect()
+                ->route('notifications.index')
+                ->with('warning', 'Đường dẫn dữ liệu thông báo không hợp lệ. Trang đã được tải lại.');
+        } /* fixed: API count chi tra JSON cho AJAX */
+
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'unread_count' => $this->notifications->unreadCount($user),
+            'data' => ['unread_count' => $this->notifications->unreadCount($user)],
+        ]);
+    }
+
+    public function markRead(Notification $notification)
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        abort_unless(
+            $this->notifications->visibleQuery($user)->whereKey($notification->getKey())->exists(),
+            403
+        ); /* fixed: ngan user mark-read thong bao khong thuoc ve minh */
+
+        $this->notifications->markAsRead($notification, $user);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'unread_count' => $this->notifications->unreadCount($user),
+            'data' => ['unread_count' => $this->notifications->unreadCount($user)],
+        ]);
+    }
+
+    public function markAllRead()
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $count = $this->notifications->markAllAsRead($user);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OK',
+            'marked_count' => $count,
+            'unread_count' => 0,
+            'data' => ['marked_count' => $count, 'unread_count' => 0],
+        ]);
+    }
+
+    private function expectsJsonRequest(Request $request): bool
+    {
+        return $request->expectsJson() || $request->ajax();
+    }
+}
